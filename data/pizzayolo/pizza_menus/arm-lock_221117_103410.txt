@@ -1,0 +1,79 @@
+Arm Lock
+
+65,00
+
+Hamburger, Bacon, mussarela, presunto, batata palha, cheddar, catupiry e borda de calabresa
+
+Carne de Sol 50,00
+
+Carne de Sol, mussarela, tomate e orégano
+
+Contra Filé
+
+50,00
+
+Contra filé, mussarela, tomate seco e orégano
+
+Hot Dog
+
+45,00
+
+Salsicha, mussarela, cheddar, catupiry e batata palha
+
+Pepperone
+
+45,00
+
+Pepperone, mussarela e orégano
+
+Portuguesa
+
+45.00
+
+Presunto, mussarela, milho,ervilha, cebola e orégano
+
+Quatro Queijos
+
+50,00
+
+Provolone,catupiry, cheddar, e mussarela e orégano
+
+Tomate Seco
+
+45,00
+
+Tomate soco, queijo fresco e orégano
+
+Bacon
+
+35,00
+
+Bacon, mussarela, tomate e orégano
+
+Calabresa 35,00
+
+Calabresa, mussarela, cebola e orégano
+
+Frango Catupiry
+
+35,00
+
+Frango desfiado, mussarela e catupiry
+
+Marguerita
+
+35,00
+
+Mussarela, manjericão, tomate e orégano
+
+Mussarela
+
+30,00
+
+Mussarela, tomate e orégano
+
+Palmito
+
+35,00
+
+Palmito, mussarela e orégano

@@ -1,0 +1,33 @@
+A MODA: Mussarela, frango, presunto, milho, azeitona, catupiry, oréga
+ATUM: Mussarela, atum, orégano
+AMERICANA: Mussarela, bacon, ovo, cebola, azeitona, orégano
+BACON: Mussarela, bacon, orégano
+BRASILIENSE: Mussarela, presunto, pimentão, ovo, cebola, orégano
+CAIPIRA: Mussarela, frango, milho, ovo, orégano
+CALABRESA: Mussarela, calabresa com cebola, orégano
+JUVENILIENSE: Mussarela, frango, catupiry, orégano
+CATUFRANGO: Mussarela, frango, catupiry, orégano
+CARNE SECA COM CATUPIRY: Mussarela, carne seca, catupiry, orégano
+CATUM: Mussarela, atum, catupiry, milho, orégano
+CATUMILHO: Mussarela, milho, atum, catupiry, orégano
+FRANGO Mussarela, frango, milho, orégano
+GAROTO: Mussarela, frango, ovo, azeitona, orégano
+ITALIANA: Mussarela, presunto, frango, catupiry, orégano
+MARGUERITA: Mussarela, tomate, catupiry, orégano
+MISTA: Mussarela, presunto, frango, calabresa, catupiry, orégano
+MUSSARELA: Mussarela, orégano
+NAPOLITANA: Mussarela, presunto, tomate, cebola, orégano
+PALMITO: Mussarela, palmito, orégano
+PORTUGUESA: Mussarela, calabresa, presunto, ovo, cebola, pimentão, tomate, azeitona, oregano
+PRESUNTO: Mussarela, presunto, orégano
+TROPICAL: Mussarela, frango, palmito, azeitona,orégano 
+VEGETARIANA: Mussarela, tomate, cebola, palmito, milho, pimentão, azaitons, anegand
+FRANGOBACON: Mussarela, frango com bacon, orégano
+GOIANINHA: Mussarela, carne de sol, calabresa, catupiry, ore
+LOMBO CANADENSE: Mussarela, lombo, catupiry, orégano
+TOSCANA: Mussarela, calabresa ralada, pimenta, orégano
+BAIANA: Mussarela, frango, calabresa, pimenta, ovo, azeitona, cebola, orégano
+ROMEU E JULIETA: Mussarela, goiabada, catupiry
+BANANA: Mussarela, banana, canela, açúcar
+CHOCOLATE: Mussarela, chocolate, catupiry
+

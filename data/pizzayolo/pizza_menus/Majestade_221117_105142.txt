@@ -1,0 +1,63 @@
+MARGARITA
+molho, mussarela, tomate em rodelas, manjericão, cebola, azeitona e orégano
+R$ 29,00 R$ 33,00 R$ 43,00
+P M G
+MUSSARELA
+molho, mussarela, tomate em rodelas, azeitona e orégano
+R$ 29,00 R$ 33,00 R$ 43,00
+ALHO E ÓLEO
+mussarela, alho salpicado, tomate em rodelas, cebola, azeitona e orégano
+R$ 29,00 R$ 33,00 R$ 43,00
+BACON
+molho, mussarela, bacon, tomate, cebola, azeitona e orégano
+R$ 31,00 R$ 38,50 R$ 49,50
+CALABRESA
+molho, mussarela, calabresa, tomate, cebola, azeitona e orégano
+R$ 31,00 R$ 38,50 R$ 49,50
+PORTUGUESA
+molho, mussarela, presunto, ovo, tomate, cebola, azeitona e orégano
+R$ 31,00 R$ 38,50 R$ 49,50
+PRESUNTO
+molho, mussarela, presunto, tomate, cebola, azeitona e orégano
+R$ 31,00 R$ 38,50 R$ 49,50
+molho, mussarela, tomate seco, rúcula e orégano
+R$ 31,00 R$ 38,50 R$ 49,50
+A MODA
+molho, mussarela, presunto, calabresa, bacon, cebola, tomate, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+ATUM
+molho, mussarela, atum, tomate, cebola, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+molho, mussarela, frango, requeijão cremoso, milho, tomate, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+STROGNOFF
+mussarela, strogonoff de frango e batata palha
+R$ 33,00 R$ 41,00 R$ 52,50
+NAPOLITANA
+molho, mussarela, presunto, palmito, tomate, cebola, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+molho, mussarela, cheddar, provolone, requeijão cremoso, tomate, cebola, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+VEGETARIANA
+molho, mussarela, palmito, milho verde, tomate, cebola, azeitona e orégano
+R$ 33,00 R$ 41,00 R$ 52,50
+MAJESTADE
+molho, mussarela, presunto, calabresa, bacon, frango, cebola, tomate, azeitona e orégano
+R$ 34,00 R$ 42,00 R$ 55,00
+molho, mussarela, lombo, tomate, cebola, azeitona e orégano
+R$ 34,00 R$ 42,00 R$ 55,00
+ITALIANA
+molho, mussarela, lombo, palmito,requeijão cremoso,tomate em rodelas,cebola, azeitona e orégano
+R$ 34,00 R$ 42,00 R$ 55,00
+GOIANA
+molho, mussarela, frango desfiado, palmito, requeijão cremoso, tomate, azeitona e orégano
+R$ 34,00 R$ 42,00 R$ 55,00
+DOM CAMILO
+molho, mussarela, presunto, calabresa, creme de leite, tomate, azeitona e orégano
+R$ 34,00 R$ 42,00 R$ 55,00
+FRANBACON
+molho, mussarela, frango, bacon, milho, tomate, azeitona e orégano
+R$ 35,00 R$ 43,00 R$ 56,00
+GAIVOTA
+molho, mussarela, frango desfiado, bacon, palmito, milho, tomate, azeitona e orégano
+R$ 35,00 R$ 43,00 R$ 56,00

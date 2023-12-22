@@ -1,0 +1,27 @@
+Aves: Frango, cebola, mussarela.
+Frango: Frango, mussarela, calabresa
+Caipira: Frango, milho, catupiry, mussarela
+A Moda do Chef: Presunto, calabresa, frango, ervilha, catupiry, parmesao
+A Moda do Chef: Presunto, calabresa, frango, milho, mussarela, parmesão
+A Brasileira: Frango, palmito, milho, ervilha, cebola, mussarela
+Carioca: Frango, palmito, milho, mussarela
+Executiva: Frango, bacon, provolone, mussarela
+Frango com Catupiry: Frango, catupiry
+Frango com Cheddar: Frango, cheddar
+Jardineira: Frango, milho, palmito, cebola, catupiry
+Goiana: Frango, milho, guariroba, mussarela
+Peru: Peito de peru, catupiry, mussarela
+Peru: Peito de peru, champignon, bacon, mussarela
+Peru: Peito de peru, mussarela, rúcula
+Chester: Peito de Chester, mussarela, tomate seco
+Toscana: Calabresa moída, cebola, palmito, mussarela, catupiry
+Tropical: Calabresa moída, palmito, bacon, mussarela
+Mineira: Calabresa moída, catupiry, parmesão, tomate
+Original: Presunto, champignon, catupiry, milho
+Original: Calabresa, mussarela, parmesão, manjericão
+Misto Quente: Presunto, mussarela, tomate
+Misto Quente: Presunto, champignon, cebola, mussarela
+Americana: Palmito, bacon, ovo, cebola, mussarela
+Siciliana: Bacon, ovo, mussarela, parmesão
+Carne Seca: Carne seca, cebola, mussarela 
+Carne Maluca: Carne bovina desfiada, tomate, catupiry, mussarela
