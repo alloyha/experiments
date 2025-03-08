@@ -52,13 +52,13 @@ def print_statistics(initial_value: float, month_contribution: float, interest_r
     # Output results
     print("Statistics:")
 
-    print(f"Initial value: R$ {initial_value:_.2f}")
+    print(f"Initial value: $ {initial_value:_.2f}")
     print(f"Duration: {duration} meses")
-    print(f"Monthly contribution: R$ {month_contribution:_.2f}")
+    print(f"Monthly contribution: $ {month_contribution:_.2f}")
     print(f"Yearly interest rate: {interest_rate}% a.a.")
 
     print(f"End value after {duration} months: $ {future_value:_.2f}")
-    print(f"Invested value: R$ {invested_value:_.2f}")
+    print(f"Invested value: $ {invested_value:_.2f}")
     print(f"Profit value: $ {profit_value:_.2f}")
 
     print("-----")
