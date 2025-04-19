@@ -1,0 +1,8 @@
+psycopg2-binary
+df2img
+tabulate
+faker
+pandas
+plotly
+ipython
+notebook
