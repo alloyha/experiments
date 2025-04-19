@@ -1,7 +1,8 @@
 import logging
 
 # Constants
-N = 100_000
+TOTAL_ROWS = 100_000
+LIMIT = 1_000
 BATCH_SIZE = 1_000
 
 # Database configuration

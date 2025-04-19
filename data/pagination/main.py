@@ -1,6 +1,6 @@
 from strategies import benchmarks
 from database import populate_database
-from utils import display_results, run_all_benchmarks
+from core import display_results, run_all_benchmarks
 
 if __name__ == "__main__":
     IS_POPULATE = False

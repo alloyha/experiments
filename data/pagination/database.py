@@ -12,7 +12,7 @@ from psycopg2.errors import InvalidCatalogName
 from psycopg2 import pool
 from faker import Faker
 
-from config import DB_CONFIG, BATCH_SIZE, N, logger
+from config import DB_CONFIG, BATCH_SIZE, TOTAL_ROWS, logger
 
 fake = Faker()
 
