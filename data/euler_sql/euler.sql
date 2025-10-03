@@ -431,10 +431,10 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY euler_diagram_cache;
 COMMIT;
 
 -- Example 5: Query cache (fast)
-SELECT * FROM euler_diagram_fast();
+-- SELECT * FROM euler_diagram_fast();
 
 -- Example 6: Find boundaries
-SELECT * FROM euler_boundaries_fast();
+-- SELECT * FROM euler_boundaries_fast();
 
 -- Example 7: Match sets containing elements
 SELECT euler_key, array_length(elements,1) 
@@ -488,3 +488,117 @@ BEGIN
     END LOOP;
 END
 $do$ LANGUAGE plpgsql;
+
+-- Experiment harness: sweep set counts and element cardinalities
+-- Creates table experiment_results and runs parameter grid.
+
+drop table if exists experiment_results;
+
+CREATE TABLE IF NOT EXISTS experiment_results (
+  id              serial PRIMARY KEY,
+  num_sets        int NOT NULL,
+  num_elements    int NOT NULL,
+  overlap_prob    numeric NOT NULL,
+  total_rows      bigint,
+  unique_elements bigint,
+  unique_combinations bigint,
+  no_cache_ms     numeric,
+  cached_ms       numeric,
+  cache_size      text,
+  table_size      text,
+  index_size      text,
+  run_ts          timestamp default clock_timestamp()
+);
+
+-- Tweak these arrays for the sweep you want
+-- Be conservative on the largest combination you run here.
+DO $do$
+DECLARE
+  set_counts int[] := ARRAY[5,10];
+  elem_counts int[] := ARRAY[1000];
+  overlap_probs numeric[] := ARRAY[0.10];
+  s int;
+  e int;
+  p numeric;
+  insert_sql text;
+  pct int;
+  total_rows bigint;
+  unique_elems bigint;
+  unique_combos bigint;
+  t_no_cache numeric;
+  t_cached numeric;
+  c_size text;
+  t_size text;
+  i_size text;
+BEGIN
+  FOREACH s IN ARRAY set_counts LOOP
+    FOREACH e IN ARRAY elem_counts LOOP
+      FOREACH p IN ARRAY overlap_probs LOOP
+
+        RAISE NOTICE '=== Running scenario: sets=%; elems=%; overlap=%', s, e, p;
+
+        TRUNCATE input_sets;
+
+        pct := (p * 100)::int;
+
+        insert_sql := format($sql$
+          INSERT INTO input_sets
+          SELECT
+            'SET_' || set_num,
+            'ELEM_' || elem_id
+          FROM generate_series(1, %s) AS elem_id,
+               generate_series(0, %s) AS set_num
+          WHERE (((('x' || substr(md5('ELEM_' || elem_id || '_SET_' || set_num),1,16))::bit(64))::bigint %% 100) < %s)
+          ON CONFLICT DO NOTHING;
+        $sql$, e, s-1, pct);
+
+        EXECUTE insert_sql;
+
+        -- Refresh materialized view (non-concurrent inside DO)
+        PERFORM pg_sleep(0.01);
+        REFRESH MATERIALIZED VIEW euler_diagram_cache;
+
+        SELECT COUNT(*) INTO total_rows FROM input_sets;
+        SELECT COUNT(DISTINCT element) INTO unique_elems FROM input_sets;
+        SELECT COUNT(*) INTO unique_combos FROM euler_diagram_cache;
+
+        SELECT pg_size_pretty(pg_total_relation_size('euler_diagram_cache')) INTO c_size;
+        SELECT pg_size_pretty(pg_total_relation_size('input_sets')) INTO t_size;
+        SELECT pg_size_pretty(pg_indexes_size('input_sets')) INTO i_size;
+
+        SELECT execution_time_ms INTO t_no_cache
+        FROM benchmark_euler()
+        WHERE function_name = 'euler_diagram (no cache)'
+        LIMIT 1;
+
+        SELECT execution_time_ms INTO t_cached
+        FROM benchmark_euler()
+        WHERE function_name = 'euler_diagram_fast (cached)'
+        LIMIT 1;
+
+        INSERT INTO experiment_results(
+            num_sets, num_elements, overlap_prob,
+            total_rows, unique_elements, unique_combinations,
+            no_cache_ms, cached_ms, cache_size, table_size, index_size
+        )
+        VALUES (
+          s, e, p,
+          total_rows, unique_elems, unique_combos,
+          t_no_cache, t_cached, c_size, t_size, i_size
+        );
+
+        RAISE NOTICE 'Done: sets=%; elems=%; overlap=%; rows=%; combos=%; no_cache=%, cached=%',
+          s, e, p, total_rows, unique_combos, t_no_cache, t_cached;
+
+      END LOOP;
+    END LOOP;
+  END LOOP;
+END
+$do$ LANGUAGE plpgsql;
+
+
+-- View results (most interesting columns)
+SELECT id, num_sets, num_elements, overlap_prob, total_rows, unique_combinations,
+       no_cache_ms, cached_ms, cache_size, table_size, index_size, run_ts
+FROM experiment_results
+ORDER BY run_ts DESC, id DESC;
