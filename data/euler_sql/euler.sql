@@ -514,9 +514,9 @@ CREATE TABLE IF NOT EXISTS experiment_results (
 -- Be conservative on the largest combination you run here.
 DO $do$
 DECLARE
-  set_counts int[] := ARRAY[5,10];
-  elem_counts int[] := ARRAY[1000];
-  overlap_probs numeric[] := ARRAY[0.10];
+  set_counts int[] := ARRAY[5,10,20,40];
+  elem_counts int[] := ARRAY[1000,10000,50000];
+  overlap_probs numeric[] := ARRAY[0.10,0.30,0.60];
   s int;
   e int;
   p numeric;
