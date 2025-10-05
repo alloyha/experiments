@@ -8,7 +8,7 @@ This directory contains comprehensive Python examples and use cases for the Post
 |------|-------------|----------|
 | `schema_generator_client.py` | Core Python client library | Main interface to SQL procedures |
 | `use_cases.py` | Real-world business scenarios | E-commerce, SaaS, Financial, Analytics |
-| `etl_integrations.py` | ETL tool integrations | Airflow, dbt, Pandas workflows |
+| `etl_integrations.py` | ETL tool integrations | Airflow, dbt, Pandas, DuckDB, Polars |
 | `advanced_examples.py` | Advanced schema management | Versioning, Multi-tenant, Performance |
 | `setup.py` | Installation and setup | Quick start guide |
 
@@ -109,6 +109,45 @@ from etl_integrations import PandasIntegration
 pandas_int = PandasIntegration(generator)
 validation = pandas_int.validate_dataframe_against_schema(df, table_metadata)
 insert_statements = pandas_int.generate_insert_statements(df, table_metadata)
+```
+
+### DuckDB Analytics
+```python
+from etl_integrations import DuckDBIntegration
+
+# OLAP and embedded analytics
+with DuckDBIntegration(generator) as duckdb:
+    # Replicate PostgreSQL schema to DuckDB
+    result = duckdb.create_schema_from_postgres("analytics", postgres_config)
+    
+    # Generate analytical queries
+    queries = duckdb.generate_analytical_queries(fact_metadata)
+    
+    # Export to data lake
+    duckdb.export_to_parquet("fact_sales", "/data/lake/sales.parquet")
+```
+
+### Polars High-Performance Processing
+```python
+from etl_integrations import PolarsIntegration
+
+polars_int = PolarsIntegration(generator)
+
+# Create schema-aware DataFrames
+df = polars_int.dataframe_from_metadata(table_metadata, sample_data)
+
+# SCD2 processing with lazy evaluation
+scd2_pipeline = polars_int.create_scd2_pipeline(
+    source_df.lazy(), current_df.lazy(), "business_key", ["name", "email"]
+)
+
+# Fast aggregations for fact tables
+fact_aggs = polars_int.create_fact_aggregation_pipeline(
+    fact_df.lazy(), ["dim1_key", "dim2_key"], measures, "day"
+)
+
+# Data quality validation
+quality_results = polars_int.validate_data_quality(df.lazy(), table_metadata)
 ```
 
 ## 🔧 Advanced Features

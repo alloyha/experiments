@@ -344,7 +344,7 @@ if __name__ == "__main__":
         host="localhost",
         database="postgres",
         username="postgres",
-        password="your_password"
+        password="postgres"
     )
     
     generator = SchemaGenerator(config)

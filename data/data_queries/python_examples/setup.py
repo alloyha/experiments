@@ -16,6 +16,12 @@ REQUIREMENTS = [
     "sqlalchemy>=1.4.0"
 ]
 
+# Optional packages for enhanced ETL integrations
+OPTIONAL_REQUIREMENTS = [
+    "duckdb>=0.8.0",  # For OLAP analytics and embedded database
+    "polars>=0.19.0",  # For high-performance data processing
+]
+
 def install_requirements():
     """Install required Python packages"""
     print("📦 Installing required packages...")
@@ -27,27 +33,28 @@ def install_requirements():
         except subprocess.CalledProcessError as e:
             print(f"❌ Failed to install {package}: {e}")
 
-def create_config_template():
+def install_optional_requirements():
+    """Install optional packages for enhanced ETL features"""
+    print("\n📦 Installing optional ETL packages...")
+    print("   (These enable DuckDB and Polars integrations)")
+    
+    for package in OPTIONAL_REQUIREMENTS:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+            print(f"✅ Installed {package}")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️ Failed to install {package}: {e}")
+            print(f"   Install manually with: pip install {package}")
+
+def install_all():
+    """Install both required and optional packages"""
+    install_requirements()
+    install_optional_requirements()
+
+def run_config():
     """Create configuration template file"""
     config_template = '''
-# PostgreSQL Schema Generator Configuration
-# Copy this file to config.py and update with your settings
 
-from schema_generator_client import ConnectionConfig
-
-# Database connection settings
-DATABASE_CONFIG = ConnectionConfig(
-    host="localhost",
-    port=5432,
-    database="your_database",
-    username="your_username", 
-    password="your_password",
-    schema="public"
-)
-
-# Schema generation settings
-DEFAULT_SCHEMA = "analytics"
-ENABLE_LOGGING = True
 '''
     
     with open("config_template.py", "w") as f:
@@ -61,7 +68,13 @@ def main():
     print("=" * 50)
     
     install_requirements()
-    create_config_template()
+    run_config()
+    
+    print("\n🔄 Enhanced ETL Features Available!")
+    print("To enable DuckDB and Polars integrations, run:")
+    print("   python setup.py install_optional")
+    print("Or install manually:")
+    print("   pip install duckdb>=0.8.0 polars>=0.19.0")
     
     print("\n✅ Setup complete!")
     print("\nNext steps:")
@@ -72,5 +85,12 @@ def main():
     print("   from config import DATABASE_CONFIG")
     print("   generator = SchemaGenerator(DATABASE_CONFIG)")
 
+def install_optional():
+    """Entry point for installing optional packages"""
+    install_optional_requirements()
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "install_optional":
+        install_optional()
+    else:
+        main()

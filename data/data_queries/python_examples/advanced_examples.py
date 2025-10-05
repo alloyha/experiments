@@ -16,7 +16,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 
-from schema_generator_client import SchemaGenerator, ConnectionConfig
+from .schema_generator_client import SchemaGenerator, ConnectionConfig
 
 class ChangeType(Enum):
     """Types of schema changes"""
@@ -427,7 +427,8 @@ def main():
     config = ConnectionConfig(
         host="localhost",
         database="postgres",
-        username="postgres"
+        username="postgres",
+        password="postgres"
     )
     
     generator = SchemaGenerator(config)

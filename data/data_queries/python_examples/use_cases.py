@@ -10,7 +10,7 @@ SaaS platforms, and data analytics pipelines.
 import json
 import logging
 from datetime import datetime, timedelta
-from schema_generator_client import SchemaGenerator, ConnectionConfig, create_dimension_metadata, create_fact_metadata
+from .schema_generator_client import SchemaGenerator, ConnectionConfig, create_dimension_metadata, create_fact_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +359,7 @@ def main():
         host="localhost",
         database="postgres", 
         username="postgres",
-        password="your_password"
+        password="postgres"
     )
     
     generator = SchemaGenerator(config)
