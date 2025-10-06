@@ -90,7 +90,6 @@ packages = ["unified_platform"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/unified_platform",
-    "/sql",
     "/docs",
     "/examples",
     "/tests",

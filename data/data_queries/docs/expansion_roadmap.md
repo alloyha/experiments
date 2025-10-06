@@ -406,8 +406,10 @@ class PostgreSQLStorageBackend(StorageBackend):
         elif entity_type in ['fact', 'transaction_fact']:
             return self.dimensional_patterns.create_fact_table(entity, self)
     
-    def generate_dimensional_dml(self, entity: Dict[str, Any], 
-                               operation: str) -> str:
+    def generate_dimensional_dml(
+        self, entity: Dict[str, Any], 
+        operation: str
+    ) -> str:
         """
         Generate DML with dimensional patterns
         """
