@@ -20,6 +20,7 @@ REQUIREMENTS = [
 OPTIONAL_REQUIREMENTS = [
     "duckdb>=0.8.0",  # For OLAP analytics and embedded database
     "polars>=0.19.0",  # For high-performance data processing
+    "pandera>=0.17.0",  # For comprehensive data quality validation
 ]
 
 def install_requirements():
@@ -36,7 +37,7 @@ def install_requirements():
 def install_optional_requirements():
     """Install optional packages for enhanced ETL features"""
     print("\n📦 Installing optional ETL packages...")
-    print("   (These enable DuckDB and Polars integrations)")
+    print("   (These enable DuckDB, Polars, and Pandera integrations)")
     
     for package in OPTIONAL_REQUIREMENTS:
         try:

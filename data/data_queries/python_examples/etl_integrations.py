@@ -22,6 +22,8 @@ import json
 import pandas as pd
 import polars as pl
 import duckdb
+import tempfile
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union
 import logging
@@ -977,14 +979,22 @@ class PolarsIntegration:
         Returns:
             pl.LazyFrame: Optimized LazyFrame
         """
+        # Get schema efficiently
+        schema = df.collect_schema()
+        
         # Common optimizations
-        optimized = df.with_columns([
-            # Convert string columns to categorical if low cardinality
-            pl.when(pl.col(col).n_unique() < 1000)
-            .then(pl.col(col).cast(pl.Categorical))
-            .otherwise(pl.col(col))
-            for col in df.columns if df.schema[col] == pl.Utf8
-        ])
+        string_columns = [col for col, dtype in schema.items() if dtype == pl.Utf8]
+        
+        if string_columns:
+            optimized = df.with_columns([
+                # Convert string columns to categorical if low cardinality
+                pl.when(pl.col(col).n_unique() < 1000)
+                .then(pl.col(col).cast(pl.Categorical))
+                .otherwise(pl.col(col))
+                for col in string_columns
+            ])
+        else:
+            optimized = df
         
         return optimized
     
@@ -1134,7 +1144,7 @@ def main():
     print("-" * 30)
     
     try:
-        with DuckDBIntegration(generator) as duckdb_integration:
+        with DuckDBIntegration(generator, ":memory:") as duckdb_integration:
             # Generate analytical queries
             fact_metadata = {
                 "name": "fact_sales",
@@ -1150,13 +1160,34 @@ def main():
             for query_name in analytical_queries.keys():
                 print(f"  - {query_name}")
             
-            # Export demo
+            # Export demo (create a dummy table first)
+            duckdb_integration.conn.execute("""
+                CREATE TABLE fact_sales AS 
+                SELECT 
+                    'S001' as sale_id,
+                    100.50 as amount,
+                    5 as quantity,
+                    CURRENT_DATE as event_date,
+                    CURRENT_TIMESTAMP as event_timestamp
+            """)
+            
+            import tempfile
+            import os
+            temp_dir = tempfile.mkdtemp()
+            parquet_path = os.path.join(temp_dir, "fact_sales.parquet")
+            
             export_result = duckdb_integration.export_to_parquet(
                 "fact_sales", 
-                "/tmp/fact_sales.parquet",
-                partition_by="event_date"
+                parquet_path
             )
             print(f"✅ Parquet export: {export_result.get('status', 'unknown')}")
+            
+            # Cleanup
+            try:
+                os.remove(parquet_path)
+                os.rmdir(temp_dir)
+            except:
+                pass
             
     except ImportError:
         print("⚠️ DuckDB not installed - install with: pip install duckdb")
