@@ -1,0 +1,134 @@
+# Pre-commit configuration for Unified Data Platform
+# See https://pre-commit.com for more information
+
+repos:
+  # Ruff for fast Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+      # Run the formatter
+      - id: ruff-format
+
+  # Additional Python code quality checks
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        exclude: ^(tests/|examples/)
+
+  # General pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # File formatting
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      
+      # Python specific
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: name-tests-test
+        args: [--pytest-test-first]
+      
+      # Security
+      - id: detect-private-key
+
+  # SQL formatting and linting
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.2.4
+    hooks:
+      - id: sqlfluff-lint
+        files: \.sql$
+        additional_dependencies: [sqlfluff-templater-dbt]
+        args: [--dialect=postgres]
+      - id: sqlfluff-fix
+        files: \.sql$
+        additional_dependencies: [sqlfluff-templater-dbt]
+        args: [--dialect=postgres]
+
+  # Security scanning
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["-r", ".", "-f", "json", "-o", "bandit-report.json"]
+        exclude: ^tests/
+
+  # Dependency scanning
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+
+  # Documentation
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        exclude: ^(tests/|examples/|setup.py)
+        args:
+          - --convention=google
+          - --add-ignore=D100,D101,D102,D103,D104,D105,D106,D107
+
+  # Markdown formatting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # Conventional commits
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [optional-scope]
+
+# Global configuration
+default_language_version:
+  python: python3.8
+
+# Only run on staged files
+default_stages: [commit]
+
+# Fail fast - stop on first failure
+fail_fast: false
+
+# Define additional stages
+stages: [commit, push, commit-msg]
+
+# CI specific configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
