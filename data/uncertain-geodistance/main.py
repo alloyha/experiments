@@ -144,6 +144,7 @@ class Scenario:
     reference: Reference
     d0: float
     method_params: MethodParams = field(default_factory=MethodParams)
+    expected_behavior: str = ""  # Description of what to expect from this scenario
     
     # For analytics compatibility
     sigma_P_scalar: Optional[float] = None
@@ -676,6 +677,8 @@ class PerformanceProfiler:
 
             if self.verbose:
                 print(f"\nFAIR TEST: {name} — d0={sc.d0} m, n_mc={n_mc} (repeats={n_repeats})")
+                if sc.expected_behavior:
+                    print(f"Expected: {sc.expected_behavior}")
 
             for r in range(n_repeats):
                 seed = rng_base_seed + 1000 * s_idx + r
@@ -744,17 +747,198 @@ class PerformanceProfiler:
                     f'{m}_n_samples_mean': int(n_samples_arr.mean())
                 })
             
-            if self.verbose:
-                print("\n  Results summary:")
-                if has_analytic:
-                    print(f"    Analytic (mean): P={summary['analytic_prob_mean']:.6f}, time={summary['analytic_time_ms']:.2f} ms")
-                for m in ('mc_ecef', 'mc_tangent'):
-                    print(f"    {m}: P={summary[f'{m}_prob_mean']:.6f} ± {summary[f'{m}_prob_std']:.6f}, "
-                          f"stderr_mean={summary[f'{m}_mc_stderr_mean']:.6f}, time={summary[f'{m}_time_ms']:.1f} ms")
-            
             self.results.append(summary)
             results.append(summary)
+        
+        # Print concise table summary at the end
+        if self.verbose:
+            self._print_summary_table(results, scenarios)
+        
         return results
+    
+    def _print_summary_table(self, results: List[Dict], scenarios: List[Scenario]):
+        """Print a concise table summary of all results."""
+        try:
+            from tabulate import tabulate
+        except ImportError:
+            print("\nFor better table formatting, install tabulate: pip install tabulate")
+            self._print_fallback_table(results)
+            return
+        
+        print("\n" + "=" * 100)
+        print("RESULTS SUMMARY TABLE")
+        print("=" * 100)
+        
+        rows = []
+        for r in results:
+            scenario_name = r['name'][:18]  # Shorter truncation
+            d0 = r['d0']
+            n_mc = r['n_mc']
+            
+            # Add analytic row if available
+            if r.get('analytic_prob_mean') is not None:
+                rows.append([
+                    scenario_name,
+                    'analytic',
+                    f"{r['analytic_prob_mean']:.5f}",
+                    '-',
+                    '-',
+                    f"{r['analytic_time_ms']:.1f}",
+                    f"{d0:.0f}m"
+                ])
+            
+            # Add MC method rows
+            for method in ['mc_ecef', 'mc_tangent']:
+                if r.get(f'{method}_prob_mean') is not None:
+                    prob_mean = r[f'{method}_prob_mean']
+                    mc_stderr = r[f'{method}_mc_stderr_mean']
+                    time_ms = r[f'{method}_time_ms']
+                    n_samples = r[f'{method}_n_samples_mean']
+                    
+                    # Show scenario name only for first MC method
+                    name_display = scenario_name if method == 'mc_ecef' else ''
+                    d0_display = f"{d0:.0f}m" if method == 'mc_ecef' else ''
+                    
+                    rows.append([
+                        name_display,
+                        method,
+                        f"{prob_mean:.5f}",
+                        f"{mc_stderr:.5f}" if mc_stderr > 1e-6 else '<1e-6',
+                        f"{n_samples:,}" if n_samples > 0 else '-',
+                        f"{time_ms:.1f}",
+                        d0_display
+                    ])
+        
+        headers = ["Scenario", "Method", "Prob", "StdErr", "Samples", "Time(ms)", "d0"]
+        print(tabulate(rows, headers=headers, tablefmt="simple", numalign="right"))
+        
+        # Add performance comparison
+        self._print_performance_summary(results)
+        
+        # Add expected vs actual comparison
+        self._print_expectations_summary(results, scenarios)
+    
+    def _print_fallback_table(self, results: List[Dict]):
+        """Fallback table format if tabulate is not available."""
+        print("\n" + "=" * 120)
+        print("RESULTS SUMMARY")
+        print("=" * 120)
+        print(f"{'Scenario':<20} {'Method':<10} {'Mean Prob':<10} {'Std':<8} {'MC StdErr':<10} {'Samples':<8} {'Time(ms)':<9} {'d0(m)':<8}")
+        print("-" * 120)
+        
+        for r in results:
+            scenario_name = r['name'][:20]
+            d0 = r['d0']
+            
+            if r.get('analytic_prob_mean') is not None:
+                print(f"{scenario_name:<20} {'analytic':<10} {r['analytic_prob_mean']:<10.6f} {'-':<8} {'-':<10} {'-':<8} {r['analytic_time_ms']:<9.1f} {d0:<8.0f}")
+            
+            for method in ['mc_ecef', 'mc_tangent']:
+                if r.get(f'{method}_prob_mean') is not None:
+                    name_field = scenario_name if method == 'mc_ecef' else ''
+                    prob_mean = r[f'{method}_prob_mean']
+                    prob_std = r[f'{method}_prob_std']
+                    mc_stderr = r[f'{method}_mc_stderr_mean']
+                    time_ms = r[f'{method}_time_ms']
+                    n_samples = r[f'{method}_n_samples_mean']
+                    d0_field = f"{d0:.0f}" if method == 'mc_ecef' else ''
+                    
+                    print(f"{name_field:<20} {method:<10} {prob_mean:<10.6f} {prob_std:<8.6f} {mc_stderr:<10.6f} {n_samples:<8,} {time_ms:<9.1f} {d0_field:<8}")
+        
+        print("=" * 120)
+    
+    def _print_performance_summary(self, results: List[Dict]):
+        """Print performance comparison summary."""
+        print("\n" + "-" * 60)
+        print("PERFORMANCE SUMMARY")
+        print("-" * 60)
+        
+        # Aggregate timing data
+        analytic_times = [r['analytic_time_ms'] for r in results if r.get('analytic_time_ms') is not None]
+        ecef_times = [r['mc_ecef_time_ms'] for r in results if r.get('mc_ecef_time_ms') is not None]
+        tangent_times = [r['mc_tangent_time_ms'] for r in results if r.get('mc_tangent_time_ms') is not None]
+        
+        if analytic_times:
+            print(f"Analytic method: avg={np.mean(analytic_times):.1f}ms, median={np.median(analytic_times):.1f}ms")
+        if ecef_times:
+            print(f"MC ECEF method: avg={np.mean(ecef_times):.1f}ms, median={np.median(ecef_times):.1f}ms")
+        if tangent_times:
+            print(f"MC Tangent method: avg={np.mean(tangent_times):.1f}ms, median={np.median(tangent_times):.1f}ms")
+        
+        # Method availability
+        total_scenarios = len(results)
+        analytic_available = len([r for r in results if r.get('analytic_prob_mean') is not None])
+        
+        print(f"\nMethod availability: {analytic_available}/{total_scenarios} scenarios support analytic method")
+        
+        # Largest discrepancies between methods
+        print("\nLargest probability discrepancies:")
+        max_discrepancy = 0
+        max_scenario = None
+        
+        for r in results:
+            if r.get('analytic_prob_mean') is not None and r.get('mc_ecef_prob_mean') is not None:
+                diff = abs(r['analytic_prob_mean'] - r['mc_ecef_prob_mean'])
+                if diff > max_discrepancy:
+                    max_discrepancy = diff
+                    max_scenario = r['name']
+        
+        if max_scenario:
+            print(f"  Max analytic vs MC_ECEF: {max_discrepancy:.6f} in '{max_scenario}'")
+        
+        print("-" * 60)
+    
+    def _print_expectations_summary(self, results: List[Dict], scenarios: List[Scenario]):
+        """Print a comparison of expected vs actual behavior."""
+        print("\n" + "-" * 80)
+        print("EXPECTED vs ACTUAL BEHAVIOR")
+        print("-" * 80)
+        
+        # Create a mapping from scenario names to scenarios for quick lookup
+        scenario_map = {sc.name: sc for sc in scenarios}
+        
+        for r in results:
+            scenario_name = r['name']
+            scenario = scenario_map.get(scenario_name)
+            
+            if scenario and scenario.expected_behavior:
+                # Get the primary probability result (prefer analytic, fall back to mc_ecef)
+                if r.get('analytic_prob_mean') is not None:
+                    actual_prob = r['analytic_prob_mean']
+                    method_used = 'analytic'
+                elif r.get('mc_ecef_prob_mean') is not None:
+                    actual_prob = r['mc_ecef_prob_mean']
+                    method_used = 'mc_ecef'
+                else:
+                    continue
+                
+                print(f"\n{scenario_name}:")
+                print(f"  Expected: {scenario.expected_behavior}")
+                print(f"  Actual:   P={actual_prob:.5f} ({method_used})")
+                
+                # Add a simple validation check
+                if "probability = 1.0 exactly" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob > 0.999 else "❌ FAIL"
+                elif "probability = 0.0 exactly" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob < 0.001 else "❌ FAIL"
+                elif "high probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob > 0.9 else "❌ FAIL"
+                elif "very high probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob > 0.95 else "❌ FAIL"
+                elif "medium probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if 0.3 < actual_prob < 0.9 else "❌ FAIL"
+                elif "low-medium probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if 0.05 < actual_prob < 0.5 else "❌ FAIL"
+                elif "low probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob < 0.3 else "❌ FAIL"
+                elif "very low probability" in scenario.expected_behavior.lower():
+                    status = "✅ PASS" if actual_prob < 0.01 else "❌ FAIL"
+                else:
+                    status = "? INFO"
+                
+                print(f"  Status:   {status}")
+        
+        print("-" * 80)
 
     def estimate_runtime_scaling(self, target_n_mc: int = 200_000) -> Dict[str, float]:
         """
@@ -829,6 +1013,7 @@ if __name__ == "__main__":
                        mu_Q: Tuple[float, float], 
                        sigma_Q: Union[float, np.ndarray],
                        d0: float,
+                       expected_behavior: str = "",
                        n_mc: int = default_n_mc) -> Scenario:
         """Create a Scenario using the new structured format."""
         subject = Subject(
@@ -857,6 +1042,7 @@ if __name__ == "__main__":
             reference=reference,
             d0=d0,
             method_params=method_params,
+            expected_behavior=expected_behavior,
             sigma_P_scalar=sigma_P_scalar,
             sigma_Q_scalar=sigma_Q_scalar
         )
@@ -874,7 +1060,8 @@ if __name__ == "__main__":
             sigma_P=5.0,
             mu_Q=(37.77495, -122.41945),
             sigma_Q=3.0,
-            d0=20.0
+            d0=20.0,
+            expected_behavior="High probability (~97%) - points very close with small uncertainty, threshold generous"
         ),
         create_scenario(
             'isotropic_large_sigma',
@@ -882,7 +1069,8 @@ if __name__ == "__main__":
             sigma_P=200.0,
             mu_Q=(37.77495, -122.41945),
             sigma_Q=150.0,
-            d0=500.0
+            d0=500.0,
+            expected_behavior="Medium probability (~86%) - large uncertainty but reasonable threshold"
         ),
 
         # --- Deterministic / degenerate ---
@@ -892,7 +1080,8 @@ if __name__ == "__main__":
             sigma_P=0.0,
             mu_Q=(37.7749, -122.4194),
             sigma_Q=0.0,
-            d0=1.0
+            d0=1.0,
+            expected_behavior="Probability = 1.0 exactly - identical points with no uncertainty"
         ),
         create_scenario(
             'deterministic_far_apart',
@@ -900,7 +1089,8 @@ if __name__ == "__main__":
             sigma_P=0.0,
             mu_Q=(10.0, 10.0),
             sigma_Q=0.0,
-            d0=100.0
+            d0=100.0,
+            expected_behavior="Probability = 0.0 exactly - points >1500km apart, threshold only 100m"
         ),
 
         # --- One uncertain, one exact ---
@@ -910,7 +1100,8 @@ if __name__ == "__main__":
             sigma_P=2.0,
             mu_Q=(51.5074, -0.1278),
             sigma_Q=0.0,
-            d0=10.0
+            d0=10.0,
+            expected_behavior="Very high probability (~99.9%) - same center point, small uncertainty, generous threshold"
         ),
 
         # --- Anisotropic / cross-terms ---
@@ -920,7 +1111,8 @@ if __name__ == "__main__":
             sigma_P=np.array([[400.0, 300.0], [300.0, 250.0]]),
             mu_Q=(37.7755, -122.4185),
             sigma_Q=np.array([[100.0, -20.0], [-20.0, 80.0]]),
-            d0=100.0
+            d0=100.0,
+            expected_behavior="Medium probability (~44%) - large anisotropic uncertainty with correlation, modest threshold"
         ),
         create_scenario(
             'anisotropic_high_condition',
@@ -928,7 +1120,8 @@ if __name__ == "__main__":
             sigma_P=np.array([[1e6, 9.999e5], [9.999e5, 1e6]]),  # nearly singular
             mu_Q=(37.7750, -122.4195),
             sigma_Q=1.0,
-            d0=1000.0
+            d0=1000.0,
+            expected_behavior="Medium probability (~52%) - extreme uncertainty (near-singular), tests numerical stability"
         ),
 
         # --- Geographic edge cases ---
@@ -938,7 +1131,8 @@ if __name__ == "__main__":
             sigma_P=10.0,
             mu_Q=(89.998, 10.0),
             sigma_Q=10.0,
-            d0=500.0
+            d0=500.0,
+            expected_behavior="High probability (~100%) - polar convergence makes longitude differences small"
         ),
         create_scenario(
             'longitude_wrap',
@@ -946,7 +1140,8 @@ if __name__ == "__main__":
             sigma_P=10.0,
             mu_Q=(0.0, -179.9),
             sigma_Q=10.0,
-            d0=500.0
+            d0=500.0,
+            expected_behavior="Low probability (~0%) - points near dateline but >20,000km apart via great circle"
         ),
         create_scenario(
             'equator_vs_high_lat',
@@ -954,7 +1149,8 @@ if __name__ == "__main__":
             sigma_P=50.0,
             mu_Q=(60.0, 30.0),
             sigma_Q=50.0,
-            d0=5000.0
+            d0=5000.0,
+            expected_behavior="Low probability (~0%) - points ~6,700km apart, threshold only 5km"
         ),
 
         # --- extreme d0 values & large uncertainty ---
@@ -964,7 +1160,8 @@ if __name__ == "__main__":
             sigma_P=1.0,
             mu_Q=(37.77495, -122.41945),
             sigma_Q=1.0,
-            d0=1.0
+            d0=1.0,
+            expected_behavior="Very low probability (~0.000003) - points ~70m apart, tiny threshold vs uncertainty"
         ),
         create_scenario(
             'huge_d0_large_uncertainty',
@@ -972,7 +1169,8 @@ if __name__ == "__main__":
             sigma_P=1000.0,
             mu_Q=(38.0, -122.0),
             sigma_Q=1000.0,
-            d0=10_000.0
+            d0=10_000.0,
+            expected_behavior="Low probability (~0%) - points ~55km apart, even huge uncertainty rarely reaches threshold"
         ),
 
         # --- mixed precision: Q exact, P uncertain (useful in localization) ---
@@ -982,7 +1180,8 @@ if __name__ == "__main__":
             sigma_P=np.array([[25.0, 5.0], [5.0, 9.0]]),
             mu_Q=(40.7128, -74.0060),
             sigma_Q=0.0,
-            d0=50.0
+            d0=50.0,
+            expected_behavior="High probability (~100%) - same center point, anisotropic uncertainty well within threshold"
         ),
 
         # --- sensitivity sweep (small set) for sigma scaling ---
@@ -992,7 +1191,8 @@ if __name__ == "__main__":
             sigma_P=1.0,
             mu_Q=(34.05225, -118.24375),
             sigma_Q=1.0,
-            d0=5.0
+            d0=5.0,
+            expected_behavior="Low probability (~4.6%) - points ~70m apart, threshold 5m, small uncertainty"
         ),
         create_scenario(
             'sensitivity_sigma_100m',
@@ -1000,7 +1200,8 @@ if __name__ == "__main__":
             sigma_P=100.0,
             mu_Q=(34.05225, -118.24375),
             sigma_Q=50.0,
-            d0=50.0
+            d0=50.0,
+            expected_behavior="Low-medium probability (~9.5%) - same separation, larger uncertainty vs threshold"
         )
     ]
 
