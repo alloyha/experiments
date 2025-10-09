@@ -1,14 +1,153 @@
-# geospatial_prob_checker_v2.py
+# geospatial_prob_checker_v3.py - Clean API with structured data types
 import time
-from dataclasses import dataclass
-from typing import Union, Tuple, Optional, Literal, Dict, List
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from typing import Union, Tuple, Optional, Literal, Dict, List, Any
 
 import numpy as np
 from scipy.stats import rice, beta
 
 # Earth radius in meters (mean radius for spherical approximation)
 R_EARTH = 6371000.0
+
+
+@dataclass
+class GeoPoint:
+    """Represents a geodetic point (lat, lon)."""
+    lat: float
+    lon: float
+    
+    def to_tuple(self) -> Tuple[float, float]:
+        return (self.lat, self.lon)
+    
+    def __repr__(self) -> str:
+        return f"GeoPoint(lat={self.lat:.6f}, lon={self.lon:.6f})"
+
+
+@dataclass
+class Covariance2D:
+    """Wrapper for 2×2 ENU covariance matrix."""
+    _matrix: np.ndarray = field(init=False)
+    
+    def __init__(self, data: Union[float, np.ndarray, 'Covariance2D']):
+        if isinstance(data, Covariance2D):
+            self._matrix = data._matrix.copy()
+        else:
+            self._matrix = self._process_input(data)
+    
+    @staticmethod
+    def _process_input(inp: Union[float, np.ndarray]) -> np.ndarray:
+        """Convert input to 2x2 covariance matrix."""
+        if np.isscalar(inp):
+            sigma = float(inp)
+            if sigma < 0:
+                raise ValueError(f"Sigma must be non-negative, got {sigma}")
+            return np.eye(2) * (sigma ** 2)
+        
+        arr = np.asarray(inp, dtype=float)
+        if arr.shape == (2,):
+            # Diagonal variances
+            return np.diag(arr)
+        elif arr.shape == (2, 2):
+            return arr.copy()
+        else:
+            raise ValueError(f"Invalid covariance shape: {arr.shape}")
+    
+    @classmethod
+    def from_input(cls, inp: Any) -> 'Covariance2D':
+        """Create Covariance2D from various input types."""
+        return cls(inp)
+    
+    def as_matrix(self) -> np.ndarray:
+        """Return the 2x2 covariance matrix."""
+        return self._matrix.copy()
+    
+    def is_isotropic(self, rtol: float = 1e-6) -> bool:
+        """Check if covariance is isotropic (circular)."""
+        eigs = np.linalg.eigvalsh(self._matrix)
+        return np.allclose(eigs[0], eigs[1], rtol=rtol)
+    
+    def max_std(self) -> float:
+        """Return maximum standard deviation."""
+        eigs = np.clip(np.linalg.eigvalsh(self._matrix), a_min=0.0, a_max=None)
+        return float(np.sqrt(eigs.max()))
+    
+    def cond(self) -> float:
+        """Return condition number."""
+        try:
+            return float(np.linalg.cond(self._matrix))
+        except Exception:
+            return float('inf')
+    
+    def __repr__(self) -> str:
+        if self.is_isotropic():
+            std = self.max_std()
+            return f"Covariance2D(isotropic, σ={std:.3f}m)"
+        else:
+            return f"Covariance2D(anisotropic, max_σ={self.max_std():.3f}m)"
+
+
+@dataclass
+class Subject:
+    """Subject point with uncertainty."""
+    mu: GeoPoint
+    Sigma: Covariance2D
+    id: Optional[str] = None
+    
+    def __repr__(self) -> str:
+        id_str = f", id='{self.id}'" if self.id else ""
+        return f"Subject({self.mu}, {self.Sigma}{id_str})"
+
+
+@dataclass
+class Reference:
+    """Reference point with uncertainty."""
+    mu: GeoPoint
+    Sigma: Covariance2D
+    id: Optional[str] = None
+    
+    def __repr__(self) -> str:
+        id_str = f", id='{self.id}'" if self.id else ""
+        return f"Reference({self.mu}, {self.Sigma}{id_str})"
+
+
+@dataclass
+class MethodParams:
+    """Parameters for computation methods."""
+    mode: Literal['auto', 'analytic', 'mc_ecef', 'mc_tangent'] = 'auto'
+    prob_threshold: float = 0.95
+    n_mc: int = 200_000
+    batch_size: int = 100_000
+    conservative_decision: bool = True
+    random_state: Optional[int] = None
+    use_antithetic: bool = True
+    cp_alpha: float = 0.05
+    
+    def as_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            'mode': self.mode,
+            'prob_threshold': self.prob_threshold,
+            'n_mc': self.n_mc,
+            'batch_size': self.batch_size,
+            'conservative_decision': self.conservative_decision,
+            'random_state': self.random_state,
+            'use_antithetic': self.use_antithetic,
+            'cp_alpha': self.cp_alpha
+        }
+
+
+@dataclass
+class Scenario:
+    """Structured scenario for profiling."""
+    name: str
+    subject: Subject
+    reference: Reference
+    d0: float
+    method_params: MethodParams = field(default_factory=MethodParams)
+    
+    # For analytics compatibility
+    sigma_P_scalar: Optional[float] = None
+    sigma_Q_scalar: Optional[float] = None
 
 
 @dataclass
@@ -19,13 +158,13 @@ class ProbabilityResult:
     method: str
     mc_stderr: Optional[float] = None
     n_samples: Optional[int] = None
-    # New diagnostic fields:
+    # Diagnostic fields:
     cp_lower: Optional[float] = None
     cp_upper: Optional[float] = None
     sigma_cond: Optional[float] = None
     max_std_m: Optional[float] = None
     delta_m: Optional[float] = None
-    decision_by: Optional[str] = None  # e.g., 'point_estimate' or 'cp_lower'
+    decision_by: Optional[str] = None
 
 
 def latlon_to_ecef(lat_deg: float, lon_deg: float, R: float = R_EARTH) -> np.ndarray:
@@ -131,57 +270,65 @@ def _choose_method_heuristic(Sigma_X_m2: np.ndarray, delta_m: float,
     return chosen, {'max_std_m': max_std, 'cond': cond, 'delta_m': delta_m, 'reason': reason}
 
 
-def check_geo_prob_both_uncertain(
-    mu_P_latlon: Tuple[float, float],
-    Sigma_P: Union[float, np.ndarray],
-    mu_Q_latlon: Tuple[float, float],
-    Sigma_Q: Union[float, np.ndarray],
+def check_geo_prob(
+    subject: Union[Subject, Tuple[float, float], GeoPoint],
+    reference: Union[Reference, Tuple[float, float], GeoPoint],
     d0_meters: float,
-    prob_threshold: float = 0.95,
-    n_mc: int = 200_000,
-    batch_size: int = 100_000,
-    mode: Literal['auto', 'analytic', 'mc_ecef', 'mc_tangent'] = 'auto',
-    random_state: Optional[int] = None,
-    conservative_decision: bool = True,  # if True, use cp_lower for fulfilled decision
+    method_params: Optional[MethodParams] = None
 ) -> ProbabilityResult:
+    """
+    Compute probability that distance between two uncertain points is ≤ d0_meters.
+    
+    Args:
+        subject: Subject object or (lat, lon) tuple for first point
+        reference: Reference object or (lat, lon) tuple for second point  
+        d0_meters: Distance threshold in meters
+        method_params: MethodParams object with computation settings
+    """
+    
+    if method_params is None:
+        method_params = MethodParams()
+    
+    # Convert to Subject/Reference if needed
+    if not isinstance(subject, Subject):
+        if isinstance(subject, GeoPoint):
+            subject = Subject(subject, Covariance2D(0.0))
+        elif isinstance(subject, (tuple, list)) and len(subject) == 3:
+            # Handle (lat, lon, sigma) format
+            lat, lon, sigma = subject
+            subject = Subject(GeoPoint(lat, lon), Covariance2D(sigma))
+        elif isinstance(subject, (tuple, list)) and len(subject) == 2:
+            # Handle (lat, lon) format
+            subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
+        else:
+            subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
+    
+    if not isinstance(reference, Reference):
+        if isinstance(reference, GeoPoint):
+            reference = Reference(reference, Covariance2D(0.0))
+        elif isinstance(reference, (tuple, list)) and len(reference) == 3:
+            # Handle (lat, lon, sigma) format
+            lat, lon, sigma = reference
+            reference = Reference(GeoPoint(lat, lon), Covariance2D(sigma))
+        elif isinstance(reference, (tuple, list)) and len(reference) == 2:
+            # Handle (lat, lon) format
+            reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
+        else:
+            reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
+    
     # Validate
     if d0_meters < 0:
         raise ValueError("d0_meters must be non-negative")
-    if not 0 <= prob_threshold <= 1:
+    if not 0 <= method_params.prob_threshold <= 1:
         raise ValueError("prob_threshold must be in [0,1]")
-    if n_mc < 100:
+    if method_params.n_mc < 100:
         raise ValueError("n_mc must be >= 100")
 
-    mu_P = np.asarray(mu_P_latlon, dtype=float)
-    mu_Q = np.asarray(mu_Q_latlon, dtype=float)
-
-    # Process covariances: allow zero
-    Sigma_P_is_scalar = np.isscalar(Sigma_P)
-    Sigma_Q_is_scalar = np.isscalar(Sigma_Q)
-
-    if Sigma_P_is_scalar:
-        sigma_P = float(Sigma_P)
-        if sigma_P < 0:
-            raise ValueError(f"Sigma_P must be non-negative, got {sigma_P}")
-        Sigma_P_mat = np.eye(2) * (sigma_P ** 2)
-    else:
-        Sigma_P_mat = np.asarray(Sigma_P, dtype=float)
-        if Sigma_P_mat.shape != (2, 2):
-            raise ValueError(f"Sigma_P must be scalar or 2x2, got shape {Sigma_P_mat.shape}")
-
-    if Sigma_Q_is_scalar:
-        sigma_Q = float(Sigma_Q)
-        if sigma_Q < 0:
-            raise ValueError(f"Sigma_Q must be non-negative, got {sigma_Q}")
-        Sigma_Q_mat = np.eye(2) * (sigma_Q ** 2)
-    else:
-        Sigma_Q_mat = np.asarray(Sigma_Q, dtype=float)
-        if Sigma_Q_mat.shape != (2, 2):
-            raise ValueError(f"Sigma_Q must be scalar or 2x2, got shape {Sigma_Q_mat.shape}")
-
-    Sigma_P_mat = _ensure_psd(Sigma_P_mat)
-    Sigma_Q_mat = _ensure_psd(Sigma_Q_mat)
-
+    # Extract coordinates and uncertainties
+    mu_P = np.array(subject.mu.to_tuple())
+    mu_Q = np.array(reference.mu.to_tuple())
+    Sigma_P_mat = _ensure_psd(subject.Sigma.as_matrix())
+    Sigma_Q_mat = _ensure_psd(reference.Sigma.as_matrix())
     Sigma_X_m2 = Sigma_P_mat + Sigma_Q_mat
 
     # Deterministic case
@@ -189,7 +336,7 @@ def check_geo_prob_both_uncertain(
         delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         prob = 1.0 if delta <= d0_meters else 0.0
         return ProbabilityResult(
-            fulfilled=(prob >= prob_threshold),
+            fulfilled=(prob >= method_params.prob_threshold),
             probability=float(prob),
             method='deterministic',
             mc_stderr=0.0,
@@ -202,29 +349,36 @@ def check_geo_prob_both_uncertain(
             decision_by='point_estimate'
         )
 
-    # Isotropic analytic check availability
-    Sigma_X_eigs = np.linalg.eigvalsh(Sigma_X_m2)
-    is_isotropic = np.allclose(Sigma_X_eigs[0], Sigma_X_eigs[1], rtol=1e-6)
+    # Check if analytic method is available
+    is_isotropic = subject.Sigma.is_isotropic() and reference.Sigma.is_isotropic()
 
-    if mode == 'auto':
+    if method_params.mode == 'auto':
         # compute delta for heuristic
         delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         chosen, diag = _choose_method_heuristic(Sigma_X_m2, float(delta))
-        if is_isotropic and Sigma_P_is_scalar and Sigma_Q_is_scalar:
+        if is_isotropic:
             method_to_use = 'analytic'
         else:
             method_to_use = chosen
         mode = method_to_use
+    else:
+        mode = method_params.mode
 
     if mode == 'analytic':
-        if not (is_isotropic and Sigma_P_is_scalar and Sigma_Q_is_scalar):
-            raise ValueError("analytic mode requires both uncertainties to be isotropic scalars")
-        return _compute_analytic_rice(mu_P, mu_Q, float(Sigma_P), float(Sigma_Q), d0_meters, prob_threshold)
+        if not is_isotropic:
+            raise ValueError("analytic mode requires both uncertainties to be isotropic")
+        
+        # Extract scalar sigmas
+        sigma_P = subject.Sigma.max_std()
+        sigma_Q = reference.Sigma.max_std()
+        return _compute_analytic_rice(mu_P, mu_Q, sigma_P, sigma_Q, d0_meters, method_params.prob_threshold)
 
     if mode == 'mc_ecef':
         return _compute_mc_ecef(
             mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, d0_meters,
-            prob_threshold, n_mc, batch_size, random_state, conservative_decision
+            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
+            method_params.random_state, method_params.conservative_decision,
+            method_params.use_antithetic, method_params.cp_alpha
         )
 
     if mode == 'mc_tangent':
@@ -232,7 +386,9 @@ def check_geo_prob_both_uncertain(
         delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         return _compute_mc_tangent(
             mu_P, mu_Q, Sigma_X_m2, d0_meters,
-            prob_threshold, n_mc, batch_size, random_state, conservative_decision, float(delta)
+            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
+            method_params.random_state, method_params.conservative_decision, float(delta),
+            method_params.use_antithetic, method_params.cp_alpha
         )
 
     raise ValueError(f"Unknown mode: {mode}")
@@ -282,7 +438,9 @@ def _compute_mc_ecef(
     n_mc: int,
     batch_size: int,
     random_state: Optional[int],
-    conservative_decision: bool = True
+    conservative_decision: bool = True,
+    use_antithetic: bool = True,
+    cp_alpha: float = 0.05
 ) -> ProbabilityResult:
     rng = np.random.default_rng(random_state)
 
@@ -309,7 +467,6 @@ def _compute_mc_ecef(
     Sigma_X_ecef = _ensure_psd(Sigma_P_ecef + Sigma_Q_ecef)
 
     # diagnostics for return
-    # cond and max_std computed on lat/lon covariance (meters^2)
     Sigma_X_m2 = Sigma_P_mat + Sigma_Q_mat
     eigs_m2 = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
     max_std = float(np.sqrt(eigs_m2.max()))
@@ -330,8 +487,6 @@ def _compute_mc_ecef(
     count_inside = 0
     total = 0
     n_remaining = n_mc
-
-    use_antithetic = True
 
     while n_remaining > 0:
         n_batch = min(batch_size, n_remaining)
@@ -367,7 +522,7 @@ def _compute_mc_ecef(
 
     prob = count_inside / total
     mc_stderr = float(np.sqrt(prob * (1 - prob) / total)) if total > 0 else None
-    cp_l, cp_u = clopper_pearson(count_inside, total, alpha=0.05)
+    cp_l, cp_u = clopper_pearson(count_inside, total, alpha=cp_alpha)
 
     # conservative decision option: use cp_lower vs point estimate
     if conservative_decision:
@@ -402,7 +557,9 @@ def _compute_mc_tangent(
     batch_size: int,
     random_state: Optional[int],
     conservative_decision: bool,
-    delta: float
+    delta: float,
+    use_antithetic: bool = True,
+    cp_alpha: float = 0.05
 ) -> ProbabilityResult:
     rng = np.random.default_rng(random_state)
 
@@ -431,7 +588,6 @@ def _compute_mc_tangent(
     count_inside = 0
     total = 0
     n_remaining = n_mc
-    use_antithetic = True
 
     while n_remaining > 0:
         n_batch = min(batch_size, n_remaining)
@@ -459,7 +615,7 @@ def _compute_mc_tangent(
 
     prob = count_inside / total
     mc_stderr = float(np.sqrt(prob * (1 - prob) / total))
-    cp_l, cp_u = clopper_pearson(count_inside, total, alpha=0.05)
+    cp_l, cp_u = clopper_pearson(count_inside, total, alpha=cp_alpha)
 
     if conservative_decision:
         fulfilled = (cp_l >= prob_threshold)
@@ -483,31 +639,6 @@ def _compute_mc_tangent(
     )
 
 
-# Convenience wrapper
-def check_geo_prob_one_uncertain(
-    mu_P_latlon: Tuple[float, float],
-    Sigma_P: Union[float, np.ndarray],
-    mu_ref_latlon: Tuple[float, float],
-    d0_meters: float,
-    prob_threshold: float = 0.95,
-    n_mc: int = 200_000,
-    batch_size: int = 100_000,
-    mode: Literal['auto', 'analytic', 'mc_ecef', 'mc_tangent'] = 'auto',
-    random_state: Optional[int] = None,
-    conservative_decision: bool = True
-) -> ProbabilityResult:
-    return check_geo_prob_both_uncertain(
-        mu_P_latlon, Sigma_P, mu_ref_latlon, 0.0,
-        d0_meters, prob_threshold, n_mc, batch_size, mode, random_state, conservative_decision
-    )
-
-
-# Backward compatibility alias
-def check_geo_latlon_prob(*args, **kwargs) -> Tuple[bool, float]:
-    result = check_geo_prob_one_uncertain(*args, **kwargs)
-    return result.fulfilled, result.probability
-
-
 # ----------------- Profiler & runtime estimator -----------------
 class PerformanceProfiler:
     def __init__(self, verbose: bool = True):
@@ -521,20 +652,19 @@ class PerformanceProfiler:
         return elapsed, out
 
     def fair_test_batch(self,
-                        scenarios: List[Dict],
+                        scenarios: List[Scenario],
                         n_repeats: int = 3,
                         default_n_mc: int = 200_000,
                         default_batch: int = 100_000,
                         rng_base_seed: int = 12345) -> List[Dict]:
         """
-        Runs the fair test batch with higher default n_mc (200k).
-        Stores summaries in self.results for later runtime estimation.
+        Run fair test batch with structured Scenarios.
         """
         results = []
         for s_idx, sc in enumerate(scenarios):
-            name = sc.get('name', f"scenario_{s_idx}")
-            n_mc = sc.get('n_mc', default_n_mc)
-            batch_size = sc.get('batch_size', default_batch)
+            name = sc.name
+            n_mc = sc.method_params.n_mc
+            batch_size = sc.method_params.batch_size
 
             acc = {
                 'analytic': {'probs': [], 'times': []},
@@ -542,43 +672,47 @@ class PerformanceProfiler:
                 'mc_tangent': {'probs': [], 'times': [], 'stderrs': [], 'n_samples': []}
             }
 
-            has_analytic = ('sigma_P_scalar' in sc and 'sigma_Q_scalar' in sc)
+            has_analytic = sc.sigma_P_scalar is not None and sc.sigma_Q_scalar is not None
 
             if self.verbose:
-                print(f"\nFAIR TEST: {name} — d0={sc['d0']} m, n_mc={n_mc} (repeats={n_repeats})")
+                print(f"\nFAIR TEST: {name} — d0={sc.d0} m, n_mc={n_mc} (repeats={n_repeats})")
 
             for r in range(n_repeats):
                 seed = rng_base_seed + 1000 * s_idx + r
 
                 if has_analytic:
                     t_start = time.perf_counter()
-                    res_analytic = check_geo_prob_both_uncertain(
-                        sc['mu_P'], sc['sigma_P_scalar'], sc['mu_Q'], sc['sigma_Q_scalar'],
-                        sc['d0'], mode='analytic'
-                    )
+                    analytic_params = MethodParams(mode='analytic')
+                    res_analytic = check_geo_prob(sc.subject, sc.reference, sc.d0, analytic_params)
                     t_elapsed = time.perf_counter() - t_start
                     acc['analytic']['probs'].append(res_analytic.probability)
                     acc['analytic']['times'].append(t_elapsed)
 
                 t_start = time.perf_counter()
-                res_ecef = check_geo_prob_both_uncertain(
-                    sc['mu_P'], sc['Sigma_P_mat'], sc['mu_Q'], sc['Sigma_Q_mat'],
-                    sc['d0'], mode='mc_ecef', n_mc=n_mc, batch_size=batch_size, random_state=seed
+                mc_params = MethodParams(
+                    mode='mc_ecef',
+                    n_mc=n_mc,
+                    batch_size=batch_size,
+                    random_state=seed
                 )
+                res_ecef = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
                 t_elapsed = time.perf_counter() - t_start
                 acc['mc_ecef']['probs'].append(res_ecef.probability)
                 acc['mc_ecef']['times'].append(t_elapsed)
                 acc['mc_ecef']['stderrs'].append(res_ecef.mc_stderr if res_ecef.mc_stderr is not None else 0.0)
                 acc['mc_ecef']['n_samples'].append(res_ecef.n_samples if res_ecef.n_samples is not None else n_mc)
-                # store diagnostics
+                
                 if self.verbose:
                     print(f"    mc_ecef run {r}: P={res_ecef.probability:.6f}, cp_lower={res_ecef.cp_lower:.6f}, time={t_elapsed*1000:.1f} ms")
 
                 t_start = time.perf_counter()
-                res_tangent = check_geo_prob_both_uncertain(
-                    sc['mu_P'], sc['Sigma_P_mat'], sc['mu_Q'], sc['Sigma_Q_mat'],
-                    sc['d0'], mode='mc_tangent', n_mc=n_mc, batch_size=batch_size, random_state=seed
+                mc_params = MethodParams(
+                    mode='mc_tangent',
+                    n_mc=n_mc,
+                    batch_size=batch_size,
+                    random_state=seed
                 )
+                res_tangent = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
                 t_elapsed = time.perf_counter() - t_start
                 acc['mc_tangent']['probs'].append(res_tangent.probability)
                 acc['mc_tangent']['times'].append(t_elapsed)
@@ -586,7 +720,7 @@ class PerformanceProfiler:
                 acc['mc_tangent']['n_samples'].append(res_tangent.n_samples if res_tangent.n_samples is not None else n_mc)
 
             # summarize
-            summary = {'name': name, 'd0': sc['d0'], 'n_mc': n_mc}
+            summary = {'name': name, 'd0': sc.d0, 'n_mc': n_mc}
             if has_analytic:
                 a_probs = np.array(acc['analytic']['probs'])
                 a_times = np.array(acc['analytic']['times'])
@@ -609,6 +743,7 @@ class PerformanceProfiler:
                     f'{m}_mc_stderr_mean': float(stderrs.mean()),
                     f'{m}_n_samples_mean': int(n_samples_arr.mean())
                 })
+            
             if self.verbose:
                 print("\n  Results summary:")
                 if has_analytic:
@@ -616,6 +751,7 @@ class PerformanceProfiler:
                 for m in ('mc_ecef', 'mc_tangent'):
                     print(f"    {m}: P={summary[f'{m}_prob_mean']:.6f} ± {summary[f'{m}_prob_std']:.6f}, "
                           f"stderr_mean={summary[f'{m}_mc_stderr_mean']:.6f}, time={summary[f'{m}_time_ms']:.1f} ms")
+            
             self.results.append(summary)
             results.append(summary)
         return results
@@ -657,15 +793,14 @@ class PerformanceProfiler:
         print("=" * 60)
 
 
-# ----------------- Example run configuration (code only) -----------------
+# ----------------- Example run configuration -----------------
 if __name__ == "__main__":
     import argparse
     import json
     import csv
     import os
-    import time
 
-    parser = argparse.ArgumentParser(description="Run exhaustive profiling scenarios for geospatial probability checker.")
+    parser = argparse.ArgumentParser(description="Run geospatial probability checker with clean structured API.")
     parser.add_argument("--quick", action="store_true", help="Run smaller quick tests (faster).")
     parser.add_argument("--repeats", type=int, default=3, help="Repeats per scenario (default 3).")
     parser.add_argument("--outdir", type=str, default=".", help="Directory to write results JSON/CSV.")
@@ -683,169 +818,190 @@ if __name__ == "__main__":
         n_repeats = args.repeats
 
     print("=" * 70)
-    print("Geospatial Probability Checker - v2 (exhaustive scenarios)")
+    print("Geospatial Probability Checker - v3 (clean structured API)")
     print("=" * 70)
     print(f"mode: {'quick' if args.quick else 'full'}, default_n_mc={default_n_mc}, batch={default_batch}, repeats={n_repeats}")
 
-    # Helper: small aliases
-    I = lambda s: np.eye(2) * (s ** 2)
+    # Helper function to create scenarios with new structured format
+    def create_scenario(name: str, 
+                       mu_P: Tuple[float, float], 
+                       sigma_P: Union[float, np.ndarray],
+                       mu_Q: Tuple[float, float], 
+                       sigma_Q: Union[float, np.ndarray],
+                       d0: float,
+                       n_mc: int = default_n_mc) -> Scenario:
+        """Create a Scenario using the new structured format."""
+        subject = Subject(
+            mu=GeoPoint(*mu_P),
+            Sigma=Covariance2D(sigma_P),
+            id=f"subject_{name}"
+        )
+        reference = Reference(
+            mu=GeoPoint(*mu_Q),
+            Sigma=Covariance2D(sigma_Q),
+            id=f"reference_{name}"
+        )
+        method_params = MethodParams(n_mc=n_mc, batch_size=default_batch)
+        
+        # For backward compatibility with analytics, store scalar sigmas if isotropic
+        sigma_P_scalar = None
+        sigma_Q_scalar = None
+        if np.isscalar(sigma_P):
+            sigma_P_scalar = float(sigma_P)
+        if np.isscalar(sigma_Q):
+            sigma_Q_scalar = float(sigma_Q)
+        
+        return Scenario(
+            name=name,
+            subject=subject,
+            reference=reference,
+            d0=d0,
+            method_params=method_params,
+            sigma_P_scalar=sigma_P_scalar,
+            sigma_Q_scalar=sigma_Q_scalar
+        )
 
-    # Exhaustive scenarios
+    # Helper function to create identity matrix  
+    def I(sigma: float) -> np.ndarray:
+        return np.eye(2) * (sigma ** 2)
+
+    # Create structured scenarios using new API
     scenarios = [
         # --- Isotropic / analytic-available (small / large sigma) ---
-        {
-            'name': 'isotropic_small_sigma',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.77495, -122.41945),
-            'Sigma_P_mat': I(5.0),
-            'Sigma_Q_mat': I(3.0),
-            'sigma_P_scalar': 5.0,
-            'sigma_Q_scalar': 3.0,
-            'd0': 20.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'isotropic_large_sigma',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.77495, -122.41945),
-            'Sigma_P_mat': I(200.0),
-            'Sigma_Q_mat': I(150.0),
-            'sigma_P_scalar': 200.0,
-            'sigma_Q_scalar': 150.0,
-            'd0': 500.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'isotropic_small_sigma',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=5.0,
+            mu_Q=(37.77495, -122.41945),
+            sigma_Q=3.0,
+            d0=20.0
+        ),
+        create_scenario(
+            'isotropic_large_sigma',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=200.0,
+            mu_Q=(37.77495, -122.41945),
+            sigma_Q=150.0,
+            d0=500.0
+        ),
 
         # --- Deterministic / degenerate ---
-        {
-            'name': 'deterministic_exact_same_point',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.7749, -122.4194),
-            'Sigma_P_mat': np.zeros((2, 2)),
-            'Sigma_Q_mat': np.zeros((2, 2)),
-            'd0': 1.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'deterministic_far_apart',
-            'mu_P': (0.0, 0.0),
-            'mu_Q': (10.0, 10.0),
-            'Sigma_P_mat': np.zeros((2, 2)),
-            'Sigma_Q_mat': np.zeros((2, 2)),
-            'd0': 100.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'deterministic_exact_same_point',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=0.0,
+            mu_Q=(37.7749, -122.4194),
+            sigma_Q=0.0,
+            d0=1.0
+        ),
+        create_scenario(
+            'deterministic_far_apart',
+            mu_P=(0.0, 0.0),
+            sigma_P=0.0,
+            mu_Q=(10.0, 10.0),
+            sigma_Q=0.0,
+            d0=100.0
+        ),
 
-        # --- One uncertain, one exact (use check_geo_prob_one_uncertain semantics) ---
-        {
-            'name': 'one_uncertain_small_sigma',
-            'mu_P': (51.5074, -0.1278),   # London
-            'mu_Q': (51.5074, -0.1278),
-            'Sigma_P_mat': I(2.0),
-            'Sigma_Q_mat': np.zeros((2, 2)),
-            'd0': 10.0,
-            'n_mc': default_n_mc
-        },
+        # --- One uncertain, one exact ---
+        create_scenario(
+            'one_uncertain_small_sigma',
+            mu_P=(51.5074, -0.1278),   # London
+            sigma_P=2.0,
+            mu_Q=(51.5074, -0.1278),
+            sigma_Q=0.0,
+            d0=10.0
+        ),
 
         # --- Anisotropic / cross-terms ---
-        {
-            'name': 'anisotropic_cross_terms',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.7755, -122.4185),
-            'Sigma_P_mat': np.array([[400.0, 300.0], [300.0, 250.0]]),  # large cross correlation
-            'Sigma_Q_mat': np.array([[100.0, -20.0], [-20.0, 80.0]]),
-            'd0': 100.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'anisotropic_high_condition',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.7750, -122.4195),
-            'Sigma_P_mat': np.array([[1e6, 9.999e5], [9.999e5, 1e6]]),  # nearly singular
-            'Sigma_Q_mat': I(1.0),
-            'd0': 1000.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'anisotropic_cross_terms',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=np.array([[400.0, 300.0], [300.0, 250.0]]),
+            mu_Q=(37.7755, -122.4185),
+            sigma_Q=np.array([[100.0, -20.0], [-20.0, 80.0]]),
+            d0=100.0
+        ),
+        create_scenario(
+            'anisotropic_high_condition',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=np.array([[1e6, 9.999e5], [9.999e5, 1e6]]),  # nearly singular
+            mu_Q=(37.7750, -122.4195),
+            sigma_Q=1.0,
+            d0=1000.0
+        ),
 
         # --- Geographic edge cases ---
-        {
-            'name': 'near_north_pole',
-            'mu_P': (89.999, 0.0),
-            'mu_Q': (89.998, 10.0),
-            'Sigma_P_mat': I(10.0),
-            'Sigma_Q_mat': I(10.0),
-            'd0': 500.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'longitude_wrap',
-            'mu_P': (0.0, 179.9),
-            'mu_Q': (0.0, -179.9),
-            'Sigma_P_mat': I(10.0),
-            'Sigma_Q_mat': I(10.0),
-            'd0': 500.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'equator_vs_high_lat',
-            'mu_P': (0.0, 30.0),
-            'mu_Q': (60.0, 30.0),
-            'Sigma_P_mat': I(50.0),
-            'Sigma_Q_mat': I(50.0),
-            'd0': 5000.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'near_north_pole',
+            mu_P=(89.999, 0.0),
+            sigma_P=10.0,
+            mu_Q=(89.998, 10.0),
+            sigma_Q=10.0,
+            d0=500.0
+        ),
+        create_scenario(
+            'longitude_wrap',
+            mu_P=(0.0, 179.9),
+            sigma_P=10.0,
+            mu_Q=(0.0, -179.9),
+            sigma_Q=10.0,
+            d0=500.0
+        ),
+        create_scenario(
+            'equator_vs_high_lat',
+            mu_P=(0.0, 30.0),
+            sigma_P=50.0,
+            mu_Q=(60.0, 30.0),
+            sigma_Q=50.0,
+            d0=5000.0
+        ),
 
         # --- extreme d0 values & large uncertainty ---
-        {
-            'name': 'tiny_d0_tight_uncertainty',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (37.77495, -122.41945),
-            'Sigma_P_mat': I(1.0),
-            'Sigma_Q_mat': I(1.0),
-            'd0': 1.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'huge_d0_large_uncertainty',
-            'mu_P': (37.7749, -122.4194),
-            'mu_Q': (38.0, -122.0),
-            'Sigma_P_mat': I(1000.0),
-            'Sigma_Q_mat': I(1000.0),
-            'd0': 10_000.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'tiny_d0_tight_uncertainty',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=1.0,
+            mu_Q=(37.77495, -122.41945),
+            sigma_Q=1.0,
+            d0=1.0
+        ),
+        create_scenario(
+            'huge_d0_large_uncertainty',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=1000.0,
+            mu_Q=(38.0, -122.0),
+            sigma_Q=1000.0,
+            d0=10_000.0
+        ),
 
         # --- mixed precision: Q exact, P uncertain (useful in localization) ---
-        {
-            'name': 'reference_exact_many_uncertain',
-            'mu_P': (40.7128, -74.0060),  # NYC
-            'mu_Q': (40.7128, -74.0060),
-            'Sigma_P_mat': np.array([[25.0, 5.0], [5.0, 9.0]]),
-            'Sigma_Q_mat': np.zeros((2, 2)),
-            'd0': 50.0,
-            'n_mc': default_n_mc
-        },
+        create_scenario(
+            'reference_exact_many_uncertain',
+            mu_P=(40.7128, -74.0060),  # NYC
+            sigma_P=np.array([[25.0, 5.0], [5.0, 9.0]]),
+            mu_Q=(40.7128, -74.0060),
+            sigma_Q=0.0,
+            d0=50.0
+        ),
 
         # --- sensitivity sweep (small set) for sigma scaling ---
-        {
-            'name': 'sensitivity_sigma_1m',
-            'mu_P': (34.0522, -118.2437),  # Los Angeles
-            'mu_Q': (34.05225, -118.24375),
-            'Sigma_P_mat': I(1.0),
-            'Sigma_Q_mat': I(1.0),
-            'd0': 5.0,
-            'n_mc': default_n_mc
-        },
-        {
-            'name': 'sensitivity_sigma_100m',
-            'mu_P': (34.0522, -118.2437),
-            'mu_Q': (34.05225, -118.24375),
-            'Sigma_P_mat': I(100.0),
-            'Sigma_Q_mat': I(50.0),
-            'd0': 50.0,
-            'n_mc': default_n_mc
-        }
+        create_scenario(
+            'sensitivity_sigma_1m',
+            mu_P=(34.0522, -118.2437),  # Los Angeles
+            sigma_P=1.0,
+            mu_Q=(34.05225, -118.24375),
+            sigma_Q=1.0,
+            d0=5.0
+        ),
+        create_scenario(
+            'sensitivity_sigma_100m',
+            mu_P=(34.0522, -118.2437),
+            sigma_P=100.0,
+            mu_Q=(34.05225, -118.24375),
+            sigma_Q=50.0,
+            d0=50.0
+        )
     ]
 
     # create output directory if missing
@@ -855,11 +1011,11 @@ if __name__ == "__main__":
     profiler = PerformanceProfiler(verbose=True)
 
     t_start_all = time.perf_counter()
-    results = profiler.fair_test_batch(scenarios, n_repeats=n_repeats, default_n_mc=default_n_mc, default_batch=default_batch)
+    results = profiler.fair_test_batch(scenarios, n_repeats=n_repeats)
     t_total = time.perf_counter() - t_start_all
 
     # save JSON
-    json_path = os.path.join(outdir, f"profiler_results_{int(time.time())}.json")
+    json_path = os.path.join(outdir, f"profiler_results_v3_{int(time.time())}.json")
     with open(json_path, "w") as fh:
         json.dump(results, fh, indent=2)
     print(f"\nSaved JSON summary to: {json_path}")
@@ -870,7 +1026,7 @@ if __name__ == "__main__":
         keys.update(r.keys())
     keys = sorted(keys)
 
-    csv_path = os.path.join(outdir, f"profiler_results_{int(time.time())}.csv")
+    csv_path = os.path.join(outdir, f"profiler_results_v3_{int(time.time())}.csv")
     with open(csv_path, "w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=keys)
         writer.writeheader()
