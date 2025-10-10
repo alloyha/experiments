@@ -1,14 +1,700 @@
-# geospatial_prob_checker_v3.py - Clean API with structured data types
 import time
+import inspect
 from dataclasses import dataclass, field
-from typing import Union, Tuple, Optional, Literal, Dict, List, Any
+from typing import (
+    Union, 
+    Tuple, 
+    Optional, 
+    Literal, 
+    Dict, 
+    List, 
+    Any, 
+    Callable, 
+    Protocol,
+)
 
 import numpy as np
 from scipy.stats import rice, beta
 
+# Optional dependencies:
+# - geopy: for VincentyDistance (pip install geopy)
+# - requests: for OSMRoutingDistance (pip install requests)
+
 # Earth radius in meters (mean radius for spherical approximation)
 R_EARTH = 6371000.0
 
+
+# ============================================================================
+# DISTANCE METRICS
+# ============================================================================
+
+class DistanceMetric(Protocol):
+    """
+    Protocol for distance functions on lat/lon points.
+    
+    All distance metrics must support:
+    - Scalar inputs: distance(lat1, lon1, lat2, lon2) -> float
+    - Array inputs: distance(lat1_array, lon1_array, lat2, lon2) -> array
+      (for Monte Carlo sampling efficiency)
+    """
+    def __call__(self, 
+                 lat1: Union[float, np.ndarray], 
+                 lon1: Union[float, np.ndarray],
+                 lat2: float, 
+                 lon2: float) -> Union[float, np.ndarray]:
+        """Compute distance in meters"""
+        ...
+
+
+class HaversineDistance:
+    """
+    Great circle distance on perfect sphere (default).
+    
+    Mathematical definition:
+        Uses haversine formula for great circle arc length.
+        Treats Earth as sphere with radius R_EARTH.
+    
+    Properties:
+        Accuracy: ±0.5% vs true WGS84 ellipsoid
+        Speed: ~10 flops (very fast)
+        Symmetric: Yes
+        Triangle inequality: Yes
+    
+    Use cases:
+        - General purpose geospatial calculations
+        - Works globally (equator to poles)
+        - Default for most applications
+    
+    Limitations:
+        - Ignores Earth's oblateness (0.3% error)
+        - Not suitable for survey-grade precision
+    
+    Examples:
+        >>> metric = HaversineDistance()
+        >>> d = metric(37.7749, -122.4194, 37.7750, -122.4195)
+        >>> print(f"Distance: {d:.2f} meters")
+    """
+    def __call__(self, lat1, lon1, lat2, lon2):
+        return haversine_distance_m(lat1, lon1, lat2, lon2)
+
+
+class GreatCircleDistance:
+    """
+    Alias for HaversineDistance (more intuitive name).
+    
+    Great circle = shortest path on sphere surface.
+    """
+    def __init__(self):
+        self._haversine = HaversineDistance()
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        return self._haversine(lat1, lon1, lat2, lon2)
+
+
+class VincentyDistance:
+    """
+    Geodesic distance on WGS84 ellipsoid (high precision).
+    
+    Mathematical definition:
+        Uses Vincenty's formulae for geodesics on oblate ellipsoid.
+        Accounts for Earth's actual shape (flattening ~1/298.257).
+    
+    Properties:
+        Accuracy: ±0.5mm (industry standard)
+        Speed: ~100 flops (iterative, 10x slower than haversine)
+        Symmetric: Yes
+        Triangle inequality: Yes
+    
+    Use cases:
+        - Survey-grade GPS applications
+        - Long distances where 0.3% matters
+        - Polar regions (haversine breaks down)
+        - Legal/cadastral boundaries
+    
+    Limitations:
+        - Requires geopy library (optional dependency)
+        - Slower than haversine
+        - Can fail for antipodal points (opposite sides of Earth)
+    
+    Dependencies:
+        pip install geopy
+    
+    Examples:
+        >>> metric = VincentyDistance()
+        >>> d = metric(0.0, 0.0, 0.0, 180.0)  # Half Earth circumference
+    """
+    def __init__(self, cache_size: int = 10000):
+        try:
+            from geopy.distance import geodesic
+            self._geodesic = geodesic
+        except ImportError:
+            raise ImportError(
+                "VincentyDistance requires geopy. Install: pip install geopy"
+            )
+        
+        # Cache for performance
+        from functools import lru_cache
+        self._compute_cached = lru_cache(maxsize=cache_size)(self._compute_single)
+    
+    def _compute_single(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Compute single distance (cached)"""
+        return self._geodesic((lat1, lon1), (lat2, lon2)).meters
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        if np.isscalar(lat1):
+            # Round to 6 decimals (~10cm) for cache hits
+            return self._compute_cached(
+                round(float(lat1), 6), round(float(lon1), 6),
+                round(float(lat2), 6), round(float(lon2), 6)
+            )
+        else:
+            # Vectorized for arrays
+            return np.array([
+                self._compute_cached(
+                    round(float(la1), 6), round(float(lo1), 6),
+                    round(float(lat2), 6), round(float(lon2), 6)
+                )
+                for la1, lo1 in zip(lat1, lon1)
+            ])
+
+
+class LpDistance:
+    """
+    Generalized Lp (Minkowski) distance in local tangent plane.
+    
+    Mathematical definition:
+        d = (|Δlat_m|^p + |Δlon_m|^p)^(1/p)
+        where Δlat_m, Δlon_m are differences in meters using local scale.
+    
+    Special cases:
+        p=1: Manhattan distance (L1, city-block)
+        p=2: Euclidean distance (L2, straight line in tangent plane)
+        p=∞: Chebyshev distance (L∞, max of components)
+    
+    Properties:
+        Accuracy: Good for small distances (<10km)
+        Speed: ~20 flops (fast)
+        Symmetric: Yes
+        Triangle inequality: Yes (for p ≥ 1)
+    
+    Use cases:
+        - Urban navigation (Manhattan for grid streets)
+        - Rectangular geofences (Chebyshev)
+        - Custom norms (p=3, p=1.5, etc.)
+    
+    Limitations:
+        - Tangent plane approximation (breaks down for large distances)
+        - Not suitable for polar regions
+        - Ignores Earth's curvature
+    
+    Args:
+        p: Norm parameter (1 ≤ p ≤ ∞)
+    
+    Examples:
+        >>> metric = LpDistance(p=1)  # Manhattan
+        >>> metric = LpDistance(p=2)  # Euclidean
+        >>> metric = LpDistance(p=float('inf'))  # Chebyshev
+    """
+    def __init__(self, p: float = 2.0):
+        if p < 1:
+            raise ValueError(f"p must be ≥ 1, got {p}")
+        self.p = p
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        # Convert to meters using local scale
+        lat_diff_m = np.abs(lat1 - lat2) * 111132.954
+        
+        # Longitude scale depends on latitude (use midpoint or average)
+        if np.isscalar(lat1):
+            lat_mid = (lat1 + lat2) / 2.0
+        else:
+            lat_mid = lat1  # For arrays, use sample latitude
+        
+        lon_scale = 111132.954 * np.cos(np.deg2rad(lat_mid))
+        lon_diff_m = np.abs(lon1 - lon2) * lon_scale
+        
+        if np.isinf(self.p):
+            # L∞ norm (Chebyshev)
+            return np.maximum(lat_diff_m, lon_diff_m)
+        else:
+            # Lp norm
+            return (lat_diff_m**self.p + lon_diff_m**self.p)**(1.0/self.p)
+
+
+class ManhattanDistance(LpDistance):
+    """
+    L1 / city-block / taxicab distance.
+    
+    Mathematical definition:
+        d = |Δlat_m| + |Δlon_m|
+    
+    Properties:
+        Always ≥ great circle distance (upper bound)
+    
+    Use cases:
+        - Urban navigation on grid streets (Manhattan, Barcelona)
+        - Situations where diagonal movement impossible
+        - Conservative distance estimates
+    
+    Examples:
+        >>> metric = ManhattanDistance()
+        >>> # Distance is sum of north-south + east-west
+    """
+    def __init__(self):
+        super().__init__(p=1.0)
+
+
+class EuclideanTangentDistance(LpDistance):
+    """
+    L2 / Euclidean distance in tangent plane.
+    
+    Mathematical definition:
+        d = sqrt(Δlat_m² + Δlon_m²)
+    
+    Properties:
+        Nearly identical to haversine for distances <10km
+        Simpler calculation (no trig)
+    
+    Use cases:
+        - Very local scenarios (indoor, warehouse)
+        - When flat Earth assumption acceptable
+        - Performance-critical local calculations
+    
+    Examples:
+        >>> metric = EuclideanTangentDistance()
+        >>> # Treats Earth as flat locally
+    """
+    def __init__(self):
+        super().__init__(p=2.0)
+
+
+class ChebyshevDistance(LpDistance):
+    """
+    L∞ / max / rectangular distance.
+    
+    Mathematical definition:
+        d = max(|Δlat_m|, |Δlon_m|)
+    
+    Properties:
+        Defines square/rectangular regions
+        Distance = largest component
+    
+    Use cases:
+        - Rectangular geofences
+        - Bounding box checks
+        - When constraint is "both lat AND lon within tolerance"
+    
+    Examples:
+        >>> metric = ChebyshevDistance()
+        >>> # d0=100 means ±100m in BOTH directions (square fence)
+    """
+    def __init__(self):
+        super().__init__(p=float('inf'))
+
+
+class WeightedDistance:
+    """
+    Distance scaled by a cost/pricing/difficulty function.
+    
+    Mathematical definition:
+        d_weighted = d_geometric × cost_factor(location)
+    
+    The cost function can represent:
+        - Terrain difficulty (elevation, obstacles)
+        - Traffic patterns (congestion zones)
+        - Delivery pricing zones
+        - Risk assessment (danger areas)
+        - Travel time (instead of distance)
+    
+    Properties:
+        Preserves properties of base metric if cost > 0
+        Can break triangle inequality if cost varies spatially
+    
+    Use cases:
+        - Delivery cost optimization
+        - Hiking difficulty estimation
+        - Drone battery consumption
+        - Accessibility planning
+    
+    Args:
+        base_metric: Underlying geometric distance
+        cost_function: Callable(lat, lon) -> float multiplier (>0)
+    
+    Examples:
+        >>> def delivery_cost(lat, lon):
+        ...     zone = get_zone(lat, lon)
+        ...     return {'downtown': 1.0, 'suburbs': 1.5}[zone]
+        >>> 
+        >>> metric = WeightedDistance(HaversineDistance(), delivery_cost)
+        >>> # Now d0=5000 means "5000 cost-units", not meters
+    """
+    def __init__(self, 
+                 base_metric: DistanceMetric,
+                 cost_function: Callable[[float, float], float]):
+        self.base_metric = base_metric
+        self.cost_function = cost_function
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        base_dist = self.base_metric(lat1, lon1, lat2, lon2)
+        
+        # Apply cost at midpoint (or could integrate along path for more accuracy)
+        if np.isscalar(lat1):
+            lat_mid = (lat1 + lat2) / 2.0
+            lon_mid = (lon1 + lon2) / 2.0
+            cost = self.cost_function(lat_mid, lon_mid)
+        else:
+            # Vectorized for arrays
+            lat_mid = (lat1 + lat2) / 2.0
+            lon_mid = (lon1 + lon2) / 2.0
+            cost = np.array([
+                self.cost_function(float(la), float(lo)) 
+                for la, lo in zip(lat_mid, lon_mid)
+            ])
+        
+        return base_dist * cost
+
+
+class CustomDistance:
+    """
+    User-defined distance function wrapper.
+    
+    Allows arbitrary distance calculations to be plugged into the framework.
+    
+    Properties:
+        Depends entirely on user implementation
+    
+    Use cases:
+        - Road network distances (via routing API)
+        - Graph distances
+        - Custom business logic
+    
+    Args:
+        distance_func: Callable with signature:
+                      (lat1, lon1, lat2, lon2) -> distance_in_meters
+                      Must support both scalar and array inputs for lat1/lon1
+    
+    Examples:
+        >>> def road_distance(lat1, lon1, lat2, lon2):
+        ...     # Call routing API
+        ...     route = get_route((lat1, lon1), (lat2, lon2))
+        ...     return route.distance_meters
+        >>> 
+        >>> metric = CustomDistance(road_distance)
+        >>> params = MethodParams(distance_metric=metric)
+    """
+    def __init__(self, distance_func: Callable):
+        self.distance_func = distance_func
+        
+        # Validate signature
+        sig = inspect.signature(distance_func)
+        if len(sig.parameters) != 4:
+            raise ValueError(
+                f"distance_func must take 4 parameters (lat1, lon1, lat2, lon2), "
+                f"got {len(sig.parameters)}"
+            )
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        return self.distance_func(lat1, lon1, lat2, lon2)
+
+
+# ============================================================================
+# OSM-BASED ROUTING DISTANCES
+# ============================================================================
+
+class OSMRoutingDistance:
+    """
+    Real road network distance via OpenStreetMap routing services.
+    
+    Uses routing engines like OSRM, GraphHopper, or Valhalla to compute
+    actual driving/walking distances along road networks.
+    
+    Mathematical definition:
+        d = shortest_path_distance_via_road_network(start, end)
+    
+    Properties:
+        Accuracy: Real-world routing distances
+        Speed: ~100-1000ms per request (network dependent)
+        Symmetric: Generally yes (unless one-way streets differ)
+        Triangle inequality: May not hold (road network constraints)
+    
+    Use cases:
+        - Delivery route optimization
+        - Travel time estimation
+        - Urban logistics planning
+        - Accessibility analysis
+    
+    Limitations:
+        - Requires internet connection
+        - Rate limited by API providers
+        - Slower than geometric calculations
+        - May fail for remote/unmapped areas
+    
+    Args:
+        routing_engine: 'osrm', 'graphhopper', 'valhalla', or 'mapbox'
+        profile: 'driving', 'walking', 'cycling', etc.
+        api_key: Required for some services (GraphHopper, Mapbox)
+        cache_size: LRU cache size for repeated requests
+        timeout: Request timeout in seconds
+    
+    Examples:
+        >>> # Free OSRM (driving)
+        >>> metric = OSMRoutingDistance('osrm', 'driving')
+        >>> 
+        >>> # GraphHopper with API key
+        >>> metric = OSMRoutingDistance('graphhopper', 'driving', api_key='your_key')
+        >>> 
+        >>> # Walking distance
+        >>> metric = OSMRoutingDistance('osrm', 'walking')
+    """
+    
+    def __init__(self, 
+                 routing_engine: str = 'osrm',
+                 profile: str = 'driving',
+                 api_key: Optional[str] = None,
+                 cache_size: int = 1000,
+                 timeout: int = 10):
+        
+        self.routing_engine = routing_engine.lower()
+        self.profile = profile.lower()
+        self.api_key = api_key
+        self.timeout = timeout
+        
+        # Set up caching
+        from functools import lru_cache
+        self._route_cached = lru_cache(maxsize=cache_size)(self._compute_route)
+        
+        # Validate and set up routing service
+        self._setup_routing_service()
+    
+    def _setup_routing_service(self):
+        """Configure the routing service URLs and parameters."""
+        if self.routing_engine == 'osrm':
+            # Free OSRM demo server (rate limited)
+            self.base_url = "http://router.project-osrm.org"
+            if self.profile not in ['driving', 'walking', 'cycling']:
+                raise ValueError(f"OSRM profile '{self.profile}' not supported. Use: driving, walking, cycling")
+                
+        elif self.routing_engine == 'graphhopper':
+            if not self.api_key:
+                raise ValueError("GraphHopper requires an API key. Get one at: https://www.graphhopper.com/")
+            self.base_url = "https://graphhopper.com/api/1"
+            
+        elif self.routing_engine == 'mapbox':
+            if not self.api_key:
+                raise ValueError("Mapbox requires an API key. Get one at: https://www.mapbox.com/")
+            self.base_url = "https://api.mapbox.com"
+            
+        elif self.routing_engine == 'valhalla':
+            # Use MapTiler's free Valhalla instance (rate limited)
+            self.base_url = "https://api.maptiler.com/routing"
+            
+        else:
+            raise ValueError(f"Unsupported routing engine: {self.routing_engine}")
+    
+    def _compute_route(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Compute route distance (cached)."""
+        try:
+            import requests
+        except ImportError:
+            raise ImportError("OSM routing requires requests library: pip install requests")
+        
+        # Round coordinates to reduce cache misses
+        lat1, lon1 = round(lat1, 6), round(lon1, 6)
+        lat2, lon2 = round(lat2, 6), round(lon2, 6)
+        
+        # Handle identical points
+        if lat1 == lat2 and lon1 == lon2:
+            return 0.0
+        
+        try:
+            if self.routing_engine == 'osrm':
+                return self._route_osrm(lat1, lon1, lat2, lon2)
+            elif self.routing_engine == 'graphhopper':
+                return self._route_graphhopper(lat1, lon1, lat2, lon2)
+            elif self.routing_engine == 'mapbox':
+                return self._route_mapbox(lat1, lon1, lat2, lon2)
+            elif self.routing_engine == 'valhalla':
+                return self._route_valhalla(lat1, lon1, lat2, lon2)
+                
+        except Exception as e:
+            # Fallback to haversine on API failure
+            print(f"Warning: Routing API failed ({e}), falling back to haversine")
+            return haversine_distance_m(lat1, lon1, lat2, lon2)
+    
+    def _route_osrm(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Route via OSRM API."""
+        import requests
+        
+        # OSRM expects lon,lat order
+        coords = f"{lon1},{lat1};{lon2},{lat2}"
+        url = f"{self.base_url}/route/v1/{self.profile}/{coords}"
+        params = {'overview': 'false', 'steps': 'false'}
+        
+        response = requests.get(url, params=params, timeout=self.timeout)
+        response.raise_for_status()
+        
+        data = response.json()
+        if data['code'] != 'Ok':
+            raise RuntimeError(f"OSRM error: {data.get('message', 'Unknown error')}")
+        
+        # Distance in meters
+        return float(data['routes'][0]['distance'])
+    
+    def _route_graphhopper(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Route via GraphHopper API."""
+        import requests
+        
+        url = f"{self.base_url}/route"
+        params = {
+            'point': [f"{lat1},{lon1}", f"{lat2},{lon2}"],
+            'vehicle': self.profile,
+            'key': self.api_key,
+            'calc_points': 'false'
+        }
+        
+        response = requests.get(url, params=params, timeout=self.timeout)
+        response.raise_for_status()
+        
+        data = response.json()
+        if 'paths' not in data or not data['paths']:
+            raise RuntimeError("GraphHopper: No route found")
+        
+        # Distance in meters
+        return float(data['paths'][0]['distance'])
+    
+    def _route_mapbox(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Route via Mapbox Directions API."""
+        import requests
+        
+        # Mapbox expects lon,lat order
+        coords = f"{lon1},{lat1};{lon2},{lat2}"
+        url = f"{self.base_url}/directions/v5/mapbox/{self.profile}/{coords}"
+        params = {
+            'access_token': self.api_key,
+            'overview': 'false',
+            'steps': 'false'
+        }
+        
+        response = requests.get(url, params=params, timeout=self.timeout)
+        response.raise_for_status()
+        
+        data = response.json()
+        if data['code'] != 'Ok' or not data['routes']:
+            raise RuntimeError(f"Mapbox error: {data.get('message', 'No route found')}")
+        
+        # Distance in meters
+        return float(data['routes'][0]['distance'])
+    
+    def _route_valhalla(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Route via Valhalla API."""
+        import requests
+        
+        url = f"{self.base_url}/v1/{self.profile}"
+        json_data = {
+            'locations': [
+                {'lat': lat1, 'lon': lon1},
+                {'lat': lat2, 'lon': lon2}
+            ],
+            'costing': self.profile,
+            'directions_options': {'units': 'kilometers'}
+        }
+        
+        response = requests.post(url, json=json_data, timeout=self.timeout)
+        response.raise_for_status()
+        
+        data = response.json()
+        if 'trip' not in data or not data['trip']['legs']:
+            raise RuntimeError("Valhalla: No route found")
+        
+        # Convert km to meters
+        return float(data['trip']['legs'][0]['length']) * 1000
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        """Main distance calculation interface."""
+        if np.isscalar(lat1):
+            return self._route_cached(float(lat1), float(lon1), float(lat2), float(lon2))
+        else:
+            # Vectorized for Monte Carlo sampling
+            distances = []
+            for la1, lo1 in zip(lat1, lon1):
+                distances.append(self._route_cached(float(la1), float(lo1), float(lat2), float(lon2)))
+            return np.array(distances)
+
+
+class OSMWalkingDistance(OSMRoutingDistance):
+    """Walking distance via OSM routing (pedestrian paths)."""
+    def __init__(self, routing_engine: str = 'osrm', **kwargs):
+        super().__init__(routing_engine, profile='walking', **kwargs)
+
+
+class OSMDrivingDistance(OSMRoutingDistance):
+    """Driving distance via OSM routing (car routing).""" 
+    def __init__(self, routing_engine: str = 'osrm', **kwargs):
+        super().__init__(routing_engine, profile='driving', **kwargs)
+
+
+class OSMCyclingDistance(OSMRoutingDistance):
+    """Cycling distance via OSM routing (bike paths)."""
+    def __init__(self, routing_engine: str = 'osrm', **kwargs):
+        super().__init__(routing_engine, profile='cycling', **kwargs)
+
+
+# Convenience factory functions
+def osm_driving_distance(routing_engine: str = 'osrm', api_key: Optional[str] = None) -> OSMRoutingDistance:
+    """
+    Create driving distance metric using OSM routing.
+    
+    Args:
+        routing_engine: 'osrm' (free), 'graphhopper', 'mapbox', 'valhalla'
+        api_key: Required for GraphHopper and Mapbox
+    
+    Examples:
+        >>> # Free OSRM
+        >>> metric = osm_driving_distance('osrm')
+        >>> 
+        >>> # GraphHopper with API key  
+        >>> metric = osm_driving_distance('graphhopper', api_key='your_key')
+    """
+    return OSMDrivingDistance(routing_engine, api_key=api_key)
+
+
+def osm_walking_distance(routing_engine: str = 'osrm', api_key: Optional[str] = None) -> OSMRoutingDistance:
+    """Create walking distance metric using OSM routing."""
+    return OSMWalkingDistance(routing_engine, api_key=api_key)
+def lp_distance(p: float) -> LpDistance:
+    """
+    Factory function for creating Lp distances.
+    
+    Examples:
+        >>> metric = lp_distance(1)      # Manhattan
+        >>> metric = lp_distance(2)      # Euclidean
+        >>> metric = lp_distance(3)      # L3 norm
+        >>> metric = lp_distance(np.inf) # Chebyshev
+    """
+    return LpDistance(p)
+
+
+def weighted_haversine(cost_func: Callable[[float, float], float]) -> WeightedDistance:
+    """
+    Create a cost-weighted haversine distance.
+    
+    Args:
+        cost_func: Function(lat, lon) -> multiplier
+        
+    Example:
+        >>> def urban_congestion(lat, lon):
+        ...     if in_downtown(lat, lon):
+        ...         return 2.0  # 2x "farther" due to traffic
+        ...     return 1.0
+        >>> 
+        >>> metric = weighted_haversine(urban_congestion)
+    """
+    return WeightedDistance(HaversineDistance(), cost_func)
+
+
+# ============================================================================
+# CORE DATA STRUCTURES
+# ============================================================================
 
 @dataclass
 class GeoPoint:
@@ -121,6 +807,11 @@ class MethodParams:
     random_state: Optional[int] = None
     use_antithetic: bool = True
     cp_alpha: float = 0.05
+    distance_metric: Optional[DistanceMetric] = None  # NEW in v4
+    
+    def get_distance_metric(self) -> DistanceMetric:
+        """Get the distance metric, defaulting to haversine."""
+        return self.distance_metric if self.distance_metric is not None else HaversineDistance()
     
     def as_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -132,7 +823,8 @@ class MethodParams:
             'conservative_decision': self.conservative_decision,
             'random_state': self.random_state,
             'use_antithetic': self.use_antithetic,
-            'cp_alpha': self.cp_alpha
+            'cp_alpha': self.cp_alpha,
+            'distance_metric': type(self.distance_metric).__name__ if self.distance_metric else 'HaversineDistance'
         }
 
 
@@ -144,7 +836,7 @@ class Scenario:
     reference: Reference
     d0: float
     method_params: MethodParams = field(default_factory=MethodParams)
-    expected_behavior: str = ""  # Description of what to expect from this scenario
+    expected_behavior: str = ""
     
     # For analytics compatibility
     sigma_P_scalar: Optional[float] = None
@@ -159,7 +851,6 @@ class ProbabilityResult:
     method: str
     mc_stderr: Optional[float] = None
     n_samples: Optional[int] = None
-    # Diagnostic fields:
     cp_lower: Optional[float] = None
     cp_upper: Optional[float] = None
     sigma_cond: Optional[float] = None
@@ -167,6 +858,10 @@ class ProbabilityResult:
     delta_m: Optional[float] = None
     decision_by: Optional[str] = None
 
+
+# ============================================================================
+# GEOMETRIC UTILITIES
+# ============================================================================
 
 def latlon_to_ecef(lat_deg: float, lon_deg: float, R: float = R_EARTH) -> np.ndarray:
     phi = np.deg2rad(lat_deg)
@@ -248,17 +943,11 @@ def clopper_pearson(k: int, n: int, alpha: float = 0.05) -> Tuple[float, float]:
 def _choose_method_heuristic(Sigma_X_m2: np.ndarray, delta_m: float,
                              max_std_thresh: float = 200.0, delta_thresh: float = 5000.0,
                              cond_thresh: float = 20.0) -> Tuple[str, Dict]:
-    """
-    Conservative heuristic to decide if tangent-plane MC is acceptable.
-
-    Returns:
-        method: 'mc_tangent' or 'mc_ecef'
-        diagnostics: dict with 'max_std_m', 'cond', 'delta_m', 'reason'
-    """
+    """Conservative heuristic to decide if tangent-plane MC is acceptable."""
     eigs = np.linalg.eigvalsh(Sigma_X_m2)
     eigs = np.clip(eigs, a_min=0.0, a_max=None)
     max_std = float(np.sqrt(eigs.max()))
-    # condition number - handle rank-deficient / zero carefully
+    
     try:
         cond = float(np.linalg.cond(Sigma_X_m2))
     except Exception:
@@ -270,6 +959,10 @@ def _choose_method_heuristic(Sigma_X_m2: np.ndarray, delta_m: float,
     chosen = 'mc_tangent' if is_local else 'mc_ecef'
     return chosen, {'max_std_m': max_std, 'cond': cond, 'delta_m': delta_m, 'reason': reason}
 
+
+# ============================================================================
+# MAIN API FUNCTION
+# ============================================================================
 
 def check_geo_prob(
     subject: Union[Subject, Tuple[float, float], GeoPoint],
@@ -284,22 +977,52 @@ def check_geo_prob(
         subject: Subject object or (lat, lon) tuple for first point
         reference: Reference object or (lat, lon) tuple for second point  
         d0_meters: Distance threshold in meters
-        method_params: MethodParams object with computation settings
+        method_params: MethodParams object with computation settings including distance_metric
+        
+    Distance Metrics (set via method_params.distance_metric):
+        - HaversineDistance() [default]: Great circle on sphere
+        - VincentyDistance(): High-precision WGS84 ellipsoid (requires geopy)
+        - ManhattanDistance(): L1 / city-block distance
+        - ChebyshevDistance(): L∞ / rectangular distance
+        - EuclideanTangentDistance(): L2 in tangent plane
+        - lp_distance(p): Generalized Lp norm
+        - WeightedDistance(base, cost_func): Cost-weighted distance
+        - CustomDistance(func): User-defined distance function
+        
+    Examples:
+        # Default (haversine)
+        >>> result = check_geo_prob(subject, reference, d0=100)
+        
+        # Urban navigation (Manhattan)
+        >>> params = MethodParams(distance_metric=ManhattanDistance())
+        >>> result = check_geo_prob(subject, reference, d0=100, params)
+        
+        # Rectangular geofence (Chebyshev)
+        >>> params = MethodParams(distance_metric=ChebyshevDistance())
+        >>> result = check_geo_prob(subject, reference, d0=100, params)
+        
+        # Custom weighted distance
+        >>> def delivery_cost(lat, lon):
+        ...     return 1.5 if in_suburbs(lat, lon) else 1.0
+        >>> metric = weighted_haversine(delivery_cost)
+        >>> params = MethodParams(distance_metric=metric)
+        >>> result = check_geo_prob(subject, reference, d0=5000, params)
     """
     
     if method_params is None:
         method_params = MethodParams()
+    
+    # Get distance metric from params (defaults to haversine)
+    distance_metric = method_params.get_distance_metric()
     
     # Convert to Subject/Reference if needed
     if not isinstance(subject, Subject):
         if isinstance(subject, GeoPoint):
             subject = Subject(subject, Covariance2D(0.0))
         elif isinstance(subject, (tuple, list)) and len(subject) == 3:
-            # Handle (lat, lon, sigma) format
             lat, lon, sigma = subject
             subject = Subject(GeoPoint(lat, lon), Covariance2D(sigma))
         elif isinstance(subject, (tuple, list)) and len(subject) == 2:
-            # Handle (lat, lon) format
             subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
         else:
             subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
@@ -308,11 +1031,9 @@ def check_geo_prob(
         if isinstance(reference, GeoPoint):
             reference = Reference(reference, Covariance2D(0.0))
         elif isinstance(reference, (tuple, list)) and len(reference) == 3:
-            # Handle (lat, lon, sigma) format
             lat, lon, sigma = reference
             reference = Reference(GeoPoint(lat, lon), Covariance2D(sigma))
         elif isinstance(reference, (tuple, list)) and len(reference) == 2:
-            # Handle (lat, lon) format
             reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
         else:
             reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
@@ -334,7 +1055,7 @@ def check_geo_prob(
 
     # Deterministic case
     if np.allclose(Sigma_X_m2, 0.0, atol=1e-14):
-        delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         prob = 1.0 if delta <= d0_meters else 0.0
         return ProbabilityResult(
             fulfilled=(prob >= method_params.prob_threshold),
@@ -354,8 +1075,7 @@ def check_geo_prob(
     is_isotropic = subject.Sigma.is_isotropic() and reference.Sigma.is_isotropic()
 
     if method_params.mode == 'auto':
-        # compute delta for heuristic
-        delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         chosen, diag = _choose_method_heuristic(Sigma_X_m2, float(delta))
         if is_isotropic:
             method_to_use = 'analytic'
@@ -369,27 +1089,26 @@ def check_geo_prob(
         if not is_isotropic:
             raise ValueError("analytic mode requires both uncertainties to be isotropic")
         
-        # Extract scalar sigmas
         sigma_P = subject.Sigma.max_std()
         sigma_Q = reference.Sigma.max_std()
-        return _compute_analytic_rice(mu_P, mu_Q, sigma_P, sigma_Q, d0_meters, method_params.prob_threshold)
+        return _compute_analytic_rice(mu_P, mu_Q, sigma_P, sigma_Q, d0_meters, 
+                                      method_params.prob_threshold, distance_metric)
 
     if mode == 'mc_ecef':
         return _compute_mc_ecef(
             mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, d0_meters,
             method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
             method_params.random_state, method_params.conservative_decision,
-            method_params.use_antithetic, method_params.cp_alpha
+            method_params.use_antithetic, method_params.cp_alpha, distance_metric
         )
 
     if mode == 'mc_tangent':
-        # compute delta for diagnostics
-        delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
         return _compute_mc_tangent(
             mu_P, mu_Q, Sigma_X_m2, d0_meters,
             method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
             method_params.random_state, method_params.conservative_decision, float(delta),
-            method_params.use_antithetic, method_params.cp_alpha
+            method_params.use_antithetic, method_params.cp_alpha, distance_metric
         )
 
     raise ValueError(f"Unknown mode: {mode}")
@@ -401,10 +1120,14 @@ def _compute_analytic_rice(
     sigma_P: float,
     sigma_Q: float,
     d0_meters: float,
-    prob_threshold: float
+    prob_threshold: float,
+    distance_metric: DistanceMetric = None
 ) -> ProbabilityResult:
+    if distance_metric is None:
+        distance_metric = HaversineDistance()
+    
     sigma_X = np.sqrt(sigma_P ** 2 + sigma_Q ** 2)
-    delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+    delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
 
     if sigma_X == 0.0:
         prob = 1.0 if delta <= d0_meters else 0.0
@@ -441,8 +1164,12 @@ def _compute_mc_ecef(
     random_state: Optional[int],
     conservative_decision: bool = True,
     use_antithetic: bool = True,
-    cp_alpha: float = 0.05
+    cp_alpha: float = 0.05,
+    distance_metric: DistanceMetric = None
 ) -> ProbabilityResult:
+    if distance_metric is None:
+        distance_metric = HaversineDistance()
+    
     rng = np.random.default_rng(random_state)
 
     mu_P_ecef = latlon_to_ecef(mu_P[0], mu_P[1])
@@ -467,7 +1194,7 @@ def _compute_mc_ecef(
     mu_X_ecef = mu_P_ecef - mu_Q_ecef
     Sigma_X_ecef = _ensure_psd(Sigma_P_ecef + Sigma_Q_ecef)
 
-    # diagnostics for return
+    # Diagnostics
     Sigma_X_m2 = Sigma_P_mat + Sigma_Q_mat
     eigs_m2 = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
     max_std = float(np.sqrt(eigs_m2.max()))
@@ -475,9 +1202,9 @@ def _compute_mc_ecef(
         cond = float(np.linalg.cond(Sigma_X_m2))
     except Exception:
         cond = float('inf')
-    delta = haversine_distance_m(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+    delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
 
-    # Precompute Cholesky L for 3x3 ECEF covariance to speed sampling
+    # Cholesky for sampling
     Sigma_for_chol = Sigma_X_ecef.copy()
     try:
         L = np.linalg.cholesky(Sigma_for_chol)
@@ -492,15 +1219,14 @@ def _compute_mc_ecef(
     while n_remaining > 0:
         n_batch = min(batch_size, n_remaining)
         if use_antithetic:
-            # make n_batch even for pairing where possible
             if n_batch % 2 == 1 and n_batch > 1:
                 n_batch -= 1
 
             half = max(1, n_batch // 2)
             z = rng.standard_normal((3, half))
-            z_pair = np.concatenate([z, -z], axis=1)  # shape (3, 2*half)
-            samples_X_ecef = (L @ z_pair).T + mu_X_ecef  # shape (n_batch, 3)
-            # if we reduced n_batch for pairing, and there are leftover slots overall, generate an odd sample
+            z_pair = np.concatenate([z, -z], axis=1)
+            samples_X_ecef = (L @ z_pair).T + mu_X_ecef
+            
             if (min(batch_size, n_remaining) % 2 == 1) and (n_remaining >= 1):
                 z_last = rng.standard_normal((3, 1))
                 samples_last = (L @ z_last).T + mu_X_ecef
@@ -516,7 +1242,7 @@ def _compute_mc_ecef(
         lat_samples = np.rad2deg(np.arcsin(np.clip(zc / r, -1.0, 1.0)))
         lon_samples = np.rad2deg(np.arctan2(y, x))
 
-        dists = haversine_distance_m(lat_samples, lon_samples, mu_Q[0], mu_Q[1])
+        dists = distance_metric(lat_samples, lon_samples, mu_Q[0], mu_Q[1])
         count_inside += int(np.count_nonzero(dists <= d0_meters))
         total += samples_X_ecef.shape[0]
         n_remaining -= samples_X_ecef.shape[0]
@@ -525,7 +1251,6 @@ def _compute_mc_ecef(
     mc_stderr = float(np.sqrt(prob * (1 - prob) / total)) if total > 0 else None
     cp_l, cp_u = clopper_pearson(count_inside, total, alpha=cp_alpha)
 
-    # conservative decision option: use cp_lower vs point estimate
     if conservative_decision:
         fulfilled = (cp_l >= prob_threshold)
         decision_by = 'cp_lower'
@@ -560,15 +1285,19 @@ def _compute_mc_tangent(
     conservative_decision: bool,
     delta: float,
     use_antithetic: bool = True,
-    cp_alpha: float = 0.05
+    cp_alpha: float = 0.05,
+    distance_metric: DistanceMetric = None
 ) -> ProbabilityResult:
+    if distance_metric is None:
+        distance_metric = HaversineDistance()
+    
     rng = np.random.default_rng(random_state)
 
     lat_center = (mu_P[0] + mu_Q[0]) / 2.0
     scale_to_deg = enu_to_radians_scale(lat_center)
     Sigma_X_deg2 = _ensure_psd(scale_to_deg @ Sigma_X_m2 @ scale_to_deg.T)
 
-    # diagnostics
+    # Diagnostics
     eigs = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
     max_std = float(np.sqrt(eigs.max()))
     try:
@@ -576,7 +1305,7 @@ def _compute_mc_tangent(
     except Exception:
         cond = float('inf')
 
-    # Precompute cholesky on the 2x2 Sigma_X_deg2
+    # Cholesky
     Sigma_for_chol = Sigma_X_deg2.copy()
     try:
         L2 = np.linalg.cholesky(Sigma_for_chol)
@@ -609,7 +1338,7 @@ def _compute_mc_tangent(
 
         samples_P = np.asarray(mu_Q) + samples_X_deg
 
-        dists = haversine_distance_m(samples_P[:, 0], samples_P[:, 1], mu_Q[0], mu_Q[1])
+        dists = distance_metric(samples_P[:, 0], samples_P[:, 1], mu_Q[0], mu_Q[1])
         count_inside += int(np.count_nonzero(dists <= d0_meters))
         total += samples_P.shape[0]
         n_remaining -= samples_P.shape[0]
@@ -640,7 +1369,10 @@ def _compute_mc_tangent(
     )
 
 
-# ----------------- Profiler & runtime estimator -----------------
+# ============================================================================
+# PROFILER & UTILITIES (extended for v4)
+# ============================================================================
+
 class PerformanceProfiler:
     def __init__(self, verbose: bool = True):
         self.verbose = verbose
@@ -652,15 +1384,13 @@ class PerformanceProfiler:
         elapsed = time.perf_counter() - start
         return elapsed, out
 
-    def fair_test_batch(self,
+    def test_batch(self,
                         scenarios: List[Scenario],
                         n_repeats: int = 3,
                         default_n_mc: int = 200_000,
                         default_batch: int = 100_000,
                         rng_base_seed: int = 12345) -> List[Dict]:
-        """
-        Run fair test batch with structured Scenarios.
-        """
+        """Run fair test batch with structured Scenarios."""
         results = []
         for s_idx, sc in enumerate(scenarios):
             name = sc.name
@@ -676,7 +1406,7 @@ class PerformanceProfiler:
             has_analytic = sc.sigma_P_scalar is not None and sc.sigma_Q_scalar is not None
 
             if self.verbose:
-                print(f"\nFAIR TEST: {name} — d0={sc.d0} m, n_mc={n_mc} (repeats={n_repeats})")
+                print(f"TEST CASE: {name} — d0={sc.d0} m, n_mc={n_mc} (repeats={n_repeats})")
                 if sc.expected_behavior:
                     print(f"Expected: {sc.expected_behavior}")
 
@@ -685,7 +1415,7 @@ class PerformanceProfiler:
 
                 if has_analytic:
                     t_start = time.perf_counter()
-                    analytic_params = MethodParams(mode='analytic')
+                    analytic_params = MethodParams(mode='analytic', distance_metric=sc.method_params.distance_metric)
                     res_analytic = check_geo_prob(sc.subject, sc.reference, sc.d0, analytic_params)
                     t_elapsed = time.perf_counter() - t_start
                     acc['analytic']['probs'].append(res_analytic.probability)
@@ -696,7 +1426,8 @@ class PerformanceProfiler:
                     mode='mc_ecef',
                     n_mc=n_mc,
                     batch_size=batch_size,
-                    random_state=seed
+                    random_state=seed,
+                    distance_metric=sc.method_params.distance_metric
                 )
                 res_ecef = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
                 t_elapsed = time.perf_counter() - t_start
@@ -713,7 +1444,8 @@ class PerformanceProfiler:
                     mode='mc_tangent',
                     n_mc=n_mc,
                     batch_size=batch_size,
-                    random_state=seed
+                    random_state=seed,
+                    distance_metric=sc.method_params.distance_metric
                 )
                 res_tangent = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
                 t_elapsed = time.perf_counter() - t_start
@@ -722,7 +1454,7 @@ class PerformanceProfiler:
                 acc['mc_tangent']['stderrs'].append(res_tangent.mc_stderr if res_tangent.mc_stderr is not None else 0.0)
                 acc['mc_tangent']['n_samples'].append(res_tangent.n_samples if res_tangent.n_samples is not None else n_mc)
 
-            # summarize
+            # Summarize
             summary = {'name': name, 'd0': sc.d0, 'n_mc': n_mc}
             if has_analytic:
                 a_probs = np.array(acc['analytic']['probs'])
@@ -750,9 +1482,46 @@ class PerformanceProfiler:
             self.results.append(summary)
             results.append(summary)
         
-        # Print concise table summary at the end
         if self.verbose:
             self._print_summary_table(results, scenarios)
+        
+        return results
+    
+    def compare_metrics_on_scenario(self, 
+                                    scenario: Scenario,
+                                    metrics: Optional[Dict[str, DistanceMetric]] = None) -> Dict[str, ProbabilityResult]:
+        """
+        Run same scenario with different distance metrics.
+        
+        Args:
+            scenario: Base scenario to test
+            metrics: Dict of {name: metric} to compare. If None, uses standard set.
+            
+        Returns:
+            Dict of {metric_name: ProbabilityResult}
+        """
+        if metrics is None:
+            metrics = {
+                'haversine': HaversineDistance(),
+                'manhattan': ManhattanDistance(),
+                'chebyshev': ChebyshevDistance(),
+                'euclidean': EuclideanTangentDistance()
+            }
+        
+        results = {}
+        for name, metric in metrics.items():
+            params = MethodParams(
+                mode=scenario.method_params.mode,
+                n_mc=scenario.method_params.n_mc,
+                batch_size=scenario.method_params.batch_size,
+                random_state=scenario.method_params.random_state,
+                distance_metric=metric
+            )
+            result = check_geo_prob(scenario.subject, scenario.reference, scenario.d0, params)
+            results[name] = result
+            
+            if self.verbose:
+                print(f"  {name:12s}: P={result.probability:.6f}, fulfilled={result.fulfilled}")
         
         return results
     
@@ -771,11 +1540,10 @@ class PerformanceProfiler:
         
         rows = []
         for r in results:
-            scenario_name = r['name'][:18]  # Shorter truncation
+            scenario_name = r['name'][:18]
             d0 = r['d0']
             n_mc = r['n_mc']
             
-            # Add analytic row if available
             if r.get('analytic_prob_mean') is not None:
                 rows.append([
                     scenario_name,
@@ -787,7 +1555,6 @@ class PerformanceProfiler:
                     f"{d0:.0f}m"
                 ])
             
-            # Add MC method rows
             for method in ['mc_ecef', 'mc_tangent']:
                 if r.get(f'{method}_prob_mean') is not None:
                     prob_mean = r[f'{method}_prob_mean']
@@ -795,7 +1562,6 @@ class PerformanceProfiler:
                     time_ms = r[f'{method}_time_ms']
                     n_samples = r[f'{method}_n_samples_mean']
                     
-                    # Show scenario name only for first MC method
                     name_display = scenario_name if method == 'mc_ecef' else ''
                     d0_display = f"{d0:.0f}m" if method == 'mc_ecef' else ''
                     
@@ -811,19 +1577,14 @@ class PerformanceProfiler:
         
         headers = ["Scenario", "Method", "Prob", "StdErr", "Samples", "Time(ms)", "d0"]
         print(tabulate(rows, headers=headers, tablefmt="simple", numalign="right"))
-        
-        # Add performance comparison
-        self._print_performance_summary(results)
-        
-        # Add expected vs actual comparison
-        self._print_expectations_summary(results, scenarios)
+        print("=" * 100)
     
     def _print_fallback_table(self, results: List[Dict]):
         """Fallback table format if tabulate is not available."""
         print("\n" + "=" * 120)
         print("RESULTS SUMMARY")
         print("=" * 120)
-        print(f"{'Scenario':<20} {'Method':<10} {'Mean Prob':<10} {'Std':<8} {'MC StdErr':<10} {'Samples':<8} {'Time(ms)':<9} {'d0(m)':<8}")
+        print(f"{'Scenario':<20} {'Method':<10} {'Mean Prob':<10} {'StdErr':<10} {'Samples':<8} {'Time(ms)':<9} {'d0(m)':<8}")
         print("-" * 120)
         
         for r in results:
@@ -831,125 +1592,26 @@ class PerformanceProfiler:
             d0 = r['d0']
             
             if r.get('analytic_prob_mean') is not None:
-                print(f"{scenario_name:<20} {'analytic':<10} {r['analytic_prob_mean']:<10.6f} {'-':<8} {'-':<10} {'-':<8} {r['analytic_time_ms']:<9.1f} {d0:<8.0f}")
+                print(f"{scenario_name:<20} {'analytic':<10} {r['analytic_prob_mean']:<10.6f} {'-':<10} {'-':<8} {r['analytic_time_ms']:<9.1f} {d0:<8.0f}")
             
             for method in ['mc_ecef', 'mc_tangent']:
                 if r.get(f'{method}_prob_mean') is not None:
                     name_field = scenario_name if method == 'mc_ecef' else ''
                     prob_mean = r[f'{method}_prob_mean']
-                    prob_std = r[f'{method}_prob_std']
                     mc_stderr = r[f'{method}_mc_stderr_mean']
                     time_ms = r[f'{method}_time_ms']
                     n_samples = r[f'{method}_n_samples_mean']
                     d0_field = f"{d0:.0f}" if method == 'mc_ecef' else ''
                     
-                    print(f"{name_field:<20} {method:<10} {prob_mean:<10.6f} {prob_std:<8.6f} {mc_stderr:<10.6f} {n_samples:<8,} {time_ms:<9.1f} {d0_field:<8}")
+                    print(f"{name_field:<20} {method:<10} {prob_mean:<10.6f} {mc_stderr:<10.6f} {n_samples:<8,} {time_ms:<9.1f} {d0_field:<8}")
         
         print("=" * 120)
-    
-    def _print_performance_summary(self, results: List[Dict]):
-        """Print performance comparison summary."""
-        print("\n" + "-" * 60)
-        print("PERFORMANCE SUMMARY")
-        print("-" * 60)
-        
-        # Aggregate timing data
-        analytic_times = [r['analytic_time_ms'] for r in results if r.get('analytic_time_ms') is not None]
-        ecef_times = [r['mc_ecef_time_ms'] for r in results if r.get('mc_ecef_time_ms') is not None]
-        tangent_times = [r['mc_tangent_time_ms'] for r in results if r.get('mc_tangent_time_ms') is not None]
-        
-        if analytic_times:
-            print(f"Analytic method: avg={np.mean(analytic_times):.1f}ms, median={np.median(analytic_times):.1f}ms")
-        if ecef_times:
-            print(f"MC ECEF method: avg={np.mean(ecef_times):.1f}ms, median={np.median(ecef_times):.1f}ms")
-        if tangent_times:
-            print(f"MC Tangent method: avg={np.mean(tangent_times):.1f}ms, median={np.median(tangent_times):.1f}ms")
-        
-        # Method availability
-        total_scenarios = len(results)
-        analytic_available = len([r for r in results if r.get('analytic_prob_mean') is not None])
-        
-        print(f"\nMethod availability: {analytic_available}/{total_scenarios} scenarios support analytic method")
-        
-        # Largest discrepancies between methods
-        print("\nLargest probability discrepancies:")
-        max_discrepancy = 0
-        max_scenario = None
-        
-        for r in results:
-            if r.get('analytic_prob_mean') is not None and r.get('mc_ecef_prob_mean') is not None:
-                diff = abs(r['analytic_prob_mean'] - r['mc_ecef_prob_mean'])
-                if diff > max_discrepancy:
-                    max_discrepancy = diff
-                    max_scenario = r['name']
-        
-        if max_scenario:
-            print(f"  Max analytic vs MC_ECEF: {max_discrepancy:.6f} in '{max_scenario}'")
-        
-        print("-" * 60)
-    
-    def _print_expectations_summary(self, results: List[Dict], scenarios: List[Scenario]):
-        """Print a comparison of expected vs actual behavior."""
-        print("\n" + "-" * 80)
-        print("EXPECTED vs ACTUAL BEHAVIOR")
-        print("-" * 80)
-        
-        # Create a mapping from scenario names to scenarios for quick lookup
-        scenario_map = {sc.name: sc for sc in scenarios}
-        
-        for r in results:
-            scenario_name = r['name']
-            scenario = scenario_map.get(scenario_name)
-            
-            if scenario and scenario.expected_behavior:
-                # Get the primary probability result (prefer analytic, fall back to mc_ecef)
-                if r.get('analytic_prob_mean') is not None:
-                    actual_prob = r['analytic_prob_mean']
-                    method_used = 'analytic'
-                elif r.get('mc_ecef_prob_mean') is not None:
-                    actual_prob = r['mc_ecef_prob_mean']
-                    method_used = 'mc_ecef'
-                else:
-                    continue
-                
-                print(f"\n{scenario_name}:")
-                print(f"  Expected: {scenario.expected_behavior}")
-                print(f"  Actual:   P={actual_prob:.5f} ({method_used})")
-                
-                # Add a simple validation check
-                if "probability = 1.0 exactly" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob > 0.999 else "❌ FAIL"
-                elif "probability = 0.0 exactly" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob < 0.001 else "❌ FAIL"
-                elif "high probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob > 0.9 else "❌ FAIL"
-                elif "very high probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob > 0.95 else "❌ FAIL"
-                elif "medium probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if 0.3 < actual_prob < 0.9 else "❌ FAIL"
-                elif "low-medium probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if 0.05 < actual_prob < 0.5 else "❌ FAIL"
-                elif "low probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob < 0.3 else "❌ FAIL"
-                elif "very low probability" in scenario.expected_behavior.lower():
-                    status = "✅ PASS" if actual_prob < 0.01 else "❌ FAIL"
-                else:
-                    status = "? INFO"
-                
-                print(f"  Status:   {status}")
-        
-        print("-" * 80)
 
     def estimate_runtime_scaling(self, target_n_mc: int = 200_000) -> Dict[str, float]:
-        """
-        Estimate runtime for target_n_mc by linear scaling with observed per-sample times
-        stored in self.results. Returns map method -> estimated_ms.
-        """
+        """Estimate runtime for target_n_mc by linear scaling."""
         estimates = {}
-        # find rows with mc_ecef_time_ms and n_mc info
         for r in self.results:
             if r.get('mc_ecef_time_ms') is not None:
-                # compute per-sample ms
                 n = r.get('n_mc', 1)
                 t_ms = r.get('mc_ecef_time_ms', None)
                 if t_ms is not None and n > 0:
@@ -977,20 +1639,22 @@ class PerformanceProfiler:
         print("=" * 60)
 
 
-# ----------------- Example run configuration -----------------
+# ============================================================================
+# MAIN SCRIPT - Test scenarios and demonstrations
+# ============================================================================
+
 if __name__ == "__main__":
     import argparse
     import json
     import csv
     import os
 
-    parser = argparse.ArgumentParser(description="Run geospatial probability checker with clean structured API.")
+    parser = argparse.ArgumentParser(description="Run geospatial probability checker v4 with distance metrics.")
     parser.add_argument("--quick", action="store_true", help="Run smaller quick tests (faster).")
     parser.add_argument("--repeats", type=int, default=3, help="Repeats per scenario (default 3).")
     parser.add_argument("--outdir", type=str, default=".", help="Directory to write results JSON/CSV.")
     args = parser.parse_args()
 
-    # Quick mode: smaller MC budget for iterative dev
     if args.quick:
         default_n_mc = 20_000
         default_batch = 10_000
@@ -1000,22 +1664,20 @@ if __name__ == "__main__":
         default_n_mc = 200_000
         default_batch = 100_000
         n_repeats = args.repeats
-
-    print("=" * 70)
-    print("Geospatial Probability Checker - v3 (clean structured API)")
-    print("=" * 70)
-    print(f"mode: {'quick' if args.quick else 'full'}, default_n_mc={default_n_mc}, batch={default_batch}, repeats={n_repeats}")
-
-    # Helper function to create scenarios with new structured format
-    def create_scenario(name: str, 
-                       mu_P: Tuple[float, float], 
-                       sigma_P: Union[float, np.ndarray],
-                       mu_Q: Tuple[float, float], 
-                       sigma_Q: Union[float, np.ndarray],
-                       d0: float,
-                       expected_behavior: str = "",
-                       n_mc: int = default_n_mc) -> Scenario:
-        """Create a Scenario using the new structured format."""
+    
+    # Helper to create scenarios
+    def create_scenario(
+        name: str, 
+        mu_P: Tuple[float, float], 
+        sigma_P: Union[float, np.ndarray],
+        mu_Q: Tuple[float, float], 
+        sigma_Q: Union[float, np.ndarray],
+        d0: float,
+        expected_behavior: str = "",
+        n_mc: int = default_n_mc,
+        distance_metric: Optional[DistanceMetric] = None
+    ) -> Scenario:
+        """Create a Scenario using the structured format."""
         subject = Subject(
             mu=GeoPoint(*mu_P),
             Sigma=Covariance2D(sigma_P),
@@ -1026,9 +1688,8 @@ if __name__ == "__main__":
             Sigma=Covariance2D(sigma_Q),
             id=f"reference_{name}"
         )
-        method_params = MethodParams(n_mc=n_mc, batch_size=default_batch)
+        method_params = MethodParams(n_mc=n_mc, batch_size=default_batch, distance_metric=distance_metric)
         
-        # For backward compatibility with analytics, store scalar sigmas if isotropic
         sigma_P_scalar = None
         sigma_Q_scalar = None
         if np.isscalar(sigma_P):
@@ -1047,13 +1708,13 @@ if __name__ == "__main__":
             sigma_Q_scalar=sigma_Q_scalar
         )
 
-    # Helper function to create identity matrix  
-    def I(sigma: float) -> np.ndarray:
-        return np.eye(2) * (sigma ** 2)
+    print("=" * 70)
+    print("Geospatial Probability Checker - v4 (pluggable distance metrics)")
+    print("=" * 70)
+    print(f"mode: {'quick' if args.quick else 'full'}, default_n_mc={default_n_mc}, batch={default_batch}, repeats={n_repeats}")
 
-    # Create structured scenarios using new API
-    scenarios = [
-        # --- Isotropic / analytic-available (small / large sigma) ---
+    # Baseline test scenarios
+    scenarios_baseline = [
         create_scenario(
             'isotropic_small_sigma',
             mu_P=(37.7749, -122.4194),
@@ -1061,7 +1722,7 @@ if __name__ == "__main__":
             mu_Q=(37.77495, -122.41945),
             sigma_Q=3.0,
             d0=20.0,
-            expected_behavior="High probability (~97%) - points very close with small uncertainty, threshold generous"
+            expected_behavior="High probability (~97%) - points very close with small uncertainty"
         ),
         create_scenario(
             'isotropic_large_sigma',
@@ -1072,8 +1733,6 @@ if __name__ == "__main__":
             d0=500.0,
             expected_behavior="Medium probability (~86%) - large uncertainty but reasonable threshold"
         ),
-
-        # --- Deterministic / degenerate ---
         create_scenario(
             'deterministic_exact_same_point',
             mu_P=(37.7749, -122.4194),
@@ -1084,160 +1743,335 @@ if __name__ == "__main__":
             expected_behavior="Probability = 1.0 exactly - identical points with no uncertainty"
         ),
         create_scenario(
-            'deterministic_far_apart',
-            mu_P=(0.0, 0.0),
-            sigma_P=0.0,
-            mu_Q=(10.0, 10.0),
-            sigma_Q=0.0,
-            d0=100.0,
-            expected_behavior="Probability = 0.0 exactly - points >1500km apart, threshold only 100m"
-        ),
-
-        # --- One uncertain, one exact ---
-        create_scenario(
-            'one_uncertain_small_sigma',
-            mu_P=(51.5074, -0.1278),   # London
-            sigma_P=2.0,
-            mu_Q=(51.5074, -0.1278),
-            sigma_Q=0.0,
-            d0=10.0,
-            expected_behavior="Very high probability (~99.9%) - same center point, small uncertainty, generous threshold"
-        ),
-
-        # --- Anisotropic / cross-terms ---
-        create_scenario(
             'anisotropic_cross_terms',
             mu_P=(37.7749, -122.4194),
             sigma_P=np.array([[400.0, 300.0], [300.0, 250.0]]),
             mu_Q=(37.7755, -122.4185),
             sigma_Q=np.array([[100.0, -20.0], [-20.0, 80.0]]),
             d0=100.0,
-            expected_behavior="Medium probability (~44%) - large anisotropic uncertainty with correlation, modest threshold"
+            expected_behavior="Medium probability (~44%) - large anisotropic uncertainty"
         ),
-        create_scenario(
-            'anisotropic_high_condition',
-            mu_P=(37.7749, -122.4194),
-            sigma_P=np.array([[1e6, 9.999e5], [9.999e5, 1e6]]),  # nearly singular
-            mu_Q=(37.7750, -122.4195),
-            sigma_Q=1.0,
-            d0=1000.0,
-            expected_behavior="Medium probability (~52%) - extreme uncertainty (near-singular), tests numerical stability"
-        ),
-
-        # --- Geographic edge cases ---
-        create_scenario(
-            'near_north_pole',
-            mu_P=(89.999, 0.0),
-            sigma_P=10.0,
-            mu_Q=(89.998, 10.0),
-            sigma_Q=10.0,
-            d0=500.0,
-            expected_behavior="High probability (~100%) - polar convergence makes longitude differences small"
-        ),
-        create_scenario(
-            'longitude_wrap',
-            mu_P=(0.0, 179.9),
-            sigma_P=10.0,
-            mu_Q=(0.0, -179.9),
-            sigma_Q=10.0,
-            d0=500.0,
-            expected_behavior="Low probability (~0%) - points near dateline but >20,000km apart via great circle"
-        ),
-        create_scenario(
-            'equator_vs_high_lat',
-            mu_P=(0.0, 30.0),
-            sigma_P=50.0,
-            mu_Q=(60.0, 30.0),
-            sigma_Q=50.0,
-            d0=5000.0,
-            expected_behavior="Low probability (~0%) - points ~6,700km apart, threshold only 5km"
-        ),
-
-        # --- extreme d0 values & large uncertainty ---
-        create_scenario(
-            'tiny_d0_tight_uncertainty',
-            mu_P=(37.7749, -122.4194),
-            sigma_P=1.0,
-            mu_Q=(37.77495, -122.41945),
-            sigma_Q=1.0,
-            d0=1.0,
-            expected_behavior="Very low probability (~0.000003) - points ~70m apart, tiny threshold vs uncertainty"
-        ),
-        create_scenario(
-            'huge_d0_large_uncertainty',
-            mu_P=(37.7749, -122.4194),
-            sigma_P=1000.0,
-            mu_Q=(38.0, -122.0),
-            sigma_Q=1000.0,
-            d0=10_000.0,
-            expected_behavior="Low probability (~0%) - points ~55km apart, even huge uncertainty rarely reaches threshold"
-        ),
-
-        # --- mixed precision: Q exact, P uncertain (useful in localization) ---
-        create_scenario(
-            'reference_exact_many_uncertain',
-            mu_P=(40.7128, -74.0060),  # NYC
-            sigma_P=np.array([[25.0, 5.0], [5.0, 9.0]]),
-            mu_Q=(40.7128, -74.0060),
-            sigma_Q=0.0,
-            d0=50.0,
-            expected_behavior="High probability (~100%) - same center point, anisotropic uncertainty well within threshold"
-        ),
-
-        # --- sensitivity sweep (small set) for sigma scaling ---
-        create_scenario(
-            'sensitivity_sigma_1m',
-            mu_P=(34.0522, -118.2437),  # Los Angeles
-            sigma_P=1.0,
-            mu_Q=(34.05225, -118.24375),
-            sigma_Q=1.0,
-            d0=5.0,
-            expected_behavior="Low probability (~4.6%) - points ~70m apart, threshold 5m, small uncertainty"
-        ),
-        create_scenario(
-            'sensitivity_sigma_100m',
-            mu_P=(34.0522, -118.2437),
-            sigma_P=100.0,
-            mu_Q=(34.05225, -118.24375),
-            sigma_Q=50.0,
-            d0=50.0,
-            expected_behavior="Low-medium probability (~9.5%) - same separation, larger uncertainty vs threshold"
-        )
     ]
 
-    # create output directory if missing
+    # Metric comparison scenarios (improved with strategic threshold positioning)
+    scenarios_metric_tests = [
+        create_scenario(
+            'manhattan_vs_haversine_optimal',
+            mu_P=(40.7580, -73.9855),  # Times Square
+            sigma_P=15.0,  # Increased uncertainty for interesting probabilities
+            mu_Q=(40.7614, -73.9776),  # ~5 blocks N, 1 block E
+            sigma_Q=15.0,
+            d0=750.0,  # Strategic: between haversine (~640m) and manhattan (~900m)
+            expected_behavior="Threshold between metrics: Haversine P~0.95, Manhattan P~0.30",
+            distance_metric=HaversineDistance()
+        ),
+        create_scenario(
+            'chebyshev_square_fence',
+            mu_P=(37.7749, -122.4194),
+            sigma_P=30.0,
+            mu_Q=(37.7760, -122.4205),  # ~120m N, ~80m E (anisotropic)
+            sigma_Q=20.0,
+            d0=100.0,  # Less than max component (120m) but strategic
+            expected_behavior="Rectangular fence: Chebyshev P~0.55, Euclidean P~0.80",
+            distance_metric=ChebyshevDistance()
+        ),
+        create_scenario(
+            'lp_norm_hierarchy',
+            mu_P=(51.5074, -0.1278),  # London
+            sigma_P=25.0,
+            mu_Q=(51.5082, -0.1268),  # ~90m N, ~70m E ≈ 115m Euclidean
+            sigma_Q=20.0,
+            d0=120.0,  # Just above Euclidean distance to show clear ordering
+            expected_behavior="Hierarchy: L1 P~0.25 < L2 P~0.65 < L3 P~0.80 < L∞ P~0.92",
+            distance_metric=lp_distance(2)
+        ),
+        create_scenario(
+            'edge_case_manhattan_vs_chebyshev_optimal',
+            mu_P=(0.0, 0.0),
+            sigma_P=8.0,  # Reduced uncertainty for better separation
+            mu_Q=(0.0008, 0.0005),  # ~89m N, ~56m E (anisotropic for clear difference)
+            sigma_Q=8.0, 
+            d0=75.0,  # Strategic threshold between Manhattan (145m) and Chebyshev (89m)
+            expected_behavior="Manhattan P~0.15 (sum=145m), Chebyshev P~0.85 (max=89m)",
+            distance_metric=ManhattanDistance()
+        ),
+        create_scenario(
+            'practical_rectangular_vs_circular_geofence',
+            mu_P=(34.0522, -118.2437),  # LA center
+            sigma_P=12.0,  # Reduced uncertainty 
+            mu_Q=(34.0530, -118.2427),  # ~89m N, ~89m E (equal components)
+            sigma_Q=8.0,  
+            d0=100.0,  # Strategic: between Chebyshev (89m) and Euclidean (126m)
+            expected_behavior="Chebyshev P~0.75 (square), Euclidean P~0.25 (circle)",
+            distance_metric=ChebyshevDistance()
+        ),
+        create_scenario(
+            'edge_case_pure_diagonal_movement',
+            mu_P=(51.5074, -0.1278),  # London
+            sigma_P=5.0,  # Small uncertainty for clear deterministic behavior
+            mu_Q=(51.5083, -0.1269),  # ~100m N, ~63m E 
+            sigma_Q=5.0,
+            d0=140.0,  # Strategic: between Euclidean (118m) and Manhattan (163m)
+            expected_behavior="Euclidean P~0.95, Manhattan P~0.15 (clear diagonal advantage)",
+            distance_metric=EuclideanTangentDistance()
+        ),
+    ]
+
+    # Create output directory
     outdir = os.path.abspath(args.outdir)
     os.makedirs(outdir, exist_ok=True)
 
     profiler = PerformanceProfiler(verbose=True)
 
+    # Run baseline scenarios
+    print("\n" + "=" * 70)
+    print("BASELINE SCENARIOS")
+    print("=" * 70)
     t_start_all = time.perf_counter()
-    results = profiler.fair_test_batch(scenarios, n_repeats=n_repeats)
+    results_baseline = profiler.test_batch(scenarios_baseline, n_repeats=n_repeats)
+    t_baseline = time.perf_counter() - t_start_all
+
+    # Run metric comparison tests if requested
+    print("\n" + "=" * 70)
+    print("METRIC COMPARISON TESTS")
+    print("=" * 70)
+    print("Key principle: Thresholds positioned strategically between metric distances")
+    print("to maximize separation and demonstrate clear differences.")
+    print("=" * 70)
+    
+    for scenario in scenarios_metric_tests:
+        print(f"\n--- {scenario.name} ---")
+        print(f"Expected: {scenario.expected_behavior}")
+        
+        metrics_to_compare = {
+            'haversine': HaversineDistance(),
+            'manhattan': ManhattanDistance(),
+            'euclidean': EuclideanTangentDistance(),
+            'l3_norm': lp_distance(3),
+            'chebyshev': ChebyshevDistance()
+        }
+        
+        metric_results = profiler.compare_metrics_on_scenario(scenario, metrics_to_compare)
+        
+        # Validate metric ordering for Lp norms (key improvement from improvements_v4.py)
+        if 'lp_norm' in scenario.name:
+            print("\n📊 Lp Norm Ordering Validation:")
+            expected_order = ['manhattan', 'euclidean', 'l3_norm', 'chebyshev']
+            valid_ordering = True
+            for i in range(len(expected_order) - 1):
+                m1, m2 = expected_order[i], expected_order[i+1]
+                if m1 in metric_results and m2 in metric_results:
+                    p1, p2 = metric_results[m1].probability, metric_results[m2].probability
+                    symbol = "✅" if p1 <= p2 else "❌"
+                    print(f"   {symbol} P({m1}) = {p1:.4f} {'≤' if p1 <= p2 else '>'} P({m2}) = {p2:.4f}")
+                    if p1 > p2:
+                        valid_ordering = False
+            
+            if valid_ordering:
+                print("   ✅ All ordering constraints satisfied!")
+            else:
+                print("   ⚠️  Some ordering violated (may be MC noise)")
+        
+        # Print comparison table with probability span analysis
+        print("\nMetric Comparison:")
+        print(f"{'Metric':<15} {'Probability':<12} {'Fulfilled':<10} {'Method':<12}")
+        print("-" * 50)
+        sorted_results = sorted(metric_results.items(), key=lambda x: x[1].probability)
+        for metric_name, result in sorted_results:
+            print(f"{metric_name:<15} {result.probability:<12.6f} {str(result.fulfilled):<10} {result.method:<12}")
+        
+        # Analyze probability span (key insight from improvements)
+        probs = [r.probability for r in metric_results.values()]
+        span = max(probs) - min(probs)
+        print(f"\nProbability span: {span:.6f} (range: [{min(probs):.6f}, {max(probs):.6f}])")
+        if span > 0.15:
+            print("✅ Excellent separation - metrics clearly distinguishable")
+        elif span > 0.08:
+            print("✅ Good separation - metrics show meaningful differences") 
+        elif span > 0.03:
+            print("⚠️  Moderate separation - differences visible but subtle")
+        else:
+            print("❌ Poor separation - scenario may need adjustment")
+    
+    # Demonstrate weighted distance
+    print("\n" + "=" * 70)
+    print("WEIGHTED DISTANCE EXAMPLE")
+    print("=" * 70)
+    
+    def delivery_zone_cost(lat: float, lon: float) -> float:
+        """Example cost function: downtown vs suburbs"""
+        # Simplistic: close to (37.7749, -122.4194) = downtown = 1.0x
+        # Far = suburbs = 1.5x cost
+        dist_from_downtown = np.sqrt((lat - 37.7749)**2 + (lon + 122.4194)**2)
+        if dist_from_downtown < 0.01:  # ~1km radius
+            return 1.0
+        else:
+            return 1.5
+    
+    weighted_metric = weighted_haversine(delivery_zone_cost)
+    scenario_weighted = create_scenario(
+        'weighted_delivery_cost',
+        mu_P=(37.7749, -122.4194),  # Downtown
+        sigma_P=50.0,
+        mu_Q=(37.7850, -122.4100),  # Suburbs (~1.5km away)
+        sigma_Q=30.0,
+        d0=2000.0,  # 2km "cost-distance" threshold
+        expected_behavior="Weighted distance accounts for delivery zones",
+        distance_metric=weighted_metric
+    )
+    
+    result_weighted = check_geo_prob(
+        scenario_weighted.subject,
+        scenario_weighted.reference,
+        scenario_weighted.d0,
+        scenario_weighted.method_params
+    )
+    print(f"Weighted distance result: P={result_weighted.probability:.6f}, fulfilled={result_weighted.fulfilled}")
+    
+    # Compare to unweighted
+    scenario_unweighted = create_scenario(
+        'unweighted_baseline',
+        mu_P=(37.7749, -122.4194),
+        sigma_P=50.0,
+        mu_Q=(37.7850, -122.4100),
+        sigma_Q=30.0,
+        d0=2000.0,
+        distance_metric=HaversineDistance()
+    )
+    result_unweighted = check_geo_prob(
+        scenario_unweighted.subject,
+        scenario_unweighted.reference,
+        scenario_unweighted.d0,
+        scenario_unweighted.method_params
+    )
+    print(f"Unweighted (haversine): P={result_unweighted.probability:.6f}, fulfilled={result_unweighted.fulfilled}")
+    print(f"Difference: {abs(result_weighted.probability - result_unweighted.probability):.6f}")
+
+    # Demonstrate OSM routing distance (if requests is available)
+    print("\n" + "=" * 70)
+    print("OSM ROUTING DISTANCE EXAMPLE")
+    print("=" * 70)
+    
+    try:
+        import requests
+        
+        print("Testing OSM routing distance (this requires internet connection)...")
+        
+        # Create OSM driving distance metric
+        osm_metric = osm_driving_distance('osrm')  # Free OSRM service
+        
+        scenario_osm = create_scenario(
+            'osm_driving_route',
+            mu_P=(40.7580, -73.9855),  # Times Square, NYC
+            sigma_P=30.0,
+            mu_Q=(40.7614, -73.9776),  # 5 blocks away
+            sigma_Q=20.0,
+            d0=1200.0,  # 1.2km threshold
+            expected_behavior="Real driving distance via street network",
+            distance_metric=osm_metric
+        )
+        
+        # Test single route calculation first
+        try:
+            driving_dist = osm_metric(40.7580, -73.9855, 40.7614, -73.9776)
+            haversine_dist = haversine_distance_m(40.7580, -73.9855, 40.7614, -73.9776)
+            
+            print(f"Route comparison (Times Square to +5 blocks):")
+            print(f"  OSM driving distance: {driving_dist:.0f}m")
+            print(f"  Haversine distance:   {haversine_dist:.0f}m") 
+            print(f"  Routing factor:       {driving_dist/haversine_dist:.2f}x")
+            
+            # Only run full probability calculation if single route works
+            if driving_dist > 0:
+                print("\nRunning probability calculation with OSM routing...")
+                result_osm = check_geo_prob(
+                    scenario_osm.subject,
+                    scenario_osm.reference, 
+                    scenario_osm.d0,
+                    MethodParams(n_mc=5000, distance_metric=osm_metric)  # Smaller n_mc for API limits
+                )
+                print(f"OSM driving route result: P={result_osm.probability:.6f}, fulfilled={result_osm.fulfilled}")
+                
+                # Compare to geometric
+                result_geometric = check_geo_prob(
+                    scenario_osm.subject,
+                    scenario_osm.reference,
+                    scenario_osm.d0,
+                    MethodParams(n_mc=5000, distance_metric=HaversineDistance())
+                )
+                print(f"Geometric (haversine):    P={result_geometric.probability:.6f}, fulfilled={result_geometric.fulfilled}")
+                print(f"Difference: {abs(result_osm.probability - result_geometric.probability):.6f}")
+                
+        except Exception as route_error:
+            print(f"Route calculation failed: {route_error}")
+            print("This may be due to API rate limits or network issues.")
+            
+    except ImportError:
+        print("OSM routing requires 'requests' library: pip install requests")
+        print("Skipping OSM routing example.")
+    except Exception as e:
+        print(f"OSM routing example skipped: {e}")
+
     t_total = time.perf_counter() - t_start_all
 
-    # save JSON
-    json_path = os.path.join(outdir, f"profiler_results_v3_{int(time.time())}.json")
+    # Save results
+    all_results = results_baseline
+    
+    json_path = os.path.join(outdir, f"profiler_results_v4_{int(time.time())}.json")
     with open(json_path, "w") as fh:
-        json.dump(results, fh, indent=2)
+        json.dump(all_results, fh, indent=2)
     print(f"\nSaved JSON summary to: {json_path}")
 
-    # save CSV: union of keys across result dicts
     keys = set()
-    for r in results:
+    for r in all_results:
         keys.update(r.keys())
     keys = sorted(keys)
 
-    csv_path = os.path.join(outdir, f"profiler_results_v3_{int(time.time())}.csv")
+    csv_path = os.path.join(outdir, f"profiler_results_v4_{int(time.time())}.csv")
     with open(csv_path, "w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=keys)
         writer.writeheader()
-        for r in results:
+        for r in all_results:
             writer.writerow({k: r.get(k, "") for k in keys})
     print(f"Saved CSV summary to: {csv_path}")
 
     estimated = profiler.estimate_runtime_scaling(target_n_mc=default_n_mc)
-    print("\nEstimated runtime scaling (ms) for target n_mc based on collected runs:")
+    print("\nEstimated runtime scaling (ms) for target n_mc:")
     print(estimated)
 
-    print(f"\nTotal profiling wall time: {t_total:.2f} s")
-    print("Done.")
+    print(f"Total profiling wall time: {t_total:.2f} s")
+
+    # Application Guidelines (from improvements)
+    print("\n" + "=" * 70)
+    print("📚 DISTANCE METRIC APPLICATION GUIDELINES")
+    print("=" * 70)
+    print("Based on test results and geometric properties:")
+    print("   • Urban navigation (grid streets) → ManhattanDistance")
+    print("   • Circular geofences → HaversineDistance or EuclideanTangentDistance") 
+    print("   • Rectangular safe zones → ChebyshevDistance")
+    print("   • Cost-based routing → WeightedDistance with custom cost function")
+    print("   • Real road routing → OSMRoutingDistance (driving/walking/cycling)")
+    print("   • Delivery optimization → OSMDrivingDistance with traffic zones")
+    print("   • Pedestrian navigation → OSMWalkingDistance")
+    print("   • Default/general purpose → HaversineDistance (backward compatible)")
+    print("   • Survey-grade precision → VincentyDistance (requires geopy)")
+    
+    # Distance calculation reference (from improvements)
+    print("\n📐 DISTANCE REFERENCE - NYC Grid Example:")
+    lat1, lon1 = 40.7580, -73.9855  # Times Square
+    lat2, lon2 = 40.7614, -73.9776  # +5 blocks N, +1 block E
+    
+    lat_diff_m = abs(lat2 - lat1) * 111132.954
+    lon_diff_m = abs(lon2 - lon1) * 111132.954 * np.cos(np.deg2rad((lat1+lat2)/2))
+    manhattan_dist = lat_diff_m + lon_diff_m
+    euclidean_dist = np.sqrt(lat_diff_m**2 + lon_diff_m**2)
+    chebyshev_dist = max(lat_diff_m, lon_diff_m)
+    
+    print(f"   Haversine:  ~640m (great circle)")
+    print(f"   Manhattan:  {manhattan_dist:.0f}m (sum of components)")  
+    print(f"   Euclidean:  {euclidean_dist:.0f}m (Pythagorean)")
+    print(f"   Chebyshev:  {chebyshev_dist:.0f}m (max component)")
+    print(f"   Ratio Manhattan/Haversine: {manhattan_dist/640:.2f}x")
+    print("=" * 70)
+
+    print("\nDone!")
