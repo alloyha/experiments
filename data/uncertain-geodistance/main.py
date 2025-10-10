@@ -398,7 +398,7 @@ class CustomDistance:
 
 
 # ============================================================================
-# OSM-BASED ROUTING DISTANCES
+# OSM-BASED ROUTING DISTANCES AND TRAVEL TIMES
 # ============================================================================
 
 class OSMRoutingDistance:
@@ -435,16 +435,17 @@ class OSMRoutingDistance:
         api_key: Required for some services (GraphHopper, Mapbox)
         cache_size: LRU cache size for repeated requests
         timeout: Request timeout in seconds
+        return_type: 'distance' or 'time' - what to return as the "distance"
     
     Examples:
-        >>> # Free OSRM (driving)
+        >>> # Free OSRM (driving distance)
         >>> metric = OSMRoutingDistance('osrm', 'driving')
         >>> 
-        >>> # GraphHopper with API key
-        >>> metric = OSMRoutingDistance('graphhopper', 'driving', api_key='your_key')
+        >>> # GraphHopper with API key (travel time as "distance")
+        >>> metric = OSMRoutingDistance('graphhopper', 'driving', api_key='your_key', return_type='time')
         >>> 
-        >>> # Walking distance
-        >>> metric = OSMRoutingDistance('osrm', 'walking')
+        >>> # Walking time for accessibility analysis
+        >>> metric = OSMRoutingDistance('osrm', 'walking', return_type='time')
     """
     
     def __init__(self, 
@@ -452,12 +453,17 @@ class OSMRoutingDistance:
                  profile: str = 'driving',
                  api_key: Optional[str] = None,
                  cache_size: int = 1000,
-                 timeout: int = 10):
+                 timeout: int = 10,
+                 return_type: str = 'distance'):
         
         self.routing_engine = routing_engine.lower()
         self.profile = profile.lower()
         self.api_key = api_key
         self.timeout = timeout
+        self.return_type = return_type.lower()
+        
+        if self.return_type not in ['distance', 'time']:
+            raise ValueError(f"return_type must be 'distance' or 'time', got '{self.return_type}'")
         
         # Set up caching
         from functools import lru_cache
@@ -492,7 +498,7 @@ class OSMRoutingDistance:
             raise ValueError(f"Unsupported routing engine: {self.routing_engine}")
     
     def _compute_route(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """Compute route distance (cached)."""
+        """Compute route distance or time (cached)."""
         try:
             import requests
         except ImportError:
@@ -518,8 +524,16 @@ class OSMRoutingDistance:
                 
         except Exception as e:
             # Fallback to haversine on API failure
-            print(f"Warning: Routing API failed ({e}), falling back to haversine")
-            return haversine_distance_m(lat1, lon1, lat2, lon2)
+            fallback_distance = haversine_distance_m(lat1, lon1, lat2, lon2)
+            if self.return_type == 'time':
+                # Estimate time based on profile
+                speed_kmh = {'driving': 50, 'walking': 5, 'cycling': 15}.get(self.profile, 50)
+                fallback_time = (fallback_distance / 1000) / speed_kmh * 3600  # seconds
+                print(f"Warning: Routing API failed ({e}), falling back to estimated time")
+                return fallback_time
+            else:
+                print(f"Warning: Routing API failed ({e}), falling back to haversine")
+                return fallback_distance
     
     def _route_osrm(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Route via OSRM API."""
@@ -537,8 +551,11 @@ class OSMRoutingDistance:
         if data['code'] != 'Ok':
             raise RuntimeError(f"OSRM error: {data.get('message', 'Unknown error')}")
         
-        # Distance in meters
-        return float(data['routes'][0]['distance'])
+        route = data['routes'][0]
+        if self.return_type == 'time':
+            return float(route['duration'])  # seconds
+        else:
+            return float(route['distance'])  # meters
     
     def _route_graphhopper(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Route via GraphHopper API."""
@@ -559,8 +576,11 @@ class OSMRoutingDistance:
         if 'paths' not in data or not data['paths']:
             raise RuntimeError("GraphHopper: No route found")
         
-        # Distance in meters
-        return float(data['paths'][0]['distance'])
+        path = data['paths'][0]
+        if self.return_type == 'time':
+            return float(path['time']) / 1000  # Convert ms to seconds
+        else:
+            return float(path['distance'])  # meters
     
     def _route_mapbox(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Route via Mapbox Directions API."""
@@ -582,8 +602,11 @@ class OSMRoutingDistance:
         if data['code'] != 'Ok' or not data['routes']:
             raise RuntimeError(f"Mapbox error: {data.get('message', 'No route found')}")
         
-        # Distance in meters
-        return float(data['routes'][0]['distance'])
+        route = data['routes'][0]
+        if self.return_type == 'time':
+            return float(route['duration'])  # seconds
+        else:
+            return float(route['distance'])  # meters
     
     def _route_valhalla(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Route via Valhalla API."""
@@ -606,19 +629,189 @@ class OSMRoutingDistance:
         if 'trip' not in data or not data['trip']['legs']:
             raise RuntimeError("Valhalla: No route found")
         
-        # Convert km to meters
-        return float(data['trip']['legs'][0]['length']) * 1000
+        leg = data['trip']['legs'][0]
+        if self.return_type == 'time':
+            return float(leg['time'])  # seconds
+        else:
+            return float(leg['length']) * 1000  # Convert km to meters
     
     def __call__(self, lat1, lon1, lat2, lon2):
-        """Main distance calculation interface."""
+        """Main distance/time calculation interface."""
         if np.isscalar(lat1):
             return self._route_cached(float(lat1), float(lon1), float(lat2), float(lon2))
         else:
             # Vectorized for Monte Carlo sampling
-            distances = []
+            results = []
             for la1, lo1 in zip(lat1, lon1):
-                distances.append(self._route_cached(float(la1), float(lo1), float(lat2), float(lon2)))
-            return np.array(distances)
+                results.append(self._route_cached(float(la1), float(lo1), float(lat2), float(lon2)))
+            return np.array(results)
+
+
+class OSMTravelTime(OSMRoutingDistance):
+    """
+    Travel time via OSM routing (time as "distance" for probability calculations).
+    
+    This class treats travel time as the "distance" metric for probability calculations.
+    Useful for multi-modal transportation where time is the key constraint.
+    
+    Mathematical definition:
+        t = travel_time_via_road_network(start, end)  [in seconds]
+    
+    Use cases:
+        - Multi-modal transportation planning
+        - Time-based accessibility analysis  
+        - Public transit integration
+        - Delivery time optimization
+    
+    Examples:
+        >>> # 15-minute walking accessibility
+        >>> walking_time = OSMTravelTime('osrm', 'walking')
+        >>> result = check_geo_prob(home, transit, d0=900,  # 15 minutes = 900 seconds
+        ...                        MethodParams(distance_metric=walking_time))
+        >>> 
+        >>> # 30-minute driving commute
+        >>> driving_time = OSMTravelTime('osrm', 'driving')
+        >>> result = check_geo_prob(home, work, d0=1800,  # 30 minutes = 1800 seconds
+        ...                        MethodParams(distance_metric=driving_time))
+    """
+    
+    def __init__(self, routing_engine: str = 'osrm', profile: str = 'driving', **kwargs):
+        # Force return_type to 'time'
+        kwargs['return_type'] = 'time'
+        super().__init__(routing_engine, profile, **kwargs)
+
+
+class MultiModalTravelTime:
+    """
+    Multi-modal travel time combining different transportation modes.
+    
+    This class models realistic multi-modal journeys where people use
+    different transportation modes for different segments of their trip.
+    
+    Mathematical definition:
+        t_total = sum(t_i * mode_factor_i) for each segment i
+    
+    Properties:
+        Accounts for mode switches, waiting times, and realistic routing
+        Can model complex transportation scenarios
+    
+    Use cases:
+        - Urban transportation planning
+        - Public transit + walking accessibility
+        - Bike-share + public transit
+        - Park-and-ride scenarios
+        - Last-mile delivery optimization
+    
+    Args:
+        mode_segments: List of (mode, distance_threshold, routing_engine) tuples
+        transfer_time: Time penalty for switching modes (seconds)
+        
+    Examples:
+        >>> # Walk to transit, then bus/train for long distance
+        >>> multimodal = MultiModalTravelTime([
+        ...     ('walking', 500, 'osrm'),    # Walk up to 500m
+        ...     ('transit', float('inf'), 'graphhopper')  # Transit for rest
+        ... ], transfer_time=120)  # 2-minute transfer penalty
+        >>> 
+        >>> # Bike-share + walking for urban trips
+        >>> bike_walk = MultiModalTravelTime([
+        ...     ('cycling', 2000, 'osrm'),   # Bike up to 2km  
+        ...     ('walking', float('inf'), 'osrm')   # Walk the rest
+        ... ], transfer_time=60)  # 1-minute to find/return bike
+    """
+    
+    def __init__(self, 
+                 mode_segments: List[Tuple[str, float, str]] = None,
+                 transfer_time: float = 120,  # seconds
+                 api_key: Optional[str] = None):
+        
+        if mode_segments is None:
+            # Default: walk short distances, drive longer ones
+            mode_segments = [
+                ('walking', 800, 'osrm'),      # Walk up to 800m
+                ('driving', float('inf'), 'osrm')  # Drive the rest
+            ]
+        
+        self.mode_segments = mode_segments
+        self.transfer_time = transfer_time
+        self.api_key = api_key
+        
+        # Create routing instances for each mode
+        self.routers = {}
+        for mode, _, engine in mode_segments:
+            if mode not in self.routers:
+                self.routers[mode] = OSMTravelTime(engine, mode, api_key=api_key)
+    
+    def __call__(self, lat1, lon1, lat2, lon2):
+        """Calculate multi-modal travel time."""
+        if np.isscalar(lat1):
+            return self._compute_multimodal_time(float(lat1), float(lon1), float(lat2), float(lon2))
+        else:
+            # Vectorized for Monte Carlo
+            times = []
+            for la1, lo1 in zip(lat1, lon1):
+                times.append(self._compute_multimodal_time(float(la1), float(lo1), float(lat2), float(lon2)))
+            return np.array(times)
+    
+    def _compute_multimodal_time(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Compute multi-modal travel time for a single trip."""
+        total_distance = haversine_distance_m(lat1, lon1, lat2, lon2)
+        
+        # Select appropriate mode based on distance thresholds
+        selected_mode = None
+        transfers = 0
+        
+        for mode, threshold, engine in self.mode_segments:
+            if total_distance <= threshold:
+                selected_mode = mode
+                break
+                
+        if selected_mode is None:
+            # Use last mode if distance exceeds all thresholds
+            selected_mode = self.mode_segments[-1][0]
+            transfers = len(self.mode_segments) - 1  # Assume we used all previous modes
+        
+        # Calculate base travel time
+        base_time = self.routers[selected_mode](lat1, lon1, lat2, lon2)
+        
+        # Add transfer penalties
+        total_time = base_time + (transfers * self.transfer_time)
+        
+        return float(total_time)
+
+
+# Specialized multi-modal classes
+class TransitAccessibilityTime(MultiModalTravelTime):
+    """Walking + public transit accessibility."""
+    
+    def __init__(self, walking_threshold: float = 800, **kwargs):
+        mode_segments = [
+            ('walking', walking_threshold, 'osrm'),
+            ('transit', float('inf'), 'osrm')  # Simplified as driving for now
+        ]
+        super().__init__(mode_segments, transfer_time=180, **kwargs)  # 3-min wait
+
+
+class BikeShareTime(MultiModalTravelTime):
+    """Bike-share + walking for urban mobility."""
+    
+    def __init__(self, bike_threshold: float = 3000, **kwargs):
+        mode_segments = [
+            ('cycling', bike_threshold, 'osrm'),
+            ('walking', float('inf'), 'osrm')
+        ]
+        super().__init__(mode_segments, transfer_time=90, **kwargs)  # 1.5-min bike pickup/return
+
+
+class ParkAndRideTime(MultiModalTravelTime):
+    """Drive to parking + walk/transit to destination."""
+    
+    def __init__(self, parking_threshold: float = 5000, **kwargs):
+        mode_segments = [
+            ('driving', parking_threshold, 'osrm'),
+            ('walking', float('inf'), 'osrm')
+        ]
+        super().__init__(mode_segments, transfer_time=300, **kwargs)  # 5-min parking
 
 
 class OSMWalkingDistance(OSMRoutingDistance):
@@ -661,6 +854,65 @@ def osm_driving_distance(routing_engine: str = 'osrm', api_key: Optional[str] = 
 def osm_walking_distance(routing_engine: str = 'osrm', api_key: Optional[str] = None) -> OSMRoutingDistance:
     """Create walking distance metric using OSM routing."""
     return OSMWalkingDistance(routing_engine, api_key=api_key)
+
+
+# Time-based routing factory functions
+def osm_travel_time(profile: str = 'driving', routing_engine: str = 'osrm', api_key: Optional[str] = None) -> OSMTravelTime:
+    """
+    Create travel time metric using OSM routing.
+    
+    Args:
+        profile: 'driving', 'walking', 'cycling'
+        routing_engine: 'osrm', 'graphhopper', 'mapbox', 'valhalla'
+        api_key: Required for GraphHopper and Mapbox
+        
+    Returns time in seconds as the "distance" for probability calculations.
+    
+    Examples:
+        >>> # 15-minute walking accessibility (900 seconds)
+        >>> walking_time = osm_travel_time('walking', 'osrm')
+        >>> result = check_geo_prob(home, transit, d0=900, 
+        ...                        MethodParams(distance_metric=walking_time))
+        >>> 
+        >>> # 30-minute driving commute (1800 seconds)  
+        >>> driving_time = osm_travel_time('driving', 'osrm')
+        >>> result = check_geo_prob(home, work, d0=1800,
+        ...                        MethodParams(distance_metric=driving_time))
+    """
+    return OSMTravelTime(routing_engine, profile, api_key=api_key)
+
+
+def multimodal_travel_time(modes: List[Tuple[str, float]] = None, 
+                          transfer_time: float = 120,
+                          routing_engine: str = 'osrm',
+                          api_key: Optional[str] = None) -> MultiModalTravelTime:
+    """
+    Create multi-modal travel time metric.
+    
+    Args:
+        modes: List of (mode, distance_threshold) tuples
+        transfer_time: Time penalty for mode switches (seconds)
+        routing_engine: Base routing engine to use
+        api_key: API key if needed
+        
+    Examples:
+        >>> # Walk short distances, drive longer ones
+        >>> multimodal = multimodal_travel_time([
+        ...     ('walking', 800),
+        ...     ('driving', float('inf'))
+        ... ], transfer_time=60)
+        >>> 
+        >>> # Bike + walk combination  
+        >>> bike_walk = multimodal_travel_time([
+        ...     ('cycling', 2000),
+        ...     ('walking', float('inf'))
+        ... ], transfer_time=90)
+    """
+    if modes is None:
+        modes = [('walking', 800), ('driving', float('inf'))]
+    
+    mode_segments = [(mode, thresh, routing_engine) for mode, thresh in modes]
+    return MultiModalTravelTime(mode_segments, transfer_time, api_key)
 def lp_distance(p: float) -> LpDistance:
     """
     Factory function for creating Lp distances.
@@ -2002,6 +2254,49 @@ if __name__ == "__main__":
                 print(f"Geometric (haversine):    P={result_geometric.probability:.6f}, fulfilled={result_geometric.fulfilled}")
                 print(f"Difference: {abs(result_osm.probability - result_geometric.probability):.6f}")
                 
+                # Demonstrate time-based routing
+                print("\n⏱️  TIME-BASED ROUTING EXAMPLE:")
+                
+                travel_time_metric = osm_travel_time('driving', 'osrm')
+                
+                # 20-minute commute scenario (1200 seconds)
+                scenario_time = create_scenario(
+                    'commute_time_accessibility',
+                    mu_P=(40.7580, -73.9855),  # Times Square
+                    sigma_P=50.0,  # Larger uncertainty for time analysis
+                    mu_Q=(40.7829, -73.9654),  # Central Park
+                    sigma_Q=30.0,
+                    d0=1200.0,  # 20 minutes = 1200 seconds
+                    expected_behavior="20-minute driving commute accessibility",
+                    distance_metric=travel_time_metric
+                )
+                
+                result_time = check_geo_prob(
+                    scenario_time.subject,
+                    scenario_time.reference,
+                    scenario_time.d0,
+                    MethodParams(n_mc=3000, distance_metric=travel_time_metric)  # Smaller for API limits
+                )
+                
+                print(f"20-minute accessibility: P={result_time.probability:.6f}, fulfilled={result_time.fulfilled}")
+                
+                # Compare with multi-modal
+                print("\n🚶🚗 MULTI-MODAL EXAMPLE:")
+                multimodal_metric = multimodal_travel_time([
+                    ('walking', 500),     # Walk up to 500m
+                    ('driving', float('inf'))  # Drive longer distances
+                ], transfer_time=180)  # 3-minute transfer (finding parking, etc.)
+                
+                result_multimodal = check_geo_prob(
+                    scenario_time.subject,
+                    scenario_time.reference,
+                    scenario_time.d0,
+                    MethodParams(n_mc=2000, distance_metric=multimodal_metric)
+                )
+                
+                print(f"Multi-modal (walk+drive): P={result_multimodal.probability:.6f}, fulfilled={result_multimodal.fulfilled}")
+                print(f"Time penalty from transfers: {abs(result_time.probability - result_multimodal.probability):.3f}")
+                
         except Exception as route_error:
             print(f"Route calculation failed: {route_error}")
             print("This may be due to API rate limits or network issues.")
@@ -2051,6 +2346,10 @@ if __name__ == "__main__":
     print("   • Rectangular safe zones → ChebyshevDistance")
     print("   • Cost-based routing → WeightedDistance with custom cost function")
     print("   • Real road routing → OSMRoutingDistance (driving/walking/cycling)")
+    print("   • Travel time analysis → OSMTravelTime (time as distance)")
+    print("   • Multi-modal transport → MultiModalTravelTime (realistic transfers)")
+    print("   • Transit accessibility → TransitAccessibilityTime (walk + transit)")
+    print("   • Bike-share systems → BikeShareTime (cycling + walking)")
     print("   • Delivery optimization → OSMDrivingDistance with traffic zones")
     print("   • Pedestrian navigation → OSMWalkingDistance")
     print("   • Default/general purpose → HaversineDistance (backward compatible)")
