@@ -474,29 +474,74 @@ class OSMRoutingDistance:
     
     def _setup_routing_service(self):
         """Configure the routing service URLs and parameters."""
-        if self.routing_engine == 'osrm':
-            # Free OSRM demo server (rate limited)
-            self.base_url = "http://router.project-osrm.org"
-            if self.profile not in ['driving', 'walking', 'cycling']:
-                raise ValueError(f"OSRM profile '{self.profile}' not supported. Use: driving, walking, cycling")
-                
-        elif self.routing_engine == 'graphhopper':
-            if not self.api_key:
-                raise ValueError("GraphHopper requires an API key. Get one at: https://www.graphhopper.com/")
-            self.base_url = "https://graphhopper.com/api/1"
-            
-        elif self.routing_engine == 'mapbox':
-            if not self.api_key:
-                raise ValueError("Mapbox requires an API key. Get one at: https://www.mapbox.com/")
-            self.base_url = "https://api.mapbox.com"
-            
-        elif self.routing_engine == 'valhalla':
-            # Use MapTiler's free Valhalla instance (rate limited)
-            self.base_url = "https://api.maptiler.com/routing"
-            
-        else:
+        routing_configs = {
+            'osrm': {
+                'url': "http://router.project-osrm.org",
+                'supported_profiles': ['driving', 'walking', 'cycling'],
+                'requires_key': False
+            },
+            'graphhopper': {
+                'url': "https://graphhopper.com/api/1",
+                'supported_profiles': None,  # Supports many profiles
+                'requires_key': True,
+                'signup_url': "https://www.graphhopper.com/"
+            },
+            'mapbox': {
+                'url': "https://api.mapbox.com",
+                'supported_profiles': None,
+                'requires_key': True,
+                'signup_url': "https://www.mapbox.com/"
+            },
+            'valhalla': {
+                'url': "https://api.maptiler.com/routing",
+                'supported_profiles': None,
+                'requires_key': False
+            }
+        }
+        
+        config = routing_configs.get(self.routing_engine)
+        if not config:
             raise ValueError(f"Unsupported routing engine: {self.routing_engine}")
+        
+        self.base_url = config['url']
+        
+        # Check API key requirements
+        if config['requires_key'] and not self.api_key:
+            signup_url = config.get('signup_url', 'the provider website')
+            raise ValueError(f"{self.routing_engine.title()} requires an API key. Get one at: {signup_url}")
+        
+        # Check profile support for OSRM
+        if config['supported_profiles'] and self.profile not in config['supported_profiles']:
+            supported = ', '.join(config['supported_profiles'])
+            raise ValueError(f"OSRM profile '{self.profile}' not supported. Use: {supported}")
     
+    def _get_fallback_result(self, lat1: float, lon1: float, lat2: float, lon2: float, error: Exception) -> float:
+        """Get fallback result when routing API fails."""
+        fallback_distance = haversine_distance_m(lat1, lon1, lat2, lon2)
+        if self.return_type == 'time':
+            speed_kmh = {'driving': 50, 'walking': 5, 'cycling': 15}.get(self.profile, 50)
+            fallback_time = (fallback_distance / 1000) / speed_kmh * 3600  # seconds
+            print(f"Warning: Routing API failed ({error}), falling back to estimated time")
+            return fallback_time
+        else:
+            print(f"Warning: Routing API failed ({error}), falling back to haversine")
+            return fallback_distance
+
+    def _route_by_engine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Route using the configured engine."""
+        routing_methods = {
+            'osrm': self._route_osrm,
+            'graphhopper': self._route_graphhopper,
+            'mapbox': self._route_mapbox,
+            'valhalla': self._route_valhalla
+        }
+        
+        method = routing_methods.get(self.routing_engine)
+        if method is None:
+            raise ValueError(f"Unsupported routing engine: {self.routing_engine}")
+        
+        return method(lat1, lon1, lat2, lon2)
+
     def _compute_route(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Compute route distance or time (cached)."""
         try:
@@ -513,27 +558,9 @@ class OSMRoutingDistance:
             return 0.0
         
         try:
-            if self.routing_engine == 'osrm':
-                return self._route_osrm(lat1, lon1, lat2, lon2)
-            elif self.routing_engine == 'graphhopper':
-                return self._route_graphhopper(lat1, lon1, lat2, lon2)
-            elif self.routing_engine == 'mapbox':
-                return self._route_mapbox(lat1, lon1, lat2, lon2)
-            elif self.routing_engine == 'valhalla':
-                return self._route_valhalla(lat1, lon1, lat2, lon2)
-                
+            return self._route_by_engine(lat1, lon1, lat2, lon2)
         except Exception as e:
-            # Fallback to haversine on API failure
-            fallback_distance = haversine_distance_m(lat1, lon1, lat2, lon2)
-            if self.return_type == 'time':
-                # Estimate time based on profile
-                speed_kmh = {'driving': 50, 'walking': 5, 'cycling': 15}.get(self.profile, 50)
-                fallback_time = (fallback_distance / 1000) / speed_kmh * 3600  # seconds
-                print(f"Warning: Routing API failed ({e}), falling back to estimated time")
-                return fallback_time
-            else:
-                print(f"Warning: Routing API failed ({e}), falling back to haversine")
-                return fallback_distance
+            return self._get_fallback_result(lat1, lon1, lat2, lon2, e)
     
     def _route_osrm(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Route via OSRM API."""
@@ -1216,6 +1243,130 @@ def _choose_method_heuristic(Sigma_X_m2: np.ndarray, delta_m: float,
 # MAIN API FUNCTION
 # ============================================================================
 
+def _convert_to_subject(subject_input: Union[Subject, Tuple[float, float], GeoPoint]) -> Subject:
+    """Convert various input types to Subject object."""
+    if isinstance(subject_input, Subject):
+        return subject_input
+    if isinstance(subject_input, GeoPoint):
+        return Subject(subject_input, Covariance2D(0.0))
+    if isinstance(subject_input, (tuple, list)):
+        if len(subject_input) == 3:
+            lat, lon, sigma = subject_input
+            return Subject(GeoPoint(lat, lon), Covariance2D(sigma))
+        elif len(subject_input) == 2:
+            return Subject(GeoPoint(*subject_input), Covariance2D(0.0))
+    return Subject(GeoPoint(*subject_input), Covariance2D(0.0))
+
+
+def _convert_to_reference(reference_input: Union[Reference, Tuple[float, float], GeoPoint]) -> Reference:
+    """Convert various input types to Reference object."""
+    if isinstance(reference_input, Reference):
+        return reference_input
+    if isinstance(reference_input, GeoPoint):
+        return Reference(reference_input, Covariance2D(0.0))
+    if isinstance(reference_input, (tuple, list)):
+        if len(reference_input) == 3:
+            lat, lon, sigma = reference_input
+            return Reference(GeoPoint(lat, lon), Covariance2D(sigma))
+        elif len(reference_input) == 2:
+            return Reference(GeoPoint(*reference_input), Covariance2D(0.0))
+    return Reference(GeoPoint(*reference_input), Covariance2D(0.0))
+
+
+def _validate_inputs(d0_meters: float, method_params: MethodParams) -> None:
+    """Validate input parameters."""
+    if d0_meters < 0:
+        raise ValueError("d0_meters must be non-negative")
+    if not 0 <= method_params.prob_threshold <= 1:
+        raise ValueError("prob_threshold must be in [0,1]")
+    if method_params.n_mc < 100:
+        raise ValueError("n_mc must be >= 100")
+
+
+def _handle_deterministic_case(
+    mu_P: np.ndarray, 
+    mu_Q: np.ndarray, 
+    d0_meters: float, 
+    prob_threshold: float, 
+    distance_metric: DistanceMetric
+) -> ProbabilityResult:
+    """Handle case where both points have no uncertainty."""
+    delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+    prob = 1.0 if delta <= d0_meters else 0.0
+    return ProbabilityResult(
+        fulfilled=(prob >= prob_threshold),
+        probability=float(prob),
+        method='deterministic',
+        mc_stderr=0.0,
+        n_samples=0,
+        cp_lower=float(prob),
+        cp_upper=float(prob),
+        sigma_cond=None,
+        max_std_m=0.0,
+        delta_m=float(delta),
+        decision_by='point_estimate'
+    )
+
+
+def _choose_computation_method(
+    mode: str,
+    is_isotropic: bool,
+    Sigma_X_m2: np.ndarray,
+    mu_P: np.ndarray,
+    mu_Q: np.ndarray,
+    distance_metric: DistanceMetric
+) -> str:
+    """Choose the appropriate computation method."""
+    if mode == 'auto':
+        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+        chosen, _ = _choose_method_heuristic(Sigma_X_m2, float(delta))
+        return 'analytic' if is_isotropic else chosen
+    return mode
+
+
+def _execute_computation(
+    method: str,
+    subject: Subject,
+    reference: Reference,
+    mu_P: np.ndarray,
+    mu_Q: np.ndarray,
+    Sigma_P_mat: np.ndarray,
+    Sigma_Q_mat: np.ndarray,
+    Sigma_X_m2: np.ndarray,
+    d0_meters: float,
+    method_params: MethodParams,
+    distance_metric: DistanceMetric,
+    is_isotropic: bool
+) -> ProbabilityResult:
+    """Execute the chosen computation method."""
+    if method == 'analytic':
+        if not is_isotropic:
+            raise ValueError("analytic mode requires both uncertainties to be isotropic")
+        sigma_P = subject.Sigma.max_std()
+        sigma_Q = reference.Sigma.max_std()
+        return _compute_analytic_rice(mu_P, mu_Q, sigma_P, sigma_Q, d0_meters, 
+                                      method_params.prob_threshold, distance_metric)
+    
+    if method == 'mc_ecef':
+        return _compute_mc_ecef(
+            mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, d0_meters,
+            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
+            method_params.random_state, method_params.conservative_decision,
+            method_params.use_antithetic, method_params.cp_alpha, distance_metric
+        )
+    
+    if method == 'mc_tangent':
+        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+        return _compute_mc_tangent(
+            mu_P, mu_Q, Sigma_X_m2, d0_meters,
+            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
+            method_params.random_state, method_params.conservative_decision, float(delta),
+            method_params.use_antithetic, method_params.cp_alpha, distance_metric
+        )
+    
+    raise ValueError(f"Unknown mode: {method}")
+
+
 def check_geo_prob(
     subject: Union[Subject, Tuple[float, float], GeoPoint],
     reference: Union[Reference, Tuple[float, float], GeoPoint],
@@ -1261,43 +1412,17 @@ def check_geo_prob(
         >>> result = check_geo_prob(subject, reference, d0=5000, params)
     """
     
+    # Initialize defaults and validate inputs
     if method_params is None:
         method_params = MethodParams()
     
-    # Get distance metric from params (defaults to haversine)
+    _validate_inputs(d0_meters, method_params)
+    
+    # Convert inputs to standard types
+    subject = _convert_to_subject(subject)
+    reference = _convert_to_reference(reference)
     distance_metric = method_params.get_distance_metric()
     
-    # Convert to Subject/Reference if needed
-    if not isinstance(subject, Subject):
-        if isinstance(subject, GeoPoint):
-            subject = Subject(subject, Covariance2D(0.0))
-        elif isinstance(subject, (tuple, list)) and len(subject) == 3:
-            lat, lon, sigma = subject
-            subject = Subject(GeoPoint(lat, lon), Covariance2D(sigma))
-        elif isinstance(subject, (tuple, list)) and len(subject) == 2:
-            subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
-        else:
-            subject = Subject(GeoPoint(*subject), Covariance2D(0.0))
-    
-    if not isinstance(reference, Reference):
-        if isinstance(reference, GeoPoint):
-            reference = Reference(reference, Covariance2D(0.0))
-        elif isinstance(reference, (tuple, list)) and len(reference) == 3:
-            lat, lon, sigma = reference
-            reference = Reference(GeoPoint(lat, lon), Covariance2D(sigma))
-        elif isinstance(reference, (tuple, list)) and len(reference) == 2:
-            reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
-        else:
-            reference = Reference(GeoPoint(*reference), Covariance2D(0.0))
-    
-    # Validate
-    if d0_meters < 0:
-        raise ValueError("d0_meters must be non-negative")
-    if not 0 <= method_params.prob_threshold <= 1:
-        raise ValueError("prob_threshold must be in [0,1]")
-    if method_params.n_mc < 100:
-        raise ValueError("n_mc must be >= 100")
-
     # Extract coordinates and uncertainties
     mu_P = np.array(subject.mu.to_tuple())
     mu_Q = np.array(reference.mu.to_tuple())
@@ -1305,65 +1430,19 @@ def check_geo_prob(
     Sigma_Q_mat = _ensure_psd(reference.Sigma.as_matrix())
     Sigma_X_m2 = Sigma_P_mat + Sigma_Q_mat
 
-    # Deterministic case
+    # Handle deterministic case (no uncertainty)
     if np.allclose(Sigma_X_m2, 0.0, atol=1e-14):
-        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
-        prob = 1.0 if delta <= d0_meters else 0.0
-        return ProbabilityResult(
-            fulfilled=(prob >= method_params.prob_threshold),
-            probability=float(prob),
-            method='deterministic',
-            mc_stderr=0.0,
-            n_samples=0,
-            cp_lower=float(prob),
-            cp_upper=float(prob),
-            sigma_cond=None,
-            max_std_m=0.0,
-            delta_m=float(delta),
-            decision_by='point_estimate'
-        )
+        return _handle_deterministic_case(mu_P, mu_Q, d0_meters, method_params.prob_threshold, distance_metric)
 
-    # Check if analytic method is available
+    # Choose computation method
     is_isotropic = subject.Sigma.is_isotropic() and reference.Sigma.is_isotropic()
-
-    if method_params.mode == 'auto':
-        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
-        chosen, diag = _choose_method_heuristic(Sigma_X_m2, float(delta))
-        if is_isotropic:
-            method_to_use = 'analytic'
-        else:
-            method_to_use = chosen
-        mode = method_to_use
-    else:
-        mode = method_params.mode
-
-    if mode == 'analytic':
-        if not is_isotropic:
-            raise ValueError("analytic mode requires both uncertainties to be isotropic")
-        
-        sigma_P = subject.Sigma.max_std()
-        sigma_Q = reference.Sigma.max_std()
-        return _compute_analytic_rice(mu_P, mu_Q, sigma_P, sigma_Q, d0_meters, 
-                                      method_params.prob_threshold, distance_metric)
-
-    if mode == 'mc_ecef':
-        return _compute_mc_ecef(
-            mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, d0_meters,
-            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
-            method_params.random_state, method_params.conservative_decision,
-            method_params.use_antithetic, method_params.cp_alpha, distance_metric
-        )
-
-    if mode == 'mc_tangent':
-        delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
-        return _compute_mc_tangent(
-            mu_P, mu_Q, Sigma_X_m2, d0_meters,
-            method_params.prob_threshold, method_params.n_mc, method_params.batch_size, 
-            method_params.random_state, method_params.conservative_decision, float(delta),
-            method_params.use_antithetic, method_params.cp_alpha, distance_metric
-        )
-
-    raise ValueError(f"Unknown mode: {mode}")
+    method = _choose_computation_method(method_params.mode, is_isotropic, Sigma_X_m2, mu_P, mu_Q, distance_metric)
+    
+    # Execute computation
+    return _execute_computation(
+        method, subject, reference, mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, Sigma_X_m2,
+        d0_meters, method_params, distance_metric, is_isotropic
+    )
 
 
 def _compute_analytic_rice(
@@ -1404,26 +1483,9 @@ def _compute_analytic_rice(
     )
 
 
-def _compute_mc_ecef(
-    mu_P: np.ndarray,
-    mu_Q: np.ndarray,
-    Sigma_P_mat: np.ndarray,
-    Sigma_Q_mat: np.ndarray,
-    d0_meters: float,
-    prob_threshold: float,
-    n_mc: int,
-    batch_size: int,
-    random_state: Optional[int],
-    conservative_decision: bool = True,
-    use_antithetic: bool = True,
-    cp_alpha: float = 0.05,
-    distance_metric: DistanceMetric = None
-) -> ProbabilityResult:
-    if distance_metric is None:
-        distance_metric = HaversineDistance()
-    
-    rng = np.random.default_rng(random_state)
-
+def _setup_ecef_transformations(mu_P: np.ndarray, mu_Q: np.ndarray, 
+                                Sigma_P_mat: np.ndarray, Sigma_Q_mat: np.ndarray) -> tuple:
+    """Set up ECEF coordinate transformations and covariance matrices."""
     mu_P_ecef = latlon_to_ecef(mu_P[0], mu_P[1])
     mu_Q_ecef = latlon_to_ecef(mu_Q[0], mu_Q[1])
 
@@ -1445,16 +1507,87 @@ def _compute_mc_ecef(
 
     mu_X_ecef = mu_P_ecef - mu_Q_ecef
     Sigma_X_ecef = _ensure_psd(Sigma_P_ecef + Sigma_Q_ecef)
+    
+    return mu_X_ecef, Sigma_X_ecef, mu_Q_ecef
 
-    # Diagnostics
+
+def _compute_ecef_diagnostics(mu_P: np.ndarray, mu_Q: np.ndarray, 
+                             Sigma_P_mat: np.ndarray, Sigma_Q_mat: np.ndarray,
+                             distance_metric: DistanceMetric) -> tuple:
+    """Compute diagnostic metrics for ECEF computation."""
     Sigma_X_m2 = Sigma_P_mat + Sigma_Q_mat
     eigs_m2 = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
     max_std = float(np.sqrt(eigs_m2.max()))
+    
     try:
         cond = float(np.linalg.cond(Sigma_X_m2))
     except Exception:
         cond = float('inf')
+    
     delta = distance_metric(mu_P[0], mu_P[1], mu_Q[0], mu_Q[1])
+    return max_std, cond, delta
+
+
+def _generate_ecef_samples(rng, L: np.ndarray, mu_X_ecef: np.ndarray, 
+                          n_batch: int, use_antithetic: bool) -> np.ndarray:
+    """Generate ECEF samples using normal distribution."""
+    if use_antithetic and n_batch > 1:
+        # Adjust batch size for antithetic pairs
+        if n_batch % 2 == 1:
+            n_batch -= 1
+
+        half = max(1, n_batch // 2)
+        z = rng.standard_normal((3, half))
+        z_pair = np.concatenate([z, -z], axis=1)
+        samples_X_ecef = (L @ z_pair).T + mu_X_ecef
+        
+        # Handle odd remainder
+        if n_batch < len(z_pair[0]) * 2:
+            z_last = rng.standard_normal((3, 1))
+            samples_last = (L @ z_last).T + mu_X_ecef
+            samples_X_ecef = np.vstack([samples_X_ecef, samples_last])
+    else:
+        z = rng.standard_normal((3, n_batch))
+        samples_X_ecef = (L @ z).T + mu_X_ecef
+    
+    return samples_X_ecef
+
+
+def _ecef_to_latlon_batch(P_ecef: np.ndarray) -> tuple:
+    """Convert batch of ECEF coordinates to lat/lon."""
+    x, y, zc = P_ecef[:, 0], P_ecef[:, 1], P_ecef[:, 2]
+    r = np.sqrt(x * x + y * y + zc * zc)
+    lat_samples = np.rad2deg(np.arcsin(np.clip(zc / r, -1.0, 1.0)))
+    lon_samples = np.rad2deg(np.arctan2(y, x))
+    return lat_samples, lon_samples
+
+
+def _compute_mc_ecef(
+    mu_P: np.ndarray,
+    mu_Q: np.ndarray,
+    Sigma_P_mat: np.ndarray,
+    Sigma_Q_mat: np.ndarray,
+    d0_meters: float,
+    prob_threshold: float,
+    n_mc: int,
+    batch_size: int,
+    random_state: Optional[int],
+    conservative_decision: bool = True,
+    use_antithetic: bool = True,
+    cp_alpha: float = 0.05,
+    distance_metric: DistanceMetric = None
+) -> ProbabilityResult:
+    """Monte Carlo sampling in ECEF coordinates."""
+    if distance_metric is None:
+        distance_metric = HaversineDistance()
+    
+    rng = np.random.default_rng(random_state)
+    
+    # Set up coordinate transformations
+    mu_X_ecef, Sigma_X_ecef, mu_Q_ecef = _setup_ecef_transformations(mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat)
+    
+    # Compute diagnostics
+    max_std, cond, delta = _compute_ecef_diagnostics(mu_P, mu_Q, Sigma_P_mat, Sigma_Q_mat, distance_metric)
 
     # Cholesky for sampling
     Sigma_for_chol = Sigma_X_ecef.copy()
@@ -1468,37 +1601,24 @@ def _compute_mc_ecef(
     total = 0
     n_remaining = n_mc
 
+    # Monte Carlo sampling loop
     while n_remaining > 0:
         n_batch = min(batch_size, n_remaining)
-        if use_antithetic:
-            if n_batch % 2 == 1 and n_batch > 1:
-                n_batch -= 1
-
-            half = max(1, n_batch // 2)
-            z = rng.standard_normal((3, half))
-            z_pair = np.concatenate([z, -z], axis=1)
-            samples_X_ecef = (L @ z_pair).T + mu_X_ecef
-            
-            if (min(batch_size, n_remaining) % 2 == 1) and (n_remaining >= 1):
-                z_last = rng.standard_normal((3, 1))
-                samples_last = (L @ z_last).T + mu_X_ecef
-                samples_X_ecef = np.vstack([samples_X_ecef, samples_last])
-        else:
-            z = rng.standard_normal((3, n_batch))
-            samples_X_ecef = (L @ z).T + mu_X_ecef
-
+        
+        # Generate samples
+        samples_X_ecef = _generate_ecef_samples(rng, L, mu_X_ecef, n_batch, use_antithetic)
         P_ecef = mu_Q_ecef + samples_X_ecef
 
-        x, y, zc = P_ecef[:, 0], P_ecef[:, 1], P_ecef[:, 2]
-        r = np.sqrt(x * x + y * y + zc * zc)
-        lat_samples = np.rad2deg(np.arcsin(np.clip(zc / r, -1.0, 1.0)))
-        lon_samples = np.rad2deg(np.arctan2(y, x))
+        # Convert to lat/lon
+        lat_samples, lon_samples = _ecef_to_latlon_batch(P_ecef)
 
+        # Compute distances and count
         dists = distance_metric(lat_samples, lon_samples, mu_Q[0], mu_Q[1])
         count_inside += int(np.count_nonzero(dists <= d0_meters))
         total += samples_X_ecef.shape[0]
         n_remaining -= samples_X_ecef.shape[0]
 
+    # Calculate final results
     prob = count_inside / total
     mc_stderr = float(np.sqrt(prob * (1 - prob) / total)) if total > 0 else None
     cp_l, cp_u = clopper_pearson(count_inside, total, alpha=cp_alpha)
@@ -1525,6 +1645,52 @@ def _compute_mc_ecef(
     )
 
 
+def _setup_tangent_plane_sampling(mu_P: np.ndarray, mu_Q: np.ndarray, 
+                                  Sigma_X_m2: np.ndarray) -> tuple:
+    """Set up tangent plane coordinate system for sampling."""
+    lat_center = (mu_P[0] + mu_Q[0]) / 2.0
+    scale_to_deg = enu_to_radians_scale(lat_center)
+    Sigma_X_deg2 = _ensure_psd(scale_to_deg @ Sigma_X_m2 @ scale_to_deg.T)
+    mu_X_deg = np.array(mu_P) - np.array(mu_Q)
+    return Sigma_X_deg2, mu_X_deg
+
+
+def _compute_tangent_diagnostics(Sigma_X_m2: np.ndarray) -> tuple:
+    """Compute diagnostic metrics for tangent plane computation."""
+    eigs = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
+    max_std = float(np.sqrt(eigs.max()))
+    
+    try:
+        cond = float(np.linalg.cond(Sigma_X_m2))
+    except Exception:
+        cond = float('inf')
+    
+    return max_std, cond
+
+
+def _generate_tangent_samples(rng, L2: np.ndarray, mu_X_deg: np.ndarray,
+                             n_batch: int, use_antithetic: bool) -> np.ndarray:
+    """Generate samples in tangent plane coordinates."""
+    if use_antithetic and n_batch > 1:
+        if n_batch % 2 == 1:
+            n_batch -= 1
+        half = max(1, n_batch // 2)
+        z = rng.standard_normal((2, half))
+        z_pair = np.concatenate([z, -z], axis=1)
+        samples_X_deg = (L2 @ z_pair).T + mu_X_deg
+        
+        # Handle odd remainder
+        if n_batch < len(z_pair[0]) * 2:
+            z_last = rng.standard_normal((2, 1))
+            samples_last = (L2 @ z_last).T + mu_X_deg
+            samples_X_deg = np.vstack([samples_X_deg, samples_last])
+    else:
+        z = rng.standard_normal((2, n_batch))
+        samples_X_deg = (L2 @ z).T + mu_X_deg
+    
+    return samples_X_deg
+
+
 def _compute_mc_tangent(
     mu_P: np.ndarray,
     mu_Q: np.ndarray,
@@ -1540,24 +1706,19 @@ def _compute_mc_tangent(
     cp_alpha: float = 0.05,
     distance_metric: DistanceMetric = None
 ) -> ProbabilityResult:
+    """Monte Carlo sampling in tangent plane coordinates."""
     if distance_metric is None:
         distance_metric = HaversineDistance()
     
     rng = np.random.default_rng(random_state)
+    
+    # Set up tangent plane sampling
+    Sigma_X_deg2, mu_X_deg = _setup_tangent_plane_sampling(mu_P, mu_Q, Sigma_X_m2)
+    
+    # Compute diagnostics
+    max_std, cond = _compute_tangent_diagnostics(Sigma_X_m2)
 
-    lat_center = (mu_P[0] + mu_Q[0]) / 2.0
-    scale_to_deg = enu_to_radians_scale(lat_center)
-    Sigma_X_deg2 = _ensure_psd(scale_to_deg @ Sigma_X_m2 @ scale_to_deg.T)
-
-    # Diagnostics
-    eigs = np.clip(np.linalg.eigvalsh(Sigma_X_m2), a_min=0.0, a_max=None)
-    max_std = float(np.sqrt(eigs.max()))
-    try:
-        cond = float(np.linalg.cond(Sigma_X_m2))
-    except Exception:
-        cond = float('inf')
-
-    # Cholesky
+    # Cholesky decomposition for sampling
     Sigma_for_chol = Sigma_X_deg2.copy()
     try:
         L2 = np.linalg.cholesky(Sigma_for_chol)
@@ -1565,36 +1726,25 @@ def _compute_mc_tangent(
         Sigma_for_chol = _add_jitter(Sigma_for_chol, rel=1e-10)
         L2 = np.linalg.cholesky(Sigma_for_chol)
 
-    mu_X_deg = np.array(mu_P) - np.array(mu_Q)
-
     count_inside = 0
     total = 0
     n_remaining = n_mc
 
+    # Monte Carlo sampling loop
     while n_remaining > 0:
         n_batch = min(batch_size, n_remaining)
-        if use_antithetic:
-            if n_batch % 2 == 1 and n_batch > 1:
-                n_batch -= 1
-            half = max(1, n_batch // 2)
-            z = rng.standard_normal((2, half))
-            z_pair = np.concatenate([z, -z], axis=1)
-            samples_X_deg = (L2 @ z_pair).T + mu_X_deg
-            if (min(batch_size, n_remaining) % 2 == 1) and (n_remaining >= 1):
-                z_last = rng.standard_normal((2, 1))
-                samples_last = (L2 @ z_last).T + mu_X_deg
-                samples_X_deg = np.vstack([samples_X_deg, samples_last])
-        else:
-            z = rng.standard_normal((2, n_batch))
-            samples_X_deg = (L2 @ z).T + mu_X_deg
-
+        
+        # Generate samples in tangent plane
+        samples_X_deg = _generate_tangent_samples(rng, L2, mu_X_deg, n_batch, use_antithetic)
         samples_P = np.asarray(mu_Q) + samples_X_deg
 
+        # Compute distances and count
         dists = distance_metric(samples_P[:, 0], samples_P[:, 1], mu_Q[0], mu_Q[1])
         count_inside += int(np.count_nonzero(dists <= d0_meters))
         total += samples_P.shape[0]
         n_remaining -= samples_P.shape[0]
 
+    # Calculate final results
     prob = count_inside / total
     mc_stderr = float(np.sqrt(prob * (1 - prob) / total))
     cp_l, cp_u = clopper_pearson(count_inside, total, alpha=cp_alpha)
@@ -1636,6 +1786,88 @@ class PerformanceProfiler:
         elapsed = time.perf_counter() - start
         return elapsed, out
 
+    def _run_analytic_test(self, scenario: Scenario, seed: int) -> tuple:
+        """Run analytic test for a scenario."""
+        t_start = time.perf_counter()
+        analytic_params = MethodParams(mode='analytic', distance_metric=scenario.method_params.distance_metric)
+        res_analytic = check_geo_prob(scenario.subject, scenario.reference, scenario.d0, analytic_params)
+        t_elapsed = time.perf_counter() - t_start
+        return res_analytic.probability, t_elapsed
+
+    def _run_monte_carlo_test(self, scenario: Scenario, mode: str, seed: int) -> tuple:
+        """Run Monte Carlo test (ecef or tangent) for a scenario."""
+        n_mc = scenario.method_params.n_mc
+        batch_size = scenario.method_params.batch_size
+        
+        t_start = time.perf_counter()
+        mc_params = MethodParams(
+            mode=mode,
+            n_mc=n_mc,
+            batch_size=batch_size,
+            random_state=seed,
+            distance_metric=scenario.method_params.distance_metric
+        )
+        result = check_geo_prob(scenario.subject, scenario.reference, scenario.d0, mc_params)
+        t_elapsed = time.perf_counter() - t_start
+        
+        stderr = result.mc_stderr if result.mc_stderr is not None else 0.0
+        n_samples = result.n_samples if result.n_samples is not None else n_mc
+        
+        return result.probability, t_elapsed, stderr, n_samples
+
+    def _initialize_accumulator(self):
+        """Initialize result accumulator for test batch."""
+        return {
+            'analytic': {'probs': [], 'times': []},
+            'mc_ecef': {'probs': [], 'times': [], 'stderrs': [], 'n_samples': []},
+            'mc_tangent': {'probs': [], 'times': [], 'stderrs': [], 'n_samples': []}
+        }
+
+    def _accumulate_results(self, acc: dict, mode: str, prob: float, time_elapsed: float, 
+                           stderr: float = None, n_samples: int = None):
+        """Accumulate results for a specific mode."""
+        acc[mode]['probs'].append(prob)
+        acc[mode]['times'].append(time_elapsed)
+        if stderr is not None:
+            acc[mode]['stderrs'].append(stderr)
+        if n_samples is not None:
+            acc[mode]['n_samples'].append(n_samples)
+
+    def _create_scenario_summary(self, scenario: Scenario, acc: dict, has_analytic: bool) -> dict:
+        """Create summary statistics for a scenario."""
+        summary = {
+            'name': scenario.name, 
+            'd0': scenario.d0, 
+            'n_mc': scenario.method_params.n_mc
+        }
+        
+        # Analytic results
+        if has_analytic:
+            a_probs = np.array(acc['analytic']['probs'])
+            a_times = np.array(acc['analytic']['times'])
+            summary.update({
+                'analytic_prob_mean': float(a_probs.mean()),
+                'analytic_time_ms': float(a_times.mean() * 1000)
+            })
+        else:
+            summary.update({'analytic_prob_mean': None, 'analytic_time_ms': None})
+
+        # Monte Carlo results
+        for method in ('mc_ecef', 'mc_tangent'):
+            probs = np.array(acc[method]['probs'])
+            times = np.array(acc[method]['times'])
+            stderrs = np.array(acc[method]['stderrs'])
+            n_samples_arr = np.array(acc[method]['n_samples'])
+            summary.update({
+                f'{method}_prob_mean': float(probs.mean()),
+                f'{method}_prob_std': float(probs.std()),
+                f'{method}_time_ms': float(times.mean() * 1000),
+                f'{method}_mc_stderr_mean': float(stderrs.mean()),
+                f'{method}_n_samples_mean': int(n_samples_arr.mean())
+            })
+        
+        return summary
+
     def test_batch(self,
                         scenarios: List[Scenario],
                         n_repeats: int = 3,
@@ -1644,93 +1876,37 @@ class PerformanceProfiler:
                         rng_base_seed: int = 12345) -> List[Dict]:
         """Run fair test batch with structured Scenarios."""
         results = []
-        for s_idx, sc in enumerate(scenarios):
-            name = sc.name
-            n_mc = sc.method_params.n_mc
-            batch_size = sc.method_params.batch_size
-
-            acc = {
-                'analytic': {'probs': [], 'times': []},
-                'mc_ecef': {'probs': [], 'times': [], 'stderrs': [], 'n_samples': []},
-                'mc_tangent': {'probs': [], 'times': [], 'stderrs': [], 'n_samples': []}
-            }
-
-            has_analytic = sc.sigma_P_scalar is not None and sc.sigma_Q_scalar is not None
+        
+        for s_idx, scenario in enumerate(scenarios):
+            acc = self._initialize_accumulator()
+            has_analytic = scenario.sigma_P_scalar is not None and scenario.sigma_Q_scalar is not None
 
             if self.verbose:
-                print(f"TEST CASE: {name} — d0={sc.d0} m, n_mc={n_mc} (repeats={n_repeats})")
-                if sc.expected_behavior:
-                    print(f"Expected: {sc.expected_behavior}")
+                print(f"TEST CASE: {scenario.name} — d0={scenario.d0} m, n_mc={scenario.method_params.n_mc} (repeats={n_repeats})")
+                if scenario.expected_behavior:
+                    print(f"Expected: {scenario.expected_behavior}")
 
             for r in range(n_repeats):
                 seed = rng_base_seed + 1000 * s_idx + r
 
+                # Run analytic test if possible
                 if has_analytic:
-                    t_start = time.perf_counter()
-                    analytic_params = MethodParams(mode='analytic', distance_metric=sc.method_params.distance_metric)
-                    res_analytic = check_geo_prob(sc.subject, sc.reference, sc.d0, analytic_params)
-                    t_elapsed = time.perf_counter() - t_start
-                    acc['analytic']['probs'].append(res_analytic.probability)
-                    acc['analytic']['times'].append(t_elapsed)
+                    prob, time_elapsed = self._run_analytic_test(scenario, seed)
+                    self._accumulate_results(acc, 'analytic', prob, time_elapsed)
 
-                t_start = time.perf_counter()
-                mc_params = MethodParams(
-                    mode='mc_ecef',
-                    n_mc=n_mc,
-                    batch_size=batch_size,
-                    random_state=seed,
-                    distance_metric=sc.method_params.distance_metric
-                )
-                res_ecef = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
-                t_elapsed = time.perf_counter() - t_start
-                acc['mc_ecef']['probs'].append(res_ecef.probability)
-                acc['mc_ecef']['times'].append(t_elapsed)
-                acc['mc_ecef']['stderrs'].append(res_ecef.mc_stderr if res_ecef.mc_stderr is not None else 0.0)
-                acc['mc_ecef']['n_samples'].append(res_ecef.n_samples if res_ecef.n_samples is not None else n_mc)
+                # Run Monte Carlo ECEF test
+                prob, time_elapsed, stderr, n_samples = self._run_monte_carlo_test(scenario, 'mc_ecef', seed)
+                self._accumulate_results(acc, 'mc_ecef', prob, time_elapsed, stderr, n_samples)
                 
                 if self.verbose:
-                    print(f"    mc_ecef run {r}: P={res_ecef.probability:.6f}, cp_lower={res_ecef.cp_lower:.6f}, time={t_elapsed*1000:.1f} ms")
+                    print(f"    mc_ecef run {r}: P={prob:.6f}, time={time_elapsed*1000:.1f} ms")
 
-                t_start = time.perf_counter()
-                mc_params = MethodParams(
-                    mode='mc_tangent',
-                    n_mc=n_mc,
-                    batch_size=batch_size,
-                    random_state=seed,
-                    distance_metric=sc.method_params.distance_metric
-                )
-                res_tangent = check_geo_prob(sc.subject, sc.reference, sc.d0, mc_params)
-                t_elapsed = time.perf_counter() - t_start
-                acc['mc_tangent']['probs'].append(res_tangent.probability)
-                acc['mc_tangent']['times'].append(t_elapsed)
-                acc['mc_tangent']['stderrs'].append(res_tangent.mc_stderr if res_tangent.mc_stderr is not None else 0.0)
-                acc['mc_tangent']['n_samples'].append(res_tangent.n_samples if res_tangent.n_samples is not None else n_mc)
+                # Run Monte Carlo tangent test
+                prob, time_elapsed, stderr, n_samples = self._run_monte_carlo_test(scenario, 'mc_tangent', seed)
+                self._accumulate_results(acc, 'mc_tangent', prob, time_elapsed, stderr, n_samples)
 
-            # Summarize
-            summary = {'name': name, 'd0': sc.d0, 'n_mc': n_mc}
-            if has_analytic:
-                a_probs = np.array(acc['analytic']['probs'])
-                a_times = np.array(acc['analytic']['times'])
-                summary.update({
-                    'analytic_prob_mean': float(a_probs.mean()),
-                    'analytic_time_ms': float(a_times.mean() * 1000)
-                })
-            else:
-                summary.update({'analytic_prob_mean': None, 'analytic_time_ms': None})
-
-            for m in ('mc_ecef', 'mc_tangent'):
-                probs = np.array(acc[m]['probs'])
-                times = np.array(acc[m]['times'])
-                stderrs = np.array(acc[m]['stderrs'])
-                n_samples_arr = np.array(acc[m]['n_samples'])
-                summary.update({
-                    f'{m}_prob_mean': float(probs.mean()),
-                    f'{m}_prob_std': float(probs.std()),
-                    f'{m}_time_ms': float(times.mean() * 1000),
-                    f'{m}_mc_stderr_mean': float(stderrs.mean()),
-                    f'{m}_n_samples_mean': int(n_samples_arr.mean())
-                })
-            
+            # Create summary
+            summary = self._create_scenario_summary(scenario, acc, has_analytic)
             self.results.append(summary)
             results.append(summary)
         
