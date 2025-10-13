@@ -61,7 +61,7 @@
 - ❌ **Debounce Processing** - Consolidate rapid user inputs into single operations
 - ❌ **Memory Write Isolation** - Outbox/Saga patterns for consistent memory state
 
-### HIL Meta-Workflow System (From docs/hil_metaworkflow.md)
+### HIL Meta-Workflow System (See implementation_guideline.md "Human-in-the-Loop (HIL) Meta-Workflow" section)
 - ❌ **HIL Database Schema** - `conversations`, `human_agents`, `handover_events`, `agent_queue`, `conversation_analytics` tables
 - ❌ **HIL Orchestrator** (`app/services/hil_orchestrator.py`) - Complete conversation state management with 7 states
 - ❌ **Queue Manager** (`app/services/queue_manager.py`) - Skills-based agent assignment with load balancing
@@ -261,7 +261,7 @@ class ContextWindowManager:
 
 ---
 
-## 🔗 HIL Integration Status (From docs/hil_metaworkflow.md)
+## 🔗 HIL Integration Status (See implementation_guideline.md "Human-in-the-Loop (HIL) Meta-Workflow" section)
 
 ### ✅ Conceptually Integrated:
 - Two-layer architecture (Meta-workflow + Agentic)

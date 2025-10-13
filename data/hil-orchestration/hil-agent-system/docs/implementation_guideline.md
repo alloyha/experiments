@@ -17,13 +17,14 @@
 6. [Memory & Context Management](#memory--context-management)
 7. [LLM Routing & Cost Optimization](#llm-routing--cost-optimization)
 8. [Security & Sandboxing](#security--sandboxing)
-9. [Observability & Monitoring](#observability--monitoring)
-10. [Database Schema](#database-schema)
-11. [Implementation Guide](#implementation-guide)
-12. [API Documentation](#api-documentation)
-13. [Cost Analysis](#cost-analysis)
-14. [Production Deployment](#production-deployment)
-15. [Build vs Buy Analysis](#build-vs-buy-analysis)
+9. [Human-in-the-Loop (HIL) Meta-Workflow](#human-in-the-loop-hil-meta-workflow)
+10. [Observability & Monitoring](#observability--monitoring)
+11. [Database Schema](#database-schema)
+12. [Implementation Guide](#implementation-guide)
+13. [API Documentation](#api-documentation)
+14. [Cost Analysis](#cost-analysis)
+15. [Production Deployment](#production-deployment)
+16. [Build vs Buy Analysis](#build-vs-buy-analysis)
 
 ---
 
@@ -1352,7 +1353,222 @@ ENCRYPTION_KEY = Fernet.generate_key()  # Store securely!
 
 ---
 
-## 📊 Observability & Monitoring
+## � Human-in-the-Loop (HIL) Meta-Workflow
+
+The HIL system functions as a meta-workflow layer above the agentic workflows, providing seamless transitions between autonomous AI agents and human agents when needed.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    🎯 HIL Meta-Workflow Layer                   │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Conversation Orchestrator (with is_hil flag)             │  │
+│  │                                                            │  │
+│  │  if is_hil == false:                                       │  │
+│  │    ├──> Execute Agent Workflow                            │  │
+│  │    └──> Route to sink based on agent decision:            │  │
+│  │         ├──> FINISH (conversation complete)               │  │
+│  │         └──> HANDOVER (escalate to human)                 │  │
+│  │                                                            │  │
+│  │  if is_hil == true:                                        │  │
+│  │    ├──> Route to Human Agent Queue                        │  │
+│  │    ├──> Wait for human response                           │  │
+│  │    └──> Update conversation state                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+         ┌────────────────────────────────────┐
+         │   🤖 Agentic Workflow Layer        │
+         │                                     │
+         │   Agent Workflow Execution          │
+         │   ├── Classify Intent               │
+         │   ├── Process Request               │
+         │   ├── Evaluate Confidence           │
+         │   └── Decision:                     │
+         │       ├── FINISH (success)          │
+         │       └── HANDOVER (need human)     │
+         └────────────────────────────────────┘
+```
+
+### Conversation State Machine
+
+```
+┌──────────────┐
+│   NEW        │  Conversation created
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ AI_PROCESSING│  is_hil=false, agent workflow executing
+└──────┬───────┘
+       │
+       ├─────────────────┐
+       │                 │
+       ▼                 ▼
+┌──────────────┐   ┌──────────────┐
+│  FINISHED    │   │ HANDOVER     │  Agent requests human
+└──────────────┘   └──────┬───────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │ PENDING_HUMAN│  is_hil=true
+                   └──────┬───────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │ HUMAN_ACTIVE │  Human agent assigned
+                   └──────┬───────┘
+                          │
+                          ├─────────────────┐
+                          │                 │
+                          ▼                 ▼
+                   ┌──────────────┐   ┌──────────────┐
+                   │  RESOLVED    │   │ BACK_TO_AI   │  Human re-routes to AI
+                   └──────────────┘   └──────┬───────┘
+                                             │
+                                             └──> Back to AI_PROCESSING
+```
+
+### HIL Database Schema
+
+```sql
+-- Conversations (Extended)
+ALTER TABLE conversations ADD COLUMN is_hil BOOLEAN DEFAULT false;
+ALTER TABLE conversations ADD COLUMN hil_reason TEXT;
+ALTER TABLE conversations ADD COLUMN assigned_agent_id UUID REFERENCES human_agents(id);
+ALTER TABLE conversations ADD COLUMN handover_context JSONB;
+ALTER TABLE conversations ADD COLUMN confidence_score FLOAT;
+
+-- Human Agents
+CREATE TABLE human_agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK (status IN ('online', 'away', 'offline')),
+  skills TEXT[] DEFAULT '{}',  -- e.g., ['returns', 'technical', 'billing']
+  current_load INT DEFAULT 0,
+  max_capacity INT DEFAULT 5,
+  last_active TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### Agent Workflow with HIL Sink Nodes
+
+```yaml
+# config/workflows/customer_support_hil.yaml
+
+name: customer_support_hil
+version: 2.0.0
+
+# HIL Configuration
+hil_config:
+  enabled: true
+  handover_triggers:
+    - type: confidence_threshold
+      threshold: 0.7  # Handover if confidence < 70%
+    - type: explicit_request
+      patterns: ["speak to human", "talk to agent", "escalate"]
+    - type: agent_decision
+    - type: error_threshold
+      consecutive_errors: 3
+
+workflow:
+  nodes:
+    # ===== SINK: Finish (Success) =====
+    - id: FINISH
+      type: sink
+      action: finish_conversation
+    
+    # ===== SINK: Handover to Human =====
+    - id: HANDOVER
+      type: sink
+      action: handover_to_human
+      config:
+        required_skills: |
+          {% if classify_intent.intent == 'return_request' %}['returns']
+          {% elif classify_intent.intent == 'technical_issue' %}['technical']
+          {% else %}['general']
+          {% endif %}
+```
+
+### HIL Orchestration Service
+
+```python
+# app/services/hil_orchestrator.py
+
+class ConversationStatus(str, Enum):
+    NEW = "new"
+    AI_PROCESSING = "ai_processing"
+    FINISHED = "finished"
+    HANDOVER = "handover"
+    PENDING_HUMAN = "pending_human"
+    HUMAN_ACTIVE = "human_active"
+    RESOLVED = "resolved"
+    BACK_TO_AI = "back_to_ai"
+
+class HILOrchestrator:
+    """
+    Meta-orchestrator for Human-in-the-Loop workflows.
+    Manages conversation state and routing between AI and humans.
+    """
+    
+    async def handle_message(
+        self,
+        conversation_id: str,
+        message: str,
+        sender_type: str = "user"
+    ) -> Dict[str, Any]:
+        # Route based on state (is_hil flag)
+        if conversation["is_hil"]:
+            return await self._handle_human_conversation(conversation_id, message, sender_type)
+        else:
+            return await self._handle_ai_conversation(conversation_id, message)
+```
+
+### Provider API Key Security
+
+When integrating LLM providers (OpenAI, Anthropic, etc.), it's crucial to implement a secure approach for API keys:
+
+1. **Consumer-Based API Keys**: Rather than using a centralized API key for all operations, implement a system where consumers (clients) provide their own API keys. This approach:
+   - Ensures costs are properly attributed to each consumer
+   - Prevents cross-consumer rate limit issues
+   - Reduces centralized security risk
+   - Eliminates the need to manage billing across consumers
+
+2. **Key Management Implementation**:
+   ```python
+   # app/services/llm_router.py
+   
+   class LLMRouter:
+       async def route_request(self, request: LLMRequest) -> LLMResponse:
+           # Extract consumer API key from request context
+           api_key = request.context.get("api_key")
+           
+           if not api_key:
+               raise SecurityError("Missing API key. Consumer must provide their own key.")
+               
+           # Use consumer-provided key for the API call
+           provider = self._select_provider(request)
+           return await provider.complete(
+               prompt=request.prompt, 
+               api_key=api_key  # Pass consumer key to provider
+           )
+   ```
+
+3. **Benefits**:
+   - No need to store sensitive API keys in your system
+   - Clear cost attribution for each consumer
+   - Simplified billing and accounting
+   - Enhanced security with reduced central key exposure
+
+> **Note**: For detailed implementation of secure OAuth token management and storage for third-party service integration (Shopify, Gmail, etc.), see `keys_security_guideline.md` which contains comprehensive security practices including token encryption, rotation, and OAuth 2.0 flow implementation.
+
+---
+
+## �📊 Observability & Monitoring
 
 ### Metrics Stack
 

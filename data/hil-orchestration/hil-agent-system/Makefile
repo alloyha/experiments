@@ -164,7 +164,34 @@ docker-run: ## Run Docker container
 
 docker-compose: ## Start with docker-compose
 	@echo "$(BLUE)Starting with docker-compose...$(NC)"
-	docker-compose up -d
+	docker compose up -d
+
+docker-compose-dev: ## Start in development mode with logs
+	@echo "$(BLUE)Starting development environment with docker-compose...$(NC)"
+	docker compose up --build
+
+docker-compose-prod: ## Start in production mode
+	@echo "$(BLUE)Starting production environment...$(NC)"
+	docker compose -f docker-compose.yml up -d --build
+
+docker-compose-logs: ## Show docker-compose logs
+	@echo "$(BLUE)Showing docker-compose logs...$(NC)"
+	docker compose logs -f
+
+docker-compose-down: ## Stop docker-compose services
+	@echo "$(BLUE)Stopping docker-compose services...$(NC)"
+	docker compose down
+
+docker-compose-reset: ## Reset docker-compose (stop, remove volumes, restart)
+	@echo "$(RED)WARNING: This will delete all data!$(NC)"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose down -v; \
+		docker compose up -d --build; \
+		echo "$(GREEN)✓ Docker environment reset$(NC)"; \
+	else \
+		echo "$(YELLOW)Reset cancelled$(NC)"; \
+	fi
 
 # Documentation targets
 docs: ## Generate documentation

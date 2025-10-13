@@ -1,5 +1,15 @@
 version: '3.8'
 
+# HIL Agent System - Docker Compose Configuration
+# 
+# This configuration is designed to work with the .env file for local development.
+# Key features:
+# - Automatically loads .env file for all services
+# - Overrides localhost URLs with Docker service names for internal communication
+# - Includes health checks and proper dependency management
+# - Provides comprehensive logging and monitoring stack
+# - Supports both development and production workflows
+
 services:
   # PostgreSQL with pgvector extension
   postgres:
@@ -39,10 +49,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
+      # Override localhost URLs with Docker service names
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/hil_agent_system
       - REDIS_URL=redis://redis:6379
-      - ENVIRONMENT=development
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock  # For code agent sandboxing
@@ -56,6 +70,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     restart: unless-stopped
 
   # Celery worker for background tasks
@@ -64,12 +79,14 @@ services:
       context: .
       dockerfile: Dockerfile
     command: celery -A app.core.celery worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
     environment:
+      # Override localhost URLs with Docker service names
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/hil_agent_system
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - ENVIRONMENT=development
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock
@@ -86,12 +103,14 @@ services:
       context: .
       dockerfile: Dockerfile
     command: celery -A app.core.celery beat --loglevel=info
+    env_file:
+      - .env
     environment:
+      # Override localhost URLs with Docker service names
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/hil_agent_system
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - ENVIRONMENT=development
     volumes:
       - .:/app
     depends_on:
@@ -109,7 +128,10 @@ services:
     command: celery -A app.core.celery flower --port=5555
     ports:
       - "5555:5555"
+    env_file:
+      - .env
     environment:
+      # Override localhost URLs with Docker service names
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
@@ -147,3 +169,15 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+
+# For easier development, create a docker-compose.override.yml with:
+# version: '3.8'
+# services:
+#   app:
+#     environment:
+#       - DEBUG=true
+#       - LOG_LEVEL=DEBUG
+#     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+#   worker:
+#     environment:
+#       - LOG_LEVEL=DEBUG

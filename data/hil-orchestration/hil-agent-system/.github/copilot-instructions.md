@@ -5,7 +5,7 @@
 - ✅ **Simple Agent**: Working implementation with LLM router framework
 - ✅ **Workflow System**: YAML loader + registry + execution engine (basic)
 - 🟡 **LLM Integration**: Base classes exist, need actual API calls
-- ❌ **HIL Meta-Orchestrator**: Comprehensive system from docs/hil_metaworkflow.md (HILOrchestrator, QueueManager, HIL schema, API endpoints)
+- ❌ **HIL Meta-Orchestrator**: Comprehensive system from implementation_guideline.md "Human-in-the-Loop (HIL) Meta-Workflow" section (HILOrchestrator, QueueManager, HIL schema, API endpoints)
 - ❌ **Reasoning/Code Agents**: Not implemented
 - ❌ **Tool Integration**: Composio integration missing
 
@@ -119,7 +119,7 @@ class ConversationTurn(SQLModel, table=True):
 3. 🚨 **Response Deduplication** - Hash-based duplicate prevention middleware
 4. 🚨 **Background Memory Tasks** - Celery integration for async embeddings/summaries
 5. **Fix LLM Providers** - Complete OpenAI/Anthropic API integration for standalone workflows
-6. **HIL Database Schema** - Implement tables from docs/hil_metaworkflow.md (conversations, human_agents, agent_queue)
+6. **HIL Database Schema** - Implement tables from implementation_guideline.md "HIL Database Schema" section (conversations, human_agents, agent_queue)
 7. **HILOrchestrator Service** - 7-state conversation management with sink node processing
 8. ✅ **Development Setup** - Makefile now working with UV + proper dependencies
 
