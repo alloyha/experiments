@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HIL Agent System Workflow Schema",
+  "description": "Schema for validating YAML workflow definitions",
+  "type": "object",
+  "required": ["name", "version", "workflow"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "minLength": 3,
+      "maxLength": 50,
+      "description": "Workflow name (lowercase, alphanumeric, underscores)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Human-readable workflow description"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "author": { "type": "string" },
+        "created_at": { "type": "string", "format": "date" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "category": { "type": "string" }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "max_execution_time": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Maximum execution time in seconds"
+        },
+        "max_parallel_nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum parallel node executions"
+        },
+        "retry_policy": {
+          "type": "object",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "backoff_factor": {
+              "type": "number",
+              "minimum": 1.0,
+              "maximum": 10.0
+            },
+            "exceptions": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "input_schema": {
+          "$ref": "#/definitions/json_schema",
+          "description": "JSON Schema for workflow input validation"
+        },
+        "output_schema": {
+          "$ref": "#/definitions/json_schema",
+          "description": "JSON Schema for workflow output validation"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/workflow_node" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/workflow_edge" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "workflow_node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Unique node identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["agent", "action", "condition", "parallel", "sequential"],
+          "description": "Node type"
+        },
+        "agent": {
+          "type": "string",
+          "description": "Agent name (required for agent type nodes)"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action name (required for action type nodes)"
+        },
+        "config": {
+          "type": "object",
+          "description": "Node-specific configuration"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Jinja2 template for agent prompts"
+        },
+        "data": {
+          "type": "object",
+          "description": "Static data for action nodes"
+        },
+        "condition": {
+          "$ref": "#/definitions/condition",
+          "description": "Execution condition"
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Whether node can run in parallel"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": { "type": { "const": "agent" } },
+          "required": ["agent"]
+        },
+        {
+          "properties": { "type": { "const": "action" } },
+          "required": ["action"]
+        },
+        {
+          "properties": { "type": { "const": "condition" } },
+          "required": ["condition"]
+        }
+      ]
+    },
+    "workflow_edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          ],
+          "description": "Source node(s) or 'start'"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target node or 'end'"
+        },
+        "condition": {
+          "$ref": "#/definitions/condition",
+          "description": "Edge condition"
+        },
+        "join_type": {
+          "type": "string",
+          "enum": ["all", "any", "first"],
+          "description": "Join type for multiple sources"
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": ["type", "expression"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["jmespath", "python", "simple"],
+          "description": "Condition evaluation type"
+        },
+        "expression": {
+          "type": "string",
+          "description": "Condition expression"
+        }
+      }
+    },
+    "json_schema": {
+      "type": "object",
+      "description": "JSON Schema definition",
+      "properties": {
+        "type": { "type": "string" },
+        "properties": { "type": "object" },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

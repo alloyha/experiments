@@ -1,0 +1,66 @@
+# Development Dependencies for HIL Agent System
+# Code Quality and Linting
+ruff>=0.1.0              # Ultra-fast Python linter and formatter
+mypy>=1.5.0              # Static type checker
+bandit>=1.7.5            # Security linter
+
+# Code Analysis
+radon>=6.0.1             # Code complexity analyzer
+vulture>=2.10            # Dead code finder
+flake8>=6.0.0            # Additional linting (if needed)
+
+# Testing
+pytest>=7.4.0           # Testing framework
+pytest-asyncio>=0.21.0  # Async testing support
+pytest-cov>=4.1.0       # Coverage plugin
+pytest-mock>=3.11.0     # Mocking utilities
+pytest-benchmark>=4.0.0 # Performance benchmarking
+httpx>=0.24.0           # HTTP client for testing
+respx>=0.20.0           # HTTP mocking
+
+# Development Tools
+uvicorn[standard]>=0.23.0  # ASGI server with reload
+watchdog>=3.0.0            # File watching for auto-reload
+pre-commit>=3.4.0          # Git hooks
+black>=23.0.0              # Code formatter (backup)
+isort>=5.12.0              # Import sorting (backup)
+
+# Documentation
+sphinx>=7.1.0           # Documentation generator
+sphinx-rtd-theme>=1.3.0 # ReadTheDocs theme
+mkdocs>=1.5.0          # Alternative documentation
+mkdocs-material>=9.2.0 # Material theme for MkDocs
+
+# Security and Auditing
+safety>=2.3.0           # Dependency vulnerability scanner
+pip-audit>=2.6.0        # Alternative security scanner
+
+# Database Development
+alembic>=1.12.0         # Database migrations
+sqlalchemy-utils>=0.41.0 # SQLAlchemy utilities
+
+# Performance and Profiling
+memory-profiler>=0.61.0 # Memory profiling
+py-spy>=0.3.14          # Sampling profiler
+line-profiler>=4.1.0    # Line-by-line profiling
+
+# Debugging
+ipdb>=0.13.13           # Enhanced debugger
+rich>=13.5.0            # Rich text and beautiful formatting
+icecream>=2.1.3         # Sweet debug printing
+
+# Build and Packaging
+build>=0.10.0           # Modern Python build tool
+twine>=4.0.2            # Package uploading
+wheel>=0.41.0           # Wheel building
+
+# Jupyter (for development notebooks)
+jupyter>=1.0.0          # Jupyter notebook
+jupyterlab>=4.0.0       # JupyterLab
+ipykernel>=6.25.0       # Jupyter kernel
+
+# Additional Utilities
+tox>=4.11.0             # Testing in multiple environments
+nox>=2023.4.22          # Modern testing automation
+coverage>=7.3.0         # Coverage measurement
+pyproject-fmt>=1.1.0    # Format pyproject.toml

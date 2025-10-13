@@ -1,0 +1,133 @@
+# Simple Intent Classification Workflow
+# Version 1.0.0 - Basic customer intent classification
+#
+# This workflow demonstrates a simple single-agent workflow:
+# - Fast intent classification using Simple Agent
+# - Minimal configuration for high-speed processing
+# - Structured output for downstream systems
+
+name: simple_intent_classification
+version: 1.0.0
+description: "Fast intent classification for customer messages"
+
+# Workflow metadata
+metadata:
+  author: "HIL Agent System"
+  created_at: "2025-10-12"
+  tags: ["intent-classification", "simple", "fast"]
+  category: "classification"
+
+# Global configuration
+config:
+  max_execution_time: 30  # 30 seconds
+  max_parallel_nodes: 1
+  retry_policy:
+    max_attempts: 2
+    backoff_factor: 1.5
+    exceptions: ["LLMProviderError"]
+
+# Workflow definition
+workflow:
+  # Input schema
+  input_schema:
+    type: object
+    required: ["message"]
+    properties:
+      message:
+        type: string
+        description: "Text message to classify"
+        maxLength: 2000
+      context:
+        type: string
+        description: "Additional context for classification"
+        default: ""
+
+  # Single node workflow
+  nodes:
+    - id: classify_intent
+      type: agent
+      agent: simple_intent_classifier
+      config:
+        model_profile: fast
+        temperature: 0.0
+        output_schema:
+          type: object
+          required: ["intent", "confidence"]
+          properties:
+            intent:
+              type: string
+              enum: [
+                "question",
+                "request", 
+                "complaint",
+                "compliment",
+                "return_request",
+                "product_inquiry",
+                "billing_issue",
+                "technical_support",
+                "other"
+              ]
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+            sentiment:
+              type: string
+              enum: ["positive", "neutral", "negative"]
+            urgency:
+              type: string
+              enum: ["low", "medium", "high"]
+            entities:
+              type: object
+              properties:
+                product_name: { type: string }
+                order_id: { type: string }
+                amount: { type: number }
+                date: { type: string }
+      prompt: |
+        Classify the following message:
+        
+        Message: {{input.message}}
+        {% if input.context %}
+        Context: {{input.context}}
+        {% endif %}
+        
+        Determine:
+        1. Primary intent (main purpose of the message)
+        2. Confidence level (0.0 to 1.0)
+        3. Sentiment (positive/neutral/negative)
+        4. Urgency level (low/medium/high)
+        5. Extract any relevant entities (product names, order IDs, amounts, dates)
+        
+        Provide structured classification following the specified schema.
+
+  # Simple linear flow
+  edges:
+    - from: start
+      to: classify_intent
+
+  # Output schema
+  output_schema:
+    type: object
+    properties:
+      intent:
+        type: string
+        description: "Classified intent"
+      confidence:
+        type: number
+        description: "Classification confidence"
+      sentiment:
+        type: string
+        description: "Message sentiment"
+      urgency:
+        type: string
+        description: "Urgency level"
+      entities:
+        type: object
+        description: "Extracted entities"
+      execution_time:
+        type: number
+        description: "Processing time in seconds"
+      cost:
+        type: number
+        description: "Execution cost in USD"

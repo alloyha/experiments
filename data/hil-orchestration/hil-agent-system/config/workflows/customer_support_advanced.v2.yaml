@@ -1,0 +1,279 @@
+# Customer Support Advanced Workflow
+# Version 2.0.0 - Advanced customer support with autonomous agents
+# 
+# This workflow demonstrates the HIL Agent System capabilities:
+# - Simple Agent for intent classification
+# - Reasoning Agent for information gathering  
+# - Code Agent for autonomous task execution
+# - Conditional routing based on intent
+# - Tool integration via Composio
+
+name: customer_support_advanced
+version: 2.0.0
+description: "Advanced customer support workflow with multi-agent orchestration"
+
+# Workflow metadata
+metadata:
+  author: "HIL Agent System"
+  created_at: "2025-10-12"
+  tags: ["customer-support", "multi-agent", "autonomous"]
+  category: "support"
+
+# Global configuration
+config:
+  max_execution_time: 1800  # 30 minutes
+  max_parallel_nodes: 5
+  retry_policy:
+    max_attempts: 3
+    backoff_factor: 2
+    exceptions: ["LLMProviderError", "ToolExecutionError"]
+
+# Workflow definition
+workflow:
+  # Input schema - what data the workflow expects
+  input_schema:
+    type: object
+    required: ["customer_message", "customer_id"]
+    properties:
+      customer_message:
+        type: string
+        description: "Customer's message or inquiry"
+      customer_id:
+        type: string
+        description: "Unique customer identifier"
+      priority:
+        type: string
+        enum: ["low", "medium", "high", "urgent"]
+        default: "medium"
+      channel:
+        type: string
+        enum: ["email", "chat", "phone", "api"]
+        default: "email"
+
+  # Workflow nodes (agents and operations)
+  nodes:
+    # Step 1: Classify customer intent
+    - id: classify_intent
+      type: agent
+      agent: simple_intent_classifier
+      config:
+        model_profile: fast
+        temperature: 0.0
+        output_schema:
+          type: object
+          properties:
+            intent:
+              type: string
+              enum: ["return_request", "product_inquiry", "billing_issue", "technical_support", "complaint", "other"]
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+            entities:
+              type: object
+              properties:
+                product_id: { type: string }
+                order_id: { type: string }
+                amount: { type: number }
+      prompt: |
+        Classify the customer intent from the following message:
+        
+        Customer Message: {{input.customer_message}}
+        Customer ID: {{input.customer_id}}
+        Channel: {{input.channel}}
+        
+        Determine the customer's primary intent and extract any relevant entities.
+      
+    # Step 2: Gather customer context (parallel with classification)
+    - id: gather_customer_context
+      type: agent
+      agent: reasoning_context_gatherer
+      config:
+        model_profile: balanced
+        tools: ["shopify.customers.get", "shopify.orders.list", "gmail.search"]
+        max_iterations: 3
+      prompt: |
+        Gather relevant context for customer {{input.customer_id}}:
+        - Recent orders and purchase history
+        - Previous support interactions
+        - Account status and preferences
+        
+        Use available tools to collect comprehensive customer context.
+      parallel: true  # Run in parallel with classify_intent
+    
+    # Step 3: Handle return requests autonomously
+    - id: handle_return_request
+      type: agent
+      agent: autonomous_return_agent
+      config:
+        model_profile: powerful
+        temperature: 0.1
+        tools: 
+          - "shopify.orders.*"
+          - "shopify.refunds.*"
+          - "gmail.send_email"
+          - "slack.send_message"
+        max_execution_time: 600  # 10 minutes
+      prompt: |
+        Process return request autonomously:
+        
+        Customer Message: {{input.customer_message}}
+        Customer Context: {{gather_customer_context.output}}
+        Intent Details: {{classify_intent.output}}
+        
+        Handle the return request by:
+        1. Validating return eligibility
+        2. Processing the return if eligible
+        3. Sending confirmation to customer
+        4. Notifying support team if manual intervention needed
+      condition:
+        type: jmespath
+        expression: "classify_intent.output.intent == 'return_request'"
+    
+    # Step 4: Handle product inquiries
+    - id: handle_product_inquiry
+      type: agent
+      agent: reasoning_product_expert
+      config:
+        model_profile: balanced
+        tools: ["shopify.products.*", "knowledge_base.search"]
+        max_iterations: 2
+      prompt: |
+        Provide detailed product information:
+        
+        Customer Query: {{input.customer_message}}
+        Product Context: {{classify_intent.output.entities}}
+        
+        Research and provide comprehensive product information.
+      condition:
+        type: jmespath
+        expression: "classify_intent.output.intent == 'product_inquiry'"
+    
+    # Step 5: Route complex issues to human agent
+    - id: escalate_to_human
+      type: action
+      action: send_notification
+      config:
+        notification_type: "slack"
+        channel: "#customer-support"
+        urgency: "high"
+      data:
+        message: |
+          Complex customer issue requires human attention:
+          
+          Customer: {{input.customer_id}}
+          Intent: {{classify_intent.output.intent}}
+          Confidence: {{classify_intent.output.confidence}}
+          Message: {{input.customer_message}}
+          
+          Customer Context: {{gather_customer_context.output}}
+      condition:
+        type: python
+        expression: |
+          classify_intent_confidence = classify_intent.output.confidence
+          intent = classify_intent.output.intent
+          
+          # Escalate if low confidence or specific intents
+          return (
+              classify_intent_confidence < 0.7 or
+              intent in ['billing_issue', 'complaint', 'technical_support'] or
+              input.priority in ['high', 'urgent']
+          )
+    
+    # Step 6: Assemble final response
+    - id: assemble_response
+      type: agent
+      agent: simple_response_assembler
+      config:
+        model_profile: fast
+        temperature: 0.0
+      prompt: |
+        Create a comprehensive response to the customer:
+        
+        Original Message: {{input.customer_message}}
+        Intent: {{classify_intent.output.intent}}
+        
+        {% if handle_return_request.executed %}
+        Return Processing: {{handle_return_request.output}}
+        {% endif %}
+        
+        {% if handle_product_inquiry.executed %}
+        Product Information: {{handle_product_inquiry.output}}
+        {% endif %}
+        
+        {% if escalate_to_human.executed %}
+        Note: This issue has been escalated to our support team.
+        {% endif %}
+        
+        Provide a professional, helpful response to the customer.
+
+  # Workflow edges (execution flow)
+  edges:
+    # Start with intent classification and context gathering in parallel
+    - from: start
+      to: classify_intent
+    
+    - from: start  
+      to: gather_customer_context
+    
+    # Route based on intent classification
+    - from: classify_intent
+      to: handle_return_request
+      condition:
+        type: jmespath
+        expression: "output.intent == 'return_request'"
+    
+    - from: classify_intent
+      to: handle_product_inquiry
+      condition:
+        type: jmespath
+        expression: "output.intent == 'product_inquiry'"
+    
+    # Escalation logic
+    - from: classify_intent
+      to: escalate_to_human
+      condition:
+        type: python
+        expression: |
+          return (
+              output.confidence < 0.7 or
+              output.intent in ['billing_issue', 'complaint', 'technical_support']
+          )
+    
+    # Wait for both context gathering and intent processing
+    - from: [gather_customer_context, classify_intent]
+      to: assemble_response
+      join_type: all  # Wait for all dependencies
+    
+    # Final response after specific handlers
+    - from: handle_return_request
+      to: assemble_response
+    
+    - from: handle_product_inquiry
+      to: assemble_response
+    
+    - from: escalate_to_human
+      to: assemble_response
+
+  # Output schema - what the workflow returns
+  output_schema:
+    type: object
+    properties:
+      response_message:
+        type: string
+        description: "Final response to customer"
+      intent_classification:
+        type: object
+        description: "Classified customer intent"
+      actions_taken:
+        type: array
+        description: "List of actions performed"
+      escalated:
+        type: boolean
+        description: "Whether issue was escalated to human"
+      execution_time:
+        type: number
+        description: "Total execution time in seconds"
+      total_cost:
+        type: number
+        description: "Total execution cost in USD"
