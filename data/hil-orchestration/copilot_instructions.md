@@ -1,29 +1,108 @@
-# Complete Agent Architecture
-## Composio Integration, Agent Registry & LLM Router
+# Complete HIL Agent System Architecture
+## Production-Ready AI Workflow Orchestration with Code Agents
+
+**Version:** 2.0  
+**Last Updated:** 2025-01-12  
+**Status:** Design Complete - Ready for Implementation
 
 ---
 
-## 🎯 Updated Architecture Overview
+## 📋 Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [System Architecture Overview](#system-architecture-overview)
+3. [Core Components](#core-components)
+4. [Agent Types](#agent-types)
+5. [Tool & Integration System](#tool--integration-system)
+6. [Memory & Context Management](#memory--context-management)
+7. [LLM Routing & Cost Optimization](#llm-routing--cost-optimization)
+8. [Security & Sandboxing](#security--sandboxing)
+9. [Observability & Monitoring](#observability--monitoring)
+10. [Database Schema](#database-schema)
+11. [Implementation Guide](#implementation-guide)
+12. [API Documentation](#api-documentation)
+13. [Cost Analysis](#cost-analysis)
+14. [Production Deployment](#production-deployment)
+15. [Build vs Buy Analysis](#build-vs-buy-analysis)
+
+---
+
+## 🎯 Executive Summary
+
+### What We're Building
+
+A **production-grade AI workflow orchestration system** that enables:
+- **Dynamic workflow execution** via DAG-based orchestration
+- **Three agent types**: Simple (classification), Reasoning (ReAct), Code (autonomous)
+- **1000+ tool integrations** via Composio (Shopify, Gmail, Slack, etc.)
+- **Intelligent LLM routing** for cost optimization (56% savings)
+- **Hybrid memory system** (short-term + long-term + episodic)
+- **Complete observability** (metrics, traces, costs)
+
+### Key Metrics
+
+| Metric | Target | Impact |
+|--------|--------|--------|
+| **Agent Types** | 3 (Simple, Reasoning, Code) | Covers 95% of use cases |
+| **Tool Integrations** | 1000+ via Composio | Zero custom OAuth coding |
+| **Cost Optimization** | 56% reduction | $948/month savings |
+| **Latency P95** | <15s for complex tasks | 3x faster than baseline |
+| **Error Rate** | <5% for autonomous agents | Self-healing with retry |
+| **System Uptime** | >99.5% | Circuit breakers + fallbacks |
+
+### Timeline & Resources
+
+- **Development Time:** 12-14 weeks
+- **Team Required:** 2 ML Engineers + 1 Backend Engineer + 1 DevOps
+- **Development Cost:** $300-400k
+- **Operational Cost:** $700-1,700/month (LLM + infrastructure)
+
+### Alternative: n8n + AgentKit
+
+- **Development Time:** 4 weeks
+- **Team Required:** 1-2 Engineers
+- **Cost:** $50-100k development + $200-500/month operations
+
+---
+
+## 🏗️ System Architecture Overview
+
+### Complete Hierarchy
+
+```
+Graph (Workflow) 📊
+  └── Node 🔵
+       ├── Agent Type (simple/reasoning/code) 🤖
+       │    ├── LLM Router (cost optimization) 💰
+       │    │    └── Provider (OpenAI/Anthropic/Local) 🔌
+       │    ├── Memory Manager (RAG + context) 🧠
+       │    └── Tools (Composio or custom) 🛠️
+       │         └── Actions (specific operations) ⚡
+       └── Conditional Edges (branching logic) 🔀
+```
+
+### System Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Workflow Orchestrator                        │
+│                  🎯 Workflow Orchestrator                       │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │              Workflow DAG Executor                        │  │
-│  │  • Load from WorkflowRegistry (DB)                        │  │
-│  │  • Topological sort & execution                           │  │
-│  │  • Conditional edges                                      │  │
-│  │  • Checkpointing                                          │  │
+│  │           📊 Workflow DAG Executor                        │  │
+│  │  • Load from WorkflowRegistry (PostgreSQL)                │  │
+│  │  • Topological sort & parallel execution                  │  │
+│  │  • Conditional branching (JMESPath/Python)                │  │
+│  │  • Checkpointing for fault tolerance                      │  │
+│  │  • Retry logic with exponential backoff                   │  │
 │  └─────────────────────┬─────────────────────────────────────┘  │
 └─────────────────────────┼─────────────────────────────────────────┘
                           │
                           ▼
          ┌────────────────────────────────────┐
-         │         Agent Registry             │ ✨ NEW
-         │  • Discover agents dynamically     │
-         │  • Route to appropriate agent      │
-         │  • Agent metadata & capabilities   │
+         │      🔍 Agent Registry             │
+         │  • Dynamic agent discovery         │
          │  • Health checks & fallbacks       │
+         │  • Capability-based routing        │
+         │  • Metadata management             │
          └────────────┬───────────────────────┘
                       │
           ┌───────────┼───────────┐
@@ -31,1735 +110,384 @@
     ┌──────────┐ ┌──────────┐ ┌──────────┐
     │Simple    │ │Reasoning │ │Code      │
     │Agent     │ │Agent     │ │Agent     │
+    │(1-shot)  │ │(ReAct)   │ │(Agentic) │
+    │~1.5s     │ │~8s       │ │~25s      │
+    │$0.001    │ │$0.03     │ │$0.15     │
     └──────────┘ └──────────┘ └──────────┘
           │           │           │
           └───────────┼───────────┘
                       ▼
          ┌────────────────────────────────────┐
-         │        LLM Model Router            │ ✨ NEW
-         │  • Profile-based routing           │
-         │  • Cost optimization               │
-         │  • Latency optimization            │
-         │  • Fallback chains                 │
-         │  • Token estimation                │
+         │       💰 LLM Model Router          │
+         │  • Profile-based selection         │
+         │    - Fast: GPT-3.5, Claude Haiku   │
+         │    - Balanced: GPT-4-turbo, Sonnet │
+         │    - Powerful: GPT-4, Claude Opus  │
+         │  • Token estimation & budgeting    │
+         │  • Circuit breakers per model      │
+         │  • Automatic fallback chains       │
          └────────────┬───────────────────────┘
                       │
           ┌───────────┼───────────┐
           ▼           ▼           ▼
     ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │ GPT-4    │ │GPT-3.5   │ │Claude    │
-    │(Complex) │ │(Simple)  │ │(Fallback)│
+    │OpenAI    │ │Anthropic │ │Local LLM │
+    │GPT-4/3.5 │ │Claude 3  │ │Ollama    │
     └──────────┘ └──────────┘ └──────────┘
           │           │           │
           └───────────┼───────────┘
                       ▼
          ┌────────────────────────────────────┐
-         │    Composio Tool Manager           │ ✨ ENHANCED
+         │    🧠 Memory Manager                │
+         │  • Short-term: Recent messages (PG)│
+         │  • Long-term: Semantic search (VDB)│
+         │  • Episodic: Agent executions      │
+         │  • Hybrid retrieval strategies     │
+         └────────────┬───────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────────┐
+         │   🛠️ Composio Tool Manager         │
+         │  • 1000+ actions across 150+ apps  │
          │  • Dynamic action discovery        │
-         │  • Action metadata & schemas       │
          │  • OAuth flow management           │
          │  • Rate limiting per app           │
-         │  • Action execution & retry        │
+         │  • Semantic action search          │
          └────────────┬───────────────────────┘
                       │
           ┌───────────┼───────────┐
           ▼           ▼           ▼
     ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │ Shopify  │ │  Gmail   │ │  Slack   │
-    │150 acts  │ │ 80 acts  │ │ 60 acts  │
+    │Shopify   │ │Gmail     │ │Slack     │
+    │150 acts  │ │80 acts   │ │60 acts   │
     └──────────┘ └──────────┘ └──────────┘
 ```
 
----
-
-## 📊 Hierarchy Clarification
-
-You correctly identified the hierarchy:
+### Request Flow Example
 
 ```
-Graph (Workflow)
-  └── Node
-       ├── Agent Type (simple/reasoning/code)
-       │    ├── Supervisor (optional, for multi-agent)
-       │    └── Tools (Composio or custom)
-       │         └── Actions (specific operations)
-       │
-       └── Conditional Bifurcation (edges)
+1. 📥 Customer Message: "I want to return order #12345"
+   └─> Workflow: customer_support_advanced
+
+2. 🔵 Node: classify_intent (Simple Agent)
+   ├─> LLM Router: Select GPT-3.5-turbo (fast profile)
+   ├─> Execute: Classification
+   └─> Output: {intent: "return_request", confidence: 0.95}
+
+3. 🔀 Conditional Edge: intent == "return_request"
+   └─> Route to: handle_return node
+
+4. 🔵 Node: handle_return (Code Agent)
+   ├─> Agent Registry: Create autonomous_return_agent
+   ├─> LLM Router: Select GPT-4 (powerful profile)
+   ├─> Memory: Retrieve customer history
+   ├─> Composio Tools:
+   │   ├─> shopify.get_order
+   │   ├─> shopify.create_return
+   │   └─> gmail.send_email
+   ├─> Agent Plans:
+   │   1. Get order details
+   │   2. Verify return eligibility
+   │   3. Create return request
+   │   4. Send confirmation
+   └─> Output: {success: true, return_id: "RET-456"}
+
+5. 🔵 Node: assemble_response (Simple Agent)
+   ├─> LLM Router: Select GPT-3.5-turbo (fast profile)
+   └─> Output: "Hi! Your return has been processed..."
+
+6. 📊 Metrics:
+   ├─> Total Cost: $0.1520
+   ├─> Duration: 8,450ms
+   ├─> LLM Calls: 4 (2x GPT-3.5, 2x GPT-4)
+   └─> Composio Actions: 4 (3x Shopify, 1x Gmail)
 ```
 
 ---
 
-## 1️⃣ Agent Registry (Dynamic Discovery)
+## 🔧 Core Components
+
+### 1. Agent Registry
+
+**Purpose:** Centralized discovery and management of all agent types.
+
+**Key Features:**
+- Dynamic agent registration with metadata
+- Health monitoring (error rate, latency)
+- Automatic fallback selection
+- Capability-based routing
+
+**Code Structure:**
 
 ```python
 # app/agents/registry.py
 
-from typing import Dict, Any, List, Optional, Type, Callable
-from pydantic import BaseModel, Field
-from enum import Enum
-from datetime import datetime
-import asyncio
-
-class AgentCapability(str, Enum):
-    """Agent capabilities"""
-    STRUCTURED_OUTPUT = "structured_output"
-    TOOL_CALLING = "tool_calling"
-    REASONING = "reasoning"
-    PLANNING = "planning"
-    MEMORY = "memory"
-    VISION = "vision"
-    CODE_EXECUTION = "code_execution"
-
-
 class AgentMetadata(BaseModel):
-    """Metadata about an agent"""
     name: str
     type: str  # simple, reasoning, code
     description: str
     capabilities: List[AgentCapability]
     supported_models: List[str]
     default_model: str
-    max_tokens: int = 4096
-    supports_streaming: bool = False
-    cost_tier: str = Field(..., description="low, medium, high")
-    avg_latency_ms: int = Field(..., description="Average latency")
-    
-    # Tool integration
-    requires_tools: bool = False
-    max_tools: Optional[int] = None
-    
-    # Resource limits
-    max_iterations: Optional[int] = None
-    timeout_seconds: int = 300
-    
-    # Health
+    cost_tier: str  # low, medium, high
+    avg_latency_ms: int
     is_healthy: bool = True
-    last_health_check: Optional[datetime] = None
-    error_rate: float = 0.0  # Last 24h
-
-
-class AgentFactory(Protocol):
-    """Factory for creating agent instances"""
-    
-    async def create(
-        self,
-        config: Dict[str, Any],
-        llm_router: "LLMRouter",
-        tool_manager: "ComposioToolManager"
-    ) -> "Agent":
-        """Create agent instance"""
-        ...
-
+    error_rate: float = 0.0
 
 class AgentRegistry:
-    """
-    Central registry for all agent types.
-    Supports dynamic discovery and routing.
-    """
-    
-    def __init__(self, db_pool=None):
-        self.db = db_pool
-        self._agents: Dict[str, AgentMetadata] = {}
-        self._factories: Dict[str, AgentFactory] = {}
-        self._health_check_interval = 60  # seconds
-        
-        # Start health check loop
-        asyncio.create_task(self._health_check_loop())
-    
-    def register(
-        self,
-        metadata: AgentMetadata,
-        factory: AgentFactory
-    ):
-        """
-        Register an agent type with its factory.
-        
-        Example:
-            registry.register(
-                AgentMetadata(
-                    name="simple_classifier",
-                    type="simple",
-                    capabilities=[AgentCapability.STRUCTURED_OUTPUT],
-                    ...
-                ),
-                SimpleAgentFactory()
-            )
-        """
-        
-        self._agents[metadata.name] = metadata
-        self._factories[metadata.name] = factory
-        
-        logger.info(
-            "agent_registered",
-            name=metadata.name,
-            type=metadata.type,
-            capabilities=[c.value for c in metadata.capabilities]
-        )
-    
-    async def create_agent(
-        self,
-        agent_name: str,
-        config: Dict[str, Any],
-        llm_router: "LLMRouter",
-        tool_manager: "ComposioToolManager"
-    ) -> "Agent":
-        """Create agent instance by name"""
-        
-        if agent_name not in self._factories:
-            raise ValueError(f"Agent {agent_name} not registered")
-        
-        metadata = self._agents[agent_name]
-        
-        # Health check
-        if not metadata.is_healthy:
-            # Try fallback
-            fallback = self._find_fallback_agent(agent_name)
-            if fallback:
-                logger.warning(
-                    "agent_unhealthy_using_fallback",
-                    agent=agent_name,
-                    fallback=fallback
-                )
-                agent_name = fallback
-            else:
-                raise ValueError(f"Agent {agent_name} is unhealthy and no fallback available")
-        
-        factory = self._factories[agent_name]
-        
-        return await factory.create(config, llm_router, tool_manager)
-    
-    def get_metadata(self, agent_name: str) -> Optional[AgentMetadata]:
-        """Get agent metadata"""
-        return self._agents.get(agent_name)
-    
-    def list_agents(
-        self,
-        capability: Optional[AgentCapability] = None,
-        cost_tier: Optional[str] = None,
-        healthy_only: bool = True
-    ) -> List[AgentMetadata]:
-        """List agents matching criteria"""
-        
-        agents = list(self._agents.values())
-        
-        if capability:
-            agents = [a for a in agents if capability in a.capabilities]
-        
-        if cost_tier:
-            agents = [a for a in agents if a.cost_tier == cost_tier]
-        
-        if healthy_only:
-            agents = [a for a in agents if a.is_healthy]
-        
-        return agents
-    
-    def _find_fallback_agent(self, agent_name: str) -> Optional[str]:
-        """Find fallback agent with similar capabilities"""
-        
-        original = self._agents.get(agent_name)
-        if not original:
-            return None
-        
-        # Find agents with overlapping capabilities
-        candidates = []
-        for name, agent in self._agents.items():
-            if name == agent_name:
-                continue
-            
-            if not agent.is_healthy:
-                continue
-            
-            # Check capability overlap
-            overlap = set(original.capabilities) & set(agent.capabilities)
-            if len(overlap) >= len(original.capabilities) * 0.5:  # 50% overlap
-                candidates.append((name, len(overlap)))
-        
-        if candidates:
-            # Sort by overlap, return best
-            candidates.sort(key=lambda x: x[1], reverse=True)
-            return candidates[0][0]
-        
-        return None
-    
-    async def _health_check_loop(self):
-        """Periodic health check for all agents"""
-        
-        while True:
-            await asyncio.sleep(self._health_check_interval)
-            
-            for name in self._agents.keys():
-                try:
-                    await self._check_agent_health(name)
-                except Exception as e:
-                    logger.error(
-                        "health_check_failed",
-                        agent=name,
-                        error=str(e)
-                    )
-    
-    async def _check_agent_health(self, agent_name: str):
-        """Check health of specific agent"""
-        
-        if not self.db:
-            return
-        
-        # Query error rate from last 24h
-        error_rate = await self.db.fetchval("""
-            SELECT 
-                COALESCE(
-                    SUM(CASE WHEN success = false THEN 1 ELSE 0 END)::float / 
-                    NULLIF(COUNT(*), 0),
-                    0
-                )
-            FROM agent_executions
-            WHERE agent_type = $1
-            AND created_at > NOW() - INTERVAL '24 hours'
-        """, agent_name)
-        
-        metadata = self._agents[agent_name]
-        metadata.error_rate = error_rate
-        metadata.last_health_check = datetime.now()
-        
-        # Mark unhealthy if error rate > 50%
-        metadata.is_healthy = error_rate < 0.5
-        
-        if not metadata.is_healthy:
-            logger.warning(
-                "agent_marked_unhealthy",
-                agent=agent_name,
-                error_rate=error_rate
-            )
-
-
-# ===== Agent Factories =====
-
-class SimpleAgentFactory:
-    """Factory for simple agents"""
-    
-    async def create(
-        self,
-        config: Dict[str, Any],
-        llm_router: "LLMRouter",
-        tool_manager: "ComposioToolManager"
-    ) -> "SimpleAgent":
-        """Create simple agent"""
-        
-        from app.agents.types.simple_agent import SimpleAgent
-        
-        return SimpleAgent(
-            llm_router=llm_router,
-            model_profile=config.get("model_profile", "fast"),
-            output_schema=config.get("output_schema"),
-            temperature=config.get("temperature", 0.0)
-        )
-
-
-class ReasoningAgentFactory:
-    """Factory for reasoning agents"""
-    
-    async def create(
-        self,
-        config: Dict[str, Any],
-        llm_router: "LLMRouter",
-        tool_manager: "ComposioToolManager"
-    ) -> "ReasoningAgent":
-        """Create reasoning agent"""
-        
-        from app.agents.types.reasoning_agent import ReasoningAgent
-        
-        # Get tools from config
-        tool_names = config.get("tools", [])
-        tools = await tool_manager.get_tools(tool_names)
-        
-        return ReasoningAgent(
-            llm_router=llm_router,
-            model_profile=config.get("model_profile", "balanced"),
-            tools=tools,
-            max_iterations=config.get("max_iterations", 10)
-        )
-
-
-class CodeAgentFactory:
-    """Factory for code agents"""
-    
-    async def create(
-        self,
-        config: Dict[str, Any],
-        llm_router: "LLMRouter",
-        tool_manager: "ComposioToolManager"
-    ) -> "CodeAgent":
-        """Create code agent"""
-        
-        from app.agents.types.code_agent import CodeAgent
-        
-        tool_names = config.get("tools", [])
-        tools = await tool_manager.get_tools(tool_names)
-        
-        return CodeAgent(
-            llm_router=llm_router,
-            model_profile=config.get("model_profile", "powerful"),
-            tools=tools,
-            max_retries=config.get("max_retries", 3),
-            memory_manager=config.get("memory_manager")
-        )
+    def register(self, metadata: AgentMetadata, factory: AgentFactory)
+    async def create_agent(self, agent_name: str, config: dict) -> Agent
+    def get_metadata(self, agent_name: str) -> AgentMetadata
+    def list_agents(self, capability: AgentCapability = None) -> List[AgentMetadata]
+    async def _health_check_loop(self)  # Background task
 ```
 
----
-
-## 2️⃣ LLM Model Router (Cost & Performance Optimization)
+**Registration Example:**
 
 ```python
-# app/agents/llm_router.py
-
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
-from enum import Enum
-import tiktoken
-import asyncio
-
-class ModelProfile(str, Enum):
-    """Pre-defined model profiles"""
-    FAST = "fast"           # Speed priority, cost-effective
-    BALANCED = "balanced"   # Balance of speed/cost/quality
-    POWERFUL = "powerful"   # Quality priority, expensive
-    CUSTOM = "custom"       # User-defined
-
-
-class ModelSpec(BaseModel):
-    """LLM model specification"""
-    provider: str  # openai, anthropic, local
-    model: str
-    context_window: int
-    cost_per_1k_input: float
-    cost_per_1k_output: float
-    avg_latency_ms: int
-    quality_score: float  # 0-10
-    supports_tools: bool = True
-    supports_vision: bool = False
-    supports_streaming: bool = True
-
-
-class RoutingDecision(BaseModel):
-    """Result of routing decision"""
-    provider: str
-    model: str
-    estimated_cost: float
-    estimated_latency_ms: int
-    reasoning: str
-
-
-class LLMRouter:
-    """
-    Intelligent LLM router that selects optimal model based on:
-    - Profile (fast/balanced/powerful)
-    - Token count estimation
-    - Cost constraints
-    - Latency requirements
-    - Model availability
-    """
-    
-    # Model catalog
-    MODELS = {
-        "gpt-4-turbo": ModelSpec(
-            provider="openai",
-            model="gpt-4-turbo-preview",
-            context_window=128000,
-            cost_per_1k_input=0.01,
-            cost_per_1k_output=0.03,
-            avg_latency_ms=3000,
-            quality_score=9.5,
-            supports_tools=True
-        ),
-        "gpt-4": ModelSpec(
-            provider="openai",
-            model="gpt-4",
-            context_window=8192,
-            cost_per_1k_input=0.03,
-            cost_per_1k_output=0.06,
-            avg_latency_ms=4000,
-            quality_score=10.0,
-            supports_tools=True
-        ),
-        "gpt-3.5-turbo": ModelSpec(
-            provider="openai",
-            model="gpt-3.5-turbo",
-            context_window=16384,
-            cost_per_1k_input=0.0005,
-            cost_per_1k_output=0.0015,
-            avg_latency_ms=800,
-            quality_score=7.0,
-            supports_tools=True
-        ),
-        "claude-3-opus": ModelSpec(
-            provider="anthropic",
-            model="claude-3-opus-20240229",
-            context_window=200000,
-            cost_per_1k_input=0.015,
-            cost_per_1k_output=0.075,
-            avg_latency_ms=3500,
-            quality_score=9.8,
-            supports_tools=True
-        ),
-        "claude-3-sonnet": ModelSpec(
-            provider="anthropic",
-            model="claude-3-sonnet-20240229",
-            context_window=200000,
-            cost_per_1k_input=0.003,
-            cost_per_1k_output=0.015,
-            avg_latency_ms=2000,
-            quality_score=8.5,
-            supports_tools=True
-        ),
-        "claude-3-haiku": ModelSpec(
-            provider="anthropic",
-            model="claude-3-haiku-20240307",
-            context_window=200000,
-            cost_per_1k_input=0.00025,
-            cost_per_1k_output=0.00125,
-            avg_latency_ms=600,
-            quality_score=7.5,
-            supports_tools=True
-        ),
-    }
-    
-    # Profile definitions
-    PROFILES = {
-        ModelProfile.FAST: {
-            "primary": ["gpt-3.5-turbo", "claude-3-haiku"],
-            "fallback": ["gpt-4-turbo", "claude-3-sonnet"],
-            "max_cost_per_call": 0.01,
-            "max_latency_ms": 1000
-        },
-        ModelProfile.BALANCED: {
-            "primary": ["gpt-4-turbo", "claude-3-sonnet"],
-            "fallback": ["gpt-4", "claude-3-opus"],
-            "max_cost_per_call": 0.10,
-            "max_latency_ms": 3000
-        },
-        ModelProfile.POWERFUL: {
-            "primary": ["gpt-4", "claude-3-opus"],
-            "fallback": ["gpt-4-turbo", "claude-3-sonnet"],
-            "max_cost_per_call": 1.00,
-            "max_latency_ms": 5000
-        }
-    }
-    
-    def __init__(
-        self,
-        cost_controller: Optional["CostController"] = None,
-        redis_client=None
-    ):
-        self.cost_controller = cost_controller
-        self.redis = redis_client
-        
-        # Circuit breakers per model
-        self.circuit_breakers: Dict[str, "CircuitBreaker"] = {}
-    
-    async def route(
-        self,
-        messages: List[Dict[str, str]],
-        profile: ModelProfile = ModelProfile.BALANCED,
-        custom_constraints: Optional[Dict] = None,
-        required_capabilities: Optional[List[str]] = None
-    ) -> RoutingDecision:
-        """
-        Route LLM request to optimal model.
-        
-        Args:
-            messages: Chat messages
-            profile: Model profile (fast/balanced/powerful)
-            custom_constraints: Override constraints
-            required_capabilities: Required features (tools, vision, etc)
-        
-        Returns:
-            RoutingDecision with model selection and reasoning
-        """
-        
-        # 1. Estimate token count
-        token_count = self._estimate_tokens(messages)
-        
-        # 2. Get candidate models from profile
-        profile_config = self.PROFILES[profile]
-        candidates = profile_config["primary"] + profile_config["fallback"]
-        
-        # 3. Filter by required capabilities
-        if required_capabilities:
-            candidates = self._filter_by_capabilities(
-                candidates,
-                required_capabilities
-            )
-        
-        # 4. Filter by constraints
-        constraints = {
-            **profile_config,
-            **(custom_constraints or {})
-        }
-        
-        viable_models = []
-        
-        for model_name in candidates:
-            model_spec = self.MODELS[model_name]
-            
-            # Check context window
-            if token_count > model_spec.context_window * 0.8:  # 80% safety margin
-                continue
-            
-            # Estimate cost
-            estimated_cost = self._estimate_cost(token_count, model_spec)
-            
-            # Check cost constraint
-            if estimated_cost > constraints["max_cost_per_call"]:
-                continue
-            
-            # Check latency constraint
-            if model_spec.avg_latency_ms > constraints["max_latency_ms"]:
-                continue
-            
-            # Check circuit breaker
-            if not await self._check_circuit_breaker(model_name):
-                continue
-            
-            # Check budget
-            if self.cost_controller:
-                if not await self.cost_controller.check_budget(
-                    model_name,
-                    token_count
-                ):
-                    continue
-            
-            viable_models.append({
-                "name": model_name,
-                "spec": model_spec,
-                "estimated_cost": estimated_cost,
-                "score": self._calculate_score(
-                    model_spec,
-                    estimated_cost,
-                    profile
-                )
-            })
-        
-        if not viable_models:
-            raise ValueError(
-                f"No viable models found for profile {profile} "
-                f"with {token_count} tokens"
-            )
-        
-        # 5. Sort by score (cost/quality/latency weighted)
-        viable_models.sort(key=lambda x: x["score"], reverse=True)
-        
-        # 6. Select best
-        best = viable_models[0]
-        
-        decision = RoutingDecision(
-            provider=best["spec"].provider,
-            model=best["spec"].model,
-            estimated_cost=best["estimated_cost"],
-            estimated_latency_ms=best["spec"].avg_latency_ms,
-            reasoning=self._explain_decision(best, viable_models, profile)
-        )
-        
-        logger.info(
-            "llm_routed",
-            model=decision.model,
-            profile=profile.value,
-            tokens=token_count,
-            estimated_cost=decision.estimated_cost
-        )
-        
-        return decision
-    
-    def _estimate_tokens(self, messages: List[Dict[str, str]]) -> int:
-        """Estimate token count for messages"""
-        
-        try:
-            # Use tiktoken for OpenAI models (approximation for others)
-            encoding = tiktoken.get_encoding("cl100k_base")
-            
-            total_tokens = 0
-            for message in messages:
-                # Message overhead (role, etc)
-                total_tokens += 4
-                
-                # Content
-                content = message.get("content", "")
-                total_tokens += len(encoding.encode(content))
-            
-            # Overhead for response
-            total_tokens += 100
-            
-            return total_tokens
-            
-        except Exception:
-            # Fallback: rough estimation (1 token ≈ 4 chars)
-            total_chars = sum(len(m.get("content", "")) for m in messages)
-            return total_chars // 4 + 100
-    
-    def _estimate_cost(
-        self,
-        tokens: int,
-        model_spec: ModelSpec
-    ) -> float:
-        """Estimate cost for token count"""
-        
-        # Assume 60% input, 40% output (typical ratio)
-        input_tokens = int(tokens * 0.6)
-        output_tokens = int(tokens * 0.4)
-        
-        cost = (
-            (input_tokens / 1000) * model_spec.cost_per_1k_input +
-            (output_tokens / 1000) * model_spec.cost_per_1k_output
-        )
-        
-        return cost
-    
-    def _filter_by_capabilities(
-        self,
-        candidates: List[str],
-        required: List[str]
-    ) -> List[str]:
-        """Filter models by required capabilities"""
-        
-        filtered = []
-        
-        for model_name in candidates:
-            model_spec = self.MODELS[model_name]
-            
-            has_all = True
-            for capability in required:
-                if capability == "tools" and not model_spec.supports_tools:
-                    has_all = False
-                elif capability == "vision" and not model_spec.supports_vision:
-                    has_all = False
-            
-            if has_all:
-                filtered.append(model_name)
-        
-        return filtered
-    
-    def _calculate_score(
-        self,
-        model_spec: ModelSpec,
-        estimated_cost: float,
-        profile: ModelProfile
-    ) -> float:
-        """
-        Calculate model score based on profile priorities.
-        
-        Profiles prioritize differently:
-        - FAST: latency >> cost > quality
-        - BALANCED: cost ≈ latency ≈ quality
-        - POWERFUL: quality >> latency > cost
-        """
-        
-        # Normalize metrics (0-1 scale)
-        cost_score = 1 - min(estimated_cost / 0.10, 1.0)  # Lower is better
-        latency_score = 1 - min(model_spec.avg_latency_ms / 5000, 1.0)
-        quality_score = model_spec.quality_score / 10.0
-        
-        # Weighted combination based on profile
-        if profile == ModelProfile.FAST:
-            weights = {"latency": 0.6, "cost": 0.3, "quality": 0.1}
-        elif profile == ModelProfile.BALANCED:
-            weights = {"latency": 0.33, "cost": 0.33, "quality": 0.34}
-        elif profile == ModelProfile.POWERFUL:
-            weights = {"quality": 0.6, "latency": 0.2, "cost": 0.2}
-        else:
-            weights = {"latency": 0.33, "cost": 0.33, "quality": 0.34}
-        
-        score = (
-            latency_score * weights["latency"] +
-            cost_score * weights["cost"] +
-            quality_score * weights["quality"]
-        )
-        
-        return score
-    
-    def _explain_decision(
-        self,
-        selected: Dict,
-        all_candidates: List[Dict],
-        profile: ModelProfile
-    ) -> str:
-        """Generate human-readable explanation"""
-        
-        reasoning = f"Selected {selected['name']} for {profile.value} profile. "
-        reasoning += f"Cost: ${selected['estimated_cost']:.4f}, "
-        reasoning += f"Latency: ~{selected['spec'].avg_latency_ms}ms, "
-        reasoning += f"Quality: {selected['spec'].quality_score}/10. "
-        
-        if len(all_candidates) > 1:
-            next_best = all_candidates[1]
-            reasoning += f"(Next best: {next_best['name']})"
-        
-        return reasoning
-    
-    async def _check_circuit_breaker(self, model_name: str) -> bool:
-        """Check if model circuit breaker is open"""
-        
-        if model_name not in self.circuit_breakers:
-            # Initialize circuit breaker
-            self.circuit_breakers[model_name] = CircuitBreaker(
-                failure_threshold=5,
-                recovery_timeout=60
-            )
-        
-        cb = self.circuit_breakers[model_name]
-        return cb.is_closed()
-    
-    async def record_success(self, model_name: str):
-        """Record successful LLM call"""
-        if model_name in self.circuit_breakers:
-            self.circuit_breakers[model_name].record_success()
-    
-    async def record_failure(self, model_name: str):
-        """Record failed LLM call"""
-        if model_name in self.circuit_breakers:
-            self.circuit_breakers[model_name].record_failure()
-
-
-class CircuitBreaker:
-    """Simple circuit breaker for LLM calls"""
-    
-    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.state = "closed"  # closed, open, half-open
-    
-    def is_closed(self) -> bool:
-        """Check if circuit is closed (allowing requests)"""
-        
-        if self.state == "closed":
-            return True
-        
-        if self.state == "open":
-            # Check if should transition to half-open
-            if self.last_failure_time:
-                elapsed = (datetime.now() - self.last_failure_time).total_seconds()
-                if elapsed > self.recovery_timeout:
-                    self.state = "half-open"
-                    return True
-            return False
-        
-        if self.state == "half-open":
-            return True
-        
-        return False
-    
-    def record_success(self):
-        """Record successful request"""
-        if self.state == "half-open":
-            self.state = "closed"
-            self.failure_count = 0
-    
-    def record_failure(self):
-        """Record failed request"""
-        self.failure_count += 1
-        self.last_failure_time = datetime.now()
-        
-        if self.failure_count >= self.failure_threshold:
-            self.state = "open"
-            logger.warning(
-                "circuit_breaker_opened",
-                failures=self.failure_count
-            )
+agent_registry.register(
+    AgentMetadata(
+        name="simple_intent_classifier",
+        type="simple",
+        capabilities=[AgentCapability.STRUCTURED_OUTPUT],
+        supported_models=["gpt-3.5-turbo", "claude-3-haiku"],
+        default_model="gpt-3.5-turbo",
+        cost_tier="low",
+        avg_latency_ms=800
+    ),
+    SimpleAgentFactory()
+)
 ```
 
----
+### 2. Workflow Orchestrator
 
-## 3️⃣ Composio Tool Manager (Dynamic Action Discovery)
+**Purpose:** Execute DAG-based workflows with conditional logic.
+
+**Key Features:**
+- Topological sort for execution order
+- Parallel execution where possible
+- Conditional branching (JMESPath/Python expressions)
+- State checkpointing for fault tolerance
+- Automatic retry with exponential backoff
+
+**Code Structure:**
 
 ```python
-# app/tools/composio_manager.py
+# app/agents/orchestrator.py
 
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
-from composio import Composio, Action
-import asyncio
-
-class ComposioAction(BaseModel):
-    """Composio action metadata"""
-    app_name: str
-    action_name: str
-    display_name: str
-    description: str
-    parameters: Dict[str, Any]
-    required_params: List[str]
-    response_schema: Dict[str, Any]
-    
-    # Rate limiting
-    rate_limit: Optional[int] = None  # requests per minute
-    
-    # Authentication
-    requires_auth: bool = True
-    auth_scheme: str = "oauth2"
-
-
-class ComposioApp(BaseModel):
-    """Composio app metadata"""
-    name: str
-    display_name: str
-    description: str
-    logo_url: Optional[str]
-    category: str
-    total_actions: int
-    available_actions: List[str]
-    is_connected: bool = False
-    entity_id: Optional[str] = None
-
-
-class ComposioToolManager:
-    """
-    Manages Composio integrations with dynamic action discovery.
-    
-    Features:
-    - Auto-discover all available actions per app
-    - Dynamic tool creation from Composio actions
-    - OAuth flow management
-    - Rate limiting per app
-    - Action execution with retry
-    """
-    
-    def __init__(
+class AgentOrchestrator:
+    async def execute_workflow(
         self,
-        api_key: str,
-        redis_client=None,
-        db_pool=None
-    ):
-        self.client = Composio(api_key=api_key)
-        self.redis = redis_client
-        self.db = db_pool
-        
-        # Cache
-        self._apps_cache: Dict[str, ComposioApp] = {}
-        self._actions_cache: Dict[str, ComposioAction] = {}
-        
-        # Rate limiters per app
-        self._rate_limiters: Dict[str, "TokenBucket"] = {}
+        workflow_id: str,
+        input_data: dict,
+        context: dict = None
+    ) -> dict
     
-    async def initialize(self):
-        """Initialize manager - discover all apps and actions"""
-        
-        logger.info("composio_initializing")
-        
-        # Discover all available apps
-        apps = self.client.get_apps()
-        
-        for app in apps:
-            app_metadata = ComposioApp(
-                name=app.name,
-                display_name=app.display_name,
-                description=app.description,
-                logo_url=app.logo_url,
-                category=app.category,
-                total_actions=len(app.actions),
-                available_actions=[a.name for a in app.actions]
-            )
-            
-            self._apps_cache[app.name] = app_metadata
-            
-            # Discover actions for this app
-            for action in app.actions:
-                await self._register_action(app.name, action)
-        
-        logger.info(
-            "composio_initialized",
-            total_apps=len(self._apps_cache),
-            total_actions=len(self._actions_cache)
-        )
-    
-    async def _register_action(self, app_name: str, action: Action):
-        """Register a Composio action"""
-        
-        action_key = f"{app_name}.{action.name}"
-        
-        action_metadata = ComposioAction(
-            app_name=app_name,
-            action_name=action.name,
-            display_name=action.display_name,
-            description=action.description,
-            parameters=action.parameters.get("properties", {}),
-            required_params=action.parameters.get("required", []),
-            response_schema=action.response_schema,
-            rate_limit=action.metadata.get("rate_limit"),
-            requires_auth=action.requires_connection,
-            auth_scheme=action.metadata.get("auth_scheme", "oauth2")
-        )
-        
-        self._actions_cache[action_key] = action_metadata
-    
-    async def get_tools(
+    async def _execute_dag(
         self,
-        tool_specs: List[str],
-        entity_id: Optional[str] = None
-    ) -> List["Tool"]:
-        """
-        Get tools from Composio action specs.
-        
-        Args:
-            tool_specs: List of tool specifications:
-                - "shopify.*" - All Shopify actions
-                - "shopify.get_order" - Specific action
-                - "gmail.send_email,gmail.list_threads" - Multiple actions
-            entity_id: Entity ID for OAuth (customer/conversation specific)
-        
-        Returns:
-            List of Tool objects
-        """
-        
-        tools = []
-        
-        for spec in tool_specs:
-            if "." not in spec:
-                raise ValueError(f"Invalid tool spec: {spec}. Must be 'app.action' or 'app.*'")
-            
-            app_name, action_pattern = spec.split(".", 1)
-            
-            if action_pattern == "*":
-                # All actions for this app
-                matching_actions = [
-                    key for key in self._actions_cache.keys()
-                    if key.startswith(f"{app_name}.")
-                ]
-            else:
-                # Specific action
-                matching_actions = [f"{app_name}.{action_pattern}"]
-            
-            for action_key in matching_actions:
-                if action_key not in self._actions_cache:
-                    logger.warning(
-                        "composio_action_not_found",
-                        action=action_key
-                    )
-                    continue
-                
-                action_metadata = self._actions_cache[action_key]
-                
-                # Create Tool wrapper
-                tool = self._create_tool_from_action(
-                    action_metadata,
-                    entity_id
-                )
-                
-                tools.append(tool)
-        
-        logger.info(
-            "composio_tools_loaded",
-            count=len(tools),
-            specs=tool_specs
-        )
-        
-        return tools
+        workflow_config: dict,
+        input_data: dict
+    ) -> dict
     
-    def _create_tool_from_action(
+    async def _execute_node(
         self,
-        action: ComposioAction,
-        entity_id: Optional[str]
-    ) -> "Tool":
-        """Create Tool object from Composio action"""
-        
-        from app.tools.registry import Tool
-        
-        # Create execution function
-        async def execute_action(params: Dict[str, Any]) -> Any:
-            return await self.execute_action(
-                action.app_name,
-                action.action_name,
-                params,
-                entity_id
-            )
-        
-        # Build tool description for LLM
-        description = f"{action.display_name} - {action.description}\n\n"
-        description += "Parameters:\n"
-        
-        for param_name, param_schema in action.parameters.items():
-            required = " (required)" if param_name in action.required_params else ""
-            param_type = param_schema.get("type", "any")
-            param_desc = param_schema.get("description", "")
-            description += f"  - {param_name}{required}: {param_type} - {param_desc}\n"
-        
-        return Tool(
-            name=f"{action.app_name}_{action.action_name}",
-            description=description,
-            input_schema=action.parameters,
-            func=execute_action,
-            timeout_seconds=30,
-            retry_config={"max_attempts": 3, "backoff": 2}
-        )
+        node_config: dict,
+        node_inputs: dict
+    ) -> Any
     
-    async def execute_action(
+    def _evaluate_condition(
         self,
-        app_name: str,
-        action_name: str,
-        params: Dict[str, Any],
-        entity_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Execute a Composio action.
-        
-        Handles:
-        - Rate limiting
-        - Authentication (OAuth)
-        - Retry logic
-        - Error handling
-        """
-        
-        action_key = f"{app_name}.{action_name}"
-        action_metadata = self._actions_cache.get(action_key)
-        
-        if not action_metadata:
-            raise ValueError(f"Action {action_key} not found")
-        
-        # Check rate limit
-        if not await self._check_rate_limit(app_name):
-            raise ValueError(f"Rate limit exceeded for {app_name}")
-        
-        # Check authentication
-        if action_metadata.requires_auth and not entity_id:
-            raise ValueError(f"Action {action_key} requires entity_id for authentication")
-        
-        # Validate required parameters
-        missing_params = [
-            p for p in action_metadata.required_params
-            if p not in params
-        ]
-        
-        if missing_params:
-            raise ValueError(f"Missing required parameters: {missing_params}")
-        
-        # Execute action via Composio
-        try:
-            result = await asyncio.to_thread(
-                self.client.execute_action,
-                action=f"{app_name}_{action_name}",
-                params=params,
-                entity_id=entity_id
-            )
-            
-            # Record usage
-            await self._record_action_usage(app_name, action_name, True)
-            
-            logger.info(
-                "composio_action_executed",
-                app=app_name,
-                action=action_name,
-                entity_id=entity_id
-            )
-            
-            return result
-            
-        except Exception as e:
-            # Record failure
-            await self._record_action_usage(app_name, action_name, False, str(e))
-            
-            logger.error(
-                "composio_action_failed",
-                app=app_name,
-                action=action_name,
-                error=str(e),
-                exc_info=True
-            )
-            
-            raise
-    
-    async def _check_rate_limit(self, app_name: str) -> bool:
-        """Check rate limit for app"""
-        
-        if app_name not in self._rate_limiters:
-            # Initialize rate limiter (default: 60 req/min)
-            self._rate_limiters[app_name] = TokenBucket(
-                capacity=60,
-                refill_rate=1.0  # 1 token per second
-            )
-        
-        limiter = self._rate_limiters[app_name]
-        return limiter.consume(1)
-    
-    async def _record_action_usage(
-        self,
-        app_name: str,
-        action_name: str,
-        success: bool,
-        error: Optional[str] = None
-    ):
-        """Record action usage for analytics"""
-        
-        if not self.db:
-            return
-        
-        await self.db.execute("""
-            INSERT INTO composio_action_usage
-            (app_name, action_name, success, error_message, executed_at)
-            VALUES ($1, $2, $3, $4, NOW())
-        """, app_name, action_name, success, error)
-    
-    async def connect_app(
-        self,
-        app_name: str,
-        entity_id: str,
-        redirect_url: str
-    ) -> str:
-        """
-        Initiate OAuth connection for an app.
-        
-        Returns:
-            OAuth authorization URL
-        """
-        
-        connection = self.client.initiate_connection(
-            app_name=app_name,
-            entity_id=entity_id,
-            redirect_url=redirect_url
-        )
-        
-        # Store connection state
-        if self.db:
-            await self.db.execute("""
-                INSERT INTO composio_connections
-                (entity_id, app_name, connection_id, status)
-                VALUES ($1, $2, $3, 'pending')
-            """, entity_id, app_name, connection.id)
-        
-        logger.info(
-            "composio_connection_initiated",
-            app=app_name,
-            entity_id=entity_id,
-            connection_id=connection.id
-        )
-        
-        return connection.authorization_url
-    
-    async def handle_oauth_callback(
-        self,
-        connection_id: str,
-        code: str
-    ):
-        """Handle OAuth callback and complete connection"""
-        
-        connection = self.client.complete_connection(
-            connection_id=connection_id,
-            code=code
-        )
-        
-        # Update connection status
-        if self.db:
-            await self.db.execute("""
-                UPDATE composio_connections
-                SET status = 'connected', connected_at = NOW()
-                WHERE connection_id = $1
-            """, connection_id)
-        
-        logger.info(
-            "composio_connection_completed",
-            connection_id=connection_id
-        )
-    
-    async def list_apps(
-        self,
-        category: Optional[str] = None,
-        connected_only: bool = False
-    ) -> List[ComposioApp]:
-        """List available Composio apps"""
-        
-        apps = list(self._apps_cache.values())
-        
-        if category:
-            apps = [a for a in apps if a.category == category]
-        
-        if connected_only:
-            apps = [a for a in apps if a.is_connected]
-        
-        return apps
-    
-    async def list_actions(
-        self,
-        app_name: str
-    ) -> List[ComposioAction]:
-        """List all actions for an app"""
-        
-        return [
-            action for key, action in self._actions_cache.items()
-            if key.startswith(f"{app_name}.")
-        ]
-    
-    async def search_actions(
-        self,
-        query: str,
-        limit: int = 10
-    ) -> List[ComposioAction]:
-        """
-        Search actions by description (semantic search).
-        Useful for LLM to discover relevant tools.
-        """
-        
-        # Simple keyword matching (can be enhanced with embeddings)
-        query_lower = query.lower()
-        
-        matches = []
-        for action in self._actions_cache.values():
-            score = 0
-            
-            # Check description
-            if query_lower in action.description.lower():
-                score += 2
-            
-            # Check action name
-            if query_lower in action.action_name.lower():
-                score += 1
-            
-            # Check display name
-            if query_lower in action.display_name.lower():
-                score += 1
-            
-            if score > 0:
-                matches.append((action, score))
-        
-        # Sort by score
-        matches.sort(key=lambda x: x[1], reverse=True)
-        
-        return [action for action, _ in matches[:limit]]
-
-
-class TokenBucket:
-    """Token bucket rate limiter"""
-    
-    def __init__(self, capacity: int, refill_rate: float):
-        self.capacity = capacity
-        self.tokens = capacity
-        self.refill_rate = refill_rate
-        self.last_refill = time.time()
-    
-    def consume(self, tokens: int = 1) -> bool:
-        """Try to consume tokens"""
-        
-        # Refill tokens
-        now = time.time()
-        elapsed = now - self.last_refill
-        self.tokens = min(
-            self.capacity,
-            self.tokens + elapsed * self.refill_rate
-        )
-        self.last_refill = now
-        
-        # Try to consume
-        if self.tokens >= tokens:
-            self.tokens -= tokens
-            return True
-        
-        return False
+        condition: dict,
+        node_outputs: dict
+    ) -> bool
 ```
 
----
-
-## 4️⃣ Complete Workflow Example with All Components
+**Workflow Configuration:**
 
 ```yaml
-# config/workflows/customer_support_advanced.yaml
-
+# config/workflows/example.yaml
 name: customer_support_advanced
 version: 2.0.0
-description: "Advanced customer support with LLM routing and Composio integration"
 
-# LLM profiles per node
-llm_profiles:
-  intent_classification: fast        # Use GPT-3.5 for speed
-  complex_reasoning: powerful        # Use GPT-4 for complex tasks
-  simple_response: balanced          # Balanced for general responses
-
-# Composio apps and actions
-composio:
-  apps:
-    - name: shopify
-      entity_id_source: customer_id  # Use customer_id as entity_id
-      actions:
-        - get_order
-        - create_return
-        - update_order_status
-    
-    - name: gmail
-      entity_id_source: agent_id     # Use agent_id for email sending
-      actions:
-        - send_email
-    
-    - name: slack
-      entity_id_source: team_id
-      actions:
-        - send_message
-        - create_channel
-
-# Workflow DAG
 workflow:
   nodes:
-    # Node 1: Classify intent (Simple Agent, Fast Profile)
     - id: classify_intent
-      agent: simple_intent_classifier  # Registered agent name
+      agent: simple_intent_classifier
       config:
         model_profile: fast
-        output_schema:
-          type: object
-          properties:
-            intent:
-              type: string
-              enum: [order_status, return_request, complaint, general_inquiry]
-            confidence:
-              type: number
-            entities:
-              type: object
-      
-      prompt_template: |
-        Classify the customer's intent from this message:
-        
-        Customer: {{customer_message}}
-        
-        Return JSON with: intent, confidence (0-1), entities
     
-    # Node 2: Handle based on intent
-    - id: handle_order_status
-      agent: reasoning_support_agent  # Reasoning agent with tools
-      config:
-        model_profile: balanced
-        max_iterations: 5
-        tools:
-          - shopify.get_order
-          - shopify.get_tracking_info
-      
-      task: |
-        Customer asked about order status.
-        Order ID: {{entities.order_id}}
-        
-        1. Get order details
-        2. Get tracking information
-        3. Provide clear status update
-      
-      # Conditional execution
-      condition:
-        type: jmespath
-        expression: "classify_intent.output.intent == 'order_status'"
-    
-    # Node 3: Handle return request (Code Agent, Powerful Profile)
     - id: handle_return
-      agent: autonomous_return_agent  # Code agent for complex automation
+      agent: autonomous_return_agent
       config:
         model_profile: powerful
-        max_retries: 3
-        allowed_tools:
-          - shopify.get_order
-          - shopify.create_return
-          - shopify.generate_return_label
-          - gmail.send_email
-      
-      goal: |
-        Process return request for order {{entities.order_id}}:
-        
-        Steps:
-        1. Verify order is eligible for return (< 30 days)
-        2. Create return request in Shopify
-        3. Generate return shipping label
-        4. Send confirmation email with label to {{customer_email}}
-        
-        Handle edge cases:
-        - Order not found → escalate to human
-        - Return window expired → offer store credit
-        - Already returned → inform customer
-      
+        tools: [shopify.*, gmail.send_email]
       condition:
         type: jmespath
         expression: "classify_intent.output.intent == 'return_request'"
-    
-    # Node 4: Handle complaint (Reasoning Agent, escalate to human)
-    - id: handle_complaint
-      agent: reasoning_support_agent
-      config:
-        model_profile: balanced
-        max_iterations: 3
-        tools:
-          - slack.send_message  # Notify supervisor
-      
-      task: |
-        Customer has a complaint: {{customer_message}}
-        
-        1. Analyze severity (low/medium/high)
-        2. If high severity, notify supervisor via Slack immediately
-        3. Provide empathetic response
-        4. Set conversation to human takeover mode
-      
-      condition:
-        type: jmespath
-        expression: "classify_intent.output.intent == 'complaint'"
-    
-    # Node 5: General inquiry (Simple Agent, Fast Profile)
-    - id: handle_general
-      agent: simple_response_generator
-      config:
-        model_profile: fast
-        context_sources:
-          - conversation_history
-          - knowledge_base  # RAG
-      
-      prompt_template: |
-        Answer the customer's question professionally.
-        
-        Question: {{customer_message}}
-        
-        Context from knowledge base:
-        {% for doc in knowledge_base %}
-        - {{doc.content}}
-        {% endfor %}
-        
-        Generate a helpful, concise response.
-      
-      condition:
-        type: jmespath
-        expression: "classify_intent.output.intent == 'general_inquiry'"
-    
-    # Node 6: Final response assembly
-    - id: assemble_response
-      agent: simple_response_assembler
-      config:
-        model_profile: fast
-      
-      prompt_template: |
-        Create final customer response from workflow results.
-        
-        Intent: {{classify_intent.output.intent}}
-        
-        {% if handle_order_status %}
-        Order Status: {{handle_order_status.output}}
-        {% endif %}
-        
-        {% if handle_return %}
-        Return Result: {{handle_return.output.summary}}
-        {% endif %}
-        
-        {% if handle_complaint %}
-        Complaint Handled: {{handle_complaint.output}}
-        {% endif %}
-        
-        {% if handle_general %}
-        Answer: {{handle_general.output}}
-        {% endif %}
-        
-        Assemble into a single, cohesive response.
-
-  # Workflow edges (execution flow)
+  
   edges:
-    - from: classify_intent
-      to: handle_order_status
-      condition:
-        type: jmespath
-        expression: "output.intent == 'order_status'"
-    
     - from: classify_intent
       to: handle_return
       condition:
         type: jmespath
         expression: "output.intent == 'return_request'"
-    
-    - from: classify_intent
-      to: handle_complaint
-      condition:
-        type: jmespath
-        expression: "output.intent == 'complaint'"
-    
-    - from: classify_intent
-      to: handle_general
-      condition:
-        type: jmespath
-        expression: "output.intent == 'general_inquiry'"
-    
-    # All paths converge to final response
-    - from: handle_order_status
-      to: assemble_response
-    
-    - from: handle_return
-      to: assemble_response
-    
-    - from: handle_complaint
-      to: assemble_response
-    
-    - from: handle_general
-      to: assemble_response
-    
-    - from: assemble_response
-      to: END
+```
 
-# Memory configuration
-memory:
-  strategy: hybrid
-  short_term:
-    type: postgres
-    window_size: 50
-  long_term:
-    type: pinecone
-    index: customer-support-kb
-    top_k: 5
+### 3. Workflow Registry Service
 
-# Cost controls
-cost_controls:
-  max_cost_per_conversation: 0.50  # USD
-  daily_budget: 500.0
-  alert_threshold: 0.80  # 80% of budget
+**Purpose:** Store and manage workflow definitions.
 
-# Monitoring
-monitoring:
-  track_latency: true
-  track_costs: true
-  track_tool_usage: true
-  alert_on_error_rate: 0.10  # 10%
+**Key Features:**
+- Version control for workflows
+- Workflow templates
+- Execution history tracking
+- A/B testing support
+
+**Code Structure:**
+
+```python
+# app/services/workflow_registry.py
+
+class WorkflowRegistryService:
+    async def create_workflow(self, workflow: WorkflowCreate) -> Workflow
+    async def get_workflow(self, workflow_id: str) -> Workflow
+    async def list_workflows(self, filters: dict = None) -> List[Workflow]
+    async def update_workflow(self, workflow_id: str, updates: dict) -> Workflow
+    async def delete_workflow(self, workflow_id: str)
+    async def record_execution_start(self, workflow_id: str) -> str
+    async def record_execution_complete(self, execution_id: str, status: str)
 ```
 
 ---
 
-## 5️⃣ Updated Agent Implementation with Router
+## 🤖 Agent Types
+
+### 1. Simple Agent (Stateless, Single-Shot)
+
+**Use Cases:**
+- Intent classification
+- Sentiment analysis
+- Entity extraction
+- Simple Q&A
+
+**Characteristics:**
+- ⚡ Latency: ~1-2s
+- 💰 Cost: ~$0.001 per call
+- 🎯 Reliability: 99%+
+- 🔄 No iteration loop
+
+**Implementation:**
 
 ```python
-# app/agents/types/simple_agent.py (Updated)
-
-from typing import Dict, Any, Optional, Type
-from pydantic import BaseModel
+# app/agents/types/simple_agent.py
 
 class SimpleAgent:
-    """
-    Simple agent with LLM router integration.
-    """
-    
     def __init__(
         self,
-        llm_router: "LLMRouter",
-        model_profile: str = "balanced",
-        output_schema: Optional[Type[BaseModel]] = None,
+        llm_router: LLMRouter,
+        model_profile: str = "fast",
+        output_schema: Type[BaseModel] = None,
         temperature: float = 0.0
-    ):
-        self.llm_router = llm_router
-        self.model_profile = ModelProfile(model_profile)
-        self.output_schema = output_schema
-        self.temperature = temperature
+    )
     
     async def run(
         self,
         prompt: str,
-        input_data: Dict[str, Any],
-        system_prompt: Optional[str] = None
-    ) -> Any:
-        """Execute simple agent"""
+        input_data: dict,
+        system_prompt: str = None
+    ) -> BaseModel:
+        # 1. Render prompt template
+        rendered = Template(prompt).render(**input_data)
         
-        # Render prompt
-        from jinja2 import Template
-        rendered_prompt = Template(prompt).render(**input_data)
+        # 2. Route to optimal model
+        decision = await self.llm_router.route(
+            messages=[{"role": "user", "content": rendered}],
+            profile=ModelProfile(model_profile)
+        )
         
-        # Build messages
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": rendered_prompt})
-        
-        # Route to optimal model
-        routing_decision = await self.llm_router.route(
+        # 3. Call LLM
+        provider = LLMProviderFactory.create(decision.provider, model=decision.model)
+        response = await provider.complete_structured(
             messages=messages,
-            profile=self.model_profile,
-            required_capabilities=["structured_output"] if self.output_schema else None
+            schema=output_schema.schema()
         )
         
-        logger.info(
-            "simple_agent_routed",
-            model=routing_decision.model,
-            estimated_cost=routing_decision.estimated_cost
-        )
-        
-        # Call LLM via provider
-        provider_factory = LLMProviderFactory()
-        provider = provider_factory.create(
-            routing_decision.provider,
-            api_key=os.getenv(f"{routing_decision.provider.upper()}_API_KEY"),
-            model=routing_decision.model
-        )
-        
-        try:
-            if self.output_schema:
-                # Structured output
-                result = await provider.complete_structured(
-                    messages=messages,
-                    schema=self.output_schema.schema(),
-                    temperature=self.temperature
-                )
-                
-                # Validate with Pydantic
-                return self.output_schema(**result)
-            else:
-                # Text output
-                result = await provider.complete(
-                    messages=messages,
-                    temperature=self.temperature
-                )
-                
-                return {"text": result}
-            
-            # Record success
-            await self.llm_router.record_success(routing_decision.model)
-            
-        except Exception as e:
-            # Record failure
-            await self.llm_router.record_failure(routing_decision.model)
-            raise
+        # 4. Validate & return
+        return output_schema(**response)
+```
 
+**Example Usage:**
 
-# app/agents/types/reasoning_agent.py (Updated)
+```python
+class IntentClassification(BaseModel):
+    intent: str
+    confidence: float
+    entities: dict
+
+agent = SimpleAgent(
+    llm_router=llm_router,
+    model_profile="fast",
+    output_schema=IntentClassification
+)
+
+result = await agent.run(
+    prompt="Classify intent: {{message}}",
+    input_data={"message": "I want to return my order"}
+)
+# Output: IntentClassification(intent="return_request", confidence=0.95, ...)
+```
+
+### 2. Reasoning Agent (ReAct Pattern)
+
+**Use Cases:**
+- Multi-step problem solving
+- Information gathering across multiple sources
+- Dynamic decision making
+- Tool orchestration
+
+**Characteristics:**
+- ⚡ Latency: ~5-15s
+- 💰 Cost: ~$0.01-0.05 per task
+- 🎯 Reliability: 95%+
+- 🔄 Max 10 iterations (configurable)
+
+**ReAct Flow:**
+
+```
+1. Thought: "I need to check order status"
+2. Action: call_api("get_order", {"id": "123"})
+3. Observation: "Order is shipped"
+4. Thought: "Customer wants return, need return policy"
+5. Action: search_kb("return policy shipped orders")
+6. Observation: "30 day return window..."
+7. Thought: "I have enough info to respond"
+8. Final Answer: "You can return within 30 days..."
+```
+
+**Implementation:**
+
+```python
+# app/agents/types/reasoning_agent.py
 
 class ReasoningAgent:
-    """
-    Reasoning agent with LLM router and Composio tools.
-    """
-    
     def __init__(
         self,
-        llm_router: "LLMRouter",
-        tools: List["Tool"],
-        model_profile: str = "balanced",
-        max_iterations: int = 10
-    ):
-        self.llm_router = llm_router
-        self.tools = {tool.name: tool for tool in tools}
-        self.model_profile = ModelProfile(model_profile)
-        self.max_iterations = max_iterations
+        llm_router: LLMRouter,
+        tools: List[Tool],
+        max_iterations: int = 10,
+        model_profile: str = "balanced"
+    )
     
     async def run(
         self,
         task: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Execute ReAct reasoning loop"""
-        
+        context: dict = None
+    ) -> dict:
         reasoning_chain = []
         
-        for iteration in range(self.max_iterations):
-            # Build prompt with reasoning chain
-            messages = self._build_messages(task, context, reasoning_chain)
-            
-            # Route to optimal model
-            routing_decision = await self.llm_router.route(
-                messages=messages,
-                profile=self.model_profile,
-                required_capabilities=["tool_calling"]
-            )
-            
-            # Get provider
-            provider_factory = LLMProviderFactory()
-            provider = provider_factory.create(
-                routing_decision.provider,
-                model=routing_decision.model
-            )
-            
-            # Generate next step
-            response_text = await provider.complete(
-                messages=messages,
-                temperature=0.2
-            )
-            
-            # Parse response
-            step = self._parse_response(response_text)
+        for iteration in range(max_iterations):
+            # Generate next thought/action
+            step = await self._generate_step(task, reasoning_chain)
             reasoning_chain.append(step)
             
             # If final answer, done
@@ -1771,35 +499,1183 @@ class ReasoningAgent:
                 }
             
             # Execute action (tool call)
-            tool = self.tools.get(step.action)
-            if tool:
-                from app.tools.registry import tool_registry
-                result = await tool_registry.execute(
-                    step.action,
-                    step.action_input
-                )
-                step.observation = str(result.output) if result.success else f"Error: {result.error}"
-            else:
-                step.observation = f"Error: Tool {step.action} not found"
+            observation = await self._execute_tool(step.action, step.action_input)
+            step.observation = observation
         
-        return {
-            "answer": "Max iterations reached",
-            "reasoning_chain": reasoning_chain,
-            "iterations": self.max_iterations
-        }
+        return {"error": "Max iterations exceeded"}
+```
+
+**System Prompt:**
+
+```
+You are a helpful AI assistant that uses tools to solve tasks.
+
+Available tools:
+- get_order: Get order details by ID
+- search_kb: Search knowledge base
+- create_return: Create return request
+
+Format:
+Thought: [Your reasoning]
+Action: [Tool name]
+Action Input: {"param": "value"}
+Observation: [Will be provided]
+...
+Thought: [Final reasoning]
+Final Answer: [Complete answer]
+```
+
+### 3. Code Agent (Full Autonomy)
+
+**Use Cases:**
+- Complex multi-step automation
+- Self-healing workflows
+- Dynamic workflow generation
+- Multi-API orchestration
+
+**Characteristics:**
+- ⚡ Latency: ~15-60s
+- 💰 Cost: ~$0.05-0.20 per task
+- 🎯 Reliability: 85-90%
+- 🔄 Plan → Execute → Reflect loop
+
+**Agent Lifecycle:**
+
+```
+1. PLANNING Phase:
+   - Analyze goal
+   - Generate step-by-step plan
+   - Estimate duration & tools needed
+   - Learn from similar past executions (memory)
+
+2. EXECUTING Phase:
+   - Execute plan steps sequentially
+   - Handle step outputs as inputs to next steps
+   - Record success/failure of each step
+   - Continue on success, stop on critical failure
+
+3. REFLECTING Phase:
+   - Analyze execution results
+   - Determine if goal achieved
+   - If failed: identify root cause
+   - Generate suggestions for retry
+
+4. RETRY (if needed):
+   - Adjust plan based on reflection
+   - Execute again with improvements
+   - Max 3 retries by default
+```
+
+**Implementation:**
+
+```python
+# app/agents/types/code_agent.py
+
+class CodeAgent:
+    def __init__(
+        self,
+        llm_router: LLMRouter,
+        tools: List[Tool],
+        max_retries: int = 3,
+        memory_manager: MemoryManager = None,
+        model_profile: str = "powerful"
+    )
+    
+    async def run(
+        self,
+        goal: str,
+        context: dict = None
+    ) -> dict:
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            # Phase 1: Planning
+            plan = await self._generate_plan(goal, context)
+            
+            # Phase 2: Execution
+            results = await self._execute_plan(plan)
+            
+            # Phase 3: Reflection
+            reflection = await self._reflect(goal, plan, results)
+            
+            if reflection["goal_achieved"]:
+                # Store success in memory
+                await self.memory.store_execution(goal, plan, results, True)
+                return {"success": True, "result": reflection["final_output"]}
+            
+            # Adjust context for retry
+            context = {
+                **context,
+                "previous_attempt": {
+                    "plan": plan,
+                    "failure_reason": reflection["failure_reason"]
+                }
+            }
+            retry_count += 1
+        
+        return {"success": False, "error": "Max retries exceeded"}
+```
+
+**Planning Prompt:**
+
+```
+Generate a detailed execution plan to achieve this goal:
+
+Goal: {{goal}}
+
+Available Tools:
+{{#each tools}}
+- {{name}}: {{description}}
+  Input: {{input_schema}}
+{{/each}}
+
+{{#if similar_plans}}
+Similar successful plans from memory:
+{{#each similar_plans}}
+- {{goal}}: {{steps.length}} steps, success rate: {{success_rate}}
+{{/each}}
+{{/if}}
+
+Generate JSON plan:
+{
+  "goal": "...",
+  "steps": [
+    {
+      "id": 1,
+      "description": "...",
+      "tool": "tool_name",
+      "input": {"param": "value"},
+      "expected_output": "...",
+      "critical": true/false
+    }
+  ],
+  "estimated_duration": 30,
+  "required_tools": ["tool1", "tool2"]
+}
 ```
 
 ---
 
-## 6️⃣ Database Schema Extensions
+## 🛠️ Tool & Integration System
+
+### 1. Tool Registry
+
+**Purpose:** Manage tool lifecycle, execution, caching, and metrics.
+
+**Key Features:**
+- Timeout enforcement
+- Automatic retry with exponential backoff
+- Result caching (Redis)
+- Rate limiting
+- Metrics tracking (Prometheus)
+
+**Implementation:**
+
+```python
+# app/tools/registry.py
+
+class Tool(BaseModel):
+    name: str
+    description: str
+    input_schema: dict
+    func: Callable
+    timeout_seconds: int = 30
+    retry_config: dict = {"max_attempts": 3, "backoff": 2}
+    cache_ttl: int = None  # seconds
+
+class ToolRegistry:
+    def register(self, tool: Tool)
+    
+    async def execute(
+        self,
+        tool_name: str,
+        input_data: dict
+    ) -> ToolExecutionResult:
+        # 1. Check cache
+        # 2. Execute with timeout
+        # 3. Retry on failure
+        # 4. Cache result
+        # 5. Record metrics
+```
+
+**Built-in Tools:**
+
+```python
+# HTTP Tools
+http_request: Make HTTP requests to external APIs
+  Input: {method, url, headers, body}
+  Timeout: 30s
+  Retry: 3x
+
+# Data Tools
+transform_json: Transform JSON using JMESPath
+  Input: {data, expression}
+  Timeout: 5s
+
+filter_list: Filter list items by condition
+  Input: {items, condition}
+  Timeout: 10s
+
+# Database Tools
+query_database: Execute safe SELECT query
+  Input: {query, params}
+  Timeout: 10s
+  Cache: 5 min
+  Safety: SELECT only, parameterized
+```
+
+### 2. Composio Tool Manager
+
+**Purpose:** Integrate 1000+ actions across 150+ apps without custom OAuth.
+
+**Key Features:**
+- Dynamic action discovery at startup
+- OAuth flow management (per entity)
+- Rate limiting per app
+- Semantic action search
+- Action metadata caching
+
+**Supported Apps (Examples):**
+
+| App | Actions | Use Cases |
+|-----|---------|-----------|
+| **Shopify** | 150+ | Order management, returns, inventory |
+| **Gmail** | 80+ | Send emails, read threads, manage labels |
+| **Slack** | 60+ | Send messages, create channels, file uploads |
+| **Stripe** | 100+ | Payments, refunds, subscriptions |
+| **Google Calendar** | 50+ | Event management, scheduling |
+| **Notion** | 70+ | Database operations, page creation |
+
+**Implementation:**
+
+```python
+# app/tools/composio_manager.py
+
+class ComposioToolManager:
+    def __init__(self, api_key: str, redis_client, db_pool)
+    
+    async def initialize(self):
+        """Discover all apps and actions at startup"""
+        apps = self.client.get_apps()
+        for app in apps:
+            for action in app.actions:
+                await self._register_action(app.name, action)
+    
+    async def get_tools(
+        self,
+        tool_specs: List[str],  # ["shopify.*", "gmail.send_email"]
+        entity_id: str = None
+    ) -> List[Tool]:
+        """Convert Composio actions to Tool objects"""
+    
+    async def execute_action(
+        self,
+        app_name: str,
+        action_name: str,
+        params: dict,
+        entity_id: str = None
+    ) -> dict:
+        """Execute action with rate limiting and OAuth"""
+    
+    async def connect_app(
+        self,
+        app_name: str,
+        entity_id: str,
+        redirect_url: str
+    ) -> str:
+        """Return OAuth authorization URL"""
+    
+    async def search_actions(
+        self,
+        query: str,
+        limit: int = 10
+    ) -> List[ComposioAction]:
+        """Semantic search for relevant actions"""
+```
+
+**Usage in Workflow:**
+
+```yaml
+# Workflow config
+composio:
+  apps:
+    - name: shopify
+      entity_id_source: customer_id  # Use customer_id for OAuth
+      actions:
+        - get_order
+        - create_return
+        - update_order_status
+    
+    - name: gmail
+      entity_id_source: agent_id  # Use agent_id for sending emails
+      actions:
+        - send_email
+
+# Node using Composio tools
+nodes:
+  - id: process_return
+    agent: autonomous_return_agent
+    config:
+      tools:
+        - shopify.*  # All Shopify actions
+        - gmail.send_email  # Specific Gmail action
+```
+
+**OAuth Flow:**
+
+```
+1. User requests connection: POST /composio/connect/shopify
+   └─> Response: {authorization_url: "https://..."}
+
+2. User completes OAuth in browser
+   └─> Redirect: https://yourapp.com/callback?code=...
+
+3. App exchanges code for token: POST /composio/callback
+   └─> Composio stores encrypted token
+
+4. Future tool executions use stored token
+   └─> Automatic refresh when expired
+```
+
+---
+
+## 🧠 Memory & Context Management
+
+### Architecture
+
+```
+Memory Manager
+├── Short-term Memory (PostgreSQL)
+│   ├── Recent messages (last 50-100)
+│   ├── Conversation summaries
+│   └── Session context
+│
+├── Long-term Memory (Vector DB)
+│   ├── Knowledge base documents
+│   ├── Past conversation chunks
+│   └── Semantic search index
+│
+└── Episodic Memory (PostgreSQL + Vector DB)
+    ├── Agent execution history
+    ├── Successful plans
+    └── Failure analysis
+```
+
+### Implementation
+
+```python
+# app/memory/manager.py
+
+class MemoryManager:
+    def __init__(self, db_pool, vector_store, embeddings_model="text-embedding-3-small")
+    
+    # Short-term Memory
+    async def get_recent_messages(
+        self,
+        conversation_id: str,
+        limit: int = 50
+    ) -> List[dict]:
+        """Get recent messages from PostgreSQL"""
+    
+    async def get_conversation_summary(
+        self,
+        conversation_id: str
+    ) -> dict:
+        """Get cached conversation summary"""
+    
+    # Long-term Memory (RAG)
+    async def search_semantic(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: dict = None
+    ) -> List[dict]:
+        """Semantic search in vector store"""
+    
+    async def index_document(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: dict
+    ):
+        """Index document for RAG"""
+    
+    async def index_conversation_chunk(
+        self,
+        conversation_id: str,
+        chunk_id: str,
+        messages: List[dict]
+    ):
+        """Index conversation for future similarity search"""
+    
+    # Episodic Memory
+    async def store_execution(
+        self,
+        goal: str,
+        plan: Plan,
+        results: List[ExecutionResult],
+        success: bool
+    ):
+        """Store agent execution for learning"""
+    
+    async def search_similar_executions(
+        self,
+        goal: str,
+        limit: int = 3,
+        success_only: bool = False
+    ) -> List[dict]:
+        """Find similar past executions"""
+    
+    # Hybrid Retrieval
+    async def get_context(
+        self,
+        conversation_id: str,
+        current_message: str,
+        strategy: str = "hybrid"  # short_only, long_only, hybrid
+    ) -> dict:
+        """
+        Get context using hybrid strategy:
+        - Recent messages (short-term)
+        - Relevant documents (long-term RAG)
+        - Similar past conversations
+        """
+```
+
+### Context Strategies
+
+| Strategy | Use Case | Latency | Cost |
+|----------|----------|---------|------|
+| **short_only** | Simple queries | ~50ms | Free |
+| **long_only** | Complex research | ~200ms | $0.0001/search |
+| **hybrid** | Customer support | ~250ms | $0.0001/search |
+
+**Usage Example:**
+
+```python
+# In node configuration
+context_sources:
+  - conversation_history  # Short-term
+  - knowledge_base       # Long-term RAG
+  - similar_conversations # Episodic
+
+# Agent receives enriched context
+context = await memory.get_context(
+    conversation_id="conv_123",
+    current_message="How do I return my order?",
+    strategy="hybrid"
+)
+
+# context = {
+#   "recent_messages": [...],
+#   "relevant_documents": [
+#     {"content": "Return Policy: Items can be...", "score": 0.92},
+#     {"content": "Shipping returns: Print label...", "score": 0.87}
+#   ],
+#   "similar_conversations": [
+#     {"summary": "Customer returned damaged item", "outcome": "success"}
+#   ]
+# }
+```
+
+---
+
+## 💰 LLM Routing & Cost Optimization
+
+### Model Catalog
+
+| Model | Provider | Input/1K | Output/1K | Context | Latency | Quality |
+|-------|----------|----------|-----------|---------|---------|---------|
+| **GPT-4** | OpenAI | $0.03 | $0.06 | 8K | 4000ms | 10.0 |
+| **GPT-4-turbo** | OpenAI | $0.01 | $0.03 | 128K | 3000ms | 9.5 |
+| **GPT-3.5-turbo** | OpenAI | $0.0005 | $0.0015 | 16K | 800ms | 7.0 |
+| **Claude-3-Opus** | Anthropic | $0.015 | $0.075 | 200K | 3500ms | 9.8 |
+| **Claude-3-Sonnet** | Anthropic | $0.003 | $0.015 | 200K | 2000ms | 8.5 |
+| **Claude-3-Haiku** | Anthropic | $0.00025 | $0.00125 | 200K | 600ms | 7.5 |
+
+### Routing Profiles
+
+```python
+# app/agents/llm_router.py
+
+class ModelProfile(str, Enum):
+    FAST = "fast"        # Speed priority, cost-effective
+    BALANCED = "balanced" # Balance of speed/cost/quality
+    POWERFUL = "powerful" # Quality priority, expensive
+
+PROFILES = {
+    ModelProfile.FAST: {
+        "primary": ["gpt-3.5-turbo", "claude-3-haiku"],
+        "fallback": ["gpt-4-turbo", "claude-3-sonnet"],
+        "max_cost_per_call": 0.01,
+        "max_latency_ms": 1000,
+        "weights": {"latency": 0.6, "cost": 0.3, "quality": 0.1}
+    },
+    ModelProfile.BALANCED: {
+        "primary": ["gpt-4-turbo", "claude-3-sonnet"],
+        "fallback": ["gpt-4", "claude-3-opus"],
+        "max_cost_per_call": 0.10,
+        "max_latency_ms": 3000,
+        "weights": {"latency": 0.33, "cost": 0.33, "quality": 0.34}
+    },
+    ModelProfile.POWERFUL: {
+        "primary": ["gpt-4", "claude-3-opus"],
+        "fallback": ["gpt-4-turbo", "claude-3-sonnet"],
+        "max_cost_per_call": 1.00,
+        "max_latency_ms": 5000,
+        "weights": {"quality": 0.6, "latency": 0.2, "cost": 0.2}
+    }
+}
+```
+
+### Router Algorithm
+
+```python
+class LLMRouter:
+    async def route(
+        self,
+        messages: List[dict],
+        profile: ModelProfile = ModelProfile.BALANCED,
+        required_capabilities: List[str] = None
+    ) -> RoutingDecision:
+        # 1. Estimate token count
+        token_count = self._estimate_tokens(messages)
+        
+        # 2. Get candidate models from profile
+        candidates = PROFILES[profile]["primary"] + PROFILES[profile]["fallback"]
+        
+        # 3. Filter by capabilities (e.g., tools, vision)
+        if required_capabilities:
+            candidates = self._filter_by_capabilities(candidates, required_capabilities)
+        
+        # 4. Score each viable model
+        viable_models = []
+        for model_name in candidates:
+            spec = self.MODELS[model_name]
+            
+            # Check constraints
+            if token_count > spec.context_window * 0.8:
+                continue
+            
+            estimated_cost = self._estimate_cost(token_count, spec)
+            if estimated_cost > PROFILES[profile]["max_cost_per_call"]:
+                continue
+            
+            # Check circuit breaker
+            if not await self._check_circuit_breaker(model_name):
+                continue
+            
+            # Check budget
+            if self.cost_controller:
+                if not await self.cost_controller.check_budget(model_name, token_count):
+                    continue
+            
+            # Calculate weighted score
+            score = self._calculate_score(spec, estimated_cost, profile)
+            viable_models.append({
+                "name": model_name,
+                "spec": spec,
+                "estimated_cost": estimated_cost,
+                "score": score
+            })
+        
+        # 5. Select best model
+        viable_models.sort(key=lambda x: x["score"], reverse=True)
+        best = viable_models[0]
+        
+        return RoutingDecision(
+            provider=best["spec"].provider,
+            model=best["spec"].model,
+            estimated_cost=best["estimated_cost"],
+            estimated_latency_ms=best["spec"].avg_latency_ms,
+            reasoning=self._explain_decision(best, profile)
+        )
+```
+
+### Cost Optimization Features
+
+**1. Circuit Breakers**
+```python
+class CircuitBreaker:
+    """Prevent cascading failures when model is down"""
+    states = ["closed", "open", "half-open"]
+    
+    def record_failure(self):
+        self.failure_count += 1
+        if self.failure_count >= threshold:
+            self.state = "open"  # Block requests
+            # Automatically transition to half-open after timeout
+```
+
+**2. Budget Controls**
+```python
+class CostController:
+    """Enforce spending limits"""
+    hourly_limit = $50
+    daily_limit = $500
+    monthly_limit = $5000
+    
+    async def check_budget(self, model: str, tokens: int) -> bool:
+        hourly_spent = await self._get_spent("hourly")
+        estimated_cost = tokens * model_cost
+        
+        if hourly_spent + estimated_cost > self.hourly_limit:
+            logger.warning("hourly_budget_exceeded")
+            return False
+        
+        return True
+```
+
+**3. Automatic Fallbacks**
+```
+Primary model fails → Try fallback model
+Fallback fails → Try tertiary model
+All models fail → Return error with context
+```
+
+### Cost Savings Analysis
+
+**Without Router (naive approach):**
+- Always use GPT-4 for quality
+- 1000 conversations/day × $0.15 = $150/day
+- **$4,500/month**
+
+**With Router (optimized):**
+- 60% Fast profile (GPT-3.5): $0.001 × 600 = $0.60/day
+- 30% Balanced (GPT-4-turbo): $0.03 × 300 = $9.00/day
+- 10% Powerful (GPT-4): $0.15 × 100 = $15.00/day
+- **$24.60/day = $738/month**
+
+**Savings: 84% ($3,762/month)**
+
+---
+
+## 🔒 Security & Sandboxing
+
+### Security Layers
+
+```
+┌─────────────────────────────────────────┐
+│ Layer 1: API Authentication             │
+│ • JWT tokens with expiration             │
+│ • API key rotation (90 days)             │
+│ • Rate limiting (100 req/min per key)    │
+└─────────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────┐
+│ Layer 2: Tool Whitelisting               │
+│ • Agents can only use approved tools     │
+│ • Safe tools by default (read-only)      │
+│ • Dangerous tools require explicit grant │
+└─────────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────┐
+│ Layer 3: Docker Sandboxing               │
+│ • Code agents run in isolated containers │
+│ • No network access                      │
+│ • Read-only filesystem                   │
+│ • Resource limits (CPU, memory)          │
+└─────────────────────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────┐
+│ Layer 4: Data Protection                 │
+│ • PII detection & sanitization           │
+│ • Encryption at rest (AES-256)           │
+│ • Encryption in transit (TLS 1.3)        │
+│ • GDPR-compliant deletion                │
+└─────────────────────────────────────────┘
+```
+
+### 1. Tool Whitelisting
+
+```python
+# app/agents/security/tool_whitelist.py
+
+class ToolWhitelist:
+    # Safe tools (read-only, no side effects)
+    SAFE_TOOLS = {
+        "http_request",      # With URL whitelist
+        "query_database",    # SELECT only
+        "search_kb",
+        "transform_json",
+        "filter_list"
+    }
+    
+    # Dangerous tools (require explicit permission)
+    DANGEROUS_TOOLS = {
+        "execute_code",
+        "modify_database",
+        "send_email",
+        "make_payment",
+        "delete_resource"
+    }
+    
+    def validate_tool_access(self, tool_name: str, agent_type: str) -> bool:
+        # Simple agents: only safe tools
+        if agent_type == "simple":
+            return tool_name in self.SAFE_TOOLS
+        
+        # Reasoning agents: safe + explicitly allowed
+        if agent_type == "reasoning":
+            return (
+                tool_name in self.SAFE_TOOLS or
+                tool_name in self.allowed_tools
+            )
+        
+        # Code agents: must be explicitly allowed
+        if agent_type == "code":
+            return tool_name in self.allowed_tools
+        
+        return False
+```
+
+### 2. Docker Sandboxing for Code Agents
+
+```python
+# app/agents/security/sandbox.py
+
+class AgentSandbox:
+    """Execute code agents in isolated Docker containers"""
+    
+    async def execute_agent(
+        self,
+        agent_code: str,
+        goal: str,
+        context: dict,
+        allowed_tools: List[str]
+    ) -> dict:
+        # Create container with strict security
+        container = self.docker_client.containers.run(
+            image="hil-agent-sandbox:latest",
+            command=["python", "/app/agent_runner.py"],
+            environment={"AGENT_PAYLOAD": json.dumps(payload)},
+            
+            # Security restrictions
+            network_mode="none",        # No network access
+            read_only=True,             # Read-only filesystem
+            mem_limit="512m",           # Memory limit
+            cpu_quota=50000,            # 0.5 CPU
+            cap_drop=["ALL"],           # Drop all capabilities
+            security_opt=["no-new-privileges"],
+            
+            detach=True,
+            remove=True
+        )
+        
+        try:
+            result = await asyncio.wait_for(
+                self._wait_for_container(container),
+                timeout=300  # 5 minutes max
+            )
+            return result
+        except asyncio.TimeoutError:
+            container.kill()
+            raise ValueError("Agent execution timeout")
+```
+
+**Dockerfile for Sandbox:**
+
+```dockerfile
+# Dockerfile.agent-sandbox
+FROM python:3.11-slim
+
+# Minimal dependencies only
+RUN pip install --no-cache-dir pydantic==2.5.0 openai==1.3.7
+
+# Non-root user
+RUN useradd -m -u 1000 agent && \
+    mkdir -p /app && \
+    chown agent:agent /app
+
+USER agent
+WORKDIR /app
+
+COPY agent_runner.py /app/
+
+# All I/O through environment variables
+# No network, no filesystem access beyond /app
+```
+
+### 3. PII Protection
+
+```python
+# app/security/pii_detector.py
+
+class PIIDetector:
+    """Detect and sanitize PII in logs and outputs"""
+    
+    PATTERNS = {
+        "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+        "phone": r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
+        "ssn": r'\b\d{3}-\d{2}-\d{4}\b',
+        "credit_card": r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b'
+    }
+    
+    def sanitize(self, text: str) -> str:
+        """Replace PII with [REDACTED]"""
+        for pii_type, pattern in self.PATTERNS.items():
+            text = re.sub(pattern, f"[REDACTED_{pii_type.upper()}]", text)
+        return text
+    
+    def detect(self, text: str) -> List[str]:
+        """Detect PII types in text"""
+        detected = []
+        for pii_type, pattern in self.PATTERNS.items():
+            if re.search(pattern, text):
+                detected.append(pii_type)
+        return detected
+```
+
+### 4. OAuth Token Encryption
+
+```python
+# app/security/encryption.py
+
+from cryptography.fernet import Fernet
+
+class TokenEncryption:
+    """Encrypt OAuth tokens at rest"""
+    
+    def __init__(self, encryption_key: bytes):
+        self.fernet = Fernet(encryption_key)
+    
+    def encrypt_token(self, token: str) -> str:
+        """Encrypt OAuth token"""
+        return self.fernet.encrypt(token.encode()).decode()
+    
+    def decrypt_token(self, encrypted: str) -> str:
+        """Decrypt OAuth token"""
+        return self.fernet.decrypt(encrypted.encode()).decode()
+
+# Store in environment/secrets manager
+ENCRYPTION_KEY = Fernet.generate_key()  # Store securely!
+```
+
+---
+
+## 📊 Observability & Monitoring
+
+### Metrics Stack
+
+```
+Prometheus (Metrics) → Grafana (Visualization) → Alertmanager (Alerts)
+     ↑
+OpenTelemetry (Traces)
+     ↑
+Application Logs → Elasticsearch → Kibana
+```
+
+### Key Metrics
+
+**1. Agent Performance**
+
+```python
+# app/agents/metrics.py
+
+from prometheus_client import Counter, Histogram, Gauge
+
+# Execution metrics
+agent_executions_total = Counter(
+    'agent_executions_total',
+    'Total agent executions',
+    ['agent_type', 'workflow', 'status']
+)
+
+agent_execution_duration = Histogram(
+    'agent_execution_duration_seconds',
+    'Agent execution duration',
+    ['agent_type', 'workflow'],
+    buckets=[1, 5, 10, 30, 60, 120, 300]
+)
+
+agent_iterations = Histogram(
+    'agent_iterations_total',
+    'Number of reasoning iterations',
+    ['agent_type'],
+    buckets=[1, 2, 3, 5, 10, 15, 20]
+)
+
+# Cost metrics
+llm_cost_usd = Counter(
+    'llm_cost_usd_total',
+    'Total LLM cost in USD',
+    ['model', 'agent_type']
+)
+
+llm_tokens = Counter(
+    'llm_tokens_total',
+    'Total tokens used',
+    ['model', 'agent_type', 'type']  # type: input/output
+)
+```
+
+**2. Tool Performance**
+
+```python
+tool_executions_total = Counter(
+    'tool_executions_total',
+    'Total tool executions',
+    ['tool_name', 'status']
+)
+
+tool_execution_duration = Histogram(
+    'tool_execution_duration_seconds',
+    'Tool execution duration',
+    ['tool_name'],
+    buckets=[0.1, 0.5, 1, 2, 5, 10, 30]
+)
+
+tool_cache_hits = Counter(
+    'tool_cache_hits_total',
+    'Tool cache hits',
+    ['tool_name']
+)
+```
+
+**3. System Health**
+
+```python
+circuit_breaker_state = Gauge(
+    'circuit_breaker_state',
+    'Circuit breaker state (0=closed, 1=open)',
+    ['service']
+)
+
+vector_store_size = Gauge(
+    'vector_store_size_total',
+    'Total vectors in store',
+    ['type']  # conversation/knowledge_base/execution
+)
+
+memory_usage_bytes = Gauge(
+    'memory_usage_bytes',
+    'Memory usage in bytes',
+    ['component']
+)
+```
+
+### Distributed Tracing
+
+```python
+# app/agents/tracing.py
+
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
+@tracer.start_as_current_span("agent.execute")
+async def execute_agent(agent_type: str, workflow: str):
+    span = trace.get_current_span()
+    span.set_attribute("agent.type", agent_type)
+    span.set_attribute("workflow.name", workflow)
+    
+    try:
+        result = await agent.run(...)
+        span.set_attribute("agent.success", True)
+        span.set_attribute("agent.iterations", result.get("iterations", 1))
+        return result
+    except Exception as e:
+        span.set_attribute("agent.success", False)
+        span.set_attribute("error.type", type(e).__name__)
+        span.record_exception(e)
+        raise
+```
+
+**Trace Example:**
+
+```
+Trace: customer_support_workflow [8,450ms]
+├── classify_intent [1,200ms]
+│   ├── llm.route [50ms]
+│   ├── llm.call [1,100ms] (gpt-3.5-turbo)
+│   └── parse_output [50ms]
+├── handle_return [6,800ms]
+│   ├── agent.plan [2,000ms] (gpt-4)
+│   ├── tool.shopify.get_order [800ms]
+│   ├── tool.shopify.create_return [1,500ms]
+│   ├── tool.gmail.send_email [1,200ms]
+│   └── agent.reflect [1,300ms] (gpt-4)
+└── assemble_response [450ms]
+    └── llm.call [400ms] (gpt-3.5-turbo)
+```
+
+### Grafana Dashboards
+
+**Dashboard 1: Agent Performance**
+
+```json
+{
+  "panels": [
+    {
+      "title": "Agent Executions/sec",
+      "query": "sum(rate(agent_executions_total[5m])) by (agent_type)"
+    },
+    {
+      "title": "P95 Latency by Agent Type",
+      "query": "histogram_quantile(0.95, rate(agent_execution_duration_seconds_bucket[5m])) by (agent_type)"
+    },
+    {
+      "title": "Success Rate",
+      "query": "sum(rate(agent_executions_total{status=\"success\"}[5m])) / sum(rate(agent_executions_total[5m]))"
+    }
+  ]
+}
+```
+
+**Dashboard 2: Cost Tracking**
+
+```json
+{
+  "panels": [
+    {
+      "title": "LLM Costs (Last 24h)",
+      "query": "sum(increase(llm_cost_usd_total[24h])) by (model)"
+    },
+    {
+      "title": "Cost per Conversation",
+      "query": "sum(rate(llm_cost_usd_total[5m])) / sum(rate(agent_executions_total[5m]))"
+    },
+    {
+      "title": "Token Usage by Model",
+      "query": "sum(rate(llm_tokens_total[5m])) by (model, type)"
+    }
+  ]
+}
+```
+
+### Alert Rules
+
+```yaml
+# alerts.yaml
+
+groups:
+  - name: agent_alerts
+    interval: 1m
+    rules:
+      # High error rate
+      - alert: AgentHighErrorRate
+        expr: |
+          sum(rate(agent_executions_total{status="failed"}[5m])) / 
+          sum(rate(agent_executions_total[5m])) > 0.10
+        for: 5m
+        annotations:
+          summary: "Agent error rate > 10%"
+        
+      # Budget exceeded
+      - alert: DailyBudgetExceeded
+        expr: sum(increase(llm_cost_usd_total[24h])) > 500
+        annotations:
+          summary: "Daily LLM budget exceeded ($500)"
+      
+      # High latency
+      - alert: AgentHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(agent_execution_duration_seconds_bucket[5m])
+          ) > 30
+        for: 10m
+        annotations:
+          summary: "P95 agent latency > 30s"
+      
+      # Circuit breaker open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 2m
+        annotations:
+          summary: "Circuit breaker open for {{$labels.service}}"
+```
+
+---
+
+## 💾 Database Schema
+
+### Complete Schema
 
 ```sql
--- Migration 004: Agent Registry & Composio
+-- =====================================
+-- Core Tables
+-- =====================================
 
--- Agent registry metadata
+-- Conversations
+CREATE TABLE conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id TEXT NOT NULL,
+  channel TEXT NOT NULL CHECK (channel IN ('web', 'mobile', 'api')),
+  status TEXT NOT NULL CHECK (status IN ('active', 'closed', 'escalated')),
+  summary JSONB,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  closed_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_conversations_customer ON conversations(customer_id);
+CREATE INDEX idx_conversations_status ON conversations(status);
+CREATE INDEX idx_conversations_created ON conversations(created_at DESC);
+
+-- Messages
+CREATE TABLE messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_type TEXT NOT NULL CHECK (sender_type IN ('user', 'agent', 'system')),
+  sender_id TEXT,
+  content TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_messages_conversation ON messages(conversation_id, timestamp DESC);
+CREATE INDEX idx_messages_timestamp ON messages(timestamp DESC);
+
+-- =====================================
+-- Workflow System
+-- =====================================
+
+-- Workflow Registry
+CREATE TABLE workflow_registry (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  version TEXT NOT NULL,
+  description TEXT,
+  config JSONB NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(name, version)
+);
+
+CREATE INDEX idx_workflows_name ON workflow_registry(name);
+CREATE INDEX idx_workflows_active ON workflow_registry(is_active);
+
+-- Workflow Executions
+CREATE TABLE workflow_executions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workflow_id UUID NOT NULL REFERENCES workflow_registry(id),
+  conversation_id UUID REFERENCES conversations(id),
+  status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed', 'timeout')),
+  input_data JSONB,
+  output_data JSONB,
+  execution_trace JSONB,
+  error_message TEXT,
+  metrics JSONB,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_executions_workflow ON workflow_executions(workflow_id);
+CREATE INDEX idx_executions_status ON workflow_executions(status);
+CREATE INDEX idx_executions_started ON workflow_executions(started_at DESC);
+
+-- =====================================
+-- Agent System
+-- =====================================
+
+-- Agent Metadata
 CREATE TABLE agent_metadata (
   name TEXT PRIMARY KEY,
-  type TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('simple', 'reasoning', 'code')),
   description TEXT,
   capabilities TEXT[] DEFAULT '{}',
   supported_models TEXT[] DEFAULT '{}',
@@ -1812,21 +1688,77 @@ CREATE TABLE agent_metadata (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Composio connections
+CREATE INDEX idx_agent_metadata_type ON agent_metadata(type);
+CREATE INDEX idx_agent_metadata_healthy ON agent_metadata(is_healthy);
+
+-- Agent Executions
+CREATE TABLE agent_executions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_type TEXT NOT NULL,
+  goal TEXT NOT NULL,
+  plan JSONB NOT NULL,
+  results JSONB NOT NULL,
+  success BOOLEAN NOT NULL,
+  cost_usd FLOAT,
+  duration_ms INT,
+  iterations INT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- For semantic search (pgvector extension)
+  goal_embedding vector(1536)
+);
+
+CREATE INDEX idx_agent_executions_type ON agent_executions(agent_type);
+CREATE INDEX idx_agent_executions_success ON agent_executions(success);
+CREATE INDEX idx_agent_executions_created ON agent_executions(created_at DESC);
+
+-- Vector similarity index
+CREATE INDEX idx_agent_executions_embedding 
+ON agent_executions USING ivfflat (goal_embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- =====================================
+-- Tool System
+-- =====================================
+
+-- Tool Execution Metrics
+CREATE TABLE tool_execution_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tool_name TEXT NOT NULL,
+  success BOOLEAN NOT NULL,
+  duration_ms INT NOT NULL,
+  cached BOOLEAN DEFAULT false,
+  error_message TEXT,
+  executed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_tool_metrics_name ON tool_execution_metrics(tool_name);
+CREATE INDEX idx_tool_metrics_executed ON tool_execution_metrics(executed_at DESC);
+
+-- =====================================
+-- Composio Integration
+-- =====================================
+
+-- Composio Connections (OAuth)
 CREATE TABLE composio_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id TEXT NOT NULL,  -- customer_id, agent_id, etc
+  entity_id TEXT NOT NULL,  -- customer_id, agent_id, etc.
   app_name TEXT NOT NULL,
   connection_id TEXT NOT NULL,
+  encrypted_token TEXT,  -- Fernet encrypted
   status TEXT NOT NULL CHECK (status IN ('pending', 'connected', 'failed', 'revoked')),
   connected_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
   revoked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE (entity_id, app_name)
 );
 
--- Composio action usage
+CREATE INDEX idx_composio_connections_entity ON composio_connections(entity_id);
+CREATE INDEX idx_composio_connections_status ON composio_connections(status);
+
+-- Composio Action Usage
 CREATE TABLE composio_action_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   app_name TEXT NOT NULL,
@@ -1839,15 +1771,21 @@ CREATE TABLE composio_action_usage (
 );
 
 CREATE INDEX idx_composio_usage_app ON composio_action_usage(app_name);
+CREATE INDEX idx_composio_usage_action ON composio_action_usage(action_name);
 CREATE INDEX idx_composio_usage_executed ON composio_action_usage(executed_at DESC);
 
--- LLM routing decisions
+-- =====================================
+-- LLM Routing
+-- =====================================
+
+-- LLM Routing Decisions
 CREATE TABLE llm_routing_decisions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workflow_id UUID REFERENCES workflow_registry(id),
   node_id TEXT,
-  requested_profile TEXT NOT NULL,
+  requested_profile TEXT NOT NULL CHECK (requested_profile IN ('fast', 'balanced', 'powerful')),
   selected_model TEXT NOT NULL,
+  selected_provider TEXT NOT NULL,
   estimated_tokens INT,
   estimated_cost FLOAT,
   actual_input_tokens INT,
@@ -1855,1511 +1793,2041 @@ CREATE TABLE llm_routing_decisions (
   actual_cost FLOAT,
   latency_ms INT,
   success BOOLEAN NOT NULL,
+  error_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_llm_routing_model ON llm_routing_decisions(selected_model);
+CREATE INDEX idx_llm_routing_profile ON llm_routing_decisions(requested_profile);
 CREATE INDEX idx_llm_routing_created ON llm_routing_decisions(created_at DESC);
+
+-- =====================================
+-- Analytics & Reporting
+-- =====================================
+
+-- Daily Cost Summary (Materialized View)
+CREATE MATERIALIZED VIEW daily_cost_summary AS
+SELECT 
+  DATE(created_at) as date,
+  selected_model,
+  requested_profile,
+  COUNT(*) as total_calls,
+  SUM(actual_cost) as total_cost_usd,
+  AVG(actual_cost) as avg_cost_usd,
+  SUM(actual_input_tokens + actual_output_tokens) as total_tokens,
+  AVG(latency_ms) as avg_latency_ms,
+  SUM(CASE WHEN success THEN 1 ELSE 0 END)::FLOAT / COUNT(*) as success_rate
+FROM llm_routing_decisions
+GROUP BY DATE(created_at), selected_model, requested_profile;
+
+CREATE UNIQUE INDEX idx_daily_cost_summary 
+ON daily_cost_summary(date, selected_model, requested_profile);
+
+-- Refresh daily
+CREATE OR REPLACE FUNCTION refresh_daily_cost_summary()
+RETURNS void AS $
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY daily_cost_summary;
+END;
+$ LANGUAGE plpgsql;
+
+-- =====================================
+-- Functions & Triggers
+-- =====================================
+
+-- Update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_conversations_updated_at
+BEFORE UPDATE ON conversations
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_workflow_registry_updated_at
+BEFORE UPDATE ON workflow_registry
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- =====================================
+-- Partitioning (for high-volume tables)
+-- =====================================
+
+-- Partition messages by month
+CREATE TABLE messages_template (
+  LIKE messages INCLUDING ALL
+) PARTITION BY RANGE (timestamp);
+
+-- Create partitions for next 12 months
+-- (Run monthly via cron)
+CREATE TABLE messages_2025_01 PARTITION OF messages_template
+FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+
+-- =====================================
+-- Retention Policies
+-- =====================================
+
+-- Delete old messages (90 days)
+CREATE OR REPLACE FUNCTION cleanup_old_messages()
+RETURNS void AS $
+BEGIN
+  DELETE FROM messages 
+  WHERE timestamp < NOW() - INTERVAL '90 days';
+  
+  DELETE FROM tool_execution_metrics
+  WHERE executed_at < NOW() - INTERVAL '30 days';
+  
+  DELETE FROM composio_action_usage
+  WHERE executed_at < NOW() - INTERVAL '90 days';
+END;
+$ LANGUAGE plpgsql;
+
+-- Run daily via cron
+SELECT cron.schedule('cleanup-old-data', '0 2 * * *', 'SELECT cleanup_old_messages()');
 ```
 
 ---
 
-## 7️⃣ Complete Initialization
+## 🚀 Implementation Guide
+
+### Phase 1: Foundation (Weeks 1-2)
+
+**Goals:**
+- Set up project structure
+- Implement database schema
+- Create base agent classes
+- Implement simple agent type
+
+**Deliverables:**
+
+```
+✅ Project setup
+  ├── FastAPI application
+  ├── PostgreSQL with pgvector
+  ├── Redis for caching
+  └── Docker Compose for local dev
+
+✅ Database migrations
+  ├── Alembic setup
+  ├── All tables created
+  └── Indexes optimized
+
+✅ Simple Agent
+  ├── SimpleAgent class
+  ├── LLM provider abstraction (OpenAI, Anthropic)
+  ├── Prompt template engine (Jinja2)
+  ├── Structured output with Pydantic
+  └── Unit tests (80%+ coverage)
+
+✅ Tool Registry (Basic)
+  ├── Tool registration
+  ├── Tool execution with timeout
+  ├── Basic retry logic
+  └── HTTP tools
+```
+
+**Example Implementation:**
 
 ```python
-# app/main.py (Startup)
+# Week 1-2 Milestone: First working agent
 
-from fastapi import FastAPI
-from app.agents.registry import AgentRegistry, AgentMetadata, AgentCapability
-from app.agents.llm_router import LLMRouter, ModelProfile
-from app.tools.composio_manager import ComposioToolManager
-from app.agents.types.simple_agent import SimpleAgentFactory
-from app.agents.types.reasoning_agent import ReasoningAgentFactory
-from app.agents.types.code_agent import CodeAgentFactory
+from app.agents.types.simple_agent import SimpleAgent
+from app.agents.llm_router import LLMRouter
+from pydantic import BaseModel
 
-app = FastAPI()
+class IntentResult(BaseModel):
+    intent: str
+    confidence: float
 
-# Global instances
-agent_registry = AgentRegistry(db_pool=db)
-llm_router = LLMRouter(cost_controller=cost_controller, redis_client=redis)
-composio_manager = ComposioToolManager(
-    api_key=os.getenv("COMPOSIO_API_KEY"),
-    redis_client=redis,
-    db_pool=db
+# Create agent
+router = LLMRouter()
+agent = SimpleAgent(
+    llm_router=router,
+    model_profile="fast",
+    output_schema=IntentResult
 )
 
-@app.on_event("startup")
-async def startup():
-    """Initialize all systems"""
+# Execute
+result = await agent.run(
+    prompt="Classify: {{message}}",
+    input_data={"message": "I want to return my order"}
+)
+
+print(f"Intent: {result.intent}, Confidence: {result.confidence}")
+# Output: Intent: return_request, Confidence: 0.95
+```
+
+### Phase 2: Reasoning & Tools (Weeks 3-5)
+
+**Goals:**
+- Implement ReAct reasoning agent
+- Build complete tool system
+- Integrate Composio
+- Create workflow orchestrator
+
+**Deliverables:**
+
+```
+✅ Reasoning Agent
+  ├── ReasoningAgent class (ReAct pattern)
+  ├── Reasoning loop (max iterations)
+  ├── Tool calling mechanism
+  └── Integration tests
+
+✅ Tool System
+  ├── Advanced tool registry
+  ├── Tool caching (Redis)
+  ├── Rate limiting
+  ├── Metrics collection
+  ├── Built-in tools (HTTP, data, DB)
+  └── Custom tool creation API
+
+✅ Composio Integration
+  ├── ComposioToolManager
+  ├── Dynamic action discovery
+  ├── OAuth flow management
+  ├── Action search
+  └── Shopify, Gmail, Slack integrations
+
+✅ Workflow System
+  ├── WorkflowRegistry service
+  ├── DAG executor
+  ├── Conditional edges
+  ├── Parallel execution
+  └── State checkpointing
+```
+
+**Example Workflow:**
+
+```yaml
+# Week 3-5 Milestone: Multi-step workflow
+
+name: order_lookup
+version: 1.0.0
+
+workflow:
+  nodes:
+    - id: classify
+      agent: simple_classifier
     
-    # 1. Initialize Composio (discover all apps/actions)
-    await composio_manager.initialize()
-    
-    # 2. Register agent types
-    agent_registry.register(
-        AgentMetadata(
-            name="simple_intent_classifier",
-            type="simple",
-            description="Fast intent classification",
-            capabilities=[AgentCapability.STRUCTURED_OUTPUT],
-            supported_models=["gpt-3.5-turbo", "claude-3-haiku"],
-            default_model="gpt-3.5-turbo",
-            cost_tier="low",
-            avg_latency_ms=800
-        ),
-        SimpleAgentFactory()
-    )
-    
-    agent_registry.register(
-        AgentMetadata(
-            name="reasoning_support_agent",
-            type="reasoning",
-            description="Multi-step reasoning with tools",
-            capabilities=[
-                AgentCapability.TOOL_CALLING,
-                AgentCapability.REASONING
-            ],
-            supported_models=["gpt-4-turbo", "claude-3-sonnet"],
-            default_model="gpt-4-turbo",
-            cost_tier="medium",
-            avg_latency_ms=3000,
-            requires_tools=True,
-            max_iterations=10
-        ),
-        ReasoningAgentFactory()
-    )
-    
-    agent_registry.register(
-        AgentMetadata(
-            name="autonomous_return_agent",
-            type="code",
-            description="Autonomous order return processing",
-            capabilities=[
-                AgentCapability.PLANNING,
-                AgentCapability.TOOL_CALLING,
-                AgentCapability.MEMORY
-            ],
-            supported_models=["gpt-4", "claude-3-opus"],
-            default_model="gpt-4",
-            cost_tier="high",
-            avg_latency_ms=5000,
-            requires_tools=True,
-            max_iterations=20
-        ),
-        CodeAgentFactory()
-    )
-    
-    logger.info("startup_complete", 
-                agents=len(agent_registry._agents),
-                composio_apps=len(composio_manager._apps_cache),
-                composio_actions=len(composio_manager._actions_cache))
+    - id: get_order
+      agent: reasoning_agent
+      config:
+        tools: [shopify.get_order]
+        task: "Get order details for {{order_id}}"
+      condition:
+        type: jmespath
+        expression: "classify.output.intent == 'order_status'"
+```
+
+### Phase 3: Memory & Context (Weeks 6-7)
+
+**Goals:**
+- Implement hybrid memory system
+- Set up vector database
+- Create RAG pipeline
+- Build episodic memory
+
+**Deliverables:**
+
+```
+✅ Memory Manager
+  ├── Short-term memory (PostgreSQL)
+  ├── Long-term memory (Pinecone/Chroma)
+  ├── Hybrid retrieval
+  ├── Conversation indexing
+  └── Semantic search
+
+✅ Vector Database
+  ├── Pinecone/Chroma setup
+  ├── Embedding generation (OpenAI)
+  ├── Index management
+  └── Cleanup policies
+
+✅ RAG System
+  ├── Document indexing
+  ├── Chunk strategy
+  ├── Relevance ranking
+  └── Context assembly
+
+✅ Episodic Memory
+  ├── Agent execution storage
+  ├── Success pattern recognition
+  └── Failure analysis
+```
+
+### Phase 4: Code Agents & LLM Routing (Weeks 8-10)
+
+**Goals:**
+- Implement autonomous code agents
+- Build LLM router with cost optimization
+- Create agent sandbox
+- Implement cost controls
+
+**Deliverables:**
+
+```
+✅ Code Agent
+  ├── CodeAgent class (Plan→Execute→Reflect)
+  ├── Dynamic planning
+  ├── Self-correction
+  ├── Memory-based learning
+  └── Integration with episodic memory
+
+✅ LLM Router
+  ├── Profile-based routing (fast/balanced/powerful)
+  ├── Token estimation
+  ├── Cost calculation
+  ├── Circuit breakers
+  ├── Automatic fallbacks
+  └── Budget enforcement
+
+✅ Agent Sandbox
+  ├── Docker-based isolation
+  ├── Network restrictions
+  ├── Resource limits
+  └── Security policies
+
+✅ Cost Controller
+  ├── Budget tracking (hourly/daily/monthly)
+  ├── Alerts (80% threshold)
+  ├── Automatic throttling
+  └── Cost analytics
+```
+
+### Phase 5: Security & Observability (Weeks 11-12)
+
+**Goals:**
+- Implement all security layers
+- Set up monitoring stack
+- Create dashboards
+- Configure alerts
+
+**Deliverables:**
+
+```
+✅ Security
+  ├── API authentication (JWT)
+  ├── Tool whitelisting
+  ├── PII detection & sanitization
+  ├── OAuth token encryption
+  ├── Audit logging
+  └── Security testing
+
+✅ Monitoring
+  ├── Prometheus metrics
+  ├── OpenTelemetry tracing
+  ├── Grafana dashboards
+  ├── Alert rules
+  ├── Log aggregation (ELK)
+  └── Cost tracking dashboard
+
+✅ Documentation
+  ├── API documentation (OpenAPI)
+  ├── Agent development guide
+  ├── Workflow creation guide
+  ├── Operations runbook
+  └── Architecture diagrams
+```
+
+### Phase 6: Testing & Launch (Weeks 13-14)
+
+**Goals:**
+- Comprehensive testing
+- Performance optimization
+- Production deployment
+- Go-live
+
+**Deliverables:**
+
+```
+✅ Testing
+  ├── Unit tests (>80% coverage)
+  ├── Integration tests
+  ├── Load tests (1000 req/s)
+  ├── Security audit
+  └── Cost validation
+
+✅ Optimization
+  ├── Query optimization
+  ├── Cache tuning
+  ├── Model selection refinement
+  └── Latency improvements
+
+✅ Deployment
+  ├── Kubernetes manifests
+  ├── Helm charts
+  ├── CI/CD pipeline
+  ├── Blue-green deployment
+  └── Rollback procedures
+
+✅ Launch
+  ├── Production smoke tests
+  ├── Monitoring validation
+  ├── Team training
+  └── Documentation handoff
 ```
 
 ---
 
-## 8️⃣ Workflow Execution with All Components
+## 📡 API Documentation
 
-```python
-# app/agents/orchestrator.py (Complete Implementation)
+### Workflow Execution
 
-from typing import Dict, Any, Optional, List
-import asyncio
-from datetime import datetime
+**Execute Workflow**
 
-class AgentOrchestrator:
-    """
-    Complete orchestrator integrating:
-    - Agent Registry
-    - LLM Router
-    - Composio Tool Manager
-    - Memory Manager
-    - Workflow Registry
-    """
-    
-    def __init__(
-        self,
-        agent_registry: AgentRegistry,
-        llm_router: LLMRouter,
-        composio_manager: ComposioToolManager,
-        memory_manager: MemoryManager,
-        workflow_registry: WorkflowRegistryService,
-        db_pool
-    ):
-        self.agent_registry = agent_registry
-        self.llm_router = llm_router
-        self.composio = composio_manager
-        self.memory = memory_manager
-        self.workflow_registry = workflow_registry
-        self.db = db_pool
-    
-    async def execute_workflow(
-        self,
-        workflow_id: str,
-        input_data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Execute complete workflow with all integrated components.
-        
-        Flow:
-        1. Load workflow from registry
-        2. For each node:
-           a. Get agent from agent registry
-           b. Get Composio tools if needed
-           c. Get memory context
-           d. Route LLM via model router
-           e. Execute node
-           f. Store results
-        3. Follow conditional edges
-        4. Return final output
-        """
-        
-        # Load workflow
-        workflow = await self.workflow_registry.get_workflow(workflow_id)
-        if not workflow:
-            raise ValueError(f"Workflow {workflow_id} not found")
-        
-        config = workflow.config
-        
-        # Record execution start
-        execution_id = await self.workflow_registry.record_execution_start(
-            workflow_id,
-            context.get("conversation_id") if context else None
-        )
-        
-        execution_trace = {
-            "workflow_id": workflow_id,
-            "workflow_name": workflow.name,
-            "started_at": datetime.now().isoformat(),
-            "nodes": [],
-            "costs": {
-                "total_usd": 0.0,
-                "by_node": {}
-            }
-        }
-        
-        try:
-            # Execute DAG
-            result = await self._execute_dag(
-                config,
-                input_data,
-                context,
-                execution_trace
-            )
-            
-            # Record success
-            await self.workflow_registry.record_execution_complete(
-                execution_id,
-                ExecutionStatus.COMPLETED,
-                execution_trace=execution_trace,
-                metrics={
-                    "total_cost_usd": execution_trace["costs"]["total_usd"],
-                    "total_duration_ms": int((datetime.now() - datetime.fromisoformat(execution_trace["started_at"])).total_seconds() * 1000),
-                    "nodes_executed": len(execution_trace["nodes"])
-                }
-            )
-            
-            return result
-            
-        except Exception as e:
-            # Record failure
-            await self.workflow_registry.record_execution_complete(
-                execution_id,
-                ExecutionStatus.FAILED,
-                error_message=str(e),
-                execution_trace=execution_trace
-            )
-            raise
-    
-    async def _execute_dag(
-        self,
-        workflow_config: Dict[str, Any],
-        input_data: Dict[str, Any],
-        context: Optional[Dict[str, Any]],
-        execution_trace: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Execute workflow DAG with topological sort"""
-        
-        nodes = workflow_config["workflow"]["nodes"]
-        edges = workflow_config["workflow"]["edges"]
-        
-        # Build adjacency graph for topological sort
-        graph = {node["id"]: [] for node in nodes}
-        in_degree = {node["id"]: 0 for node in nodes}
-        
-        for edge in edges:
-            graph[edge["from"]].append(edge)
-            if edge["to"] != "END":
-                in_degree[edge["to"]] += 1
-        
-        # Find starting nodes (in_degree = 0)
-        queue = [node_id for node_id, degree in in_degree.items() if degree == 0]
-        
-        # Store node outputs
-        node_outputs = {}
-        executed_nodes = set()
-        
-        while queue:
-            node_id = queue.pop(0)
-            
-            # Skip if already executed
-            if node_id in executed_nodes:
-                continue
-            
-            # Find node config
-            node_config = next((n for n in nodes if n["id"] == node_id), None)
-            if not node_config:
-                continue
-            
-            # Check if node should be executed (conditional)
-            if "condition" in node_config:
-                if not self._evaluate_condition(node_config["condition"], node_outputs):
-                    logger.info("node_skipped_condition", node_id=node_id)
-                    executed_nodes.add(node_id)
-                    continue
-            
-            # Execute node
-            try:
-                node_start = datetime.now()
-                
-                node_output = await self._execute_node(
-                    node_config,
-                    input_data,
-                    node_outputs,
-                    context,
-                    workflow_config
-                )
-                
-                node_duration_ms = int((datetime.now() - node_start).total_seconds() * 1000)
-                
-                # Store output
-                node_outputs[node_id] = node_output
-                executed_nodes.add(node_id)
-                
-                # Record in trace
-                execution_trace["nodes"].append({
-                    "node_id": node_id,
-                    "agent": node_config.get("agent"),
-                    "duration_ms": node_duration_ms,
-                    "success": True,
-                    "output_preview": str(node_output)[:200]
-                })
-                
-                # Update costs
-                if "cost_usd" in node_output.get("metadata", {}):
-                    cost = node_output["metadata"]["cost_usd"]
-                    execution_trace["costs"]["total_usd"] += cost
-                    execution_trace["costs"]["by_node"][node_id] = cost
-                
-                logger.info(
-                    "node_executed",
-                    node_id=node_id,
-                    duration_ms=node_duration_ms
-                )
-                
-            except Exception as e:
-                logger.error(
-                    "node_execution_failed",
-                    node_id=node_id,
-                    error=str(e),
-                    exc_info=True
-                )
-                
-                execution_trace["nodes"].append({
-                    "node_id": node_id,
-                    "success": False,
-                    "error": str(e)
-                })
-                
-                # Fail entire workflow
-                raise
-            
-            # Process outgoing edges
-            for edge in graph[node_id]:
-                # Check edge condition
-                if "condition" in edge:
-                    if not self._evaluate_condition(edge["condition"], node_outputs):
-                        continue
-                
-                # Add next node to queue if all dependencies satisfied
-                next_node = edge["to"]
-                if next_node != "END":
-                    in_degree[next_node] -= 1
-                    if in_degree[next_node] == 0:
-                        queue.append(next_node)
-        
-        return {
-            "outputs": node_outputs,
-            "executed_nodes": list(executed_nodes),
-            "trace": execution_trace
-        }
-    
-    async def _execute_node(
-        self,
-        node_config: Dict[str, Any],
-        workflow_input: Dict[str, Any],
-        node_outputs: Dict[str, Any],
-        context: Optional[Dict[str, Any]],
-        workflow_config: Dict[str, Any]
-    ) -> Any:
-        """Execute single workflow node"""
-        
-        node_id = node_config["id"]
-        agent_name = node_config.get("agent")
-        
-        if not agent_name:
-            raise ValueError(f"Node {node_id} missing agent specification")
-        
-        # 1. Get agent instance from registry
-        agent = await self.agent_registry.create_agent(
-            agent_name=agent_name,
-            config=node_config.get("config", {}),
-            llm_router=self.llm_router,
-            tool_manager=self.composio
-        )
-        
-        # 2. Prepare node input
-        node_input = await self._prepare_node_input(
-            node_config,
-            workflow_input,
-            node_outputs,
-            context,
-            workflow_config
-        )
-        
-        # 3. Execute based on agent type
-        agent_metadata = self.agent_registry.get_metadata(agent_name)
-        
-        if not agent_metadata:
-            raise ValueError(f"Agent {agent_name} not found in registry")
-        
-        start_time = datetime.now()
-        
-        try:
-            if agent_metadata.type == "simple":
-                # Simple agent
-                result = await agent.run(
-                    prompt=node_config.get("prompt_template", ""),
-                    input_data=node_input,
-                    system_prompt=node_config.get("system_prompt")
-                )
-                
-            elif agent_metadata.type == "reasoning":
-                # Reasoning agent
-                result = await agent.run(
-                    task=node_config.get("task", ""),
-                    context=node_input
-                )
-                
-            elif agent_metadata.type == "code":
-                # Code agent
-                result = await agent.run(
-                    goal=node_config.get("goal", ""),
-                    context=node_input
-                )
-                
-            else:
-                raise ValueError(f"Unknown agent type: {agent_metadata.type}")
-            
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            
-            # Add metadata
-            if isinstance(result, dict):
-                result["metadata"] = result.get("metadata", {})
-                result["metadata"]["duration_ms"] = duration_ms
-                result["metadata"]["agent_name"] = agent_name
-                result["metadata"]["agent_type"] = agent_metadata.type
-            
-            return result
-            
-        except Exception as e:
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            
-            logger.error(
-                "node_execution_error",
-                node_id=node_id,
-                agent=agent_name,
-                duration_ms=duration_ms,
-                error=str(e)
-            )
-            
-            raise
-    
-    async def _prepare_node_input(
-        self,
-        node_config: Dict[str, Any],
-        workflow_input: Dict[str, Any],
-        node_outputs: Dict[str, Any],
-        context: Optional[Dict[str, Any]],
-        workflow_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Prepare input for node execution.
-        
-        Includes:
-        - Workflow input data
-        - Previous node outputs
-        - Memory context (if configured)
-        - Composio entity IDs (for OAuth)
-        """
-        
-        node_input = {
-            **workflow_input,
-            **(context or {})
-        }
-        
-        # Add previous node outputs
-        for node_id, output in node_outputs.items():
-            node_input[node_id] = output
-        
-        # Get memory context if node uses it
-        context_sources = node_config.get("config", {}).get("context_sources", [])
-        
-        if "conversation_history" in context_sources:
-            conversation_id = context.get("conversation_id") if context else None
-            if conversation_id:
-                node_input["conversation_history"] = await self.memory.get_recent_messages(
-                    conversation_id,
-                    limit=50
-                )
-        
-        if "knowledge_base" in context_sources:
-            current_message = workflow_input.get("customer_message", "")
-            if current_message:
-                node_input["knowledge_base"] = await self.memory.search_semantic(
-                    query=current_message,
-                    top_k=5,
-                    filters={"type": "knowledge_base"}
-                )
-        
-        # Add Composio entity IDs
-        composio_config = workflow_config.get("composio", {})
-        for app_config in composio_config.get("apps", []):
-            entity_source = app_config.get("entity_id_source")
-            if entity_source and entity_source in context:
-                node_input[f"{app_config['name']}_entity_id"] = context[entity_source]
-        
-        return node_input
-    
-    def _evaluate_condition(
-        self,
-        condition: Dict[str, Any],
-        node_outputs: Dict[str, Any]
-    ) -> bool:
-        """Evaluate conditional edge"""
-        
-        condition_type = condition.get("type", "always")
-        
-        if condition_type == "always":
-            return True
-        
-        elif condition_type == "jmespath":
-            import jmespath
-            expression = condition.get("expression", "")
-            
-            try:
-                result = jmespath.search(expression, node_outputs)
-                return bool(result)
-            except Exception as e:
-                logger.error(
-                    "condition_evaluation_failed",
-                    expression=expression,
-                    error=str(e)
-                )
-                return False
-        
-        elif condition_type == "python_expr":
-            expression = condition.get("expression", "")
-            
-            try:
-                # Safe evaluation with limited scope
-                safe_globals = {
-                    "__builtins__": {},
-                    "node_outputs": node_outputs
-                }
-                result = eval(expression, safe_globals)
-                return bool(result)
-            except Exception as e:
-                logger.error(
-                    "condition_evaluation_failed",
-                    expression=expression,
-                    error=str(e)
-                )
-                return False
-        
-        return False
+```http
+POST /api/v1/workflows/execute
+Content-Type: application/json
+Authorization: Bearer {jwt_token}
+
+{
+  "workflow_id": "customer_support_advanced",
+  "input_data": {
+    "customer_message": "I want to return order #12345",
+    "customer_id": "cust_789"
+  },
+  "context": {
+    "conversation_id": "conv_abc123",
+    "customer_email": "john@example.com"
+  }
+}
 ```
 
----
-
-## 9️⃣ API Endpoints
-
-```python
-# app/api/workflows.py
-
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
-
-router = APIRouter(prefix="/api/v1/workflows", tags=["workflows"])
-
-class WorkflowExecutionRequest(BaseModel):
-    workflow_id: str
-    input_data: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
-
-
-class WorkflowExecutionResponse(BaseModel):
-    execution_id: str
-    status: str
-    outputs: Dict[str, Any]
-    trace: Dict[str, Any]
-    total_cost_usd: float
-    duration_ms: int
-
-
-@router.post("/execute", response_model=WorkflowExecutionResponse)
-async def execute_workflow(
-    request: WorkflowExecutionRequest,
-    orchestrator: AgentOrchestrator = Depends(get_orchestrator)
-):
-    """
-    Execute a workflow.
-    
-    Example:
-    
-    {
-      "workflow_id": "customer_support_advanced",
-      "input_data": {
-        "customer_message": "I want to return order 12345",
-        "customer_id": "cust_789"
-      },
-      "context": {
-        "conversation_id": "conv_abc123",
-        "customer_email": "customer@example.com"
-      }
-    }
-    """
-    
-    try:
-        result = await orchestrator.execute_workflow(
-            workflow_id=request.workflow_id,
-            input_data=request.input_data,
-            context=request.context
-        )
-        
-        return WorkflowExecutionResponse(
-            execution_id=result["trace"]["execution_id"],
-            status="completed",
-            outputs=result["outputs"],
-            trace=result["trace"],
-            total_cost_usd=result["trace"]["costs"]["total_usd"],
-            duration_ms=result["trace"].get("duration_ms", 0)
-        )
-        
-    except Exception as e:
-        logger.error("workflow_execution_failed", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/agents", response_model=List[AgentMetadata])
-async def list_agents(
-    capability: Optional[AgentCapability] = None,
-    cost_tier: Optional[str] = None,
-    agent_registry: AgentRegistry = Depends(get_agent_registry)
-):
-    """List available agents"""
-    
-    agents = agent_registry.list_agents(
-        capability=capability,
-        cost_tier=cost_tier,
-        healthy_only=True
-    )
-    
-    return agents
-
-
-@router.get("/composio/apps", response_model=List[ComposioApp])
-async def list_composio_apps(
-    category: Optional[str] = None,
-    composio: ComposioToolManager = Depends(get_composio_manager)
-):
-    """List available Composio apps"""
-    
-    apps = await composio.list_apps(category=category)
-    
-    return apps
-
-
-@router.get("/composio/apps/{app_name}/actions", response_model=List[ComposioAction])
-async def list_app_actions(
-    app_name: str,
-    composio: ComposioToolManager = Depends(get_composio_manager)
-):
-    """List all actions for a Composio app"""
-    
-    actions = await composio.list_actions(app_name)
-    
-    return actions
-
-
-@router.get("/composio/actions/search")
-async def search_actions(
-    query: str,
-    limit: int = 10,
-    composio: ComposioToolManager = Depends(get_composio_manager)
-):
-    """
-    Search Composio actions by description.
-    
-    Example: GET /composio/actions/search?query=send email
-    """
-    
-    actions = await composio.search_actions(query, limit)
-    
-    return actions
-
-
-@router.post("/composio/connect/{app_name}")
-async def connect_composio_app(
-    app_name: str,
-    entity_id: str,
-    redirect_url: str,
-    composio: ComposioToolManager = Depends(get_composio_manager)
-):
-    """
-    Initiate OAuth connection for Composio app.
-    
-    Returns authorization URL for user to complete OAuth flow.
-    """
-    
-    auth_url = await composio.connect_app(
-        app_name=app_name,
-        entity_id=entity_id,
-        redirect_url=redirect_url
-    )
-    
-    return {"authorization_url": auth_url}
-
-
-@router.get("/llm/models")
-async def list_llm_models():
-    """List available LLM models with costs"""
-    
-    from app.agents.llm_router import LLMRouter
-    
-    models = [
-        {
-            "name": name,
-            "provider": spec.provider,
-            "context_window": spec.context_window,
-            "cost_per_1k_input": spec.cost_per_1k_input,
-            "cost_per_1k_output": spec.cost_per_1k_output,
-            "avg_latency_ms": spec.avg_latency_ms,
-            "quality_score": spec.quality_score
-        }
-        for name, spec in LLMRouter.MODELS.items()
-    ]
-    
-    return models
-
-
-@router.get("/costs/summary")
-async def get_cost_summary(
-    period: str = "daily",  # hourly, daily, monthly
-    db = Depends(get_db)
-):
-    """Get LLM cost summary"""
-    
-    if period == "hourly":
-        interval = "1 hour"
-    elif period == "daily":
-        interval = "1 day"
-    else:
-        interval = "1 month"
-    
-    summary = await db.fetchrow(f"""
-        SELECT 
-            COUNT(*) as total_calls,
-            SUM(actual_cost) as total_cost_usd,
-            AVG(actual_cost) as avg_cost_usd,
-            SUM(actual_input_tokens + actual_output_tokens) as total_tokens,
-            AVG(latency_ms) as avg_latency_ms
-        FROM llm_routing_decisions
-        WHERE created_at > NOW() - INTERVAL '{interval}'
-        AND success = true
-    """)
-    
-    by_model = await db.fetch(f"""
-        SELECT 
-            selected_model,
-            COUNT(*) as calls,
-            SUM(actual_cost) as cost_usd,
-            AVG(latency_ms) as avg_latency_ms
-        FROM llm_routing_decisions
-        WHERE created_at > NOW() - INTERVAL '{interval}'
-        AND success = true
-        GROUP BY selected_model
-        ORDER BY cost_usd DESC
-    """)
-    
-    return {
-        "period": period,
-        "summary": dict(summary),
-        "by_model": [dict(row) for row in by_model]
-    }
-```
-
----
-
-## 🔟 Complete Example: Customer Support Workflow
-
-```python
-# Example: Execute customer support workflow
-
-import httpx
-import asyncio
-
-async def handle_customer_message():
-    """Example of handling a customer message through the complete system"""
-    
-    # Customer message
-    message = "I want to return my order #12345, it arrived damaged"
-    customer_id = "cust_789"
-    customer_email = "john@example.com"
-    conversation_id = "conv_abc123"
-    
-    # Execute workflow
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "http://localhost:8000/api/v1/workflows/execute",
-            json={
-                "workflow_id": "customer_support_advanced",
-                "input_data": {
-                    "customer_message": message
-                },
-                "context": {
-                    "conversation_id": conversation_id,
-                    "customer_id": customer_id,
-                    "customer_email": customer_email
-                }
-            }
-        )
-        
-        result = response.json()
-        
-        print(f"Execution ID: {result['execution_id']}")
-        print(f"Status: {result['status']}")
-        print(f"Total Cost: ${result['total_cost_usd']:.4f}")
-        print(f"Duration: {result['duration_ms']}ms")
-        print(f"\nNodes Executed:")
-        
-        for node in result['trace']['nodes']:
-            print(f"  - {node['node_id']}: {node['duration_ms']}ms")
-        
-        print(f"\nFinal Output:")
-        print(result['outputs']['assemble_response'])
-
-# What happens internally:
-"""
-1. Workflow "customer_support_advanced" loaded from registry
-
-2. Node: classify_intent (Simple Agent)
-   - LLM Router selects: gpt-3.5-turbo (fast profile)
-   - Cost: $0.0008
-   - Output: {"intent": "return_request", "confidence": 0.95}
-
-3. Conditional edge evaluation:
-   - Intent = return_request → route to handle_return node
-
-4. Node: handle_return (Code Agent)
-   - Agent Registry creates autonomous_return_agent
-   - Composio Manager provides tools:
-     * shopify.get_order (entity_id: cust_789)
-     * shopify.create_return
-     * gmail.send_email (entity_id: agent_email)
-   
-   - LLM Router selects: gpt-4 (powerful profile)
-   - Agent Plans:
-     Step 1: Get order details
-     Step 2: Verify return eligibility
-     Step 3: Create return request
-     Step 4: Generate return label
-     Step 5: Send confirmation email
-   
-   - Agent Executes:
-     ✓ shopify.get_order(order_id="12345") → Order found, < 30 days
-     ✓ shopify.create_return(...) → Return #RET-456 created
-     ✓ shopify.generate_return_label(...) → Label URL generated
-     ✓ gmail.send_email(to="john@example.com", ...) → Email sent
-   
-   - Cost: $0.15
-   - Output: {
-       "success": true,
-       "return_id": "RET-456",
-       "label_url": "https://...",
-       "summary": "Return processed successfully"
-     }
-
-5. Node: assemble_response (Simple Agent)
-   - LLM Router selects: gpt-3.5-turbo (fast profile)
-   - Assembles final customer response
-   - Cost: $0.0012
-   - Output: "Hi John, I've processed your return request..."
-
-6. Total execution:
-   - Nodes executed: 3
-   - Total cost: $0.1520
-   - Duration: 8,450ms
-   - LLM calls: 4 (1x GPT-3.5, 2x GPT-4, 1x GPT-3.5)
-   - Composio actions: 4 (3x Shopify, 1x Gmail)
-"""
-```
-
----
-
-## 📊 Monitoring Dashboard Queries
-
-```sql
--- Real-time agent performance
-SELECT 
-    am.name as agent_name,
-    am.type,
-    COUNT(*) as executions_24h,
-    AVG(ae.duration_ms) as avg_duration_ms,
-    SUM(CASE WHEN ae.success THEN 1 ELSE 0 END)::float / COUNT(*) as success_rate,
-    SUM(ae.cost_usd) as total_cost_usd
-FROM agent_metadata am
-LEFT JOIN agent_executions ae ON ae.agent_type = am.name
-WHERE ae.created_at > NOW() - INTERVAL '24 hours'
-GROUP BY am.name, am.type
-ORDER BY total_cost_usd DESC;
-
--- LLM model usage and costs
-SELECT 
-    selected_model,
-    requested_profile,
-    COUNT(*) as calls,
-    SUM(actual_cost) as cost_usd,
-    AVG(latency_ms) as avg_latency_ms,
-    SUM(actual_input_tokens) as total_input_tokens,
-    SUM(actual_output_tokens) as total_output_tokens
-FROM llm_routing_decisions
-WHERE created_at > NOW() - INTERVAL '24 hours'
-GROUP BY selected_model, requested_profile
-ORDER BY cost_usd DESC;
-
--- Composio action usage
-SELECT 
-    app_name,
-    action_name,
-    COUNT(*) as executions,
-    SUM(CASE WHEN success THEN 1 ELSE 0 END)::float / COUNT(*) as success_rate,
-    AVG(duration_ms) as avg_duration_ms
-FROM composio_action_usage
-WHERE executed_at > NOW() - INTERVAL '24 hours'
-GROUP BY app_name, action_name
-ORDER BY executions DESC
-LIMIT 20;
-
--- Cost breakdown by workflow
-SELECT 
-    wr.name as workflow_name,
-    COUNT(*) as executions,
-    AVG(we.total_duration_ms) as avg_duration_ms,
-    SUM((we.metrics->>'total_cost_usd')::float) as total_cost_usd,
-    AVG((we.metrics->>'total_cost_usd')::float) as avg_cost_per_execution
-FROM workflow_executions we
-JOIN workflow_registry wr ON we.workflow_id = wr.id
-WHERE we.started_at > NOW() - INTERVAL '24 hours'
-AND we.status = 'completed'
-GROUP BY wr.name
-ORDER BY total_cost_usd DESC;
-```
-
----
-
-## 🎯 Summary: Complete Architecture
-
-### ✅ What We've Built
-
-1. **Agent Registry**
-   - Dynamic agent discovery
-   - Health monitoring
-   - Automatic fallbacks
-   - Capability-based routing
-
-2. **LLM Model Router**
-   - Profile-based routing (fast/balanced/powerful)
-   - Cost optimization
-   - Token estimation
-   - Circuit breakers
-   - Fallback chains
-
-3. **Composio Tool Manager**
-   - Dynamic action discovery (150+ apps, 1000+ actions)
-   - OAuth flow management
-   - Rate limiting per app
-   - Action search/discovery
-
-4. **Complete Hierarchy**
-   ```
-   Workflow
-     └── Node
-          ├── Agent (from registry)
-          │    ├── LLM (via router)
-          │    └── Tools (from Composio)
-          │         └── Actions (specific operations)
-          └── Conditional Edges
-   ```
-
-5. **Cost Controls**
-   - Budget enforcement
-   - Model selection optimization
-   - Circuit breakers
-   - Real-time tracking
-
-### 🔢 Expected Performance
-
-| Metric | Target | Actual (Estimated) |
-|--------|--------|-------------------|
-| **Simple Agent Latency** | <2s | ~1.5s |
-| **Reasoning Agent Latency** | <15s | ~8s |
-| **Code Agent Latency** | <60s | ~25s |
-| **Cost per Simple Call** | <$0.01 | ~$0.001 |
-| **Cost per Reasoning Call** | <$0.05 | ~$0.03 |
-| **Cost per Code Agent Call** | <$0.20 | ~$0.15 |
-| **System Uptime** | >99.5% | TBD |
-
-### 💰 Total Cost (1000 conversations/day)
-
-**Optimized with LLM Router:**
-- 60% Fast profile (GPT-3.5): $0.001 × 600 = $0.60/day
-- 30% Balanced (GPT-4-turbo): $0.03 × 300 = $9.00/day
-- 10% Powerful (GPT-4): $0.15 × 100 = $15.00/day
-
-**Total: ~$24.60/day (~$738/month)**
-
-Compare to original estimate without router: ~$1,686/month  
-**Savings: 56% ($948/month)**
-
----
-
-## 🚀 Next Steps
-
-1. **Implement remaining components:**
-   - [ ] Complete tool registry integration
-   - [ ] Finish memory manager RAG implementation
-   - [ ] Add supervision layer (multi-agent collaboration)
-
-2. **Testing:**
-   - [ ] Unit tests for all components
-   - [ ] Integration tests for workflows
-   - [ ] Load testing (1000 req/s)
-   - [ ] Cost validation
-
-3. **Documentation:**
-   - [ ] API documentation (OpenAPI)
-   - [ ] Workflow creation guide
-   - [ ] Agent development guide
-   - [ ] Composio integration examples
-
-4. **Deployment:**
-   - [ ] Kubernetes manifests
-   - [ ] Helm charts
-   - [ ] CI/CD pipeline
-   - [ ] Monitoring setup (Grafana dashboards)
-
----
-
-**This architecture is now production-ready with:**
-✅ Complete hierarchy (Graph → Node → Agent → Tools → Actions)  
-✅ Agent Registry (dynamic discovery)  
-✅ LLM Router (cost optimization)  
-✅ Composio Integration (1000+ actions)  
-✅ Full observability  
-✅ Cost controls
-
----
-
-## 📝 Additional Implementation Details
-
-### Dependency Injection Setup
-
-```python
-# app/dependencies.py
-
-from fastapi import Depends
-from typing import AsyncGenerator
-import asyncpg
-
-# Database pool
-_db_pool: Optional[asyncpg.Pool] = None
-_redis_client = None
-
-async def get_db() -> asyncpg.Connection:
-    """Get database connection"""
-    async with _db_pool.acquire() as conn:
-        yield conn
-
-async def get_redis():
-    """Get Redis client"""
-    return _redis_client
-
-# Global instances (initialized on startup)
-_agent_registry: Optional[AgentRegistry] = None
-_llm_router: Optional[LLMRouter] = None
-_composio_manager: Optional[ComposioToolManager] = None
-_memory_manager: Optional[MemoryManager] = None
-_workflow_registry: Optional[WorkflowRegistryService] = None
-_orchestrator: Optional[AgentOrchestrator] = None
-
-def get_agent_registry() -> AgentRegistry:
-    return _agent_registry
-
-def get_llm_router() -> LLMRouter:
-    return _llm_router
-
-def get_composio_manager() -> ComposioToolManager:
-    return _composio_manager
-
-def get_memory_manager() -> MemoryManager:
-    return _memory_manager
-
-def get_workflow_registry() -> WorkflowRegistryService:
-    return _workflow_registry
-
-def get_orchestrator() -> AgentOrchestrator:
-    return _orchestrator
-```
-
----
-
-## 🧪 Testing Strategy
-
-### Unit Tests
-
-```python
-# tests/test_llm_router.py
-
-import pytest
-from app.agents.llm_router import LLMRouter, ModelProfile
-
-@pytest.mark.asyncio
-async def test_llm_router_fast_profile():
-    """Test that fast profile selects cheap models"""
-    router = LLMRouter()
-    
-    messages = [
-        {"role": "user", "content": "Hello"}
-    ]
-    
-    decision = await router.route(
-        messages=messages,
-        profile=ModelProfile.FAST
-    )
-    
-    # Should select GPT-3.5 or Claude Haiku
-    assert decision.model in ["gpt-3.5-turbo", "claude-3-haiku-20240307"]
-    assert decision.estimated_cost < 0.01
-
-
-@pytest.mark.asyncio
-async def test_llm_router_respects_budget():
-    """Test that router respects cost constraints"""
-    router = LLMRouter()
-    
-    # Very long message
-    long_message = "Hello " * 10000
-    messages = [{"role": "user", "content": long_message}]
-    
-    decision = await router.route(
-        messages=messages,
-        profile=ModelProfile.FAST,
-        custom_constraints={"max_cost_per_call": 0.001}
-    )
-    
-    # Should fail or select very cheap model
-    assert decision.estimated_cost <= 0.001
-
-
-# tests/test_agent_registry.py
-
-@pytest.mark.asyncio
-async def test_agent_registry_fallback():
-    """Test that registry provides fallback when agent unhealthy"""
-    registry = AgentRegistry()
-    
-    # Register two similar agents
-    registry.register(
-        AgentMetadata(
-            name="primary_agent",
-            type="simple",
-            capabilities=[AgentCapability.STRUCTURED_OUTPUT],
-            default_model="gpt-4",
-            cost_tier="high",
-            is_healthy=False  # Unhealthy
-        ),
-        SimpleAgentFactory()
-    )
-    
-    registry.register(
-        AgentMetadata(
-            name="fallback_agent",
-            type="simple",
-            capabilities=[AgentCapability.STRUCTURED_OUTPUT],
-            default_model="gpt-3.5-turbo",
-            cost_tier="low",
-            is_healthy=True
-        ),
-        SimpleAgentFactory()
-    )
-    
-    # Should use fallback
-    agent = await registry.create_agent(
-        "primary_agent",
-        {},
-        llm_router=None,
-        tool_manager=None
-    )
-    
-    assert agent is not None
-
-
-# tests/test_composio_manager.py
-
-@pytest.mark.asyncio
-async def test_composio_action_discovery():
-    """Test that Composio manager discovers actions"""
-    manager = ComposioToolManager(api_key="test_key")
-    await manager.initialize()
-    
-    # Should have discovered Shopify actions
-    actions = await manager.list_actions("shopify")
-    
-    assert len(actions) > 0
-    assert any("order" in a.action_name.lower() for a in actions)
-
-
-@pytest.mark.asyncio
-async def test_composio_action_search():
-    """Test semantic search for actions"""
-    manager = ComposioToolManager(api_key="test_key")
-    await manager.initialize()
-    
-    results = await manager.search_actions("send email")
-    
-    assert len(results) > 0
-    # Should find Gmail actions
-    assert any("gmail" in a.app_name.lower() for a in results)
-```
-
----
-
-## 📊 Grafana Dashboard JSON
+**Response:**
 
 ```json
 {
-  "dashboard": {
-    "title": "HIL Agent System",
-    "panels": [
+  "execution_id": "exec_xyz789",
+  "status": "completed",
+  "outputs": {
+    "classify_intent": {
+      "intent": "return_request",
+      "confidence": 0.95
+    },
+    "handle_return": {
+      "success": true,
+      "return_id": "RET-456",
+      "label_url": "https://...",
+      "summary": "Return processed successfully"
+    },
+    "assemble_response": {
+      "text": "Hi John! I've processed your return..."
+    }
+  },
+  "trace": {
+    "workflow_id": "customer_support_advanced",
+    "started_at": "2025-01-12T10:30:00Z",
+    "completed_at": "2025-01-12T10:30:08Z",
+    "nodes": [
       {
-        "title": "LLM Costs (Last 24h)",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "sum(rate(llm_cost_usd_total[5m])) by (model)",
-            "legendFormat": "{{model}}"
-          }
-        ]
+        "node_id": "classify_intent",
+        "duration_ms": 1200,
+        "success": true
       },
       {
-        "title": "Agent Execution Duration",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(agent_execution_duration_seconds_bucket[5m])) by (agent_type)",
-            "legendFormat": "P95 - {{agent_type}}"
-          }
-        ]
+        "node_id": "handle_return",
+        "duration_ms": 6800,
+        "success": true
       },
       {
-        "title": "Tool Execution Success Rate",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "sum(rate(tool_executions_total{status=\"success\"}[5m])) by (tool_name) / sum(rate(tool_executions_total[5m])) by (tool_name)",
-            "legendFormat": "{{tool_name}}"
-          }
-        ]
-      },
-      {
-        "title": "Top Composio Apps by Usage",
-        "type": "table",
-        "targets": [
-          {
-            "expr": "topk(10, sum(rate(composio_action_executions_total[1h])) by (app_name))"
-          }
-        ]
-      },
-      {
-        "title": "Circuit Breaker Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "circuit_breaker_state"
-          }
-        ]
+        "node_id": "assemble_response",
+        "duration_ms": 450,
+        "success": true
       }
-    ]
-  }
+    ],
+    "costs": {
+      "total_usd": 0.1520,
+      "by_node": {
+        "classify_intent": 0.0008,
+        "handle_return": 0.1500,
+        "assemble_response": 0.0012
+      }
+    }
+  },
+  "total_cost_usd": 0.1520,
+  "duration_ms": 8450
+}
+```
+
+### Agent Management
+
+**List Available Agents**
+
+```http
+GET /api/v1/agents?capability=tool_calling&cost_tier=low
+Authorization: Bearer {jwt_token}
+```
+
+**Response:**
+
+```json
+{
+  "agents": [
+    {
+      "name": "simple_intent_classifier",
+      "type": "simple",
+      "description": "Fast intent classification",
+      "capabilities": ["structured_output"],
+      "supported_models": ["gpt-3.5-turbo", "claude-3-haiku"],
+      "cost_tier": "low",
+      "avg_latency_ms": 800,
+      "is_healthy": true,
+      "error_rate": 0.02
+    }
+  ]
+}
+```
+
+### Composio Integration
+
+**List Composio Apps**
+
+```http
+GET /api/v1/composio/apps?category=ecommerce
+Authorization: Bearer {jwt_token}
+```
+
+**Response:**
+
+```json
+{
+  "apps": [
+    {
+      "name": "shopify",
+      "display_name": "Shopify",
+      "description": "E-commerce platform",
+      "category": "ecommerce",
+      "total_actions": 150,
+      "available_actions": ["get_order", "create_return", "..."],
+      "is_connected": true,
+      "logo_url": "https://..."
+    }
+  ]
+}
+```
+
+**Search Actions**
+
+```http
+GET /api/v1/composio/actions/search?query=send email&limit=5
+Authorization: Bearer {jwt_token}
+```
+
+**Response:**
+
+```json
+{
+  "actions": [
+    {
+      "app_name": "gmail",
+      "action_name": "send_email",
+      "display_name": "Send Email",
+      "description": "Send an email message",
+      "parameters": {
+        "to": {"type": "string", "required": true},
+        "subject": {"type": "string", "required": true},
+        "body": {"type": "string", "required": true}
+      },
+      "requires_auth": true
+    }
+  ]
+}
+```
+
+**Connect App (OAuth)**
+
+```http
+POST /api/v1/composio/connect/shopify
+Content-Type: application/json
+Authorization: Bearer {jwt_token}
+
+{
+  "entity_id": "cust_789",
+  "redirect_url": "https://yourapp.com/oauth/callback"
+}
+```
+
+**Response:**
+
+```json
+{
+  "authorization_url": "https://shopify.com/oauth/authorize?client_id=...",
+  "connection_id": "conn_abc123"
+}
+```
+
+### Cost Tracking
+
+**Get Cost Summary**
+
+```http
+GET /api/v1/costs/summary?period=daily
+Authorization: Bearer {jwt_token}
+```
+
+**Response:**
+
+```json
+{
+  "period": "daily",
+  "summary": {
+    "total_calls": 1523,
+    "total_cost_usd": 24.56,
+    "avg_cost_usd": 0.0161,
+    "total_tokens": 2847392,
+    "avg_latency_ms": 2340
+  },
+  "by_model": [
+    {
+      "selected_model": "gpt-4-turbo",
+      "calls": 456,
+      "cost_usd": 18.20,
+      "avg_latency_ms": 3100
+    },
+    {
+      "selected_model": "gpt-3.5-turbo",
+      "calls": 1067,
+      "cost_usd": 6.36,
+      "avg_latency_ms": 850
+    }
+  ]
 }
 ```
 
 ---
 
-## 🔐 Security Checklist
+## 💰 Cost Analysis
 
-- [ ] **Authentication**
-  - [ ] JWT tokens for API access
-  - [ ] API key rotation policy
-  - [ ] Rate limiting per API key
+### Cost Breakdown by Component
 
-- [ ] **Agent Security**
-  - [ ] Code agents run in Docker sandbox
-  - [ ] Tool whitelist enforced
-  - [ ] No arbitrary code execution
-  - [ ] Output sanitization
+| Component | Cost Type | Monthly Cost | Notes |
+|-----------|-----------|--------------|-------|
+| **LLM APIs** | Variable | $700-1,700 | Based on 1000 conversations/day |
+| **PostgreSQL** | Fixed | $50-200 | Managed service (25GB) |
+| **Redis** | Fixed | $20-50 | Managed cache (2GB) |
+| **Vector DB** | Fixed | $70-150 | Pinecone Starter/Standard |
+| **Kubernetes** | Fixed | $100-300 | 3 nodes (managed) |
+| **Monitoring** | Fixed | $50-100 | Grafana Cloud + logs |
+| **Composio** | Variable | $99-499 | Based on action usage |
+| **Total** | - | **$1,089-2,999** | Average: $1,900/month |
 
-- [ ] **Composio Security**
-  - [ ] OAuth tokens encrypted at rest (Fernet)
-  - [ ] Token refresh mechanism
-  - [ ] Scope validation per action
-  - [ ] Connection revocation endpoint
+### LLM Cost Scenarios
 
-- [ ] **Cost Controls**
-  - [ ] Per-conversation budget limits
-  - [ ] Daily/monthly budget alerts
-  - [ ] Circuit breakers on expensive models
-  - [ ] Automatic fallback to cheaper models
+**Scenario 1: Conservative (Mostly Simple Agents)**
+- 1000 conversations/day
+- 70% simple agents (GPT-3.5): $0.001 × 700 = $0.70/day
+- 25% reasoning (GPT-4-turbo): $0.03 × 250 = $7.50/day
+- 5% code agents (GPT-4): $0.15 × 50 = $7.50/day
+- **Total: $15.70/day = $471/month**
 
-- [ ] **Data Privacy**
-  - [ ] PII sanitization in logs
-  - [ ] Conversation data encryption
-  - [ ] GDPR deletion within 30 days
-  - [ ] Audit trail for 7 years
+**Scenario 2: Balanced (Recommended)**
+- 1000 conversations/day
+- 60% simple (GPT-3.5): $0.001 × 600 = $0.60/day
+- 30% reasoning (GPT-4-turbo): $0.03 × 300 = $9.00/day
+- 10% code agents (GPT-4): $0.15 × 100 = $15.00/day
+- **Total: $24.60/day = $738/month**
+
+**Scenario 3: Aggressive (Heavy Autonomous)**
+- 1000 conversations/day
+- 40% simple (GPT-3.5): $0.001 × 400 = $0.40/day
+- 30% reasoning (GPT-4-turbo): $0.03 × 300 = $9.00/day
+- 30% code agents (GPT-4): $0.15 × 300 = $45.00/day
+- **Total: $54.40/day = $1,632/month**
+
+### ROI Calculation
+
+**Current State (Manual Support):**
+- 10 support agents @ $40k/year = $400k/year
+- Handles ~500 conversations/day
+- Cost per conversation: $400k / (500 × 365) = $2.19
+
+**With HIL System:**
+- Development: $350k (one-time)
+- Operations: $1,900/month = $22.8k/year
+- Handles 1000 conversations/day (2x capacity)
+- Cost per conversation: $22.8k / (1000 × 365) = $0.06
+
+**Savings:**
+- Year 1: $400k - ($350k + $22.8k) = $27.2k (break-even in ~11 months)
+- Year 2+: $400k - $22.8k = **$377.2k/year savings**
+- 5-year ROI: **$1.86M**
+
+### Cost Optimization Tips
+
+**1. Use Model Router Aggressively**
+```python
+# Default to fast profile
+default_profile = "fast"  # Use GPT-3.5 by default
+
+# Only use powerful for critical tasks
+if task_complexity > 0.8:
+    profile = "powerful"
+```
+
+**2. Enable Aggressive Caching**
+```python
+# Cache tool results
+cache_ttl = 300  # 5 minutes for frequently accessed data
+
+# Cache LLM responses for identical prompts
+llm_cache_enabled = True
+```
+
+**3. Batch Operations**
+```python
+# Process multiple similar requests together
+if len(pending_requests) > 10:
+    batch_process(pending_requests)  # Reduces overhead
+```
+
+**4. Set Budget Alerts**
+```python
+# Alert at 80% of daily budget
+alert_threshold = 0.80
+daily_budget = 50.0  # USD
+
+if current_spend >= daily_budget * alert_threshold:
+    send_alert("Approaching daily budget")
+```
 
 ---
 
-## 🎓 Key Learnings from This Design
+## 🚢 Production Deployment
 
-### 1. **Hierarchy Matters**
-The clear separation of concerns (Graph → Node → Agent → Tools → Actions) makes the system:
-- Easy to understand
-- Easy to test
-- Easy to extend
-- Easy to debug
+### Infrastructure Requirements
 
-### 2. **LLM Router is Critical**
-Without intelligent routing:
-- Costs can be 2-3x higher
-- Latency is inconsistent
-- No automatic fallbacks
-- Difficult to optimize
+**Minimum (Low Traffic: <100 conversations/day)**
+```yaml
+Kubernetes Cluster:
+  - 2 nodes (4 CPU, 8GB RAM each)
+  - Total: 8 CPU, 16GB RAM
 
-With router:
-- 56% cost savings
-- Consistent performance
-- Automatic model selection
-- Easy A/B testing
+PostgreSQL:
+  - Shared instance (2 CPU, 4GB RAM)
+  - 10GB storage
 
-### 3. **Composio Solves Integration Hell**
-Manual API integrations:
-- 1-2 weeks per integration
-- Custom OAuth flows
-- Maintenance burden
-- Limited coverage
+Redis:
+  - Shared instance (1GB RAM)
 
-With Composio:
-- 1000+ actions ready to use
-- OAuth managed
-- Rate limiting handled
-- Automatic updates
+Vector DB:
+  - Pinecone Starter (100k vectors)
 
-### 4. **Agent Registry Enables Flexibility**
-Hardcoded agents:
-- Difficult to swap implementations
-- No fallback mechanism
-- Hard to add new agents
-- Tight coupling
+Monthly Cost: ~$500
+```
 
-With registry:
-- Plug-and-play agents
-- Automatic fallbacks
-- Health monitoring
-- Easy experimentation
+**Recommended (Medium Traffic: 1000 conversations/day)**
+```yaml
+Kubernetes Cluster:
+  - 3 nodes (8 CPU, 16GB RAM each)
+  - Total: 24 CPU, 48GB RAM
 
-### 5. **Observability is Non-Negotiable**
-Without metrics:
-- Debugging is guesswork
-- Cost surprises
-- No optimization data
-- Blind to failures
+PostgreSQL:
+  - Dedicated instance (4 CPU, 8GB RAM)
+  - 25GB storage, automated backups
 
-With full observability:
-- Instant problem identification
-- Cost tracking in real-time
-- Performance optimization
-- Proactive alerts
+Redis:
+  - Dedicated instance (2GB RAM)
+  - Persistence enabled
+
+Vector DB:
+  - Pinecone Standard (1M vectors)
+
+Load Balancer:
+  - HTTPS with SSL termination
+
+Monthly Cost: ~$1,200
+```
+
+**Enterprise (High Traffic: 10k+ conversations/day)**
+```yaml
+Kubernetes Cluster:
+  - 5+ nodes (16 CPU, 32GB RAM each)
+  - Total: 80+ CPU, 160+ GB RAM
+  - Auto-scaling enabled
+
+PostgreSQL:
+  - Multi-region replication
+  - 8 CPU, 16GB RAM
+  - 100GB storage
+
+Redis:
+  - Redis Cluster (6GB RAM)
+  - High availability
+
+Vector DB:
+  - Pinecone Enterprise (10M+ vectors)
+  - Multi-index support
+
+CDN:
+  - CloudFlare Enterprise
+
+Monthly Cost: ~$5,000+
+```
+
+### Kubernetes Deployment
+
+**Namespace Setup:**
+
+```yaml
+# k8s/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hil-system
+  labels:
+    name: hil-system
+```
+
+**Application Deployment:**
+
+```yaml
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hil-api
+  namespace: hil-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hil-api
+  template:
+    metadata:
+      labels:
+        app: hil-api
+    spec:
+      containers:
+      - name: api
+        image: hil-system/api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: hil-secrets
+              key: database-url
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hil-secrets
+              key: openai-key
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+```
+
+**Service & Ingress:**
+
+```yaml
+# k8s/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hil-api
+  namespace: hil-system
+spec:
+  selector:
+    app: hil-api
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# k8s/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hil-ingress
+  namespace: hil-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - api.hil-system.com
+    secretName: hil-tls
+  rules:
+  - host: api.hil-system.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hil-api
+            port:
+              number: 80
+```
+
+### CI/CD Pipeline
+
+**GitHub Actions:**
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Tests
+        run: |
+          docker-compose up -d
+          pytest tests/ --cov=app --cov-report=xml
+          
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+  
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t hil-system/api:${{ github.sha }} .
+          docker tag hil-system/api:${{ github.sha }} hil-system/api:latest
+      
+      - name: Push to Registry
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          docker push hil-system/api:${{ github.sha }}
+          docker push hil-system/api:latest
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/hil-api api=hil-system/api:${{ github.sha }} -n hil-system
+          kubectl rollout status deployment/hil-api -n hil-system
+```
+
+### Health Checks
+
+```python
+# app/health.py
+
+from fastapi import APIRouter, status
+from typing import Dict, Any
+
+router = APIRouter()
+
+@router.get("/health")
+async def health_check() -> Dict[str, Any]:
+    """Basic health check"""
+    return {"status": "healthy"}
+
+@router.get("/ready")
+async def readiness_check(
+    db = Depends(get_db),
+    redis = Depends(get_redis)
+) -> Dict[str, Any]:
+    """Readiness check (all dependencies available)"""
+    
+    checks = {}
+    
+    # Check database
+    try:
+        await db.fetchval("SELECT 1")
+        checks["database"] = "healthy"
+    except Exception as e:
+        checks["database"] = f"unhealthy: {str(e)}"
+    
+    # Check Redis
+    try:
+        await redis.ping()
+        checks["redis"] = "healthy"
+    except Exception as e:
+        checks["redis"] = f"unhealthy: {str(e)}"
+    
+    # Check LLM providers
+    try:
+        await llm_router.route([{"role": "user", "content": "test"}])
+        checks["llm"] = "healthy"
+    except Exception as e:
+        checks["llm"] = f"unhealthy: {str(e)}"
+    
+    all_healthy = all(v == "healthy" for v in checks.values())
+    status_code = status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+    
+    return {"status": "ready" if all_healthy else "not_ready", "checks": checks}
+```
 
 ---
 
-## 🚀 Production Deployment Checklist
+## 🆚 Build vs Buy Analysis
 
-### Infrastructure
-- [ ] Kubernetes cluster (3+ nodes)
-- [ ] PostgreSQL (managed, 25GB+)
-- [ ] Redis (managed, 2GB+)
-- [ ] Vector DB (Pinecone/Chroma)
-- [ ] Load balancer (HTTPS)
-- [ ] CDN (static assets)
+### Option 1: Build Custom (This Architecture)
 
-### Configuration
-- [ ] Environment variables set
-- [ ] Secrets management (Vault/AWS Secrets)
-- [ ] Database migrations applied
-- [ ] Composio apps configured
-- [ ] LLM API keys validated
-- [ ] Monitoring stack deployed
+**Pros:**
+✅ Complete control over agent behavior  
+✅ Custom memory system with episodic learning  
+✅ Optimized LLM routing (56% cost savings)  
+✅ Deep integration with internal systems  
+✅ Extensible for future requirements  
+✅ Team learns AI engineering skills  
 
-### Testing
+**Cons:**
+❌ 12-14 weeks development time  
+❌ Requires ML engineering expertise  
+❌ $300-400k development cost  
+❌ Ongoing maintenance burden  
+❌ Higher initial risk  
+
+**Best For:**
+- Companies with >$10M revenue
+- ML engineering team (2-3 engineers)
+- Complex, unique requirements
+- Long-term AI strategy
+- Need for IP/competitive advantage
+
+### Option 2: n8n + AgentKit
+
+**Pros:**
+✅ Quick setup (4 weeks)  
+✅ Visual workflow builder  
+✅ 400+ pre-built integrations  
+✅ Lower upfront cost ($50-100k)  
+✅ Smaller team needed (1-2 engineers)  
+✅ Battle-tested platform  
+
+**Cons:**
+❌ Limited agent autonomy  
+❌ No custom memory system  
+❌ Less control over LLM selection  
+❌ Vendor lock-in  
+❌ Monthly licensing costs  
+❌ May not scale to enterprise needs  
+
+**Best For:**
+- Startups with <$5M revenue
+- Need to ship fast (MVP in weeks)
+- Standard workflows (80% use cases)
+- Limited ML engineering resources
+- Testing AI feasibility
+
+### Hybrid Approach (Recommended)
+
+**Phase 1: Start with n8n (Months 1-3)**
+- Build workflows using n8n + AgentKit
+- Validate use cases and ROI
+- Learn what agents need to do
+- Keep team small (1-2 engineers)
+
+**Phase 2: Identify Gaps (Month 4)**
+- What can't n8n do?
+- Where do you need more control?
+- What's the cost of n8n at scale?
+
+**Phase 3: Migrate Gradually (Months 5-10)**
+- Build custom components only where needed
+- Keep n8n for simple workflows
+- Custom agents for complex cases
+- Gradual team expansion
+
+**Benefits:**
+✅ Fast time to market  
+✅ Lower risk  
+✅ Learn before building  
+✅ Avoid over-engineering  
+✅ Smooth migration path  
+
+### Decision Matrix
+
+| Criterion | Weight | Build Custom | n8n + AgentKit | Hybrid |
+|-----------|--------|--------------|----------------|--------|
+| **Time to Market** | 20% | 2/10 | 9/10 | 7/10 |
+| **Cost (Year 1)** | 15% | 3/10 | 8/10 | 7/10 |
+| **Flexibility** | 20% | 10/10 | 6/10 | 8/10 |
+| **Scalability** | 15% | 10/10 | 7/10 | 9/10 |
+| **Maintenance** | 10% | 4/10 | 9/10 | 7/10 |
+| **Team Size** | 10% | 3/10 | 9/10 | 7/10 |
+| **Learning Curve** | 10% | 3/10 | 9/10 | 6/10 |
+
+**Weighted Scores:**
+- Build Custom: **5.8/10**
+- n8n + AgentKit: **7.9/10**
+- Hybrid: **7.6/10**
+
+**Recommendation: Start with n8n + AgentKit, migrate to hybrid as you scale.**
+
+---
+
+## 📚 Appendix
+
+### A. Glossary
+
+| Term | Definition |
+|------|------------|
+| **Agent** | AI system that can perceive, reason, and act autonomously |
+| **ReAct** | Reasoning + Acting pattern for agent decision-making |
+| **RAG** | Retrieval-Augmented Generation (memory + LLM) |
+| **DAG** | Directed Acyclic Graph (workflow structure) |
+| **Circuit Breaker** | Pattern to prevent cascading failures |
+| **Episodic Memory** | Memory of past agent executions and outcomes |
+| **Tool** | Function an agent can call to interact with external systems |
+| **Composio** | Platform providing 1000+ pre-built tool integrations |
+
+### B. Related Resources
+
+**Documentation:**
+- LangGraph: https://langchain-ai.github.io/langgraph/
+- Composio: https://docs.composio.dev/
+- OpenTelemetry: https://opentelemetry.io/
+- Prometheus: https://prometheus.io/docs/
+
+**Papers:**
+- ReAct: https://arxiv.org/abs/2210.03629
+- Tool Learning: https://arxiv.org/abs/2304.08354
+- Agent Benchmarks: https://arxiv.org/abs/2308.04026
+
+**Communities:**
+- LangChain Discord: discord.gg/langchain
+- AI Agents Reddit: r/LocalLLaMA
+- Composio Slack: composio.dev/slack
+
+### C. Team Structure
+
+**Recommended Team (Build Custom):**
+
+```
+Project Lead (1)
+├── ML Engineers (2)
+│   ├── Agent architecture
+│   ├── LLM integration
+│   ├── Memory systems
+│   └── Model optimization
+│
+├── Backend Engineer (1)
+│   ├── API development
+│   ├── Database design
+│   ├── Tool integrations
+│   └── Workflow orchestration
+│
+├── DevOps Engineer (1)
+│   ├── K8s deployment
+│   ├── CI/CD pipelines
+│   ├── Monitoring setup
+│   └── Security hardening
+│
+└── QA Engineer (0.5)
+    ├── Test automation
+    ├── Load testing
+    └── Security testing
+```
+
+**Total:** 4.5 FTE for 12-14 weeks
+
+### D. Next Steps
+
+1. **Week 1: Decision**
+   - Review this architecture with stakeholders
+   - Decide: Build, Buy, or Hybrid
+   - Allocate budget and team
+
+2. **Week 2: Planning**
+   - Finalize tech stack
+   - Set up development environment
+   - Create detailed project plan
+
+3. **Week 3-14: Implementation**
+   - Follow phase-by-phase guide
+   - Weekly demos to stakeholders
+   - Continuous testing and iteration
+
+4. **Week 15-16: Launch**
+   - Production deployment
+   - Team training
+   - Monitoring validation
+   - Go-live checklist
+
+---
+
+## 📋 Production Checklist
+
+### Pre-Launch Checklist
+
+**Infrastructure:**
+- [ ] Kubernetes cluster provisioned and configured
+- [ ] PostgreSQL with automated backups (RPO < 1 hour)
+- [ ] Redis cluster with persistence enabled
+- [ ] Vector database (Pinecone/Chroma) configured
+- [ ] Load balancer with SSL certificates
+- [ ] CDN configured (if applicable)
+- [ ] All secrets stored in secrets manager (not env vars)
+
+**Application:**
+- [ ] All database migrations applied
+- [ ] Indexes created and optimized
+- [ ] Agent registry populated with all agent types
+- [ ] Composio apps connected and OAuth tested
+- [ ] LLM API keys validated (OpenAI, Anthropic)
+- [ ] Tool whitelists configured per agent type
+- [ ] Cost budgets set (hourly/daily/monthly)
+- [ ] PII detection patterns configured
+
+**Security:**
+- [ ] API authentication implemented (JWT)
+- [ ] Rate limiting configured (100 req/min per key)
+- [ ] API keys have expiration (90 days)
+- [ ] Docker sandbox tested for code agents
+- [ ] OAuth tokens encrypted at rest (Fernet)
+- [ ] Audit logging enabled
+- [ ] Security scan passed (OWASP Top 10)
+- [ ] Penetration testing completed
+
+**Monitoring:**
+- [ ] Prometheus metrics collecting
+- [ ] Grafana dashboards created
+  - [ ] Agent Performance dashboard
+  - [ ] Cost Tracking dashboard
+  - [ ] System Health dashboard
+  - [ ] Tool Usage dashboard
+- [ ] Alert rules configured
+  - [ ] High error rate (>10%)
+  - [ ] Daily budget exceeded
+  - [ ] High latency (P95 > 30s)
+  - [ ] Circuit breaker open
+- [ ] PagerDuty/Slack integration tested
+- [ ] Log aggregation working (ELK/CloudWatch)
+- [ ] Distributed tracing enabled (Jaeger/Tempo)
+
+**Testing:**
 - [ ] Unit tests passing (>80% coverage)
 - [ ] Integration tests passing
-- [ ] Load tests passing (1000 req/s)
-- [ ] Security audit completed
-- [ ] Cost validation completed
+- [ ] Load test passed (1000 req/s sustained)
+- [ ] Chaos engineering test (node failure recovery)
+- [ ] Cost validation test (within budget)
+- [ ] Security audit passed
 
-### Monitoring
-- [ ] Prometheus collecting metrics
-- [ ] Grafana dashboards created
-- [ ] Alert rules configured
-- [ ] PagerDuty integration
-- [ ] Slack notifications
+**Documentation:**
+- [ ] API documentation (Swagger/OpenAPI)
+- [ ] Architecture diagrams updated
+- [ ] Agent development guide written
+- [ ] Workflow creation guide written
+- [ ] Operations runbook completed
+- [ ] Incident response procedures documented
+- [ ] Team trained on system operations
 
-### Documentation
-- [ ] API documentation (Swagger)
-- [ ] Workflow creation guide
-- [ ] Agent development guide
-- [ ] Runbooks for common issues
-- [ ] Architecture diagrams
-
-### Compliance
+**Compliance:**
 - [ ] GDPR compliance verified
-- [ ] Data retention policy enforced
-- [ ] Audit logging enabled
-- [ ] Security scanning passed
+- [ ] Data retention policy implemented (90 days)
+- [ ] Right to deletion implemented
 - [ ] Privacy policy updated
+- [ ] Terms of service updated
 
 ---
 
-## 📞 Support & Maintenance
+## 🔥 Common Issues & Solutions
 
-### Daily Tasks
-- Monitor cost dashboards
-- Check error rates
-- Review agent health
-- Validate circuit breakers
+### Issue 1: High LLM Costs
 
-### Weekly Tasks
-- Review cost trends
-- Optimize expensive workflows
-- Update agent configurations
-- Test new Composio actions
+**Symptoms:**
+- Daily budget alerts firing
+- Cost per conversation > expected
+- High token usage
 
-### Monthly Tasks
-- Database cleanup (retention policy)
+**Root Causes:**
+- Using powerful models for simple tasks
+- Not leveraging router profiles
+- Inefficient prompts (too verbose)
+- No caching enabled
+
+**Solutions:**
+
+```python
+# 1. Use model router aggressively
+agent = SimpleAgent(
+    llm_router=llm_router,
+    model_profile="fast",  # Default to cheapest
+)
+
+# 2. Enable caching
+tool_registry.register(Tool(
+    name="expensive_api",
+    cache_ttl=300,  # Cache for 5 minutes
+))
+
+# 3. Optimize prompts
+# Bad: Long, verbose prompt
+prompt = """
+You are a helpful assistant. Please carefully analyze the following 
+customer message and provide a detailed classification...
+"""
+
+# Good: Concise, direct prompt
+prompt = "Classify intent: {{message}}"
+
+# 4. Set strict budgets
+cost_controller = CostController(
+    hourly_limit=10.0,  # $10/hour max
+    daily_limit=100.0,  # $100/day max
+)
+```
+
+### Issue 2: Agent Getting Stuck in Loops
+
+**Symptoms:**
+- Reasoning agent hits max iterations
+- Same tool called repeatedly
+- No progress toward goal
+
+**Root Causes:**
+- Poor tool design (unclear outputs)
+- Ambiguous task description
+- Missing context
+- Tool errors not handled
+
+**Solutions:**
+
+```python
+# 1. Set lower max iterations
+agent = ReasoningAgent(
+    max_iterations=5,  # Fail fast
+)
+
+# 2. Improve tool descriptions
+Tool(
+    name="get_order",
+    description="""
+    Get order details by ID.
+    Returns: {order_id, status, items, total, customer_email}
+    Use this when: Customer asks about order status
+    """,
+)
+
+# 3. Add loop detection
+def detect_loop(reasoning_chain: List[ThoughtStep]) -> bool:
+    """Detect if agent is repeating same actions"""
+    recent_actions = [s.action for s in reasoning_chain[-3:]]
+    return len(recent_actions) == len(set(recent_actions))  # All same
+
+# 4. Improve reflection prompt
+reflection_prompt = """
+Analyze your reasoning:
+- Did you make progress toward the goal?
+- Are you repeating the same actions?
+- Do you have enough information to answer?
+"""
+```
+
+### Issue 3: Tool Execution Timeouts
+
+**Symptoms:**
+- Tool calls failing with timeout errors
+- Workflows stuck in "running" state
+- Increased latency
+
+**Root Causes:**
+- External API slow/down
+- Database query not optimized
+- Network issues
+- Insufficient timeout value
+
+**Solutions:**
+
+```python
+# 1. Implement retry with exponential backoff
+Tool(
+    name="external_api",
+    timeout_seconds=10,  # Reasonable timeout
+    retry_config={
+        "max_attempts": 3,
+        "backoff": 2  # 2s, 4s, 8s
+    }
+)
+
+# 2. Use circuit breakers
+circuit_breaker = CircuitBreaker(
+    failure_threshold=5,
+    recovery_timeout=60
+)
+
+# 3. Add fallback tools
+if not await tool_registry.execute("primary_api", params):
+    result = await tool_registry.execute("fallback_api", params)
+
+# 4. Optimize database queries
+# Bad: N+1 query
+for order_id in order_ids:
+    order = await db.fetchrow("SELECT * FROM orders WHERE id = $1", order_id)
+
+# Good: Batch query
+orders = await db.fetch(
+    "SELECT * FROM orders WHERE id = ANY($1)",
+    order_ids
+)
+```
+
+### Issue 4: Memory/Context Issues
+
+**Symptoms:**
+- Agent missing relevant context
+- Repeated questions
+- Contradictory responses
+
+**Root Causes:**
+- RAG not returning relevant docs
+- Conversation history too short
+- Embeddings not updated
+- Wrong retrieval strategy
+
+**Solutions:**
+
+```python
+# 1. Increase context window
+memory_manager.get_recent_messages(
+    conversation_id,
+    limit=100  # Increase from 50
+)
+
+# 2. Improve RAG relevance
+results = memory_manager.search_semantic(
+    query=current_message,
+    top_k=10,  # Get more candidates
+    filters={"type": "knowledge_base", "category": "returns"}
+)
+
+# 3. Use hybrid retrieval
+context = await memory_manager.get_context(
+    conversation_id,
+    current_message,
+    strategy="hybrid"  # Short + long + episodic
+)
+
+# 4. Re-index periodically
+# Cron job to refresh embeddings
+await memory_manager.reindex_knowledge_base()
+```
+
+### Issue 5: OAuth Token Expiration
+
+**Symptoms:**
+- Composio actions failing with "unauthorized"
+- Customer complaints about broken integrations
+- High tool error rate
+
+**Root Causes:**
+- Token refresh not working
+- Token not encrypted properly
+- Connection revoked by user
+- OAuth app credentials invalid
+
+**Solutions:**
+
+```python
+# 1. Implement automatic token refresh
+async def execute_action_with_refresh(
+    app_name: str,
+    action_name: str,
+    entity_id: str
+):
+    try:
+        return await composio.execute_action(app_name, action_name, entity_id)
+    except UnauthorizedError:
+        # Try to refresh token
+        await composio.refresh_connection(app_name, entity_id)
+        return await composio.execute_action(app_name, action_name, entity_id)
+
+# 2. Monitor connection health
+async def check_connections():
+    """Daily job to verify all connections"""
+    connections = await db.fetch(
+        "SELECT * FROM composio_connections WHERE status = 'connected'"
+    )
+    
+    for conn in connections:
+        try:
+            await composio.test_connection(conn.app_name, conn.entity_id)
+        except Exception:
+            # Notify user to reconnect
+            await send_reconnect_email(conn.entity_id, conn.app_name)
+
+# 3. Handle graceful degradation
+if not connection_available:
+    # Fall back to manual process
+    await send_email_to_agent(
+        "Please manually process this return in Shopify"
+    )
+```
+
+---
+
+## 📈 Scaling Strategy
+
+### Horizontal Scaling
+
+**Application Tier:**
+
+```yaml
+# k8s/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hil-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hil-api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+```
+
+**Database Scaling:**
+
+```python
+# Use connection pooling
+DATABASE_POOL_SIZE = 20
+DATABASE_MAX_OVERFLOW = 10
+
+# Read replicas for queries
+READ_REPLICA_URLS = [
+    "postgresql://read1.db.com/hil",
+    "postgresql://read2.db.com/hil",
+]
+
+# Route read-only queries to replicas
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    # Use read replica
+    db = await get_read_replica()
+    return await db.fetchrow(
+        "SELECT * FROM conversations WHERE id = $1",
+        conversation_id
+    )
+```
+
+**Cache Scaling:**
+
+```python
+# Redis Cluster for high throughput
+redis_cluster = RedisCluster(
+    startup_nodes=[
+        {"host": "redis1", "port": 6379},
+        {"host": "redis2", "port": 6379},
+        {"host": "redis3", "port": 6379},
+    ]
+)
+
+# Implement cache warming
+async def warm_cache():
+    """Pre-populate cache with frequently accessed data"""
+    popular_workflows = await db.fetch(
+        "SELECT id, config FROM workflow_registry WHERE is_active = true"
+    )
+    
+    for workflow in popular_workflows:
+        await redis.setex(
+            f"workflow:{workflow.id}",
+            3600,
+            json.dumps(workflow.config)
+        )
+```
+
+### Vertical Scaling
+
+**When to Scale Up:**
+- CPU consistently > 80%
+- Memory consistently > 85%
+- Database query latency > 100ms P95
+- Redis latency > 10ms P95
+
+**Resource Allocation:**
+
+| Component | Current | 100 conv/day | 1,000 conv/day | 10,000 conv/day |
+|-----------|---------|--------------|----------------|-----------------|
+| **API Pods** | 2 CPU/4GB | 3 pods | 8 pods | 20 pods |
+| **PostgreSQL** | 2 CPU/4GB | 4 CPU/8GB | 8 CPU/16GB | 16 CPU/32GB |
+| **Redis** | 1GB | 2GB | 4GB | 8GB |
+| **Vector DB** | 100K vectors | 1M vectors | 5M vectors | 20M vectors |
+
+---
+
+## 🎓 Training Materials
+
+### For Developers
+
+**1. Creating a New Agent Type**
+
+```python
+# Step 1: Define agent class
+class CustomAgent:
+    def __init__(self, llm_router, tools, config):
+        self.llm_router = llm_router
+        self.tools = tools
+        self.config = config
+    
+    async def run(self, task: str, context: dict) -> dict:
+        # Your agent logic here
+        pass
+
+# Step 2: Create factory
+class CustomAgentFactory:
+    async def create(self, config, llm_router, tool_manager):
+        return CustomAgent(llm_router, tools, config)
+
+# Step 3: Register
+agent_registry.register(
+    AgentMetadata(
+        name="custom_agent",
+        type="custom",
+        capabilities=[AgentCapability.CUSTOM],
+        default_model="gpt-4-turbo",
+        cost_tier="medium"
+    ),
+    CustomAgentFactory()
+)
+```
+
+**2. Creating a Custom Tool**
+
+```python
+# Step 1: Define tool function
+async def custom_api_call(params: dict) -> dict:
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.example.com/endpoint",
+            json=params
+        )
+        return response.json()
+
+# Step 2: Register tool
+tool_registry.register(Tool(
+    name="custom_api",
+    description="Call custom API endpoint",
+    input_schema={
+        "param1": "string",
+        "param2": "number"
+    },
+    func=custom_api_call,
+    timeout_seconds=15,
+    cache_ttl=300
+))
+```
+
+**3. Creating a Workflow**
+
+```yaml
+# Step 1: Define workflow YAML
+name: my_workflow
+version: 1.0.0
+description: My custom workflow
+
+workflow:
+  nodes:
+    - id: step1
+      agent: simple_agent
+      prompt_template: "Process: {{input}}"
+    
+    - id: step2
+      agent: reasoning_agent
+      config:
+        tools: [custom_api]
+      task: "Handle {{step1.output}}"
+      condition:
+        type: jmespath
+        expression: "step1.output.success == true"
+  
+  edges:
+    - from: step1
+      to: step2
+```
+
+```python
+# Step 2: Register workflow
+workflow_service = WorkflowRegistryService(db)
+await workflow_service.create_workflow(
+    name="my_workflow",
+    version="1.0.0",
+    config=yaml.safe_load(workflow_yaml)
+)
+
+# Step 3: Execute workflow
+result = await orchestrator.execute_workflow(
+    workflow_id="my_workflow",
+    input_data={"input": "Hello World"}
+)
+```
+
+### For Operations Team
+
+**1. Monitoring Checklist**
+
+Daily:
+- [ ] Check Grafana dashboards
+- [ ] Review error rate (should be <5%)
+- [ ] Check daily cost (should be within budget)
+- [ ] Verify all circuit breakers closed
+
+Weekly:
+- [ ] Review slow queries (>1s)
+- [ ] Check disk usage (DB, Redis)
+- [ ] Review top cost workflows
+- [ ] Update agent performance metrics
+
+Monthly:
+- [ ] Review and optimize agent configurations
+- [ ] Update LLM model catalog
+- [ ] Clean up old data (retention policy)
+- [ ] Security patch updates
+
+**2. Incident Response**
+
+```bash
+# High error rate
+# 1. Check recent deployments
+kubectl rollout history deployment/hil-api -n hil-system
+
+# 2. Check logs
+kubectl logs -f deployment/hil-api -n hil-system | grep ERROR
+
+# 3. Rollback if needed
+kubectl rollout undo deployment/hil-api -n hil-system
+
+# Database issues
+# 1. Check connections
+psql -h db.example.com -U hil -c "SELECT count(*) FROM pg_stat_activity"
+
+# 2. Check slow queries
+psql -h db.example.com -U hil -c "
+  SELECT query, calls, total_time/calls as avg_time
+  FROM pg_stat_statements
+  ORDER BY total_time DESC
+  LIMIT 10
+"
+
+# LLM provider down
+# 1. Check circuit breaker status
+curl https://api.hil-system.com/metrics | grep circuit_breaker_state
+
+# 2. Manually close/open circuit
+curl -X POST https://api.hil-system.com/admin/circuit-breaker/gpt-4/close
+```
+
+---
+
+## 🎯 Success Metrics
+
+### Key Performance Indicators (KPIs)
+
+**Business Metrics:**
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **Automation Rate** | 80% | % of conversations handled without human |
+| **Customer Satisfaction** | 4.2/5 | Post-conversation survey |
+| **Escalation Rate** | <20% | % of conversations escalated to human |
+| **Resolution Time** | <5 min | Average time to resolve issue |
+| **Cost per Conversation** | <$0.10 | Total cost / conversations |
+| **ROI** | Positive in 12 months | Savings vs investment |
+
+**Technical Metrics:**
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **System Uptime** | 99.5% | Uptime monitoring |
+| **API Latency P95** | <2s | Prometheus metrics |
+| **Agent Success Rate** | 90% | % of agent executions successful |
+| **LLM Cost** | <$1,000/day | Daily cost tracking |
+| **Error Rate** | <5% | % of failed requests |
+| **Cache Hit Rate** | >70% | Redis cache hits / total |
+
+**Agent Performance:**
+
+| Agent Type | Latency Target | Cost Target | Success Rate Target |
+|------------|----------------|-------------|---------------------|
+| **Simple** | <2s | <$0.01 | >99% |
+| **Reasoning** | <15s | <$0.05 | >95% |
+| **Code** | <60s | <$0.20 | >85% |
+
+### Dashboards
+
+**Executive Dashboard:**
+- Total conversations handled
+- Automation rate trend
+- Cost savings vs manual
+- Customer satisfaction trend
+- ROI calculator
+
+**Operations Dashboard:**
+- System health (uptime, errors)
+- Performance metrics (latency, throughput)
+- Cost breakdown (by model, by workflow)
+- Alert summary
+
+**Engineering Dashboard:**
+- Agent performance by type
+- Tool usage and success rates
+- LLM routing decisions
+- Cache hit rates
+- Database query performance
+
+---
+
+## 📞 Support & Maintenance Plan
+
+### Support Tiers
+
+**Tier 1: User Support**
+- Handle customer inquiries
+- Basic troubleshooting
+- Escalate to Tier 2 if needed
+
+**Tier 2: Operations**
+- Monitor system health
+- Respond to alerts
+- Perform routine maintenance
+- Escalate to Tier 3 for complex issues
+
+**Tier 3: Engineering**
+- Debug complex issues
+- Deploy fixes and updates
+- Optimize performance
+- Develop new features
+
+### On-Call Rotation
+
+```yaml
+Schedule:
+  - Week 1: Engineer A (Primary), Engineer B (Secondary)
+  - Week 2: Engineer B (Primary), Engineer C (Secondary)
+  - Week 3: Engineer C (Primary), Engineer A (Secondary)
+
+Responsibilities:
+  - Respond to PagerDuty alerts within 15 minutes
+  - Triage and resolve P1 incidents within 1 hour
+  - Document all incidents in runbook
+  - Handoff notes to next on-call
+
+Escalation:
+  - P1 (System Down): Page primary immediately
+  - P2 (Degraded): Page primary within 15 min
+  - P3 (Warning): Create ticket for next business day
+```
+
+### Maintenance Windows
+
+**Weekly (Sundays 2-4 AM):**
+- Database cleanup (old messages)
 - Vector store optimization
+- Cache warming
+- Log rotation
+
+**Monthly (First Sunday):**
 - Security updates
-- Performance review
-- Budget analysis
+- Database statistics update
+- Performance testing
+- Backup verification
 
 ---
 
-## 🎯 Final Recommendations
+## 🎓 Lessons Learned & Best Practices
 
-### ✅ DO Build Custom If:
-1. You need **true autonomous capabilities** beyond n8n
-2. You have **ML engineering team** (2-3 engineers)
-3. You need **fine-grained control** over agent behavior
-4. You want to **learn deeply** about AI systems
-5. You have **time and budget** (12 weeks, $300k+)
+### 1. Start Simple, Iterate
 
-### ❌ DON'T Build Custom If:
-1. You can achieve goals with **n8n + AgentKit**
-2. You have **small team** (1-2 engineers)
-3. You need to **ship fast** (< 4 weeks)
-4. You want to **minimize maintenance**
-5. You have **limited budget** (< $50k)
+❌ **Don't:**
+- Build all three agent types at once
+- Implement every feature in v1
+- Optimize prematurely
 
-### 🔄 Hybrid Approach (Recommended):
-1. **Start with n8n** for workflows
-2. **Use AgentKit** for AI logic
-3. **Build custom components** only when needed:
-   - Custom agents for specific use cases
-   - Specialized tool integrations
-   - Advanced memory systems
-4. **Migrate gradually** as requirements grow
+✅ **Do:**
+- Start with Simple Agent only
+- Add Reasoning Agent when needed
+- Add Code Agent only for specific use cases
+- Measure before optimizing
+
+### 2. Observability is Critical
+
+❌ **Don't:**
+- Add monitoring as an afterthought
+- Rely only on logs
+- Ignore cost tracking
+
+✅ **Do:**
+- Instrument from day one
+- Use metrics, logs, and traces
+- Track costs in real-time
+- Set up alerts proactively
+
+### 3. Test with Real Data
+
+❌ **Don't:**
+- Only test with synthetic data
+- Skip load testing
+- Ignore edge cases
+
+✅ **Do:**
+- Use production-like data in staging
+- Load test at 2x expected traffic
+- Test failure scenarios (chaos engineering)
+- Validate costs with real usage
+
+### 4. Security First
+
+❌ **Don't:**
+- Store API keys in code
+- Skip input validation
+- Allow arbitrary code execution
+
+✅ **Do:**
+- Use secrets manager
+- Validate all inputs
+- Sandbox code agents
+- Encrypt sensitive data
+
+### 5. Cost Control is Essential
+
+❌ **Don't:**
+- Use GPT-4 for everything
+- Ignore caching opportunities
+- Run without budgets
+
+✅ **Do:**
+- Use LLM router profiles
+- Cache aggressively
+- Set budget limits
+- Monitor costs daily
 
 ---
 
-## 📚 Additional Resources
+## 🏁 Conclusion
 
-### Documentation
-- **LangGraph Docs:** https://langchain-ai.github.io/langgraph/
-- **Composio Docs:** https://docs.composio.dev/
-- **PydanticAI:** https://ai.pydantic.dev/
-- **OpenTelemetry:** https://opentelemetry.io/docs/
+This architecture provides a **comprehensive, production-ready foundation** for building an AI agent system with:
 
-### Papers
-- **ReAct:** https://arxiv.org/abs/2210.03629
-- **Tool Learning:** https://arxiv.org/abs/2304.08354
-- **Agent Architectures:** https://arxiv.org/abs/2309.07864
+✅ **Three agent types** covering 95% of use cases  
+✅ **1000+ tool integrations** via Composio  
+✅ **Intelligent LLM routing** for 56% cost savings  
+✅ **Hybrid memory system** for context-aware agents  
+✅ **Complete observability** for monitoring and debugging  
+✅ **Enterprise security** with sandboxing and encryption  
+✅ **Scalable architecture** from 100 to 10,000+ conversations/day  
 
-### Community
-- **LangChain Discord:** discord.gg/langchain
-- **Composio Slack:** composio.dev/slack
-- **AI Agents Reddit:** r/LocalLLaMA
+### Quick Start Guide
+
+**Week 1-2: Foundation**
+```bash
+# Clone repo
+git clone https://github.com/yourorg/hil-system
+cd hil-system
+
+# Setup environment
+docker-compose up -d
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Start API
+uvicorn app.main:app --reload
+
+# Test simple agent
+curl -X POST http://localhost:8000/api/v1/workflows/execute \
+  -H "Content-Type: application/json" \
+  -d '{"workflow_id": "simple_classifier", "input_data": {"message": "Hello"}}'
+```
+
+### Decision Time
+
+**Choose Build Custom if:**
+- Budget > $300k
+- Team: 2+ ML engineers
+- Timeline: 3+ months acceptable
+- Need: Full control & customization
+
+**Choose n8n + AgentKit if:**
+- Budget < $100k
+- Team: 1-2 engineers
+- Timeline: < 1 month
+- Need: Fast MVP
+
+**Choose Hybrid if:**
+- Want to de-risk investment
+- Learn before committing
+- Gradual migration path
+- Best of both worlds
 
 ---
 
-## ✅ Conclusion
+## 📬 Contact & Support
 
-We've designed a **complete, production-ready architecture** that addresses all your concerns:
+For questions or support with this architecture:
 
-1. ✅ **Complete Hierarchy:** Graph → Node → Agent → Tools → Actions
-2. ✅ **Agent Registry:** Dynamic discovery, health checks, fallbacks
-3. ✅ **LLM Router:** Profile-based, cost-optimized, with circuit breakers
-4. ✅ **Composio Integration:** 1000+ actions, OAuth managed, rate limiting
-5. ✅ **Full Observability:** Metrics, traces, costs tracked in real-time
-6. ✅ **Security:** Sandboxing, whitelisting, budget controls, PII protection
-7. ✅ **Scalability:** Horizontal scaling, caching, async execution
-8. ✅ **Maintainability:** Clear separation of concerns, extensive testing
+**Documentation**: [Link to internal wiki]  
+**Slack Channel**: #hil-system  
+**Email**: ml-team@company.com  
+**Office Hours**: Tuesdays 2-3 PM  
 
-**This is a senior-level, production-grade system design.**
+---
 
-The fact that we went through:
-1. Initial comprehensive design
-2. Critical security analysis
-3. Build vs buy comparison
-4. Complete re-architecture with missing components
+**Document Version:** 2.0  
+**Last Updated:** 2025-01-12  
+**Next Review:** 2025-04-12  
+**Maintained By:** ML Engineering Team
 
-...shows excellent engineering judgment and process.
+---
 
-**Total implementation time:** 12-14 weeks  
-**Team required:** 2 ML Engineers + 1 Backend Engineer + 1 DevOps  
-**Estimated cost:** $300-400k (development) + $700-1,700/month (operations)
-
-**Alternative (n8n + AgentKit):** 4 weeks, 1-2 engineers, $50-100k
-
-The choice is yours, but now you have a **complete blueprint** for either path! 🎉
-
+*This architecture is a living document. Please submit PRs for improvements or open issues for questions.*
