@@ -67,6 +67,6 @@ def setup_logging() -> None:
     )
 
 
-def get_logger(name: str = None) -> Any:
+def get_logger(name: str | None = None) -> Any:
     """Get a structured logger instance."""
     return structlog.get_logger(name)

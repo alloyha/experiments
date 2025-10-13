@@ -82,17 +82,21 @@ class TestWorkflowIntegrationService:
             patch.object(service, "registry") as mock_registry,
             patch("app.services.workflow_integration.get_session") as mock_get_session,
         ):
-            # Mock database session
+            # Mock database session as async generator
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
-            mock_get_session.return_value.__aexit__.return_value = None
+            
+            async def mock_get_session_func():
+                yield mock_session
+                
+            mock_get_session.side_effect = lambda: mock_get_session_func()
 
-            mock_registry.sync_workflows_from_yaml.return_value = {
+            # Mock async method with proper AsyncMock return value
+            mock_registry.sync_workflows_from_yaml = AsyncMock(return_value={
                 "total_yaml_workflows": 1,
                 "created": ["test_workflow"],
                 "updated": [],
                 "errors": [],
-            }
+            })
 
             result = await service.initialize_workflows()
 
@@ -104,38 +108,68 @@ class TestWorkflowIntegrationService:
     @pytest.mark.asyncio
     async def test_get_workflow(self, service, mock_workflow_model):
         """Test getting a workflow."""
-        with patch.object(service, "registry") as mock_registry:
-            mock_registry.get_workflow.return_value = mock_workflow_model
+        with patch("app.services.workflow_integration.get_session") as mock_get_session:
+            # Mock database session as async generator
+            mock_session = AsyncMock()
+            
+            async def mock_get_session_func():
+                yield mock_session
+                
+            mock_get_session.side_effect = lambda: mock_get_session_func()
+
+            # Mock query result
+            mock_result = MagicMock()
+            mock_result.first.return_value = mock_workflow_model
+            mock_session.exec.return_value = mock_result
 
             workflow = await service.get_workflow("simple_intent_classification", "v1")
 
             assert workflow is not None
             assert workflow.name == "simple_intent_classification"
             assert workflow.version == "v1"
-            mock_registry.get_workflow.assert_called_once_with(
-                "simple_intent_classification", "v1"
-            )
 
     @pytest.mark.asyncio
     async def test_execute_workflow_simple_agent(self, service, mock_yaml_workflow):
         """Test executing a simple agent workflow."""
         # Mock dependencies
         with (
-            patch.object(service, "registry") as mock_registry,
+            patch.object(service, "get_workflow") as mock_get_workflow,
             patch("app.services.workflow_integration.SimpleAgent") as mock_agent_class,
         ):
             # Setup mocks
             mock_workflow = MagicMock()
-            mock_workflow.nodes = mock_yaml_workflow["nodes"]
+            # Convert nodes dict to list format expected by the code
+            mock_workflow.nodes = [
+                {
+                    "type": "agent",
+                    "agent": "simple",
+                    "config": {
+                        "model_profile": "fast",
+                        "temperature": 0.1,
+                        "max_tokens": 100,
+                    },
+                    "prompt": "Classify the intent of the input text"
+                }
+            ]
             mock_workflow.workflow_metadata = mock_yaml_workflow["metadata"]
-            mock_registry.get_workflow.return_value = mock_workflow
+            mock_workflow.version = "v1"
+            mock_workflow.name = "simple_intent_classification"
+            mock_workflow.description = "Simple intent classification workflow"
+            mock_workflow.estimated_execution_time = 30
+            # Mock get_workflow to return the mock workflow
+            async def mock_get_workflow_func(name, version):
+                return mock_workflow
+            mock_get_workflow.side_effect = mock_get_workflow_func
 
             mock_agent = AsyncMock()
             mock_agent_result = {
-                "content": "booking",
-                "confidence": 0.95,
+                "output": {
+                    "content": "booking",
+                    "confidence": 0.95,
+                },
+                "model_used": "gpt-3.5-turbo",
+                "execution_time": 1.2,
                 "cost": 0.001,
-                "latency": 1.2,
                 "tokens_used": 50,
             }
             mock_agent.execute.return_value = mock_agent_result
@@ -160,8 +194,10 @@ class TestWorkflowIntegrationService:
     @pytest.mark.asyncio
     async def test_execute_workflow_not_found(self, service):
         """Test executing a non-existent workflow."""
-        with patch.object(service, "registry") as mock_registry:
-            mock_registry.get_workflow.return_value = None
+        with patch.object(service, "get_workflow") as mock_get_workflow:
+            async def mock_get_workflow_func(name, version=None):
+                return None
+            mock_get_workflow.side_effect = mock_get_workflow_func
 
             result = await service.execute_workflow("nonexistent", {})
 
@@ -171,21 +207,29 @@ class TestWorkflowIntegrationService:
     @pytest.mark.asyncio
     async def test_list_workflows(self, service):
         """Test listing workflows."""
-        mock_workflows = [
-            {
-                "id": "workflow-1",
-                "name": "simple_intent_classification",
-                "version": "v1",
-                "description": "Intent classification",
-                "created_at": "2025-01-01T00:00:00Z",
-                "updated_at": "2025-01-01T00:00:00Z",
-                "tags": ["nlp"],
-                "category": "classification",
-            }
-        ]
+        with patch("app.services.workflow_integration.get_session") as mock_get_session:
+            # Mock database session as async generator
+            mock_session = AsyncMock()
+            
+            async def mock_get_session_func():
+                yield mock_session
+                
+            mock_get_session.side_effect = lambda: mock_get_session_func()
 
-        with patch.object(service, "registry") as mock_registry:
-            mock_registry.list_workflows.return_value = mock_workflows
+            # Create mock workflow object with all required attributes
+            mock_workflow = MagicMock()
+            mock_workflow.id = "workflow-1"
+            mock_workflow.name = "simple_intent_classification"
+            mock_workflow.version = "v1"
+            mock_workflow.description = "Intent classification"
+            mock_workflow.created_at = "2025-01-01T00:00:00Z"
+            mock_workflow.updated_at = "2025-01-01T00:00:00Z"
+            mock_workflow.workflow_metadata = {"tags": ["nlp"], "category": "classification"}
+
+            # Mock query result
+            mock_result = MagicMock()
+            mock_result.all.return_value = [mock_workflow]
+            mock_session.exec.return_value = mock_result
 
             workflows = await service.list_workflows()
 
@@ -197,10 +241,13 @@ class TestWorkflowIntegrationService:
     async def test_get_workflow_versions(self, service):
         """Test getting workflow versions."""
         with patch("app.services.workflow_integration.get_session") as mock_get_session:
-            # Mock database session
+            # Mock database session as async generator
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
-            mock_get_session.return_value.__aexit__.return_value = None
+            
+            async def mock_get_session_func():
+                yield mock_session
+                
+            mock_get_session.side_effect = lambda: mock_get_session_func()
 
             # Mock query result
             mock_result = MagicMock()
@@ -267,8 +314,8 @@ class TestWorkflowIntegrationErrors:
         """Test workflow execution with exception."""
         service = WorkflowIntegrationService()
 
-        with patch.object(service, "registry") as mock_registry:
-            mock_registry.get_workflow.side_effect = Exception("Database error")
+        with patch.object(service, "get_workflow") as mock_get_workflow:
+            mock_get_workflow.side_effect = Exception("Database error")
 
             result = await service.execute_workflow("test", {})
 
@@ -300,9 +347,11 @@ async def test_workflow_integration_basic_functionality():
     """Test basic workflow integration functionality with mocked dependencies."""
     service = WorkflowIntegrationService()
 
-    # Mock the registry dependency to avoid database calls
-    with patch.object(service, "registry") as mock_registry:
-        mock_registry.get_workflow.return_value = None
+    # Mock the service's get_workflow method to avoid database calls
+    with patch.object(service, "get_workflow") as mock_get_workflow:
+        async def mock_get_workflow_func(name, version=None):
+            return None
+        mock_get_workflow.side_effect = mock_get_workflow_func
 
         # Test that the service handles missing workflows gracefully
         workflow = await service.get_workflow("nonexistent", "v1")

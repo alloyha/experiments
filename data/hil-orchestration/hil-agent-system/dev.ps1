@@ -56,12 +56,9 @@ switch ($Command.ToLower()) {
         Write-Host "  setup            Complete development setup"
         Write-Host ""
         Write-Host "Code Quality:" -ForegroundColor Yellow
-        Write-Host "  lint             Run ruff linter (UV virtual env)"
-        Write-Host "  lint-direct      Run ruff linter (direct)"
-        Write-Host "  format           Format code with ruff (UV virtual env)"
-        Write-Host "  format-direct    Format code with ruff (direct)"
-        Write-Host "  type-check       Run mypy type checking (UV virtual env)"
-        Write-Host "  type-check-direct Run mypy type checking (direct)"
+        Write-Host "  lint             Run ruff linter"
+        Write-Host "  format           Format code with ruff"
+        Write-Host "  type-check       Run mypy type checking"
         Write-Host "  complexity       Analyze code complexity"
         Write-Host ""
         Write-Host "Testing:" -ForegroundColor Yellow

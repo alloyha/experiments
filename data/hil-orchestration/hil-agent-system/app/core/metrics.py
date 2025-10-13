@@ -20,7 +20,7 @@ from app.core.config import get_settings
 logger = structlog.get_logger(__name__)
 
 # Metrics registry
-METRICS: dict[str, any] = {}
+METRICS: dict[str, Any] = {}
 
 
 def setup_metrics(app: FastAPI) -> None:

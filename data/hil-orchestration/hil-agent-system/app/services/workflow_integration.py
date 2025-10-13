@@ -14,7 +14,7 @@ from sqlmodel import select
 
 from app.agents.types.simple_agent import SimpleAgent
 from app.core.database import get_session
-from app.core.llm_router import ModelProfile
+from app.core.llm_router import LLMRouter, ModelProfile
 from app.core.logging import get_logger
 from app.models.workflow import Workflow
 from app.services.workflow_loader import YAMLWorkflowLoader
@@ -273,34 +273,36 @@ class WorkflowIntegrationService:
 
             # Determine model profile
             model_profile_str = node_config.get("model_profile", "fast")
-            model_profile = ModelProfile(model_profile_str)
+            
+            # Create LLM router for the agent
+            llm_router = LLMRouter()
 
-            # Create Simple Agent
+            # Create Simple Agent with correct parameters
             simple_agent = SimpleAgent(
-                name=f"{workflow.name}_agent",
-                description=workflow.description,
-                system_prompt=agent_node.get("prompt", ""),
-                model_profile=model_profile,
+                llm_router=llm_router,
+                model_profile=model_profile_str,
                 temperature=node_config.get("temperature", 0.3),
-                max_tokens=node_config.get("max_tokens", 1000),
-                timeout=workflow.estimated_execution_time or 30,
             )
 
             # Execute agent
-            agent_result = await simple_agent.execute(
-                input_data=input_data, output_schema=node_config.get("output_schema")
+            prompt = agent_node.get("prompt", "Process the following input: {{ text }}")
+            system_prompt = node_config.get("system_prompt")
+            agent_result = await simple_agent.run(
+                prompt=prompt,
+                input_data=input_data,
+                system_prompt=system_prompt
             )
 
             # Format result according to workflow output schema
             formatted_result = {
                 "success": True,
-                "output": agent_result["output"],
+                "output": agent_result,  # agent_result is the actual output
                 "agent_metadata": {
-                    "agent_name": simple_agent.name,
-                    "model_used": agent_result["model_used"],
-                    "execution_time": agent_result["execution_time"],
-                    "cost": agent_result["cost"],
-                    "tokens_used": agent_result["tokens_used"],
+                    "agent_name": f"{workflow.name}_agent",
+                    "model_used": "unknown",  # Would need routing decision from agent
+                    "execution_time": getattr(simple_agent, 'last_execution_time', 0),
+                    "cost": getattr(simple_agent, 'last_execution_cost', 0),
+                    "tokens_used": 0,  # Would need to track tokens from provider
                 },
             }
 

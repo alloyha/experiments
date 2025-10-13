@@ -7,8 +7,9 @@
 .DEFAULT_GOAL := help
 
 # Variables
-PYTHON := python
-UV := python -m uv
+PYTHON := python3
+UV := uv
+UV_RUN := uv run
 PROJECT_NAME := hil-agent-system
 SRC_DIR := app
 TEST_DIR := tests
@@ -42,62 +43,67 @@ install-all: install install-dev ## Install all dependencies
 # Code Quality targets
 lint: ## Run comprehensive linting with ruff
 	@echo "$(BLUE)Running ruff linter...$(NC)"
-	$(UV) run ruff check $(SRC_DIR) $(TEST_DIR) --fix
+	$(UV_RUN) ruff check $(SRC_DIR) $(TEST_DIR) --fix
 	@echo "$(GREEN)✓ Linting completed$(NC)"
 
 format: ## Format code with ruff
 	@echo "$(BLUE)Formatting code with ruff...$(NC)"
-	$(UV) run ruff format $(SRC_DIR) $(TEST_DIR)
+	$(UV_RUN) ruff format $(SRC_DIR) $(TEST_DIR)
 	@echo "$(GREEN)✓ Code formatting completed$(NC)"
 
 type-check: ## Run type checking with mypy
 	@echo "$(BLUE)Running type checking with mypy...$(NC)"
-	$(UV) run mypy $(SRC_DIR) --ignore-missing-imports
+	$(UV_RUN) mypy $(SRC_DIR) --ignore-missing-imports
 	@echo "$(GREEN)✓ Type checking completed$(NC)"
 
 complexity: ## Analyze code complexity with radon
 	@echo "$(BLUE)Analyzing code complexity...$(NC)"
 	@echo "$(YELLOW)Cyclomatic Complexity:$(NC)"
-	$(UV) run radon cc $(SRC_DIR) -a -s
+	$(UV_RUN) radon cc $(SRC_DIR) -a -s
 	@echo "$(YELLOW)Maintainability Index:$(NC)"
-	$(UV) run radon mi $(SRC_DIR) -s
+	$(UV_RUN) radon mi $(SRC_DIR) -s
 	@echo "$(YELLOW)Raw Metrics:$(NC)"
-	$(UV) run radon raw $(SRC_DIR) -s
+	$(UV_RUN) radon raw $(SRC_DIR) -s
 	@echo "$(GREEN)✓ Complexity analysis completed$(NC)"
 
 security: ## Run security analysis
 	@echo "$(BLUE)Running security analysis...$(NC)"
-	$(UV) run bandit -r $(SRC_DIR) -f json -o security-report.json || true
-	$(UV) run bandit -r $(SRC_DIR)
+	$(UV_RUN) bandit -r $(SRC_DIR) -f json -o security-report.json || true
+	$(UV_RUN) bandit -r $(SRC_DIR)
 	@echo "$(GREEN)✓ Security analysis completed$(NC)"
+
+type-vulnerabilities: ## Check for type vulnerabilities with ty
+	@echo "$(BLUE)Checking type vulnerabilities with ty...$(NC)"
+	$(UV_RUN) ty check $(SRC_DIR) || echo "$(YELLOW)Type vulnerabilities found - see output above$(NC)"
+	@echo "$(GREEN)✓ Type vulnerability check completed$(NC)"
 
 audit: ## Audit dependencies for vulnerabilities
 	@echo "$(BLUE)Auditing dependencies...$(NC)"
-	$(UV) run safety check --json --output audit-report.json || true
-	$(UV) run safety check
+	$(UV_RUN) safety check --json --output audit-report.json || true
+	$(UV_RUN) safety check
 	@echo "$(GREEN)✓ Dependency audit completed$(NC)"
 
 # Testing targets
 test: ## Run all tests
 	@echo "$(BLUE)Running all tests...$(NC)"
-	$(UV) run pytest $(TEST_DIR) -v --tb=short
+	$(UV_RUN) pytest $(TEST_DIR) -v --tb=short
 
 test-fast: ## Run tests without slow integration tests
 	@echo "$(BLUE)Running fast tests...$(NC)"
-	$(UV) run pytest $(TEST_DIR) -v --tb=short -m "not slow"
+	$(UV_RUN) pytest $(TEST_DIR) -v --tb=short -m "not slow"
 
 test-cov: ## Run tests with coverage report
 	@echo "$(BLUE)Running tests with coverage...$(NC)"
-	$(UV) run pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=html --cov-report=term --cov-fail-under=$(COVERAGE_MIN)
+	$(UV_RUN) pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=html --cov-report=term --cov-fail-under=$(COVERAGE_MIN)
 	@echo "$(GREEN)✓ Coverage report generated in htmlcov/$(NC)"
 
 test-integration: ## Run integration tests only
 	@echo "$(BLUE)Running integration tests...$(NC)"
-	$(UV) run pytest $(TEST_DIR) -v -m "integration"
+	$(UV_RUN) pytest $(TEST_DIR) -v -m "integration"
 
 test-unit: ## Run unit tests only
 	@echo "$(BLUE)Running unit tests...$(NC)"
-	$(UV) run pytest $(TEST_DIR) -v -m "not integration and not slow"
+	$(UV_RUN) pytest $(TEST_DIR) -v -m "not integration and not slow"
 
 # Database targets
 db-init: ## Initialize database
@@ -138,11 +144,11 @@ workflows-list: ## List available workflows
 # Application targets
 run: ## Start the development server
 	@echo "$(BLUE)Starting HIL Agent System on port $(PORT)...$(NC)"
-	$(UV) run uvicorn app.main:app --reload --host 0.0.0.0 --port $(PORT)
+	$(UV_RUN) uvicorn app.main:app --reload --host 0.0.0.0 --port $(PORT)
 
 run-prod: ## Start production server
 	@echo "$(BLUE)Starting production server...$(NC)"
-	$(UV) run uvicorn app.main:app --host 0.0.0.0 --port $(PORT) --workers 4
+	$(UV_RUN) uvicorn app.main:app --host 0.0.0.0 --port $(PORT) --workers 4
 
 dev: db-init workflows-init run ## Start full development environment
 
@@ -195,7 +201,7 @@ clean-all: clean ## Deep clean including virtual environment
 	@echo "$(GREEN)✓ Deep cleanup completed$(NC)"
 
 # Comprehensive checks
-all-checks: lint type-check complexity security test ## Run all code quality checks
+all-checks: lint type-check complexity security type-vulnerabilities test ## Run all code quality checks
 
 ci: lint type-check test ## Run CI pipeline checks
 
@@ -221,19 +227,19 @@ status: ## Show project status
 	@echo "$(YELLOW)Dependencies:$(NC)"
 	@$(UV) pip list | grep -E "(ruff|radon|mypy|pytest|fastapi|uvicorn)" || true
 	@echo "$(YELLOW)Test status:$(NC)"
-	@$(UV) run pytest $(TEST_DIR) --collect-only -q | tail -1
+	@$(UV_RUN) pytest $(TEST_DIR) --collect-only -q | tail -1
 	@echo "$(YELLOW)Code quality:$(NC)"
-	@$(UV) run ruff check $(SRC_DIR) --statistics || true
+	@$(UV_RUN) ruff check $(SRC_DIR) --statistics || true
 
 # Performance targets
 benchmark: ## Run performance benchmarks
 	@echo "$(BLUE)Running performance benchmarks...$(NC)"
-	$(UV) run pytest tests/test_performance.py -v --benchmark-only
+	$(UV_RUN) pytest tests/test_performance.py -v --benchmark-only
 	@echo "$(GREEN)✓ Benchmarks completed$(NC)"
 
 profile: ## Profile application performance
 	@echo "$(BLUE)Profiling application...$(NC)"
-	$(UV) run python -m cProfile -o profile.stats -m app.main
+	$(UV_RUN) python -m cProfile -o profile.stats -m app.main
 	@echo "$(GREEN)✓ Profiling completed - see profile.stats$(NC)"
 
 # Advanced analysis
@@ -241,8 +247,8 @@ analyze: complexity security audit ## Run comprehensive code analysis
 
 lint-report: ## Generate detailed lint report
 	@echo "$(BLUE)Generating lint report...$(NC)"
-	$(UV) run ruff check $(SRC_DIR) $(TEST_DIR) --output-format=json > lint-report.json
-	$(UV) run ruff check $(SRC_DIR) $(TEST_DIR) --statistics
+	$(UV_RUN) ruff check $(SRC_DIR) $(TEST_DIR) --output-format=json > lint-report.json
+	$(UV_RUN) ruff check $(SRC_DIR) $(TEST_DIR) --statistics
 	@echo "$(GREEN)✓ Lint report generated$(NC)"
 
 metrics: ## Show code metrics
@@ -251,9 +257,9 @@ metrics: ## Show code metrics
 	@echo "$(YELLOW)Lines of code:$(NC)"
 	@find $(SRC_DIR) -name "*.py" -exec wc -l {} + | tail -1
 	@echo "$(YELLOW)Test coverage:$(NC)"
-	@$(UV) run pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=term-missing | grep TOTAL || echo "Run 'make test-cov' first"
+	@$(UV_RUN) pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=term-missing | grep TOTAL || echo "Run 'make test-cov' first"
 	@echo "$(YELLOW)Complexity:$(NC)"
-	@$(UV) run radon cc $(SRC_DIR) -a -s | head -10
+	@$(UV_RUN) radon cc $(SRC_DIR) -a -s | head -10
 
 # Help for specific areas
 help-workflow: ## Show workflow-specific commands

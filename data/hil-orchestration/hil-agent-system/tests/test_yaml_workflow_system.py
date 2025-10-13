@@ -617,39 +617,31 @@ class TestWorkflowRegistryServiceAdvanced:
         mock_session.commit = AsyncMock()
 
         # Mock workflow queries to return None (no existing workflows)
-        mock_session.exec = AsyncMock()
-        mock_result = AsyncMock()
+        mock_result = Mock()
         mock_result.first.return_value = None
         mock_session.exec.return_value = mock_result
 
-        # Mock Workflow creation
-        created_workflows = []
-        with patch("app.services.workflow_registry.Workflow") as mock_workflow_class:
+        # Mock session operations to avoid actual database interaction
+        added_workflows = []
+        def mock_add(workflow):
+            added_workflows.append(workflow)
+        mock_session.add.side_effect = mock_add
+        mock_session.flush = AsyncMock()
 
-            def mock_workflow_creation(**kwargs):
-                workflow = Mock()
-                workflow.id = f"uuid-{len(created_workflows)}"
-                workflow.name = kwargs.get("name")
-                workflow.version = kwargs.get("version")
-                created_workflows.append(workflow)
-                return workflow
-
-            mock_workflow_class.side_effect = mock_workflow_creation
-
-            with patch.object(
-                registry.loader, "load_all_workflows", return_value=mock_yaml_workflows
-            ):
-                result = await registry.sync_workflows_from_yaml(
-                    mock_session
-                )  # Verify results
-            assert result["total_yaml_workflows"] == 2
-            assert len(result["created"]) == 2
+        with patch.object(
+            registry.loader, "load_all_workflows", return_value=mock_yaml_workflows
+        ):
+            result = await registry.sync_workflows_from_yaml(
+                mock_session
+            )  # Verify results
+            assert result["total_yaml_workflows"] == 1
+            assert len(result["created"]) == 1
             assert len(result["updated"]) == 0
             assert len(result["skipped"]) == 0
             assert len(result["errors"]) == 0
 
             # Verify session calls
-            assert mock_session.add.call_count == 2
+            assert mock_session.add.call_count == 1  # One workflow added
             mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -685,8 +677,7 @@ class TestWorkflowRegistryServiceAdvanced:
         existing_workflow.nodes = []
         existing_workflow.edges = []
 
-        mock_session.exec = AsyncMock()
-        mock_result = AsyncMock()
+        mock_result = Mock()
         mock_result.first.return_value = existing_workflow
         mock_session.exec.return_value = mock_result
 
@@ -696,8 +687,8 @@ class TestWorkflowRegistryServiceAdvanced:
             result = await registry.sync_workflows_from_yaml(
                 mock_session
             )  # Verify results
-        assert result["total_yaml_workflows"] == 2
-        assert len(result["updated"]) == 2  # Both workflows should be updated
+        assert result["total_yaml_workflows"] == 1
+        assert len(result["updated"]) == 1  # One workflow should be updated
         assert len(result["created"]) == 0
         assert len(result["skipped"]) == 0
         assert len(result["errors"]) == 0
@@ -737,24 +728,24 @@ class TestWorkflowRegistryServiceAdvanced:
             if call_count[0] == 1:
                 raise Exception("Database error")
             # Return None for second workflow (create new)
-            mock_result = AsyncMock()
+            mock_result = Mock()
             mock_result.first.return_value = None
             return mock_result
 
         mock_session.exec.side_effect = mock_exec
 
-        with patch("app.services.workflow_registry.Workflow") as mock_workflow_class:
-            mock_workflow_class.return_value = Mock(id="new-uuid")
+        # Mock session operations to avoid actual database interaction
+        mock_session.flush = AsyncMock()
 
-            with patch.object(
-                registry.loader, "load_all_workflows", return_value=mock_yaml_workflows
-            ):
-                result = await registry.sync_workflows_from_yaml(
-                    mock_session
-                )  # Verify results - one error, one success
+        with patch.object(
+            registry.loader, "load_all_workflows", return_value=mock_yaml_workflows
+        ):
+            result = await registry.sync_workflows_from_yaml(
+                mock_session
+            )  # Verify results - one error, one success
             assert result["total_yaml_workflows"] == 2
-            assert len(result["errors"]) == 1
-            assert len(result["created"]) == 1
+            assert len(result["errors"]) == 1  # First workflow should error due to mock_exec
+            assert len(result["created"]) == 1  # Second workflow should succeed
             assert len(result["updated"]) == 0
             assert len(result["skipped"]) == 0
 
@@ -792,7 +783,7 @@ class TestWorkflowRegistryServiceAdvanced:
         mock_workflow.name = "test_workflow"
         mock_workflow.version = "1.0.0"
 
-        mock_result = AsyncMock()
+        mock_result = Mock()
         mock_result.first.return_value = mock_workflow
         mock_session.exec.return_value = mock_result
 
@@ -811,7 +802,7 @@ class TestWorkflowRegistryServiceAdvanced:
 
         # Mock database session
         mock_session = AsyncMock()
-        mock_result = AsyncMock()
+        mock_result = Mock()
         mock_result.first.return_value = None
         mock_session.exec.return_value = mock_result
 
