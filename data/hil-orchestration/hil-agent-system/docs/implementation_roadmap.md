@@ -78,8 +78,18 @@
 - ❌ **Tool Execution Engine** - Secure tool invocation
 - ❌ **OAuth Management** - External service authentication
 
-### Advanced Features
-- ❌ **Memory System** - Vector-based long-term memory
+### Advanced Memory & Context Features (See implementation_guideline.md sections 7-8)
+- ❌ **Advanced Chunking Strategies** - Semantic, conversation-turn, hierarchical, entity-based chunking
+  - Missing: ChunkingService with 5 strategy types
+  - Missing: Strategy-based document indexing
+  - Missing: Integration with Memory Manager
+- ❌ **Neo4j Graph Database** - Relationship management for complex queries
+  - Missing: Workflow execution path graphs
+  - Missing: Agent learning graph (similar executions, success patterns)
+  - Missing: Customer journey tracking
+  - Missing: Skills network for agent assignment
+  - Missing: Tool dependency graphs
+- ❌ **Memory System Enhancement** - Vector-based long-term memory with intelligent chunking
 - ❌ **Code Sandboxing** - Docker-based secure execution  
 - ❌ **Observability** - Metrics, tracing, cost tracking
 - ❌ **Background Processing** - Celery task queue integration
@@ -113,6 +123,33 @@
 3. Code Agent with Docker sandboxing
 4. Complete observability stack
 
+### Phase 5: Advanced Memory & Graph Database (Weeks 9-10) 🆕
+1. **Chunking Strategies Implementation**:
+   - Implement ChunkingService with 5 strategies (fixed, semantic, conversation-turn, hierarchical, entity-based)
+   - Update Memory Manager to use intelligent chunking
+   - Add document type detection and strategy selection
+   - Migrate existing vector store to chunked format
+2. **Neo4j Foundation**:
+   - Set up Neo4j container in Docker Compose
+   - Implement GraphService base class
+   - Create workflow execution graphs on registration
+   - Add execution tracking in graph database
+
+### Phase 6: Graph-Based Intelligence (Weeks 11-12) 🆕
+1. **Learning & Pattern Discovery**:
+   - Implement execution similarity linking
+   - Add graph-based learning queries
+   - Success pattern identification
+2. **Customer Journey & Agent Assignment**:
+   - Customer journey tracking in Neo4j
+   - Skills network for human agents
+   - Graph-based agent assignment algorithm
+   - Handover pattern analysis
+3. **Performance Optimization**:
+   - Caching layer for frequent queries
+   - Batch operations for graph updates
+   - Query optimization and indexing
+
 ## 🎯 Quick Wins (Next 2 Weeks) - Anti-Echo Priority
 
 1. **🚨 Add Turn Tracking** - Implement `ConversationTurn` model with `session_id:turn_id` keys
@@ -135,8 +172,14 @@
 | Reasoning Agent | 0% | Medium | 3 weeks |
 | Code Agent | 0% | Low | 4 weeks |
 | Observability | 20% | Medium | 2 weeks |
+| **Chunking Strategies** | 0% | High | 2 weeks |
+| **Neo4j Integration** | 0% | Medium | 2 weeks |
+| **Graph-Based Learning** | 0% | Medium | 2 weeks |
+| **Production Hardening** | 0% (Postponed) | Medium | 4 weeks |
 
-**Overall: ~35% complete** - Strong foundation, needs core feature implementation.
+**Overall: ~30% complete** - Strong foundation, needs core feature implementation + advanced memory/graph capabilities.
+
+> **Note**: Production hardening features (SLOs, Feature Flags, Evaluation Framework, Cost Enforcement) are documented in `implementation_guideline.md` sections 13-16 but **postponed until core system is functional**. Focus remains on Phases 1-6 (core functionality, HIL system, advanced memory features).
 
 ---
 
@@ -388,3 +431,65 @@ POST /api/v1/hil/message
 - Tool integration works in both modes
 - Advanced agents (Reasoning, Code) support both execution paths  
 - Observability and analytics for both standalone and HIL workflows
+
+### Phase 4: Memory & Intelligence Enhancement (Weeks 9-12) 🆕
+- Advanced chunking strategies for better RAG accuracy
+- Neo4j integration for relationship management
+- Graph-based learning and pattern discovery
+- Intelligent agent assignment using skills network
+
+---
+
+## 🚀 Advanced Features: Chunking & Graph Database
+
+### Why These Features Matter
+
+#### Advanced Chunking Strategies
+**Current Problem**: Basic document indexing loses semantic boundaries and context.
+
+**Solution**: Strategy-based chunking improves RAG performance:
+- **+40% retrieval accuracy** with semantic chunking
+- **+50% accuracy** for conversation history with turn-based chunking
+- **+25-35% token efficiency** with optimized chunk sizes
+- **Better entity resolution** with entity-based chunking
+
+**5 Strategies Available**:
+1. **Fixed-Size** - Baseline for simple content
+2. **Semantic** - Respects semantic boundaries (best for long-form)
+3. **Conversation-Turn** - Maintains dialogue flow (HIL-specific)
+4. **Hierarchical** - Preserves document structure (documentation)
+5. **Entity-Based** - Groups by entities (products, orders, customers)
+
+#### Neo4j Graph Database Integration
+**Current Problem**: Complex relationship queries require expensive JOINs and are slow.
+
+**Solution**: Neo4j excels at relationship management:
+- **100-1000x faster** relationship queries vs PostgreSQL JOINs
+- **Pattern discovery** - Find success patterns automatically
+- **Path finding** - Understand workflow execution flows
+- **Multi-hop queries** - Customer journey tracking
+
+**5 Key Use Cases**:
+1. **Workflow Execution Graphs** - Visualize and optimize paths
+2. **Agent Learning** - Link similar executions, discover patterns
+3. **Customer Journeys** - Track multi-step interactions
+4. **Skills Network** - Intelligent human agent assignment
+5. **Tool Dependencies** - Smart tool selection and coordination
+
+### Implementation Priority
+
+**Immediate (Phases 1-4)**: Focus on core functionality, anti-echo, HIL system
+
+**Medium-term (Phases 5-6)**: Add chunking and Neo4j for:
+- Improved RAG accuracy (immediate ROI)
+- Agent learning capabilities
+- Advanced analytics and insights
+
+**Benefits**:
+- Enhanced system intelligence without disrupting core functionality
+- Measurable performance improvements (retrieval accuracy, query speed)
+- Enables advanced features (learning, journey tracking, predictive routing)
+
+> **See Also**: 
+> - `docs/implementation_guideline.md` - Sections 7-8 for detailed implementation
+> - `docs/chunking_and_graph_strategy.md` - Complete strategy document with code examples
