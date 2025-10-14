@@ -51,6 +51,8 @@
 
 ## 🔴 Not Implemented (Major Features)
 
+> **🎯 Design Philosophy**: When implementing features, follow **"Intelligent Defaults Over Configuration"** (see `docs/api_intelligence_guideline.md`). Hide complexity from users through auto-optimization and smart defaults.
+
 ### 🧠 Anti-Echo & Robustness Features (HIGH PRIORITY)
 - ❌ **Conversation Turn Tracking** - Individual turn management with `session_id:turn_id` idempotency keys
 - ❌ **Redis Distributed Locking** - Prevent concurrent memory corruption with `SET NX` locks

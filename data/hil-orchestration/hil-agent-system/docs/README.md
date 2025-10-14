@@ -4,6 +4,8 @@ Welcome to the HIL (Human-in-the-Loop) Agent System documentation. This folder c
 
 ## 📚 Documentation Structure
 
+> **🎯 Start Here**: [DESIGN_PHILOSOPHY_SUMMARY.md](DESIGN_PHILOSOPHY_SUMMARY.md) - Quick overview of "Intelligent Defaults Over Configuration"
+
 ### Core Documentation
 
 #### 1. **[implementation_guideline.md](implementation_guideline.md)** - Main Reference
@@ -47,7 +49,25 @@ Current status and prioritized implementation roadmap.
 
 ### Specialized Guides
 
-#### 3. **[chunking_and_graph_strategy.md](chunking_and_graph_strategy.md)** - Deep Dive 🆕
+#### 3. **[api_intelligence_guideline.md](api_intelligence_guideline.md)** - Design Philosophy 🆕
+**"Intelligent Defaults Over Configuration"** - How to hide complexity from users while maintaining power.
+
+**Key Sections**:
+- The Problem: Overwhelming Complexity
+- Smart Architecture: Intelligence Behind the API
+- 4-Layer Intelligence Hierarchy (User → Intelligence → Implementation → Auto-Tuning)
+- Configuration Philosophy (Levels of Control)
+- User Experience Examples
+- Observability for Users
+- Migration Path: From Manual to Auto
+
+**Use When**: You're designing APIs, workflows, or user-facing features and want to minimize cognitive load while maximizing system intelligence.
+
+**Key Principle**: *Complexity decreases as you go up ↑, Intelligence increases as you go down ↓*
+
+---
+
+#### 4. **[chunking_and_graph_strategy.md](chunking_and_graph_strategy.md)** - Deep Dive 🆕
 Comprehensive guide to advanced memory management and graph database integration.
 
 **Contents**:
@@ -72,7 +92,7 @@ Comprehensive guide to advanced memory management and graph database integration
 
 ---
 
-#### 4. **[keys_security_guideline.md](keys_security_guideline.md)** - Security Reference
+#### 6. **[production_readiness_assessment.md](production_readiness_assessment.md)** - Gap Analysis 🆕
 Comprehensive security practices for API token management and OAuth integration.
 
 **Contents**:
@@ -146,6 +166,8 @@ Comprehensive security practices for API token management and OAuth integration.
 | System Architecture | `implementation_guideline.md` | § 2 |
 | Agent Types | `implementation_guideline.md` | § 4 |
 | Memory Management | `implementation_guideline.md` | § 6 |
+| **API Design Philosophy** 🆕 | `api_intelligence_guideline.md` | All |
+| **Intelligent Defaults** 🆕 | `api_intelligence_guideline.md` | Layer 1-2 |
 | **Chunking Strategies** 🆕 | `chunking_and_graph_strategy.md` | All |
 | **Neo4j Integration** 🆕 | `chunking_and_graph_strategy.md` | Neo4j section |
 | HIL Meta-Workflow | `implementation_guideline.md` | § 11 |
@@ -164,6 +186,7 @@ Comprehensive security practices for API token management and OAuth integration.
 - ✅ Updated all references to point to integrated content
 
 ### October 2025 🆕
+- ✅ Added **API Intelligence Guideline** - "Intelligent Defaults Over Configuration" design philosophy
 - ✅ Added **Advanced Chunking Strategies** (Section 7)
 - ✅ Added **Graph Database Integration** with Neo4j (Section 8)
 - ✅ Created comprehensive `chunking_and_graph_strategy.md`
@@ -171,6 +194,7 @@ Comprehensive security practices for API token management and OAuth integration.
 - ✅ Updated implementation priorities and benefits analysis
 - ✅ Added **Production Readiness** sections 13-16 (SLOs, Feature Flags, Evaluation, Cost Enforcement)
 - 📝 Production features documented but **postponed** until core system is functional
+- 🎯 **Design Philosophy**: Hide complexity from users through 4-layer intelligence hierarchy
 
 ---
 
