@@ -162,17 +162,13 @@ class TestWorkflowIntegrationService:
             mock_get_workflow.side_effect = mock_get_workflow_func
 
             mock_agent = AsyncMock()
+            # The mock should return what SimpleAgent.run() returns
+            # which becomes result["output"] in the workflow service
             mock_agent_result = {
-                "output": {
-                    "content": "booking",
-                    "confidence": 0.95,
-                },
-                "model_used": "gpt-3.5-turbo",
-                "execution_time": 1.2,
-                "cost": 0.001,
-                "tokens_used": 50,
+                "content": "booking",
+                "confidence": 0.95,
             }
-            mock_agent.execute.return_value = mock_agent_result
+            mock_agent.run.return_value = mock_agent_result
             mock_agent_class.return_value = mock_agent
 
             # Execute workflow
@@ -189,7 +185,7 @@ class TestWorkflowIntegrationService:
             assert result["output"]["confidence"] == 0.95
 
             # Verify agent was called correctly
-            mock_agent.execute.assert_called_once()
+            mock_agent.run.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_workflow_not_found(self, service):

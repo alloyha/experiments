@@ -41,27 +41,38 @@ async def test_engine():
 
 
 @pytest_asyncio.fixture
-async def test_session(test_engine):
-    """Create test database session."""
-
+async def db_session(test_engine):
+    """Create test database session with transaction rollback."""
+    
+    # Start a connection
+    connection = await test_engine.connect()
+    
+    # Begin a transaction
+    transaction = await connection.begin()
+    
+    # Create session bound to connection
     async_session_maker = async_sessionmaker(
-        test_engine,
+        bind=connection,
         class_=AsyncSession,
         expire_on_commit=False,
     )
-
+    
     async with async_session_maker() as session:
         yield session
-        await session.rollback()
+        
+        # Rollback everything after test
+        await transaction.rollback()
+    
+    await connection.close()
 
 
 @pytest_asyncio.fixture
-async def test_client(test_session):
+async def test_client(db_session):
     """Create test HTTP client with test database."""
     from fastapi.testclient import TestClient
 
     async def get_test_session():
-        yield test_session
+        yield db_session
 
     # Override the database dependency
     app.dependency_overrides[get_session] = get_test_session

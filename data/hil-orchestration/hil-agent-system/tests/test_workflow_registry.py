@@ -1,4 +1,4 @@
-"""
+﻿"""
 Simple unit tests for workflow registry service to improve coverage.
 These tests focus on specific methods without complex async mocking.
 """

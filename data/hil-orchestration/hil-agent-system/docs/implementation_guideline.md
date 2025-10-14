@@ -2806,7 +2806,7 @@ class SLOMonitor:
     async def _calculate_metrics(self, workflow_id: str, time_window: timedelta) -> Dict[str, float]:
         """Calculate metrics from recent executions"""
         
-        since = datetime.utcnow() - time_window
+        since = datetime.now() - time_window
         
         # Query executions
         executions = await self.db.fetch("""
@@ -3089,7 +3089,7 @@ class FeatureFlagService:
         if not start_time:
             return False
         
-        now = datetime.utcnow()
+        now = datetime.now()
         elapsed_hours = (now - start_time).total_seconds() / 3600
         
         if elapsed_hours < 0:
@@ -3850,7 +3850,7 @@ class CostController:
     ) -> Dict[str, Any]:
         """Get cost usage statistics"""
         
-        since = datetime.utcnow() - time_window
+        since = datetime.now() - time_window
         
         usage = await self.db.fetchrow("""
             SELECT 

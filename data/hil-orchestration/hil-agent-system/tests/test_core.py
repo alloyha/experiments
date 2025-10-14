@@ -23,7 +23,8 @@ class TestSettings:
         assert settings.DEBUG is True
         assert settings.SECRET_KEY == "dev-secret-key-change-in-production"
         assert settings.DATABASE_URL.startswith("postgresql+asyncpg://")
-        assert settings.REDIS_URL == "redis://localhost:6379"
+        # REDIS_URL can be localhost or redis (Docker service name) depending on .env
+        assert settings.REDIS_URL.startswith("redis://")
 
     def test_environment_override(self, monkeypatch):
         """Test settings override from environment variables."""
@@ -51,8 +52,9 @@ class TestSettings:
         """Test Redis URL construction."""
         settings = Settings()
 
-        # Test that we have a valid Redis URL
-        assert settings.REDIS_URL == "redis://localhost:6379"
+        # Test that we have a valid Redis URL (can be localhost or redis service)
+        assert settings.REDIS_URL.startswith("redis://")
+        assert ":6379" in settings.REDIS_URL
 
 
 class TestDatabaseConnection:

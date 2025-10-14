@@ -48,7 +48,7 @@ def setup_logging() -> None:
         add_correlation_id,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
+        # Removed format_exc_info to allow pretty exception rendering
         structlog.processors.UnicodeDecoder(),
     ]
 

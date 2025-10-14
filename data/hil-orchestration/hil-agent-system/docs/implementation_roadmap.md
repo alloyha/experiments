@@ -210,7 +210,7 @@ class ConversationTurn(SQLModel, table=True):
     agent_response_hash: str  # SHA-256 of response for duplicate prevention
     idempotency_key: str  # session_id:turn_id format
     processing_status: str  # PROCESSING, COMPLETED, FAILED
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
 ```
 
 #### **2. Redis Distributed Locking Service**
