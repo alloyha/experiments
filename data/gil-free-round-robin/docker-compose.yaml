@@ -24,9 +24,15 @@ services:
   python314-nogil:
     <<: *benchmark-service
     container_name: py314_benchmark_nogil
-    command: python gil_roundrobin_bench.py
+    command: >
+      bash -c "
+        python gil_roundrobin_bench.py;
+        echo 'Benchmark finished. Container stays alive.';
+        tail -f /dev/null
+      "
     cpus: 4
     mem_limit: 2g
+
 
   python314-gil:
     image: python:3.14-slim
@@ -37,7 +43,12 @@ services:
     environment:
       <<: *benchmark-env
       PYTHON_GIL: "1"
-    command: python gil_roundrobin_bench.py
+    command: >
+      bash -c "
+        python gil_roundrobin_bench.py;
+        echo 'Benchmark finished. Container stays alive.';
+        tail -f /dev/null
+      "
     cpus: 4
     mem_limit: 2g
     networks:
