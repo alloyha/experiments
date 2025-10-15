@@ -1,0 +1,79 @@
+# Docker Compose for Python 3.14 (π Release) with Free-Threading
+# Builds a no-GIL interpreter and runs comparison benchmarks
+
+version: '3.8'
+
+x-benchmark-env: &benchmark-env
+  PYTHONUNBUFFERED: 1
+
+x-benchmark-service: &benchmark-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: python314-nogil:latest
+  volumes:
+    - ./:/workspace
+  working_dir: /workspace
+  environment:
+    <<: *benchmark-env
+    PYTHON_GIL: "0"
+  networks:
+    - benchmark_net
+
+services:
+  python314-nogil:
+    <<: *benchmark-service
+    container_name: py314_benchmark_nogil
+    command: python gil_roundrobin_bench.py
+    cpus: 4
+    mem_limit: 2g
+
+  python314-gil:
+    image: python:3.14-slim
+    container_name: py314_benchmark_gil
+    volumes:
+      - ./:/workspace
+    working_dir: /workspace
+    environment:
+      <<: *benchmark-env
+      PYTHON_GIL: "1"
+    command: python gil_roundrobin_bench.py
+    cpus: 4
+    mem_limit: 2g
+    networks:
+      - benchmark_net
+
+  python314-dev:
+    <<: *benchmark-service
+    container_name: py314_dev
+    command: bash
+    stdin_open: true
+    tty: true
+    cpus: 4
+    mem_limit: 2g
+    profiles:
+      - dev
+
+  python314-multicore:
+    <<: *benchmark-service
+    container_name: py314_multicore
+    command: >
+      bash -c "
+        set -e;
+        echo '=== Running with 2 consumers ===';
+        python gil_roundrobin_bench.py -c 2;
+        echo;
+        echo '=== Running with 4 consumers ===';
+        python gil_roundrobin_bench.py -c 4;
+        echo;
+        echo '=== Running with 8 consumers ===';
+        python gil_roundrobin_bench.py -c 8;
+      "
+    cpus: 8
+    mem_limit: 4g
+    profiles:
+      - scaling
+
+networks:
+  benchmark_net:
+    driver: bridge
