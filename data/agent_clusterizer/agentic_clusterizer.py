@@ -1,40 +1,42 @@
 """
-Agentic Text Clusterizer — Parallel batch processing with BERTScore integration.
+Agentic Text Clusterizer
 
-Key improvements over original:
-- Hybrid TF-IDF + BERT cascade for semantic understanding
-- Better candidate selection via contextual embeddings
-- Enhanced confidence scoring with BERT similarity
-- Configurable retrieval modes (tfidf/bert/hybrid)
+Lightweight module header describing the public purpose and surface API.
 
-CONFIGURATION SYSTEM:
-====================
-The clusterizer uses a unified `ClusterizerConfig` that couples:
-1. Retrieval Mode: How to find candidate categories (tfidf/bert/hybrid)
-2. Confidence Weights: How to score category assignments
-3. Scoring Strategy: Overall behavior (balanced/conservative/aggressive/semantic)
-4. Thresholds: When to create new categories
+Purpose:
+    Provide a scalable, parallel-capable text clustering utility that
+    combines fast lexical retrieval and optional semantic embeddings to
+    assign texts to categories, create new categories when needed, and
+    consolidate similar categories.
 
-Preset Configurations (recommended):
-- CONFIG_BALANCED_HYBRID: Standard, works well for most use cases
-- CONFIG_CONSERVATIVE_HYBRID: Prefers existing categories, harder to create new
-- CONFIG_AGGRESSIVE_HYBRID: Creates new categories more readily
-- CONFIG_SEMANTIC_BERT: Heavy emphasis on BERT semantic similarity
-- CONFIG_BALANCED_TFIDF: TF-IDF only (no BERT), faster but less semantic
+Key features:
+    - Hybrid retrieval (lexical prefilter + optional semantic rerank)
+    - Multi-signal confidence scoring (LLM scores, lexical, semantic, keywords)
+    - Parallel batch processing with configurable pass/round behavior
+    - Category consolidation to merge semantically similar categories
+    - Pluggable configuration: use preset configurations or supply a custom one
 
-Usage:
-    # Recommended: Use preset configs
-    result = await clusterize_texts(texts, config=CONFIG_CONSERVATIVE_HYBRID)
-    
-    # Or create custom config
-    custom = ClusterizerConfig(
-        retrieval_mode=RETRIEVAL_MODE.HYBRID,
-        confidence_weights=ConfidenceWeights(...),
-        scoring_strategy=SCORING_STRATEGY.BALANCED,
-        new_category_threshold=0.65,
-        new_category_bonus=1.15
-    )
-    result = await clusterize_texts(texts, config=custom)
+Public API (high level):
+    - clusterize_texts(texts, config=..., batch_size=..., max_passes=...)
+        Main entry point. Returns a result containing categories, assignments,
+        and metadata.
+
+    - clusterize_texts_with_chunking(...)
+        Convenience wrapper for handling very large/multi-topic texts by
+        splitting into semantic chunks, classifying chunks, and aggregating
+        results.
+
+    - CONFIG_* presets
+        A set of recommended configuration presets for common behaviors
+        (balanced, conservative, aggressive, semantic-only, etc.).
+
+Usage example (async):
+    result = await clusterize_texts(texts, config=CONFIG_BALANCED_HYBRID)
+
+Notes:
+    This header intentionally avoids referencing internal refactor details
+    (specific class names or historical thresholds) so the top-level
+    documentation remains stable as implementation evolves.
 """
 
 from __future__ import annotations
@@ -319,10 +321,10 @@ class CategoryAssignment(BaseModel):
 
 class MultiPassAnalysis(BaseModel):
     text: str
-    candidate_categories: List[str] = Field(default_factory=list)
-    confidence_scores: Dict[str, float] = Field(default_factory=dict)
-    best_category_id: Optional[str] = None
-    should_create_new: bool = False
+- Medium confidence (0.5-0.7): Good match, reasonable fit
+- Low confidence (0.0-0.4): Poor match, weak connection
+
+Given a text and candidate categories, return:
     new_category: Optional[Dict[str, Any]] = None
     reasoning: str = ""
 
@@ -2558,8 +2560,12 @@ if __name__ == '__main__':
         start_time = time.time()
         
         # NEW: Use preset configs (recommended)
-        # Options: CONFIG_BALANCED_HYBRID, CONFIG_CONSERVATIVE_HYBRID, CONFIG_AGGRESSIVE_HYBRID,
-        #          CONFIG_SEMANTIC_BERT, CONFIG_BALANCED_TFIDF, etc.
+        # Options: 
+        #   - CONFIG_BALANCED_HYBRID
+        #   - CONFIG_CONSERVATIVE_HYBRID
+        #   - CONFIG_AGGRESSIVE_HYBRID
+        #   - CONFIG_SEMANTIC_BERT
+        #   - CONFIG_BALANCED_TFIDF, etc.
         res = await clusterize_texts(
             sample_texts,
             max_passes=2,
