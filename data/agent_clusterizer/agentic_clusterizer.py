@@ -33,10 +33,6 @@ Public API (high level):
 Usage example (async):
     result = await clusterize_texts(texts, config=CONFIG_BALANCED_HYBRID)
 
-Notes:
-    This header intentionally avoids referencing internal refactor details
-    (specific class names or historical thresholds) so the top-level
-    documentation remains stable as implementation evolves.
 """
 
 from __future__ import annotations
@@ -54,8 +50,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+VERBOSE=False
+
 logger = logging.getLogger("agentic_clusterizer")
-logging.basicConfig(level=logging.INFO)
+
+if VERBOSE:
+    logging.basicConfig(level=logging.INFO)
+else:
+    logging.basicConfig(level=logging.WARNING)
+
 
 # Constants
 MAX_WATCHDOG = 10000
@@ -321,10 +324,10 @@ class CategoryAssignment(BaseModel):
 
 class MultiPassAnalysis(BaseModel):
     text: str
-- Medium confidence (0.5-0.7): Good match, reasonable fit
-- Low confidence (0.0-0.4): Poor match, weak connection
-
-Given a text and candidate categories, return:
+    candidate_categories: List[str] = Field(default_factory=list)
+    confidence_scores: Dict[str, float] = Field(default_factory=dict)
+    best_category_id: Optional[str] = None
+    should_create_new: bool = False
     new_category: Optional[Dict[str, Any]] = None
     reasoning: str = ""
 
@@ -2244,25 +2247,25 @@ async def clusterize_texts(
     step_count = 0
     last_state = None
     
-    print(f"\n{'='*60}")
-    print(f"BERT-ENHANCED CLUSTERIZATION")
-    print(f"{'='*60}")
-    print(f"Texts: {len(texts)}")
-    print(f"Config: {config.get_description()}")
-    print(f"Batch size: {batch_size} (parallel)")
-    print(f"Max concurrent: {max_concurrent}")
-    print(f"Max passes: {max_passes}")
-    print(f"{'='*60}\n")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"BERT-ENHANCED CLUSTERIZATION")
+    logger.info(f"{'='*60}")
+    logger.info(f"Texts: {len(texts)}")
+    logger.info(f"Config: {config.get_description()}")
+    logger.info(f"Batch size: {batch_size} (parallel)")
+    logger.info(f"Max concurrent: {max_concurrent}")
+    logger.info(f"Max passes: {max_passes}")
+    logger.info(f"{'='*60}\n")
     
     async for event in graph.astream(initial_state, graph_config):
         step_count += 1
         
         node_name = list(event.keys())[0] if event else "unknown"
-        print(f"Step {step_count:2d}: {node_name:20s}", end="")
+        logger.info(f"Step {step_count:2d}: {node_name:20s}", end="")
         
         if step_count > 100:
             logger.warning("Step limit exceeded")
-            print(" [STOPPED]")
+            logger.info(" [STOPPED]")
             break
         
         try:
@@ -2273,16 +2276,16 @@ async def clusterize_texts(
                     total = len(payload.get('texts', []))
                     pass_num = payload.get('current_pass', 1)
                     cat_count = len(payload.get('categories', []))
-                    print(f" | Pass {pass_num} | Text {idx}/{total} | Categories: {cat_count}")
+                    logger.info(f" | Pass {pass_num} | Text {idx}/{total} | Categories: {cat_count}")
                 else:
-                    print()
+                    logger.info()
                 
                 if any(k in payload for k in ('categories', 'consolidation_complete', 'assignments')):
                     last_state = payload
         except Exception as e:
-            print(f" [Error: {e}]")
+            logger.info(f" [Error: {e}]")
     
-    print(f"\n{'='*60}\n")
+    logger.info(f"\n{'='*60}\n")
     
     if last_state is None:
         final_state = await graph.ainvoke(initial_state, graph_config)
@@ -2386,7 +2389,7 @@ async def clusterize_texts_with_chunking(
         >>> # Check for multi-topic documents
         >>> multi_topic = result.get('multi_topic_texts', [])
         >>> for mt in multi_topic:
-        ...     print(f"{mt['text'][:50]}... has {len(mt['categories'])} topics")
+        ...     logger.info(f"{mt['text'][:50]}... has {len(mt['categories'])} topics")
     """
     logger.info(f"Starting chunked clusterization for {len(texts)} texts")
     
@@ -2577,19 +2580,19 @@ if __name__ == '__main__':
         
         elapsed = time.time() - start_time
         
-        print("=" * 60)
-        print("CATEGORIES")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("CATEGORIES")
+        logger.info("=" * 60)
         for c in res['categories']:
-            print(f"- {c.name} ({c.id})")
-            print(f"  Count: {c.text_count}")
-            print(f"  Keywords: {', '.join(c.keywords[:5])}")
-            print(f"  Description: {c.description[:80]}...")
-            print()
+            logger.info(f"- {c.name} ({c.id})")
+            logger.info(f"  Count: {c.text_count}")
+            logger.info(f"  Keywords: {', '.join(c.keywords[:5])}")
+            logger.info(f"  Description: {c.description[:80]}...")
+            logger.info()
         
-        print("=" * 60)
-        print("ASSIGNMENTS (BERT-Enhanced Confidence)")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("ASSIGNMENTS (BERT-Enhanced Confidence)")
+        logger.info("=" * 60)
         
         sorted_assignments = sorted(res['assignments'], key=lambda a: a.confidence, reverse=True)
         
@@ -2601,32 +2604,32 @@ if __name__ == '__main__':
             else:
                 indicator = "? "
             
-            print(f"{indicator} {a.text[:58]}...")
-            print(f"   → {a.category_id}")
-            print(f"   Confidence: {a.confidence:.2f} | {a.reasoning}")
-            print()
+            logger.info(f"{indicator} {a.text[:58]}...")
+            logger.info(f"   → {a.category_id}")
+            logger.info(f"   Confidence: {a.confidence:.2f} | {a.reasoning}")
+            logger.info()
         
-        print("=" * 60)
-        print("METADATA & PERFORMANCE")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("METADATA & PERFORMANCE")
+        logger.info("=" * 60)
         metadata = res['metadata']
         
-        print(f"total_passes: {metadata['total_passes']}")
-        print(f"total_texts: {metadata['total_texts']}")
-        print(f"total_categories: {metadata['total_categories']}")
-        print(f"retrieval_mode: {metadata['retrieval_mode']}")
-        print(f"bert_enabled: {metadata['bert_enabled']}")
-        print(f"elapsed_time: {elapsed:.2f}s")
-        print(f"texts_per_second: {len(sample_texts)/elapsed:.2f}")
+        logger.info(f"total_passes: {metadata['total_passes']}")
+        logger.info(f"total_texts: {metadata['total_texts']}")
+        logger.info(f"total_categories: {metadata['total_categories']}")
+        logger.info(f"retrieval_mode: {metadata['retrieval_mode']}")
+        logger.info(f"bert_enabled: {metadata['bert_enabled']}")
+        logger.info(f"elapsed_time: {elapsed:.2f}s")
+        logger.info(f"texts_per_second: {len(sample_texts)/elapsed:.2f}")
         
         conf_stats = metadata.get('confidence_stats', {})
         if conf_stats:
-            print(f"\nConfidence Statistics:")
-            print(f"  average: {conf_stats.get('average', 0):.3f}")
-            print(f"  min: {conf_stats.get('min', 0):.3f}")
-            print(f"  max: {conf_stats.get('max', 0):.3f}")
-            print(f"  high (≥0.75): {conf_stats.get('high_confidence_count', 0)}")
-            print(f"  medium (0.5-0.75): {conf_stats.get('medium_confidence_count', 0)}")
-            print(f"  low (<0.5): {conf_stats.get('low_confidence_count', 0)}")
+            logger.info(f"\nConfidence Statistics:")
+            logger.info(f"  average: {conf_stats.get('average', 0):.3f}")
+            logger.info(f"  min: {conf_stats.get('min', 0):.3f}")
+            logger.info(f"  max: {conf_stats.get('max', 0):.3f}")
+            logger.info(f"  high (≥0.75): {conf_stats.get('high_confidence_count', 0)}")
+            logger.info(f"  medium (0.5-0.75): {conf_stats.get('medium_confidence_count', 0)}")
+            logger.info(f"  low (<0.5): {conf_stats.get('low_confidence_count', 0)}")
     
     asyncio.run(main())
