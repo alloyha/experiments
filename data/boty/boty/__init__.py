@@ -8,10 +8,11 @@ from .connectors import (
     ExchangeConnector,
     BinanceConnector,
 )
-from 
 from .strategies import (
+    PositionManager,
     Strategy,
     EMACrossoverStrategy,
+    RSIMeanReversionStrategy,
     RiskController,
     RiskParams,
 )
@@ -26,8 +27,10 @@ __all__ = [
     'SignalAction',
     'ExchangeConnector',
     'BinanceConnector',
+    'PositionManager',
     'Strategy',
     'EMACrossoverStrategy',
+    'RSIMeanReversionStrategy',
     'RiskController',
     'RiskParams',
 ]

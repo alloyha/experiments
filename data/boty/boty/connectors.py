@@ -1,9 +1,17 @@
-
-
-
 # ============================================================================
 # EXCHANGE CONNECTOR (Abstraction Layer)
 # ============================================================================
+
+from abc import ABC, abstractmethod
+from typing import Dict, List
+import logging
+import asyncio
+
+import ccxt.async_support as ccxt
+import inspect
+import pandas as pd
+
+from .data_models import Ticker, Position
 
 class ExchangeConnector(ABC):
     """Abstract interface for exchange operations"""
@@ -33,12 +41,16 @@ class BinanceConnector(ExchangeConnector):
     """Binance implementation using CCXT"""
     
     def __init__(self, api_key: str, api_secret: str, testnet: bool = True):
-        self.exchange = ccxt.binance({
-            'apiKey': api_key,
-            'secret': api_secret,
+        # If API keys are provided, pass them; otherwise create an unauthenticated
+        # exchange instance for public market data access.
+        params = {
             'enableRateLimit': True,
             'options': {'defaultType': 'spot'}
-        })
+        }
+        if api_key and api_secret:
+            params.update({'apiKey': api_key, 'secret': api_secret})
+
+        self.exchange = ccxt.binance(params)
         
         if testnet:
             self.exchange.set_sandbox_mode(True)
@@ -116,8 +128,25 @@ class BinanceConnector(ExchangeConnector):
         balances = await self.get_balance()
         # For spot trading, we'll track positions in our own state manager
         return []
+
+    async def close(self):
+        """Close the underlying exchange (aiohttp) connections."""
+        try:
+            await self.exchange.close()
+        except Exception:
+            # best-effort close
+            pass
     
     async def _async_fetch(self, func, *args, **kwargs):
-        """Wrapper to run sync CCXT methods in async context"""
+        """Call either an async ccxt method or run a sync function in executor.
+
+        ccxt.async_support provides coroutine functions (which must be awaited).
+        Some callers may pass sync callables; handle both cases safely.
+        """
+        # If func is a coroutine function, await it directly.
+        if inspect.iscoroutinefunction(func):
+            return await func(*args, **kwargs)
+
+        # Otherwise run in executor for sync functions
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: func(*args, **kwargs))

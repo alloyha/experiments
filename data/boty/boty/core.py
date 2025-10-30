@@ -18,6 +18,7 @@ import asyncio
 from .data_models import (
     Ticker, Candle, Signal, Position, Trade, SignalAction,
 )
+from .connectors import ExchangeConnector, BinanceConnector
 
 
 # ============================================================================

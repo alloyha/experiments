@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, List
 import logging
 
+from .data_models import Position, Signal, SignalAction
 
 # ============================================================================
 # STRATEGY ENGINE
@@ -28,7 +29,7 @@ class Strategy(ABC):
         pass
     
     @abstractmethod
-    def generate_signal(self, df: pd.DataFrame, current_position: Optional['Position']) -> 'Signal':
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> 'Signal':
         """Generate trading signal"""
         pass
     
@@ -84,7 +85,7 @@ class EMACrossoverStrategy(Strategy):
     
     def generate_signal(self, df: pd.DataFrame, current_position: Optional['Position']) -> 'Signal':
         """Generate BUY/SELL/HOLD signal"""
-        from trading_bot_core import Signal, SignalAction
+        from .data_models import Signal, SignalAction
         
         if len(df) < 2:
             return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
@@ -123,6 +124,272 @@ class EMACrossoverStrategy(Strategy):
         return Signal(SignalAction.HOLD, 0.0, "No crossover detected")
 
 
+class ImprovedEMACrossover(Strategy):
+    """
+    Improved EMA Crossover with:
+    - Looser filters (more trades)
+    - Volume confirmation
+    - Trend strength filter
+    """
+    
+    def __init__(self, fast_period: int = 12, slow_period: int = 26, 
+                 volume_threshold: float = 1.2):
+        super().__init__(name='EMA_Crossover')
+        self.fast_period = fast_period
+        self.slow_period = slow_period
+        self.volume_threshold = volume_threshold
+    
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        
+        # EMAs
+        df['ema_fast'] = df['close'].ewm(span=self.fast_period, adjust=False).mean()
+        df['ema_slow'] = df['close'].ewm(span=self.slow_period, adjust=False).mean()
+        
+        # RSI (but we'll use it more loosely)
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        # Volume indicator
+        df['volume_ma'] = df['volume'].rolling(window=20).mean()
+        df['volume_ratio'] = df['volume'] / df['volume_ma']
+        
+        # Trend strength (ADX-like)
+        df['price_change'] = df['close'].pct_change(periods=20)
+        
+        return df
+    
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> Signal:
+        if len(df) < 2:
+            return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
+        
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
+        
+        # Golden Cross (BUY)
+        if prev['ema_fast'] <= prev['ema_slow'] and last['ema_fast'] > last['ema_slow']:
+            if current_position is None:
+                # Confidence based on multiple factors
+                confidence = 0.5
+                reasons = ["Golden cross"]
+                
+                # Boost confidence if RSI not overbought
+                if last['rsi'] < 75:
+                    confidence += 0.2
+                    reasons.append(f"RSI neutral ({last['rsi']:.0f})")
+                
+                # Boost if volume is high
+                if last['volume_ratio'] > self.volume_threshold:
+                    confidence += 0.2
+                    reasons.append(f"High volume ({last['volume_ratio']:.1f}x)")
+                
+                # Boost if price trending up
+                if last['price_change'] > 0:
+                    confidence += 0.1
+                    reasons.append("Uptrend")
+                
+                return Signal(
+                    action=SignalAction.BUY,
+                    confidence=min(confidence, 1.0),
+                    reason=", ".join(reasons),
+                    metadata={
+                        'ema_fast': last['ema_fast'],
+                        'ema_slow': last['ema_slow'],
+                        'rsi': last['rsi'],
+                        'volume_ratio': last['volume_ratio']
+                    }
+                )
+        
+        # Death Cross (SELL)
+        if prev['ema_fast'] >= prev['ema_slow'] and last['ema_fast'] < last['ema_slow']:
+            if current_position is not None:
+                return Signal(
+                    action=SignalAction.SELL,
+                    confidence=0.8,
+                    reason="Death cross - exit position",
+                    metadata={'ema_fast': last['ema_fast'], 'ema_slow': last['ema_slow']}
+                )
+        
+        # Also exit if RSI extremely overbought
+        if current_position is not None and last['rsi'] > 85:
+            return Signal(
+                action=SignalAction.SELL,
+                confidence=0.7,
+                reason=f"RSI extremely overbought ({last['rsi']:.0f})",
+                metadata={'rsi': last['rsi']}
+            )
+        
+        return Signal(SignalAction.HOLD, 0.0, "No signal")
+
+
+class BollingerBandStrategy(Strategy):
+    """
+    Bollinger Band Mean Reversion
+    - Buy on lower band touch
+    - Sell on upper band touch
+    - More active than EMA crossover
+    """
+    
+    def __init__(self, period: int = 20, std_dev: float = 2.0):
+        super().__init__(name='Bollinger_Bands')
+        self.period = period
+        self.std_dev = std_dev
+    
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        
+        # Bollinger Bands
+        df['bb_middle'] = df['close'].rolling(window=self.period).mean()
+        df['bb_std'] = df['close'].rolling(window=self.period).std()
+        df['bb_upper'] = df['bb_middle'] + (df['bb_std'] * self.std_dev)
+        df['bb_lower'] = df['bb_middle'] - (df['bb_std'] * self.std_dev)
+        
+        # Band width (volatility indicator)
+        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['bb_middle']
+        
+        # Distance from bands
+        df['dist_from_lower'] = (df['close'] - df['bb_lower']) / df['bb_lower']
+        df['dist_from_upper'] = (df['bb_upper'] - df['close']) / df['bb_upper']
+        
+        # RSI for confirmation
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        return df
+    
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> Signal:
+        if len(df) < self.period + 1:
+            return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
+        
+        last = df.iloc[-1]
+        
+        # BUY: Price touches or crosses below lower band
+        if last['close'] <= last['bb_lower'] * 1.01:  # Within 1% of lower band
+            if current_position is None:
+                confidence = 0.6
+                
+                # Higher confidence if RSI oversold
+                if last['rsi'] < 30:
+                    confidence = 0.9
+                elif last['rsi'] < 40:
+                    confidence = 0.7
+                
+                return Signal(
+                    action=SignalAction.BUY,
+                    confidence=confidence,
+                    reason=f"Price at lower band (RSI={last['rsi']:.0f})",
+                    metadata={
+                        'close': last['close'],
+                        'bb_lower': last['bb_lower'],
+                        'rsi': last['rsi']
+                    }
+                )
+        
+        # SELL: Price touches or crosses above upper band
+        if last['close'] >= last['bb_upper'] * 0.99:  # Within 1% of upper band
+            if current_position is not None:
+                return Signal(
+                    action=SignalAction.SELL,
+                    confidence=0.8,
+                    reason=f"Price at upper band (RSI={last['rsi']:.0f})",
+                    metadata={
+                        'close': last['close'],
+                        'bb_upper': last['bb_upper'],
+                        'rsi': last['rsi']
+                    }
+                )
+        
+        # Also sell if back to middle band with profit
+        if current_position is not None:
+            if last['close'] > current_position.entry_price * 1.01:  # At least 1% profit
+                if abs(last['close'] - last['bb_middle']) < last['bb_std'] * 0.5:
+                    return Signal(
+                        action=SignalAction.SELL,
+                        confidence=0.6,
+                        reason="Back to middle band with profit",
+                        metadata={'close': last['close'], 'bb_middle': last['bb_middle']}
+                    )
+        
+        return Signal(SignalAction.HOLD, 0.0, "Waiting for band touch")
+
+
+class MomentumStrategy(Strategy):
+    """
+    Momentum-based strategy
+    - Buy on strong momentum + pullback
+    - More active, designed for trending markets
+    """
+    
+    def __init__(self, momentum_period: int = 10, pullback_period: int = 3):
+        super().__init__(name='Momentum')
+        self.momentum_period = momentum_period
+        self.pullback_period = pullback_period
+    
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        
+        # Momentum
+        df['momentum'] = df['close'].pct_change(periods=self.momentum_period) * 100
+        
+        # Short-term pullback
+        df['pullback'] = df['close'].pct_change(periods=self.pullback_period) * 100
+        
+        # Moving average for trend
+        df['ma50'] = df['close'].rolling(window=50).mean()
+        df['above_ma'] = df['close'] > df['ma50']
+        
+        # RSI
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        return df
+    
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> Signal:
+        if len(df) < 50:
+            return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
+        
+        last = df.iloc[-1]
+        
+        # BUY: Strong momentum + pullback + above MA
+        if (last['momentum'] > 3 and              # Strong uptrend (>3% in momentum_period)
+            last['pullback'] < -0.5 and          # Recent pullback (<-0.5% in pullback_period)
+            last['above_ma'] and                 # Above 50 MA (uptrend)
+            last['rsi'] < 70 and                 # Not overbought
+            current_position is None):
+            
+            return Signal(
+                action=SignalAction.BUY,
+                confidence=0.8,
+                reason=f"Momentum {last['momentum']:.1f}%, pullback {last['pullback']:.1f}%",
+                metadata={
+                    'momentum': last['momentum'],
+                    'pullback': last['pullback'],
+                    'rsi': last['rsi']
+                }
+            )
+        
+        # SELL: Momentum fading or RSI overbought
+        if current_position is not None:
+            if last['momentum'] < 1 or last['rsi'] > 80:
+                return Signal(
+                    action=SignalAction.SELL,
+                    confidence=0.7,
+                    reason=f"Momentum fading ({last['momentum']:.1f}%) or overbought (RSI={last['rsi']:.0f})",
+                    metadata={'momentum': last['momentum'], 'rsi': last['rsi']}
+                )
+        
+        return Signal(SignalAction.HOLD, 0.0, "Waiting for setup")
+
+
 class RSIMeanReversionStrategy(Strategy):
     """
     RSI Mean Reversion Strategy
@@ -155,9 +422,9 @@ class RSIMeanReversionStrategy(Strategy):
         
         return df
     
-    def generate_signal(self, df: pd.DataFrame, current_position: Optional['Position']) -> 'Signal':
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> 'Signal':
         """Generate mean reversion signal"""
-        from trading_bot_core import Signal, SignalAction
+        from .core import Signal, SignalAction
         
         if len(df) < 2:
             return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
@@ -187,6 +454,100 @@ class RSIMeanReversionStrategy(Strategy):
             )
         
         return Signal(SignalAction.HOLD, 0.0, f"RSI neutral: {last['rsi']:.1f}")
+
+
+class BollingerBandStrategy(Strategy):
+    """
+    Bollinger Band Mean Reversion
+    - Buy on lower band touch
+    - Sell on upper band touch
+    - More active than EMA crossover
+    """
+    
+    def __init__(self, period: int = 20, std_dev: float = 2.0):
+        super().__init__(name='Bollinger_Bands')
+        self.period = period
+        self.std_dev = std_dev
+    
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        
+        # Bollinger Bands
+        df['bb_middle'] = df['close'].rolling(window=self.period).mean()
+        df['bb_std'] = df['close'].rolling(window=self.period).std()
+        df['bb_upper'] = df['bb_middle'] + (df['bb_std'] * self.std_dev)
+        df['bb_lower'] = df['bb_middle'] - (df['bb_std'] * self.std_dev)
+        
+        # Band width (volatility indicator)
+        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['bb_middle']
+        
+        # Distance from bands
+        df['dist_from_lower'] = (df['close'] - df['bb_lower']) / df['bb_lower']
+        df['dist_from_upper'] = (df['bb_upper'] - df['close']) / df['bb_upper']
+        
+        # RSI for confirmation
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
+        
+        return df
+    
+    def generate_signal(self, df: pd.DataFrame, current_position: Optional[Position]) -> Signal:
+        if len(df) < self.period + 1:
+            return Signal(SignalAction.HOLD, 0.0, "Insufficient data")
+        
+        last = df.iloc[-1]
+        
+        # BUY: Price touches or crosses below lower band
+        if last['close'] <= last['bb_lower'] * 1.01:  # Within 1% of lower band
+            if current_position is None:
+                confidence = 0.6
+                
+                # Higher confidence if RSI oversold
+                if last['rsi'] < 30:
+                    confidence = 0.9
+                elif last['rsi'] < 40:
+                    confidence = 0.7
+                
+                return Signal(
+                    action=SignalAction.BUY,
+                    confidence=confidence,
+                    reason=f"Price at lower band (RSI={last['rsi']:.0f})",
+                    metadata={
+                        'close': last['close'],
+                        'bb_lower': last['bb_lower'],
+                        'rsi': last['rsi']
+                    }
+                )
+        
+        # SELL: Price touches or crosses above upper band
+        if last['close'] >= last['bb_upper'] * 0.99:  # Within 1% of upper band
+            if current_position is not None:
+                return Signal(
+                    action=SignalAction.SELL,
+                    confidence=0.8,
+                    reason=f"Price at upper band (RSI={last['rsi']:.0f})",
+                    metadata={
+                        'close': last['close'],
+                        'bb_upper': last['bb_upper'],
+                        'rsi': last['rsi']
+                    }
+                )
+        
+        # Also sell if back to middle band with profit
+        if current_position is not None:
+            if last['close'] > current_position.entry_price * 1.01:  # At least 1% profit
+                if abs(last['close'] - last['bb_middle']) < last['bb_std'] * 0.5:
+                    return Signal(
+                        action=SignalAction.SELL,
+                        confidence=0.6,
+                        reason="Back to middle band with profit",
+                        metadata={'close': last['close'], 'bb_middle': last['bb_middle']}
+                    )
+        
+        return Signal(SignalAction.HOLD, 0.0, "Waiting for band touch")
 
 
 # ============================================================================
@@ -231,7 +592,7 @@ class RiskController:
             self.logger.info("Daily P&L counter reset")
     
     def validate_trade(self, signal: 'Signal', current_price: float, 
-                      portfolio_cash: float, current_position: Optional['Position']) -> ValidationResult:
+                      portfolio_cash: float, current_position: Optional[Position]) -> ValidationResult:
         """
         Pre-trade validation
         Returns: ValidationResult with approved size
@@ -338,7 +699,7 @@ class PositionManager:
         self.risk_controller = risk_controller
         self.logger = logging.getLogger(__name__)
     
-    def check_exit_conditions(self, position: 'Position', current_price: float) -> Optional[str]:
+    def check_exit_conditions(self, position: Position, current_price: float) -> Optional[str]:
         """
         Check if position should be closed
         Returns: exit_reason or None
@@ -355,7 +716,7 @@ class PositionManager:
         
         return None
     
-    def calculate_unrealized_pnl(self, position: 'Position', current_price: float) -> float:
+    def calculate_unrealized_pnl(self, position: Position, current_price: float) -> float:
         """Calculate current unrealized P&L"""
         if position.side == 'LONG':
             pnl = (current_price - position.entry_price) * position.size
@@ -364,7 +725,7 @@ class PositionManager:
         
         return pnl
     
-    def update_trailing_stop(self, position: 'Position', current_price: float) -> Optional[float]:
+    def update_trailing_stop(self, position: Position, current_price: float) -> Optional[float]:
         """
         Update trailing stop if price moved favorably
         Returns: new stop price or None
@@ -387,7 +748,10 @@ class PositionManager:
 
 STRATEGIES = {
     'ema_crossover': EMACrossoverStrategy,
-    'rsi_mean_reversion': RSIMeanReversionStrategy
+    'improved_ema': ImprovedEMACrossover,
+    'rsi_mean_reversion': RSIMeanReversionStrategy,
+    'bollinger_bands': BollingerBandStrategy,
+    'momentum': MomentumStrategy
 }
 
 
