@@ -373,10 +373,10 @@ try:
     {should_merge:bool, category_pairs:[[id1,id2],...], merged_categories:[{id,name,description,keywords}]}.
     Only propose merges when strongly justified."""
     )
-    print(f"✓ LLM agents initialized with {LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}")
+    logger.info(f"✓ LLM agents initialized with {LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}")
 except Exception as e:
-    print(f"⚠ LLM initialization failed: {e}")
-    print("  Continuing with fallback mode (no LLM calls)")
+    logger.info(f"⚠ LLM initialization failed: {e}")
+    logger.info("  Continuing with fallback mode (no LLM calls)")
     # Can't modify constant, but the check below will handle None agents
 
 # ------------------
@@ -2900,7 +2900,7 @@ def save_results(result: Dict[str, Any], filename: str = None) -> str:
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(serializable_result, f, indent=2, ensure_ascii=False)
     
-    print(f"✅ Results saved to: {filename}")
+    logger.info(f"✅ Results saved to: {filename}")
     return filename
 
 def load_results(filename: str) -> Dict[str, Any]:
@@ -2975,7 +2975,7 @@ def save_categories_csv(result: Dict[str, Any], filename: str = None) -> str:
                 ', '.join(cat.keywords) if cat.keywords else ''
             ])
     
-    print(f"✅ Categories saved to CSV: {filename}")
+    logger.info(f"✅ Categories saved to CSV: {filename}")
     return filename
 
 def save_assignments_csv(result: Dict[str, Any], filename: str = None) -> str:
@@ -3012,7 +3012,7 @@ def save_assignments_csv(result: Dict[str, Any], filename: str = None) -> str:
                 assign.reasoning
             ])
     
-    print(f"✅ Assignments saved to CSV: {filename}")
+    logger.info(f"✅ Assignments saved to CSV: {filename}")
     return filename
 
 async def clusterize_and_save(
@@ -3037,10 +3037,10 @@ async def clusterize_and_save(
     """
     from datetime import datetime
     
-    print(f"🚀 Starting clusterization of {len(texts)} texts...")
+    logger.info(f"🚀 Starting clusterization of {len(texts)} texts...")
     result = await clusterize_texts(texts, **clusterize_kwargs)
     
-    print(f"✅ Clusterization complete: {len(result['categories'])} categories, {len(result['assignments'])} assignments")
+    logger.info(f"✅ Clusterization complete: {len(result['categories'])} categories, {len(result['assignments'])} assignments")
     
     # Generate timestamp for consistent naming
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3057,7 +3057,7 @@ async def clusterize_and_save(
         saved_files.append(save_categories_csv(result, cat_filename))
         saved_files.append(save_assignments_csv(result, assign_filename))
     
-    print(f"📁 All files saved: {', '.join(saved_files)}")
+    logger.info(f"📁 All files saved: {', '.join(saved_files)}")
     
     return result
 
@@ -3169,26 +3169,26 @@ async def meta_categorize_categories(
 
 def print_taxonomy(taxonomy: Dict[str, Any]) -> None:
     """Print hierarchical taxonomy in a readable format."""
-    print(f"\n{'='*60}")
-    print(f"HIERARCHICAL TAXONOMY")
-    print(f"{'='*60}")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"HIERARCHICAL TAXONOMY")
+    logger.info(f"{'='*60}")
     
     for meta_id, meta_info in taxonomy.items():
         meta_name = meta_info['meta_name']
         categories = meta_info['categories']
         total_texts = sum(cat['text_count'] for cat in categories)
         
-        print(f"\n📁 {meta_name} ({len(categories)} categories, {total_texts} texts)")
+        logger.info(f"\n📁 {meta_name} ({len(categories)} categories, {total_texts} texts)")
         if meta_info.get('meta_description'):
-            print(f"   {meta_info['meta_description']}")
+            logger.info(f"   {meta_info['meta_description']}")
         
         # Sort categories by text count (descending)
         sorted_cats = sorted(categories, key=lambda x: x['text_count'], reverse=True)
         for cat in sorted_cats:
             conf = cat.get('confidence', 0)
-            print(f"   └── {cat['name']}: {cat['text_count']} texts (conf: {conf:.2f})")
+            logger.info(f"   └── {cat['name']}: {cat['text_count']} texts (conf: {conf:.2f})")
     
-    print(f"\n{'='*60}\n")
+    logger.info(f"\n{'='*60}\n")
 
 async def clusterize_with_hierarchy(
     texts: List[str],
@@ -3249,8 +3249,8 @@ async def example_small_dataset():
         config=CONFIG_BALANCED_HYBRID
     )
     
-    print(f"Categories: {len(result['categories'])}")
-    print(f"Tree merge used: {result['metadata']['used_tree_merge']}")
+    logger.info(f"Categories: {len(result['categories'])}")
+    logger.info(f"Tree merge used: {result['metadata']['used_tree_merge']}")
 
 
 async def example_large_dataset():
@@ -3265,11 +3265,11 @@ async def example_large_dataset():
         config=CONFIG_BALANCED_HYBRID
     )
     
-    print(f"Categories: {len(result['categories'])}")
-    print(f"Tree merge used: {result['metadata']['used_tree_merge']}")
+    logger.info(f"Categories: {len(result['categories'])}")
+    logger.info(f"Tree merge used: {result['metadata']['used_tree_merge']}")
     if result['metadata']['used_tree_merge']:
-        print(f"Total workflows: {result['metadata']['total_workflows']}")
-        print(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
+        logger.info(f"Total workflows: {result['metadata']['total_workflows']}")
+        logger.info(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
 
 
 async def example_explicit_tree_merge():
@@ -3286,18 +3286,18 @@ async def example_explicit_tree_merge():
         config=CONFIG_SEMANTIC_BERT
     )
     
-    print(f"Categories: {len(result['categories'])}")
-    print(f"Workflows: {result['metadata']['total_workflows']}")
+    logger.info(f"Categories: {len(result['categories'])}")
+    logger.info(f"Workflows: {result['metadata']['total_workflows']}")
 
 
 if __name__ == "__main__":
     import asyncio
     
-    print("Example 1: Small dataset")
+    logger.info("Example 1: Small dataset")
     asyncio.run(example_small_dataset())
     
-    print("\nExample 2: Large dataset (auto tree merge)")
+    logger.info("\nExample 2: Large dataset (auto tree merge)")
     asyncio.run(example_large_dataset())
     
-    print("\nExample 3: Explicit tree merge")
+    logger.info("\nExample 3: Explicit tree merge")
     asyncio.run(example_explicit_tree_merge())

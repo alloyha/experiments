@@ -307,45 +307,45 @@ class RecommendedConfig:
     
     def print_summary(self):
         """Print human-readable summary."""
-        print(f"\n{'='*70}")
-        print(f"🎯 RECOMMENDED CONFIGURATION")
-        print(f"{'='*70}\n")
+        logger.info(f"\n{'='*70}")
+        logger.info(f"🎯 RECOMMENDED CONFIGURATION")
+        logger.info(f"{'='*70}\n")
         
-        print(f"📊 Core Parameters:")
-        print(f"  max_texts_per_run:    {self.max_texts_per_run:>6}")
-        print(f"  batch_size:           {self.batch_size:>6}")
-        print(f"  max_passes:           {self.max_passes:>6}")
-        print(f"  token_threshold:      {self.token_threshold:>6}")
-        print(f"  max_parallel_merges:  {self.max_parallel_merges:>6}")
-        print(f"  max_concurrent:       {self.max_concurrent:>6}")
+        logger.info(f"📊 Core Parameters:")
+        logger.info(f"  max_texts_per_run:    {self.max_texts_per_run:>6}")
+        logger.info(f"  batch_size:           {self.batch_size:>6}")
+        logger.info(f"  max_passes:           {self.max_passes:>6}")
+        logger.info(f"  token_threshold:      {self.token_threshold:>6}")
+        logger.info(f"  max_parallel_merges:  {self.max_parallel_merges:>6}")
+        logger.info(f"  max_concurrent:       {self.max_concurrent:>6}")
         
-        print(f"\n⚙️  Strategy:")
-        print(f"  Config preset:        {self.config_preset}")
-        print(f"  Tree merge:           {'Yes' if self.use_tree_merge else 'No'}")
+        logger.info(f"\n⚙️  Strategy:")
+        logger.info(f"  Config preset:        {self.config_preset}")
+        logger.info(f"  Tree merge:           {'Yes' if self.use_tree_merge else 'No'}")
         
-        print(f"\n📈 Expected Execution:")
-        print(f"  Workflows:            {self.expected_workflows}")
-        print(f"  Batches per workflow: {self.expected_batches_per_workflow}")
-        print(f"  Total batches:        {self.expected_total_batches}")
+        logger.info(f"\n📈 Expected Execution:")
+        logger.info(f"  Workflows:            {self.expected_workflows}")
+        logger.info(f"  Batches per workflow: {self.expected_batches_per_workflow}")
+        logger.info(f"  Total batches:        {self.expected_total_batches}")
         if self.use_tree_merge:
-            print(f"  Merge levels:         {self.expected_merge_levels}")
+            logger.info(f"  Merge levels:         {self.expected_merge_levels}")
         
-        print(f"\n💰 Estimates:")
-        print(f"  LLM calls:            ~{self.estimated_llm_calls:,}")
-        print(f"  Duration:             {self.estimated_duration_minutes[0]:.1f}-{self.estimated_duration_minutes[1]:.1f} minutes")
-        print(f"  Cost (gpt-4o-mini):   ${self.estimated_cost_usd[0]:.2f}-${self.estimated_cost_usd[1]:.2f}")
+        logger.info(f"\n💰 Estimates:")
+        logger.info(f"  LLM calls:            ~{self.estimated_llm_calls:,}")
+        logger.info(f"  Duration:             {self.estimated_duration_minutes[0]:.1f}-{self.estimated_duration_minutes[1]:.1f} minutes")
+        logger.info(f"  Cost (gpt-4o-mini):   ${self.estimated_cost_usd[0]:.2f}-${self.estimated_cost_usd[1]:.2f}")
         
         if self.reasoning:
-            print(f"\n💡 Reasoning:")
+            logger.info(f"\n💡 Reasoning:")
             for reason in self.reasoning:
-                print(f"  • {reason}")
+                logger.info(f"  • {reason}")
         
         if self.warnings:
-            print(f"\n⚠️  Warnings:")
+            logger.info(f"\n⚠️  Warnings:")
             for warning in self.warnings:
-                print(f"  • {warning}")
+                logger.info(f"  • {warning}")
         
-        print(f"\n{'='*70}\n")
+        logger.info(f"\n{'='*70}\n")
 
 
 class DatasetCategory(Enum):
@@ -973,9 +973,9 @@ def recommend_config(
 
 def test_recommender():
     """Test the recommender with various dataset sizes."""
-    print("\n" + "="*70)
-    print("TESTING CONFIGURATION RECOMMENDER")
-    print("="*70 + "\n")
+    logger.info("\n" + "="*70)
+    logger.info("TESTING CONFIGURATION RECOMMENDER")
+    logger.info("="*70 + "\n")
     
     test_cases = [
         ("Tiny dataset", ["short text"] * 30),
@@ -985,9 +985,9 @@ def test_recommender():
     ]
     
     for name, texts in test_cases:
-        print(f"\n{'='*70}")
-        print(f"Test Case: {name} ({len(texts)} texts)")
-        print(f"{'='*70}")
+        logger.info(f"\n{'='*70}")
+        logger.info(f"Test Case: {name} ({len(texts)} texts)")
+        logger.info(f"{'='*70}")
         
         config = recommend_config(texts, priority='balanced', print_summary=False)
         config.print_summary()
@@ -997,16 +997,16 @@ def test_recommender():
 
 if __name__ == "__main__":
     # Example usage
-    print("Configuration Recommender - Example Usage\n")
+    logger.info("Configuration Recommender - Example Usage\n")
     
     # Simulate loading texts
     example_texts = ["This is a sample text about finance and markets."] * 1500
     
-    print("Analyzing dataset and recommending configuration...\n")
+    logger.info("Analyzing dataset and recommending configuration...\n")
     config = recommend_config(example_texts, priority='balanced')
     
-    print("\nTo use this configuration:")
-    print(f"""
+    logger.info("\nTo use this configuration:")
+    logger.info(f"""
 result = await clusterize_texts(
     texts,
     config={config.config_preset},

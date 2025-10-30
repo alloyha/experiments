@@ -50,19 +50,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from configuration_manager import (
-    ClusterConfig,
-    RetrievalMode,
-    ScoringStrategy,
-    ConfidenceWeights,
-    DEFAULT_CONFIG,
-    CONFIDENCE_WEIGHTS_BERT, 
-    CONFIDENCE_WEIGHTS_NO_BERT,    
-    CONFIG_BALANCED_HYBRID,
-    CONFIG_SEMANTIC_BERT,
-    CONFIG_BALANCED_TFIDF,
-)
-
 VERBOSE=True 
 
 logger = logging.getLogger("agentic_clusterizer")
@@ -76,37 +63,245 @@ else:
 # Constants
 # ------------------
 
-# Processing settings
-DEFAULT_MAX_PASSES = 2              # Number of clustering passes
-DEFAULT_BATCH_SIZE = 20             # Base batch size
-DEFAULT_TOKEN_BIG_TEXT = 200        # Token threshold to consider text "big"
-DEFAULT_MAX_PARALLEL_MERGES = 4     # Max parallel merges in tree merge
-DEFAULT_TEXTS_PER_WORKFLOW = 50     # Texts per workflow in tree merge
-DEFAULT_MAX_CONCURRENT_LLM_CALLS = 5
+DEFAULT_BATCH_SIZE = 20  # Base batch size
+DEFAULT_TOKEN_BIG_TEXT = 200 # Token threshold to consider text "big"
+DEFAULT_MAX_PARALLEL_MERGES = 4 # Max parallel merges in tree merge
+DEFAULT_TEXTS_PER_WORKFLOW = 50  # Texts per workflow in tree merge
+
+# General settings
+MAX_CONCURRENT_LLM_CALLS = 5
+SIMILARITY_THRESHOLD = 0.6
 DEFAULT_PREFILTER_K = 3
-DEFAULT_LLM_TIMEOUT_SECONDS = 30.0
+LLM_TIMEOUT_SECONDS = 30.0
 
 # LLM Configuration
-# Further providers:
-#  - 'huggingface': Community-driven models
-#  - 'cohere': Another provider for LLMs
-#  - 'anthropic': Focused on safety and alignment
-#  - 'gemini': Known for high-quality models
-# Further models:
-#  - 'gpt-4o-mini': Balanced cost/performance
-#  - 'gpt-4o': Higher performance, higher cost
-#  - 'gpt-4o-turbo': Optimized for speed and cost
-
 LLM_PROVIDER_NAME = 'openai'
 LLM_MODEL_NAME = 'gpt-4o-mini'
-LLM_PROVIDER_MODEL=f'{LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}'
+DEFAULT_BERT_MODEL = 'all-MiniLM-L6-v2' # Default BERT model for embeddings
 
-# Default BERT model for embeddings
-# Further options:
-#   - 'all-mpnet-base-v2': Slower, better quality
-#   - 'all-distilroberta-v1': Faster, lower quality
-#   - 'all-MiniLM-L6-v2': Balanced option
-DEFAULT_BERT_MODEL = 'all-MiniLM-L6-v2' 
+# ------------------
+# Configuration Dataclasses
+# ------------------
+@dataclass(frozen=True)
+class RetrievalMode:
+    """Retrieval mode constants for category indexing."""
+    TFIDF: str = "tfidf"
+    BERT: str = "bert"
+    HYBRID: str = "hybrid"  # Recommended
+
+@dataclass(frozen=True)
+class ConfidenceWeights:
+    """Weights for confidence score calculation."""
+    llm_score: float
+    tfidf_similarity: float
+    bert_similarity: float
+    keyword_overlap: float
+    category_maturity: float
+    pass_number: float
+    
+    def to_dict(self) -> Dict[str, float]:
+        """Convert to dictionary for backward compatibility."""
+        return {
+            'llm_score': self.llm_score,
+            'tfidf_similarity': self.tfidf_similarity,
+            'bert_similarity': self.bert_similarity,
+            'keyword_overlap': self.keyword_overlap,
+            'category_maturity': self.category_maturity,
+            'pass_number': self.pass_number
+        }
+    
+    def validate(self) -> None:
+        """Validate that weights sum to approximately 1.0."""
+        total = sum(self.to_dict().values())
+        if not (0.95 <= total <= 1.05):
+            logger.warning(f"Confidence weights sum to {total:.3f}, expected ~1.0")
+
+@dataclass(frozen=True)
+class ScoringStrategy:
+    """Scoring strategy constants."""
+    BALANCED: str = "balanced"      # Standard scoring
+    CONSERVATIVE: str = "conservative"  # Favor established categories
+    AGGRESSIVE: str = "aggressive"  # Favor new category creation
+    SEMANTIC: str = "semantic"      # Heavy emphasis on BERT/semantic
+
+@dataclass(frozen=True)
+class ClusterizerConfig:
+    """
+    Complete configuration for the clusterizer.
+    
+    Couples retrieval mode with appropriate confidence weights and scoring strategy.
+    """
+    retrieval_mode: str
+    confidence_weights: ConfidenceWeights
+    scoring_strategy: str
+    new_category_threshold: float = 0.6  # Min confidence to avoid creating new category
+    new_category_bonus: float = 1.1      # Multiplier for new category confidence
+    
+    def __post_init__(self):
+        """Validate configuration."""
+        # Validate retrieval mode
+        valid_modes = [RETRIEVAL_MODE.TFIDF, RETRIEVAL_MODE.BERT, RETRIEVAL_MODE.HYBRID]
+        if self.retrieval_mode not in valid_modes:
+            raise ValueError(f"Invalid retrieval_mode: {self.retrieval_mode}")
+        
+        # Validate scoring strategy
+        valid_strategies = [
+            SCORING_STRATEGY.BALANCED, 
+            SCORING_STRATEGY.CONSERVATIVE,
+            SCORING_STRATEGY.AGGRESSIVE,
+            SCORING_STRATEGY.SEMANTIC
+        ]
+        if self.scoring_strategy not in valid_strategies:
+            raise ValueError(f"Invalid scoring_strategy: {self.scoring_strategy}")
+        
+        # Validate thresholds
+        if not (0.0 <= self.new_category_threshold <= 1.0):
+            raise ValueError(f"new_category_threshold must be in [0.0, 1.0]")
+        if not (0.5 <= self.new_category_bonus <= 2.0):
+            raise ValueError(f"new_category_bonus must be in [0.5, 2.0]")
+        
+        # Validate weights
+        self.confidence_weights.validate()
+    
+    def get_description(self) -> str:
+        """Get human-readable description of config."""
+        return (
+            f"{self.scoring_strategy.title()} strategy "
+            f"using {self.retrieval_mode.upper()} retrieval "
+            f"(threshold={self.new_category_threshold:.2f})"
+        )
+
+# Singleton instances
+RETRIEVAL_MODE = RetrievalMode()
+SCORING_STRATEGY = ScoringStrategy()
+
+# Predefined weight configurations
+_WEIGHTS_BALANCED_BERT = ConfidenceWeights(
+    llm_score=0.35,          # LLM's judgment
+    tfidf_similarity=0.10,   # Lexical similarity
+    bert_similarity=0.25,    # Semantic similarity
+    keyword_overlap=0.20,    # Direct matches
+    category_maturity=0.05,  # Category age/size
+    pass_number=0.05         # Refinement bonus
+)
+
+_WEIGHTS_BALANCED_NO_BERT = ConfidenceWeights(
+    llm_score=0.40,
+    tfidf_similarity=0.20,
+    bert_similarity=0.0,     # Not used
+    keyword_overlap=0.25,
+    category_maturity=0.05,
+    pass_number=0.10
+)
+
+_WEIGHTS_CONSERVATIVE_BERT = ConfidenceWeights(
+    llm_score=0.30,          # Lower LLM weight
+    tfidf_similarity=0.15,   # Higher lexical weight
+    bert_similarity=0.20,
+    keyword_overlap=0.20,
+    category_maturity=0.10,  # Higher maturity weight (favor established)
+    pass_number=0.05
+)
+
+_WEIGHTS_CONSERVATIVE_NO_BERT = ConfidenceWeights(
+    llm_score=0.35,
+    tfidf_similarity=0.25,
+    bert_similarity=0.0,
+    keyword_overlap=0.20,
+    category_maturity=0.15,  # Higher maturity weight
+    pass_number=0.05
+)
+
+_WEIGHTS_AGGRESSIVE_BERT = ConfidenceWeights(
+    llm_score=0.40,          # Higher LLM weight (trust new suggestions)
+    tfidf_similarity=0.05,   # Lower traditional weights
+    bert_similarity=0.25,
+    keyword_overlap=0.15,
+    category_maturity=0.02,  # Lower maturity weight (don't favor established)
+    pass_number=0.13         # Higher pass bonus (refinement matters)
+)
+
+_WEIGHTS_AGGRESSIVE_NO_BERT = ConfidenceWeights(
+    llm_score=0.45,
+    tfidf_similarity=0.15,
+    bert_similarity=0.0,
+    keyword_overlap=0.18,
+    category_maturity=0.02,
+    pass_number=0.20
+)
+
+_WEIGHTS_SEMANTIC_BERT = ConfidenceWeights(
+    llm_score=0.25,          # Lower LLM weight
+    tfidf_similarity=0.05,   # Lower lexical weight
+    bert_similarity=0.45,    # Heavy BERT emphasis
+    keyword_overlap=0.15,
+    category_maturity=0.05,
+    pass_number=0.05
+)
+
+# Preset configurations
+CONFIG_BALANCED_HYBRID = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.HYBRID,
+    confidence_weights=_WEIGHTS_BALANCED_BERT,
+    scoring_strategy=SCORING_STRATEGY.BALANCED,
+    new_category_threshold=0.6,
+    new_category_bonus=1.1
+)
+
+CONFIG_BALANCED_TFIDF = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.TFIDF,
+    confidence_weights=_WEIGHTS_BALANCED_NO_BERT,
+    scoring_strategy=SCORING_STRATEGY.BALANCED,
+    new_category_threshold=0.6,
+    new_category_bonus=1.1
+)
+
+CONFIG_CONSERVATIVE_HYBRID = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.HYBRID,
+    confidence_weights=_WEIGHTS_CONSERVATIVE_BERT,
+    scoring_strategy=SCORING_STRATEGY.CONSERVATIVE,
+    new_category_threshold=0.70,  # Higher threshold = harder to create new
+    new_category_bonus=1.05       # Lower bonus
+)
+
+CONFIG_CONSERVATIVE_TFIDF = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.TFIDF,
+    confidence_weights=_WEIGHTS_CONSERVATIVE_NO_BERT,
+    scoring_strategy=SCORING_STRATEGY.CONSERVATIVE,
+    new_category_threshold=0.70,
+    new_category_bonus=1.05
+)
+
+CONFIG_AGGRESSIVE_HYBRID = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.HYBRID,
+    confidence_weights=_WEIGHTS_AGGRESSIVE_BERT,
+    scoring_strategy=SCORING_STRATEGY.AGGRESSIVE,
+    new_category_threshold=0.50,  # Lower threshold = easier to create new
+    new_category_bonus=1.20       # Higher bonus
+)
+
+CONFIG_AGGRESSIVE_TFIDF = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.TFIDF,
+    confidence_weights=_WEIGHTS_AGGRESSIVE_NO_BERT,
+    scoring_strategy=SCORING_STRATEGY.AGGRESSIVE,
+    new_category_threshold=0.50,
+    new_category_bonus=1.20
+)
+
+CONFIG_SEMANTIC_BERT = ClusterizerConfig(
+    retrieval_mode=RETRIEVAL_MODE.BERT,
+    confidence_weights=_WEIGHTS_SEMANTIC_BERT,
+    scoring_strategy=SCORING_STRATEGY.SEMANTIC,
+    new_category_threshold=0.65,
+    new_category_bonus=1.1
+)
+
+# Default configuration (recommended)
+DEFAULT_CONFIG = CONFIG_BALANCED_HYBRID
+
+# Backward compatibility constants
+CONFIDENCE_WEIGHTS_BERT = _WEIGHTS_BALANCED_BERT
+CONFIDENCE_WEIGHTS_NO_BERT = _WEIGHTS_BALANCED_NO_BERT
 
 # ------------------
 # Pydantic models
@@ -133,11 +328,6 @@ class CategoryAssignment(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str
 
-class CategoryMergeAssugnment(BaseModel):
-    should_merge: bool
-    category_pairs: List[Tuple[str, str]] = Field(default_factory=list)
-    merged_categories: List[Dict[str, Any]] = Field(default_factory=list)
-
 class MultiPassAnalysis(BaseModel):
     text: str
     candidate_categories: List[str] = Field(default_factory=list)
@@ -156,7 +346,7 @@ category_consolidator = None
 
 try:
     multi_pass_analyzer = Agent(
-        LLM_PROVIDER_MODEL,
+        f'{LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}',
         output_type=MultiPassAnalysis,
         system_prompt="""You are a category advisor analyzing text for categorization.
 
@@ -173,33 +363,20 @@ try:
     5. new_category: {id, name, description, keywords} if creating new
     6. reasoning: Brief explanation
 
-    Specifications:
-        - BE PRECISE with confidence scores - use the full 0.0-1.0 range!
-        - Provide a brief explanation for each confidence score;
-        - Always provide descriptions in english language;
-        - Use complete sentences and proper grammar.
-    """
+    BE PRECISE with confidence scores - use the full 0.0-1.0 range!"""
     )
 
     category_consolidator = Agent(
-        LLM_PROVIDER_MODEL,
-        output_type=CategoryMergeAssugnment,
-        system_prompt="""
-        You are a consolidation expert. Given categories, return:
-        
-        {
-            should_merge:bool, 
-            category_pairs:[[id1,id2],...], 
-            merged_categories:[{id,name,description,keywords}]
-        }.
-        
-        Only propose merges when strongly justified.
-        """
+        f'{LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}',
+        output_type=dict,
+        system_prompt="""You are a consolidation expert. Given categories, return:
+    {should_merge:bool, category_pairs:[[id1,id2],...], merged_categories:[{id,name,description,keywords}]}.
+    Only propose merges when strongly justified."""
     )
-    logger.info(f"✓ LLM agents initialized with {LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}")
+    print(f"✓ LLM agents initialized with {LLM_PROVIDER_NAME}:{LLM_MODEL_NAME}")
 except Exception as e:
-    logger.info(f"⚠ LLM initialization failed: {e}")
-    logger.info("  Continuing with fallback mode (no LLM calls)")
+    print(f"⚠ LLM initialization failed: {e}")
+    print("  Continuing with fallback mode (no LLM calls)")
     # Can't modify constant, but the check below will handle None agents
 
 # ------------------
@@ -337,7 +514,7 @@ def calculate_pass_bonus(current_pass: int, max_passes: int) -> float:
         return 1.0
     return 0.5 + (0.5 * (current_pass / max_passes))
 
-def calculate_confidence(
+def calculate_enhanced_confidence(
     text: str,
     category: Category,
     llm_confidence: float,
@@ -495,7 +672,7 @@ class CategoryIndexer:
     
     def __init__(
         self, 
-        mode: RetrievalMode = RetrievalMode.HYBRID,
+        mode: str = RETRIEVAL_MODE.HYBRID,
         bert_model: str = DEFAULT_BERT_MODEL,
         ngram_range: Tuple[int, int] = (1, 2),
         max_features: int = 5000,
@@ -512,13 +689,13 @@ class CategoryIndexer:
         # BERT components
         self.bert_encoder = None
         self.bert_embeddings = None
-
-        if mode in [RetrievalMode.BERT, RetrievalMode.HYBRID]:
+        
+        if mode in [RETRIEVAL_MODE.BERT, RETRIEVAL_MODE.HYBRID]:
             try:
                 self.bert_encoder = BERTEncoder.get_instance(bert_model)
             except Exception as e:
                 logger.warning(f"BERT initialization failed, falling back to TF-IDF: {e}")
-                self.mode = RetrievalMode.TFIDF
+                self.mode = RETRIEVAL_MODE.TFIDF
         
         # Common
         self._ids = []
@@ -536,12 +713,12 @@ class CategoryIndexer:
         docs = [self._category_to_doc(c) for c in categories]
         
         # Fit TF-IDF (always, used for hybrid cascade)
-        if self.mode in [RetrievalMode.TFIDF, RetrievalMode.HYBRID]:
+        if self.mode in [RETRIEVAL_MODE.TFIDF, RETRIEVAL_MODE.HYBRID]:
             self._tfidf_X = self.vectorizer.fit_transform(docs)
             self._tfidf_fitted = True
         
         # Precompute BERT embeddings
-        if self.mode in [RetrievalMode.BERT, RetrievalMode.HYBRID] and self.bert_encoder:
+        if self.mode in [RETRIEVAL_MODE.BERT, RETRIEVAL_MODE.HYBRID] and self.bert_encoder:
             logger.info(f"Computing BERT embeddings for {len(docs)} categories...")
             self.bert_embeddings = self.bert_encoder.encode(docs)
             logger.info("✓ BERT embeddings computed")
@@ -553,11 +730,11 @@ class CategoryIndexer:
         if not self._is_ready():
             return []
         
-        if self.mode == RetrievalMode.TFIDF:
+        if self.mode == RETRIEVAL_MODE.TFIDF:
             return self._tfidf_top_k(text, k)
-        elif self.mode == RetrievalMode.BERT:
+        elif self.mode == RETRIEVAL_MODE.BERT:
             return self._bert_top_k(text, k)
-        elif self.mode == RetrievalMode.HYBRID:
+        elif self.mode == RETRIEVAL_MODE.HYBRID:
             return self._hybrid_cascade(text, k)
         else:
             logger.warning(f"Unknown mode {self.mode}, using TF-IDF")
@@ -708,17 +885,10 @@ class AssignmentManager:
     def __init__(self):
         self.assignments_map: Dict[str, Dict[str, Any]] = {}
     
-    def update_assignment(self, assignment: CategoryAssignment, current_pass: int = 1) -> None:
-        """
-        Update assignment, replacing if confidence is higher OR pass is later.
-        
-        NEW BEHAVIOR:
-        - Later passes always win (even with lower confidence)
-        - Within same pass, higher confidence wins
-        """
+    def update_assignment(self, assignment: CategoryAssignment) -> None:
+        """Update assignment, replacing if confidence is higher."""
         text_key = encode_text_to_id(assignment.text)
         new_dict = assignment.model_dump()
-        new_dict['pass_number'] = current_pass  # Track which pass created it
         
         existing = self.assignments_map.get(text_key)
         if self._should_replace(existing, new_dict):
@@ -738,29 +908,10 @@ class AssignmentManager:
     
     @staticmethod
     def _should_replace(existing: Optional[Dict], new: Dict) -> bool:
-        """
-        Determine if new assignment should replace existing.
-        
-        Priority:
-        1. Later pass number (Pass 2 > Pass 1)
-        2. Higher confidence (within same pass)
-        """
+        """Determine if new assignment should replace existing."""
         if existing is None:
             return True
-        
-        existing_pass = existing.get('pass_number', 0)
-        new_pass = new.get('pass_number', 0)
-        
-        # Later pass always wins
-        if new_pass > existing_pass:
-            return True
-        elif new_pass < existing_pass:
-            return False
-        
-        # Same pass: higher confidence wins
         return new.get('confidence', 0.0) > existing.get('confidence', 0.0)
-
-
 
 # ------------------
 # Rate limiting
@@ -778,7 +929,7 @@ class LLMRateLimiter:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.semaphore.release()
 
-_rate_limiter = LLMRateLimiter(DEFAULT_MAX_CONCURRENT_LLM_CALLS)
+_rate_limiter = LLMRateLimiter(MAX_CONCURRENT_LLM_CALLS)
 
 def _generate_semantic_category_name(text: str, existing_categories: List[Category]) -> str:
     """Generate a semantic category name based on text content."""
@@ -824,57 +975,54 @@ def _extract_semantic_keywords(text: str) -> List[str]:
     
     return keywords[:5]  # Limit to top 5 most relevant
 
-def _create_fallback_analysis(text: str, candidates: List[Tuple[str, float]], categories: List[Category], indexer: CategoryIndexer) -> Any:
+def _create_fallback_analysis(text: str, candidates: List[Tuple[str, float]], categories: List[Category]) -> Any:
     """Create a fallback analysis when LLM calls are disabled."""
-    
-    # FIXED: Use sensible constant thresholds based on similarity type
-    if not candidates:
-        # No candidates at all - must create new
-        return _create_new_category_analysis(text, categories)
-    
-    best_id, best_similarity = candidates[0]
-    
-    # Determine similarity type from indexer mode
-    if indexer.mode == RetrievalMode.BERT or indexer.mode == RetrievalMode.HYBRID:
-        # BERT/Hybrid: Use BERT-appropriate threshold
-        SIMILARITY_THRESHOLD = 0.60  # BERT: 0.6 = clearly related
+    # Adaptive similarity threshold based on existing categories
+    if not categories:
+        # No categories exist - create first one
+        similarity_threshold = 0.3  # Low threshold for first category
     else:
-        # TF-IDF: Use TF-IDF-appropriate threshold
-        SIMILARITY_THRESHOLD = 0.35  # TF-IDF: 0.35 = reasonable match
+        # Calculate adaptive threshold based on category distribution
+        category_sizes = [cat.text_count for cat in categories]
+        avg_size = sum(category_sizes) / len(category_sizes) if category_sizes else 1
+        
+        # Higher threshold if categories are well-populated (encourage consolidation)
+        # Lower threshold if categories are small (allow more granularity)
+        if avg_size >= 3:
+            similarity_threshold = 0.4  # Encourage grouping
+        elif avg_size >= 2:
+            similarity_threshold = 0.5  # Moderate grouping
+        else:
+            similarity_threshold = 0.6  # Be selective
     
-    # FIXED: Don't adjust threshold based on category count
-    # This was causing early categories to become "black holes"
-    
-    if best_similarity > SIMILARITY_THRESHOLD:
+    # Use best match if above adaptive threshold
+    if candidates and candidates[0][1] > similarity_threshold:
+        best_id = candidates[0][0]
         return type('Analysis', (), {
             'candidate_categories': [best_id],
-            'confidence_scores': {best_id: best_similarity},
+            'confidence_scores': {best_id: candidates[0][1]},
             'best_category_id': best_id,
             'should_create_new': False,
             'new_category': None,
-            'reasoning': f"Fallback: similarity {best_similarity:.2f} > {SIMILARITY_THRESHOLD:.2f}"
+            'reasoning': f"Fallback: similarity {candidates[0][1]:.2f} > threshold {similarity_threshold:.2f}"
         })()
     else:
-        # Create new category
-        return _create_new_category_analysis(text, categories)
-
-def _create_new_category_analysis(text: str, categories: List[Category]):
-    """Helper to create new category analysis."""
-    name = _generate_semantic_category_name(text, categories)
-    new_cat = {
-        'id': deterministic_cat_id(name),
-        'name': name,
-        'description': text[:100] + "..." if len(text) > 100 else text,
-        'keywords': _extract_semantic_keywords(text)
-    }
-    return type('Analysis', (), {
-        'candidate_categories': [],
-        'confidence_scores': {},
-        'best_category_id': None,
-        'should_create_new': True,
-        'new_category': new_cat,
-        'reasoning': f"Fallback: new category (best similarity {0.0:.2f} <= threshold)"
-    })()
+        # Create new category with semantic naming
+        name = _generate_semantic_category_name(text, categories)
+        new_cat = {
+            'id': deterministic_cat_id(name),
+            'name': name,
+            'description': text[:100] + "..." if len(text) > 100 else text,
+            'keywords': _extract_semantic_keywords(text)
+        }
+        return type('Analysis', (), {
+            'candidate_categories': [],
+            'confidence_scores': {},
+            'best_category_id': None,
+            'should_create_new': True,
+            'new_category': new_cat,
+            'reasoning': f"Fallback: new category (similarity {candidates[0][1]:.2f} <= {similarity_threshold:.2f})" if candidates else "Fallback: no candidates"
+        })()
 
 # ------------------
 # Parallel analysis with BERT
@@ -929,31 +1077,20 @@ async def _analyze_single_text_parallel(
                 logger.debug("  Calling LLM with model: %s:%s", LLM_PROVIDER_NAME, LLM_MODEL_NAME)
                 result = await asyncio.wait_for(
                     multi_pass_analyzer.run(prompt),
-                    timeout=DEFAULT_LLM_TIMEOUT_SECONDS
+                    timeout=LLM_TIMEOUT_SECONDS
                 )
                 analysis = result.output
-                logger.info("  LLM reasoning: %s", analysis.reasoning)
             
             if analysis.confidence_scores:
-                logger.info("  LLM confidence scores: %s", 
+                logger.debug("  LLM confidence scores: %s", 
                            {k: f"{v:.2f}" for k, v in analysis.confidence_scores.items()})
             else:
-                logger.info("  LLM did not provide confidence scores, using fallback scoring")
+                logger.debug("  LLM did not provide confidence scores, using fallback scoring")
             
             logger.info("  [%d/%d] ✓ Complete", text_num, total_texts)
         
-        # ADDED: Log LLM decision
-        if analysis.should_create_new:
-            logger.info("  [%d/%d] → CREATE NEW: %s", text_num, total_texts, analysis.new_category.get('name', 'unnamed'))
-        else:
-            chosen_cat = next((c for c in categories if c.id == analysis.best_category_id), None)
-            cat_name = chosen_cat.name if chosen_cat else analysis.best_category_id
-            llm_conf = analysis.confidence_scores.get(analysis.best_category_id, 0.0)
-            logger.info("  [%d/%d] → ASSIGN TO: %s (LLM conf: %.3f)", text_num, total_texts, cat_name, llm_conf)
-        
-
         # Process with BERT-enhanced confidence (both LLM and fallback paths)
-        return _process_analysis_result(
+        return _process_analysis_result_enhanced(
             analysis, text, categories, candidate_ids, candidates, 
             current_pass, max_passes, indexer, config
         )
@@ -974,49 +1111,21 @@ def _build_analysis_prompt(
     max_passes: int,
     top_k: int
 ) -> str:
-    """Build analysis prompt with clear, pass-specific instructions."""
-    
+    """Build analysis prompt."""
     if not categories:
         cat_desc = "No categories exist yet - you should create the first one."
     else:
         cat_desc = "\n".join([
-            f"- ID: {c.id}\n"
-            f"  Name: '{c.name}'\n"
-            f"  Description: {c.description or 'No description'}\n"
-            f"  Keywords: {', '.join(c.keywords[:8]) if c.keywords else 'none'}\n"
-            f"  Texts assigned: {c.text_count}"
+            f"- {c.id}: '{c.name}' - {c.description or 'No description'}\n  Keywords: {', '.join(c.keywords[:8]) if c.keywords else 'none'}\n  Texts assigned: {c.text_count}"
             for c in categories
         ])
     
     candidate_info = ""
     if candidates:
-        candidate_info = f"\nTop candidates by BERT semantic similarity:\n" + "\n".join([
-            f"  - ID: {cid}, similarity: {sim:.3f}"  # ✅ Show full ID
-            for cid, sim in candidates[:3]
+        candidate_info = f"\nTop candidates by semantic similarity:\n" + "\n".join([
+            f"  - {cid}: similarity={sim:.3f}"
+            for cid, sim in candidates
         ])
-
-    
-    # FIXED: Pass-specific instructions
-    if current_pass == 1:
-        strategy = """PASS 1 STRATEGY (Category Discovery):
-- Be DISCRIMINATING: Only assign to existing category if it's a CLEAR match
-- Create new categories liberally to capture distinct concepts
-- Threshold for existing category: similarity ≥ 0.70 (high confidence required)
-- When in doubt, create a new category - Pass 2 will refine
-
-Example decision logic:
-- "Coffee processing" + "Coffee roasting" → SAME (both coffee industry)
-- "Coffee processing" + "Web design" → DIFFERENT (unrelated industries)
-- "Software development" + "Software licensing" → SAME (both software)
-- "Software development" + "IT consulting" → DIFFERENT (development vs consulting)"""
-    else:
-        strategy = """PASS 2 STRATEGY (Boundary Refinement):
-- Validate Pass 1 assignments with fresh perspective
-- Consider if categories could be merged (but be selective)
-- Only reassign if there's a SIGNIFICANTLY better fit
-- Threshold for reassignment: new category must be 0.15+ better
-
-Focus on fixing obvious errors from Pass 1."""
     
     return f"""Pass {current_pass}/{max_passes}
 
@@ -1027,22 +1136,21 @@ EXISTING CATEGORIES:
 {cat_desc}
 {candidate_info}
 
-CRITICAL: You MUST use the exact category IDs shown above (e.g., 'web_dev_001', not '1' or 'cat_001').
+SEMANTIC ANALYSIS GUIDELINES:
+- Focus on conceptual similarity over exact word matching
+- Group related activities (e.g., cultivation, processing, and production of same domain)
+- Consider functional relationships (e.g., different stages of same process)
+- Look for domain coherence (activities that belong to same industry/field)
+- Prefer consolidation when semantic overlap exists
+- Services (serviços, suporte, manutenção) should be grouped
 
 TASK:
-Return a JSON with:
-{{
-  "candidate_categories": [list of EXACT category IDs considered],
-  "confidence_scores": {{exact_category_id: float}},
-  "best_category_id": "exact_category_id" OR null,  // USE EXACT ID FROM ABOVE!
-  "should_create_new": true/false,
-  "new_category": {{name, description, keywords}} if creating,
-  "reasoning": "Brief explanation"
-}}
-"""
+1. Evaluate how well this text fits each candidate category
+2. Provide SPECIFIC confidence scores (0.0-1.0) - NOT all 0.5!
+3. Consider semantic similarity (crops with crops, tech with tech, etc.)
+4. Either select best_category_id OR create new category if all scores < 0.6"""
 
-
-def _process_analysis_result(
+def _process_analysis_result_enhanced(
     analysis: MultiPassAnalysis,
     text: str,
     categories: List[Category],
@@ -1051,21 +1159,21 @@ def _process_analysis_result(
     current_pass: int,
     max_passes: int,
     indexer: CategoryIndexer,
-    config: ClusterConfig
+    config: ClusterizerConfig
 ) -> Tuple[CategoryAssignment, Optional[Category]]:
     """Process LLM analysis with BERT-enhanced confidence."""
     if analysis.should_create_new:
-        return _handle_new_category(
+        return _handle_new_category_enhanced(
             analysis, text, categories, candidates, current_pass, max_passes, indexer, config
         )
     else:
-        assignment = _handle_existing_category(
+        assignment = _handle_existing_category_enhanced(
             analysis, text, candidate_ids, categories, candidates, 
             current_pass, max_passes, indexer, config
         )
         return (assignment, None)
 
-def _handle_new_category(
+def _handle_new_category_enhanced(
     analysis: MultiPassAnalysis,
     text: str,
     categories: List[Category],
@@ -1073,7 +1181,7 @@ def _handle_new_category(
     current_pass: int,
     max_passes: int,
     indexer: CategoryIndexer,
-    config: ClusterConfig
+    config: ClusterizerConfig
 ) -> Tuple[CategoryAssignment, Category]:
     """Handle creation of new category with BERT confidence."""
     if analysis.new_category:
@@ -1103,7 +1211,7 @@ def _handle_new_category(
         llm_confidence = 0.75
     
     # BERT similarity not available for new categories
-    confidence = calculate_confidence(
+    confidence = calculate_enhanced_confidence(
         text=text,
         category=new_cat,
         llm_confidence=llm_confidence,
@@ -1127,7 +1235,7 @@ def _handle_new_category(
     
     return (assignment, new_cat)
 
-def _handle_existing_category(
+def _handle_existing_category_enhanced(
     analysis: MultiPassAnalysis,
     text: str,
     candidate_ids: List[str],
@@ -1136,27 +1244,26 @@ def _handle_existing_category(
     current_pass: int,
     max_passes: int,
     indexer: CategoryIndexer,
-    config: ClusterConfig
+    config: ClusterizerConfig
 ) -> CategoryAssignment:
     """Handle assignment to existing category with BERT confidence."""
     chosen_id = analysis.best_category_id or (candidate_ids[0] if candidate_ids else None)
     
     if not chosen_id and categories:
         chosen_id = categories[0].id
-
-    chosen_category = next((c for c in categories if c.id == chosen_id), None)
     
-    # If LLM returned an invalid ID, fall back to best candidate
-    if not chosen_category and candidate_ids:
-        chosen_id = candidate_ids[0]
-        chosen_category = next((c for c in categories if c.id == chosen_id), None)
+    # Normalize the category ID for consistency
+    if chosen_id:
+        chosen_id = normalize_category_id(chosen_id)
+    
+    chosen_category = next((c for c in categories if c.id == chosen_id), None)
     
     if not chosen_category:
         return CategoryAssignment(
             text=text,
             category_id=chosen_id or "unknown",
             confidence=0.3,
-            reasoning="Category not found - LLM returned invalid ID"
+            reasoning="Category not found"
         )
     
     # Get LLM confidence
@@ -1171,7 +1278,7 @@ def _handle_existing_category(
     bert_similarity = indexer.get_bert_similarity(text, chosen_id)
     
     # Calculate enhanced confidence with BERT
-    confidence = calculate_confidence(
+    confidence = calculate_enhanced_confidence(
         text=text,
         category=chosen_category,
         llm_confidence=llm_confidence,
@@ -1232,67 +1339,17 @@ def _create_fallback_assignment(
             reasoning="Fallback: no categories"
         )
 
-def remove_empty_categories(result: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove categories with 0 assignments."""
-    categories = result['categories']
-    assignments = result['assignments']
-    
-    # Find categories with texts
-    used_category_ids = {a.category_id for a in assignments}
-    
-    # Filter
-    active_categories = [c for c in categories if c.id in used_category_ids]
-    
-    logger.info(
-        f"Removed {len(categories) - len(active_categories)} empty categories"
-    )
-    
-    result['categories'] = active_categories
-    return result
-
 # ------------------
 # Graph nodes
 # ------------------
-def _finalize_processing(
-    state: Dict[str, Any], proc_state: ProcessingState
-) -> Dict[str, Any]:
-    """Helper to finalize processing state."""
-    proc_state.processing_complete = True
-    update_state_from_processing(state, proc_state)
-    state['current_batch'] = []
-    state['decision'] = 'consolidate'
-    return state
-
-def _validate_assignments(state: Dict[str, Any]) -> None:
-    """Validate that all texts are assigned to existing categories."""
-    categories = state.get('categories', [])
-    assignments = state.get('assignments', [])
-    
-    category_ids = {c['id'] if isinstance(c, dict) else c.id for c in categories}
-    
-    issues = []
-    for i, assignment in enumerate(assignments):
-        cat_id = assignment.get('category_id') if isinstance(assignment, dict) else assignment.category_id
-        
-        if cat_id not in category_ids:
-            issues.append(f"Assignment {i+1}: references non-existent category {cat_id}")
-    
-    if issues:
-        logger.error("VALIDATION FAILED:")
-        for issue in issues:
-            logger.error(f"  - {issue}")
-        logger.error(f"Valid category IDs: {category_ids}")
-        logger.error(f"Assignment count: {len(assignments)}")
-    else:
-        logger.info(f"✓ Validation passed: {len(assignments)} assignments → {len(categories)} categories")
-
-
 async def load_next_batch(state: Dict[str, Any]) -> Dict[str, Any]:
     """Load next batch of texts for processing."""
     logger.debug("NODE load_next_batch called")
     new_state = dict(state)
     
     proc_state = extract_processing_state(state)
+    
+    # No watchdog needed - rely on natural termination (finite passes, batches)
     
     texts = state.get('texts', []) or []
     batch_size = int(state.get('batch_size', DEFAULT_BATCH_SIZE))
@@ -1302,17 +1359,14 @@ async def load_next_batch(state: Dict[str, Any]) -> Dict[str, Any]:
         return _finalize_processing(new_state, proc_state)
     
     if proc_state.current_index >= len(texts):
-        # Completed current pass
         if proc_state.current_pass < max_passes:
             proc_state.start_next_pass()
             proc_state.increment_loop()  # Increment when starting new pass
-            
             batch = texts[:batch_size]
             new_state['current_batch'] = batch
             new_state['decision'] = 'analyze'
             logger.info("Step %d: Starting pass %d", proc_state.loop_counter, proc_state.current_pass)
         else:
-            _validate_assignments(state)
             return _finalize_processing(new_state, proc_state)
     else:
         proc_state.increment_loop()  # Increment when processing batch
@@ -1330,103 +1384,13 @@ async def load_next_batch(state: Dict[str, Any]) -> Dict[str, Any]:
     update_state_from_processing(new_state, proc_state)
     return new_state
 
-def _deduplicate_categories_semantic(
-    new_categories: List[Category],
-    existing_categories: List[Category],
-    bert_encoder: Optional[BERTEncoder],
-    similarity_threshold: float = 0.85
-) -> List[Category]:
-    """
-    Deduplicate categories using semantic similarity, not just name matching.
-    
-    This handles cases where parallel tasks create:
-    - "Web Development" and "Web Development" (exact match)
-    - "Financial Analysis" and "Financial Modeling" (semantic match)
-    """
-    if not new_categories:
-        return []
-    
-    if len(new_categories) == 1:
-        return new_categories
-    
-    # Build similarity matrix
-    unique_categories = []
-    
-    for candidate in new_categories:
-        is_duplicate = False
-        
-        # Check against already-accepted unique categories
-        for unique_cat in unique_categories:
-            if _are_categories_duplicates(candidate, unique_cat, bert_encoder, similarity_threshold):
-                logger.info(
-                    f"Deduplicating: '{candidate.name}' → '{unique_cat.name}' "
-                    f"(semantic duplicates)"
-                )
-                is_duplicate = True
-                break
-        
-        if not is_duplicate:
-            unique_categories.append(candidate)
-    
-    logger.info(f"Deduplicated {len(new_categories)} → {len(unique_categories)} new categories")
-    return unique_categories
-
-def _are_categories_duplicates(
-    cat1: Category,
-    cat2: Category, 
-    bert_encoder: Optional[BERTEncoder],
-    threshold: float = 0.85
-) -> bool:
-    """Check if two categories are duplicates."""
-    
-    # Exact name match (case-insensitive)
-    if cat1.name.lower().strip() == cat2.name.lower().strip():
-        return True
-    
-    # High word overlap in name
-    words1 = set(cat1.name.lower().split())
-    words2 = set(cat2.name.lower().split())
-    if len(words1 & words2) / max(len(words1), len(words2)) > 0.8:
-        return True
-    
-    # Semantic similarity (if BERT available)
-    if bert_encoder:
-        doc1 = f"{cat1.name} {cat1.description or ''}"
-        doc2 = f"{cat2.name} {cat2.description or ''}"
-        
-        emb1 = bert_encoder.encode([doc1])
-        emb2 = bert_encoder.encode([doc2])
-        similarity = bert_encoder.cosine_similarity(emb1, emb2)
-        
-        if similarity >= threshold:
-            return True
-    
-    return False
-
-def _build_category_mapping(
-    original_categories: List[Category],
-    deduplicated_categories: List[Category]
-) -> Dict[str, str]:
-    """
-    Build mapping from original category IDs to deduplicated IDs.
-    
-    Returns: {original_id: deduplicated_id}
-    """
-    mapping = {}
-    
-    for original in original_categories:
-        # Find which deduplicated category this maps to
-        for dedup in deduplicated_categories:
-            if _are_categories_duplicates(original, dedup, None, threshold=1.0):
-                # Exact match
-                mapping[original.id] = dedup.id
-                break
-            # Or use name similarity as fallback
-            if original.name.lower() == dedup.name.lower():
-                mapping[original.id] = dedup.id
-                break
-    
-    return mapping
+def _finalize_processing(state: Dict[str, Any], proc_state: ProcessingState) -> Dict[str, Any]:
+    """Helper to finalize processing state."""
+    proc_state.processing_complete = True
+    update_state_from_processing(state, proc_state)
+    state['current_batch'] = []
+    state['decision'] = 'consolidate'
+    return state
 
 async def analyze_batch_parallel(state: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze batch with BERT-powered indexer."""
@@ -1442,15 +1406,20 @@ async def analyze_batch_parallel(state: Dict[str, Any]) -> Dict[str, Any]:
     categories_raw = state.get('categories', [])
     categories = [Category(**c) if not isinstance(c, Category) else c for c in categories_raw]
     
-    # Get config and current pass
+    # Get config from state
     config = state.get('config', DEFAULT_CONFIG)
-    current_pass = state.get('current_pass', 1)
-    retrieval_mode = state.get('retrieval_mode', RetrievalMode.HYBRID)
-    if isinstance(retrieval_mode, str):
-        retrieval_mode = RetrievalMode(retrieval_mode)
+    if not isinstance(config, ClusterizerConfig):
+        # Backward compatibility: if config is not in state, build from retrieval_mode
+        retrieval_mode = state.get('retrieval_mode', RETRIEVAL_MODE.HYBRID)
+        if retrieval_mode == RETRIEVAL_MODE.HYBRID:
+            config = CONFIG_BALANCED_HYBRID
+        elif retrieval_mode == RETRIEVAL_MODE.BERT:
+            config = CONFIG_SEMANTIC_BERT
+        else:
+            config = CONFIG_BALANCED_TFIDF
     
-    # Setup indexer
-    indexer = CategoryIndexer(mode=retrieval_mode)
+    # Setup indexer with configured mode
+    indexer = CategoryIndexer(mode=config.retrieval_mode)
     indexer.fit(categories)
     
     initial_category_ids = {c.id for c in categories}
@@ -1465,73 +1434,53 @@ async def analyze_batch_parallel(state: Dict[str, Any]) -> Dict[str, Any]:
     results = await asyncio.gather(*tasks, return_exceptions=True)
     logger.info("Parallel processing complete")
     
-    # FIXED: Collect all results first, then deduplicate categories
+    # Collect results
     assignment_mgr = AssignmentManager()
     assignment_mgr.assignments_map = dict(state.get('assignments_map') or {})
+    new_categories_created = []
     
-    all_new_categories = []
-    all_assignments = []
-    
-    # Step 1: Collect everything
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             logger.error("Task %d failed: %s", i+1, result)
             text = batch[i]
             fallback = _create_fallback_assignment(text, categories, [])
-            all_assignments.append((fallback, None))
+            assignment_mgr.update_assignment(fallback)
         else:
             assignment, maybe_new_cat = result
-            all_assignments.append((assignment, maybe_new_cat))
+            assignment_mgr.update_assignment(assignment)
             
-            if maybe_new_cat:
-                all_new_categories.append(maybe_new_cat)
+            if maybe_new_cat and maybe_new_cat.id not in initial_category_ids:
+                # Check for duplicate names (case-insensitive)
+                existing_names = {c.name.lower() for c in categories + new_categories_created}
+                if maybe_new_cat.name.lower() in existing_names:
+                    # Find the existing category with same name and reuse it
+                    existing_cat = next(
+                        (c for c in categories + new_categories_created 
+                         if c.name.lower() == maybe_new_cat.name.lower()),
+                        None
+                    )
+                    if existing_cat:
+                        logger.info(f"Reusing existing category '{existing_cat.name}' instead of creating duplicate")
+                        # Create new assignment with existing category ID
+                        new_assignment = CategoryAssignment(
+                            text=assignment.text,
+                            category_id=existing_cat.id,
+                            confidence=assignment.confidence,
+                            reasoning=assignment.reasoning
+                        )
+                        assignment_mgr.update_assignment(new_assignment)
+                        continue
+                
+                if maybe_new_cat.id not in [c.id for c in new_categories_created]:
+                    new_categories_created.append(maybe_new_cat)
+                    initial_category_ids.add(maybe_new_cat.id)
+                    logger.info("Created new category: %s", maybe_new_cat.name)
     
-    # Step 2: Deduplicate new categories by exact name match
-    unique_new_categories = []
-    seen_names = set()
-    category_id_remap = {}  # Maps duplicate IDs to canonical IDs
-    
-    for new_cat in all_new_categories:
-        normalized_name = new_cat.name.lower().strip()
-        
-        if normalized_name not in seen_names:
-            # First occurrence - keep it
-            unique_new_categories.append(new_cat)
-            seen_names.add(normalized_name)
-            category_id_remap[new_cat.id] = new_cat.id  # Maps to itself
-            logger.info(f"Created new category: {new_cat.name}")
-        else:
-            # Duplicate - find the canonical category
-            canonical_cat = next(
-                c for c in unique_new_categories 
-                if c.name.lower().strip() == normalized_name
-            )
-            category_id_remap[new_cat.id] = canonical_cat.id
-            logger.info(
-                f"Deduplicating: '{new_cat.name}' (ID: {new_cat.id}) "
-                f"→ '{canonical_cat.name}' (ID: {canonical_cat.id})"
-            )
-    
-    # Step 3: Remap assignments to deduplicated category IDs
-    for assignment, maybe_new_cat in all_assignments:
-        # If this assignment points to a duplicate category, remap it
-        if assignment.category_id in category_id_remap:
-            remapped_id = category_id_remap[assignment.category_id]
-            if remapped_id != assignment.category_id:
-                logger.debug(
-                    f"Remapping assignment: {assignment.text[:30]}... "
-                    f"from {assignment.category_id} → {remapped_id}"
-                )
-                assignment.category_id = remapped_id
-        
-        assignment_mgr.update_assignment(assignment, current_pass)
-    
-    # Step 4: Combine categories
-    all_categories = categories + unique_new_categories
+    # Combine categories
+    all_categories = categories + new_categories_created
     categories_dicts = [c.model_dump() for c in all_categories]
     assignment_mgr.update_category_counts(categories_dicts)
     
-    # Update state
     proc_state = extract_processing_state(state)
     proc_state.advance_index(len(batch))
     
@@ -1543,12 +1492,8 @@ async def analyze_batch_parallel(state: Dict[str, Any]) -> Dict[str, Any]:
     })
     update_state_from_processing(new_state, proc_state)
     
-    logger.info(
-        "Batch analysis complete. Categories: %d, Assignments: %d, New categories: %d",
-        len(categories_dicts), 
-        len(assignment_mgr.get_assignments()),
-        len(unique_new_categories)
-    )
+    logger.info("Batch analysis complete. Categories: %d, Assignments: %d", 
+                len(categories_dicts), len(assignment_mgr.get_assignments()))
     
     return new_state
 
@@ -1625,17 +1570,15 @@ class SemanticChunker:
         
         # If text is small, return as single chunk
         if len(tokens) <= self.chunk_size:
-            return [
-                TextChunk(
-                    chunk_id=f"{text_id}_chunk_0",
-                    text=text,
-                    start_pos=0,
-                    end_pos=len(text),
-                    parent_text_id=text_id,
-                    chunk_index=0,
-                    total_chunks=1
-                )
-            ]
+            return [TextChunk(
+                chunk_id=f"{text_id}_chunk_0",
+                text=text,
+                start_pos=0,
+                end_pos=len(text),
+                parent_text_id=text_id,
+                chunk_index=0,
+                total_chunks=1
+            )]
         
         # Split into chunks with overlap
         chunks = []
@@ -1653,17 +1596,15 @@ class SemanticChunker:
             if len(current_chunk_tokens) + len(sentence_tokens) > self.chunk_size and current_chunk_sentences:
                 # Finalize current chunk
                 chunk_text = " ".join(current_chunk_sentences)
-                chunks.append(
-                    TextChunk(
-                        chunk_id=f"{text_id}_chunk_{chunk_index}",
-                        text=chunk_text,
-                        start_pos=start_pos,
-                        end_pos=start_pos + len(chunk_text),
-                        parent_text_id=text_id,
-                        chunk_index=chunk_index,
-                        total_chunks=-1  # Will update later
-                    )
-                )
+                chunks.append(TextChunk(
+                    chunk_id=f"{text_id}_chunk_{chunk_index}",
+                    text=chunk_text,
+                    start_pos=start_pos,
+                    end_pos=start_pos + len(chunk_text),
+                    parent_text_id=text_id,
+                    chunk_index=chunk_index,
+                    total_chunks=-1  # Will update later
+                ))
                 
                 # Start new chunk with overlap
                 overlap_sentences = self._get_overlap_sentences(
@@ -1683,17 +1624,15 @@ class SemanticChunker:
         # Add final chunk
         if current_chunk_sentences:
             chunk_text = " ".join(current_chunk_sentences)
-            chunks.append(
-                TextChunk(
-                    chunk_id=f"{text_id}_chunk_{chunk_index}",
-                    text=chunk_text,
-                    start_pos=start_pos,
-                    end_pos=start_pos + len(chunk_text),
-                    parent_text_id=text_id,
-                    chunk_index=chunk_index,
-                    total_chunks=-1
-                )
-            )
+            chunks.append(TextChunk(
+                chunk_id=f"{text_id}_chunk_{chunk_index}",
+                text=chunk_text,
+                start_pos=start_pos,
+                end_pos=start_pos + len(chunk_text),
+                parent_text_id=text_id,
+                chunk_index=chunk_index,
+                total_chunks=-1
+            ))
         
         # Update total_chunks for all
         for chunk in chunks:
@@ -1845,9 +1784,9 @@ class ChunkAggregator:
         )
 
 # ------------------
-# Consolidation with Multi-Signal Analysis
+# Enhanced Consolidation with Multi-Signal Analysis
 # ------------------
-class MultiSignalConsolidator:
+class SmartConsolidator:
     """
     Multi-signal category consolidation with adaptive thresholds and AI-driven decisions.
     
@@ -1983,7 +1922,7 @@ class MultiSignalConsolidator:
     def _get_fallback_thresholds(self, aggressive: bool) -> Dict[str, float]:
         """Fallback thresholds when no data available."""
         return {
-            'bert_auto_approve': 0.50 if aggressive else 0.60,
+            'bert_auto_approve': 0.60 if aggressive else 0.70,
             'combined_threshold': 0.35 if aggressive else 0.45,
             'name_auto_approve': 0.75
         }
@@ -2154,9 +2093,8 @@ class MultiSignalConsolidator:
             return 0.0
     
     def _bert_similarity(self, cat1: Category, cat2: Category) -> float:
-        """Compute BERT semantic similarity with better logging."""
+        """Compute BERT semantic similarity."""
         if not self.bert_encoder:
-            logger.info("⚠️ BERT encoder not available for consolidation - using TF-IDF only")
             return 0.0
         
         doc1 = self._category_to_doc(cat1)
@@ -2166,15 +2104,8 @@ class MultiSignalConsolidator:
             emb1 = self.bert_encoder.encode([doc1])
             emb2 = self.bert_encoder.encode([doc2])
             sim = self.bert_encoder.cosine_similarity(emb1, emb2)
-            
-            # ✅ Better logging with precision
-            logger.debug(
-                f"BERT similarity {cat1.name[:20]} <-> {cat2.name[:20]}: "
-                f"{sim:.4f} (doc1={len(doc1)} chars, doc2={len(doc2)} chars)"
-            )
             return float(sim)
-        except Exception as e:
-            logger.warning(f"BERT similarity computation failed: {e}")
+        except Exception:
             return 0.0
     
     def _keyword_overlap(self, cat1: Category, cat2: Category) -> float:
@@ -2298,7 +2229,7 @@ async def consolidate_categories(state: Dict[str, Any]) -> Dict[str, Any]:
     """Consolidate similar categories using enhanced multi-signal analysis."""
     logger.info("NODE consolidate called")
     new_state = dict(state)
-
+    
     categories_raw = state.get('categories', [])
     categories = [Category(**c) for c in categories_raw]
     
@@ -2311,15 +2242,15 @@ async def consolidate_categories(state: Dict[str, Any]) -> Dict[str, Any]:
     max_passes = state.get('max_passes', 2)
     aggressive = current_pass < max_passes  # Be aggressive in early passes
     
-    # Initialize MultiSignalConsolidator with BERT if available
+    # Initialize SmartConsolidator with BERT if available
     bert_encoder = None
-    if config.retrieval_mode in [RetrievalMode.BERT, RetrievalMode.HYBRID]:
+    if config.retrieval_mode in [RETRIEVAL_MODE.BERT, RETRIEVAL_MODE.HYBRID]:
         try:
             bert_encoder = BERTEncoder.get_instance()
         except Exception as e:
             logger.warning(f"BERT not available for consolidation: {e}")
     
-    consolidator = MultiSignalConsolidator(bert_encoder=bert_encoder)
+    consolidator = SmartConsolidator(bert_encoder=bert_encoder)
     
     # Find merge candidates using multi-signal analysis
     candidate_pairs = consolidator.find_merge_candidates(categories, aggressive=aggressive)
@@ -2490,24 +2421,6 @@ def _apply_merges(
 # Router and graph
 # ------------------
 
-def remove_empty_categories(result: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove categories with 0 assignments."""
-    categories = result['categories']
-    assignments = result['assignments']
-    
-    # Find categories with texts
-    used_category_ids = {a.category_id for a in assignments}
-    
-    # Filter
-    active_categories = [c for c in categories if c.id in used_category_ids]
-    
-    logger.info(
-        f"Removed {len(categories) - len(active_categories)} empty categories"
-    )
-    
-    result['categories'] = active_categories
-    return result
-
 def route_decision(state: Dict[str, Any]) -> str:
     """Route to next node with proper termination."""
     if state.get('consolidation_complete', False):
@@ -2541,7 +2454,7 @@ def build_clusterizer_graph():
         {
             'analyze': 'analyze',
             'consolidate': 'consolidate',
-            END: END
+            END: END  # Remove the 'load_next': 'load_next' self-loop that was causing issues
         }
     )
     
@@ -2550,27 +2463,273 @@ def build_clusterizer_graph():
     
     return workflow.compile(checkpointer=MemorySaver())
 
-async def execute_clusterizer_graph(
-    texts: List[str], config: ClusterConfig
+# ------------------
+# Public API
+# ------------------
+async def clusterize_texts_large(
+    texts: List[str],
+    max_passes: int = 2,
+    prefilter_k: int = DEFAULT_PREFILTER_K,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    max_concurrent: int = 5,
+    config: Optional[ClusterizerConfig] = None,
+    # New parameters for large datasets
+    enable_tree_merge: bool = True,
+    texts_per_workflow: int = DEFAULT_TEXTS_PER_WORKFLOW,
+    token_threshold: int = DEFAULT_TOKEN_BIG_TEXT,
+    max_parallel_merges: int = DEFAULT_MAX_PARALLEL_MERGES
 ) -> Dict[str, Any]:
     """
-    Execute clusterizer graph with unified config.
+    Enhanced clusterization that handles arbitrarily large datasets.
+    
+    Workflow:
+    1. If dataset is small (≤ texts_per_workflow), use standard clusterize_texts()
+    2. If dataset is large:
+       a. Use TextAssignmentManager for dry assignment (with big text chunking)
+       b. Use TreeMergeProcessor for hierarchical execution and merging
+       c. Consolidate big texts at the end
     
     Args:
-        texts: List of texts to cluster
-        config: ClusterConfig with all parameters
-        batch_size: Optional override for adaptive batch sizing
+        texts: List of text strings to categorize
+        max_passes: Number of passes per workflow execution
+        prefilter_k: Number of candidate categories to consider
+        batch_size: Texts per batch (for parallel processing within workflow)
+        max_concurrent: Maximum concurrent LLM calls
+        config: ClusterizerConfig instance (recommended, defaults to CONFIG_BALANCED_HYBRID)
+        
+        # Large dataset parameters
+        enable_tree_merge: Whether to enable tree merge for large datasets
+        texts_per_workflow: Maximum texts per single workflow execution
+        token_threshold: Token threshold for big text detection (texts > M tokens get chunked)
+        max_parallel_merges: Maximum parallel merge operations
     
     Returns:
-        Clustering result dict
+        Dict with 'categories', 'assignments', and 'metadata'
+        
+        Additional metadata for large datasets:
+        - 'used_tree_merge': bool
+        - 'total_workflows': int
+        - 'big_texts_consolidated': int
+        - 'tree_merge_levels': int
+    
+    Examples:
+        # Small dataset (automatic)
+        >>> result = await clusterize_texts_large(
+        ...     texts[:100],
+        ...     config=CONFIG_BALANCED_HYBRID
+        ... )
+        
+        # Large dataset with tree merge
+        >>> result = await clusterize_texts_large(
+        ...     texts[:10000],
+        ...     texts_per_workflow=500,
+        ...     token_threshold=200,
+        ...     config=CONFIG_BALANCED_HYBRID
+        ... )
+        
+        # Force single execution (no tree merge)
+        >>> result = await clusterize_texts_large(
+        ...     texts,
+        ...     enable_tree_merge=False,
+        ...     config=CONFIG_BALANCED_HYBRID
+        ... )
     """
     
-    batch_size = config.batch_size
+    # Handle config
+    if config is None:
+        config = CONFIG_BALANCED_HYBRID
+    # Decision point: Use tree merge or standard execution?
+    if enable_tree_merge and len(texts) > texts_per_workflow:
+        logger.info(f"🌳 Large dataset detected ({len(texts)} texts). Using tree merge strategy.")
+        return await _clusterize_with_tree_merge(
+            texts=texts,
+            max_passes=max_passes,
+            prefilter_k=prefilter_k,
+            batch_size=batch_size,
+            max_concurrent=max_concurrent,
+            config=config,
+            texts_per_workflow=texts_per_workflow,
+            token_threshold=token_threshold,
+            max_parallel_merges=max_parallel_merges
+        )
+    else:
+        logger.info(f"📄 Standard execution for {len(texts)} texts.")
+        result = await clusterize_texts(
+            texts=texts,
+            max_passes=max_passes,
+            prefilter_k=prefilter_k,
+            batch_size=batch_size,
+            max_concurrent=max_concurrent,
+            config=config
+        )
+        result['metadata']['used_tree_merge'] = False
+        return result
+
+
+async def _clusterize_with_tree_merge(
+    texts: List[str],
+    max_passes: int,
+    prefilter_k: int,
+    batch_size: int,
+    max_concurrent: int,
+    config: ClusterizerConfig,
+    texts_per_workflow: int,
+    token_threshold: int,
+    max_parallel_merges: int
+) -> Dict[str, Any]:
+    """
+    Internal function: Execute clustering with tree merge strategy.
+    """
     
-    # Build graph
+    from .text_assignment_manager import TextAssignmentManager, Text, Tokenizer
+    from .tree_merge_processor import TreeMergeProcessor
+    
+    # Step 1: Calculate optimal parameters
+    logger.info(f"Step 1: Calculating optimal workflow distribution...")
+    
+    # Calculate batch/workflow parameters to fit within texts_per_workflow
+    # We want: batches_per_workflow * batch_size ≈ texts_per_workflow
+    batches_per_workflow = max(1, texts_per_workflow // batch_size)
+    actual_texts_per_workflow = min(texts_per_workflow, batches_per_workflow * batch_size)
+    
+    logger.info(f"  Batch size: {batch_size}")
+    logger.info(f"  Batches per workflow: {batches_per_workflow}")
+    logger.info(f"  Texts per workflow: {actual_texts_per_workflow}")
+    
+    # Step 2: Create Text objects and perform dry assignment
+    logger.info(f"\nStep 2: Performing dry assignment...")
+    
+    text_objects = [
+        Text(id=f"text_{i}", content=text)
+        for i, text in enumerate(texts)
+    ]
+    
+    assignment_manager = TextAssignmentManager(
+        batch_size=batch_size,
+        max_batches_per_workflow=batches_per_workflow,
+        token_threshold=token_threshold
+    )
+    
+    dry_assignment = assignment_manager.dry_assign(text_objects)
+    
+    logger.info(f"\n{dry_assignment.get_summary()}")
+    
+    # Step 3: Process with TreeMergeProcessor
+    logger.info(f"\nStep 3: Processing with tree merge...")
+    
+    processor = TreeMergeProcessor(max_parallel_merges=max_parallel_merges)
+    
+    result = await processor.process_with_dry_assignment(
+        dry_assignment_result=dry_assignment,
+        clusterizer_config=config,
+        max_passes=max_passes,
+        prefilter_k=prefilter_k,
+        batch_size=batch_size,  # Internal batch size for parallel processing
+        max_concurrent=max_concurrent
+    )
+    
+    # Step 4: Enhance metadata
+    result['metadata']['used_tree_merge'] = True
+    result['metadata']['total_workflows'] = dry_assignment.total_workflows_needed
+    result['metadata']['texts_per_workflow'] = actual_texts_per_workflow
+    result['metadata']['token_threshold'] = token_threshold
+    
+    return result
+
+
+# Backward compatibility: Keep old clusterize_texts signature
+# But add auto-detection for large datasets
+async def clusterize_texts(
+    texts: List[str],
+    max_passes: int = 2,
+    prefilter_k: int = DEFAULT_PREFILTER_K,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    max_concurrent: int = MAX_CONCURRENT_LLM_CALLS,
+    retrieval_mode: Optional[str] = None,
+    bert_model: str = DEFAULT_BERT_MODEL,
+    config: Optional[ClusterizerConfig] = None,
+    max_texts_per_run: int = 500  # Changed: Now actually used for auto tree merge
+) -> Dict[str, Any]:
+    """
+    Clusterize texts with automatic tree merge for large datasets.
+    
+    This is the enhanced version that automatically detects large datasets
+    and uses tree merge when appropriate.
+    
+    Args:
+        texts: List of text strings to categorize
+        max_passes: Number of passes over the data
+        prefilter_k: Number of candidate categories to consider
+        batch_size: Texts per batch (processed in parallel)
+        max_concurrent: Maximum concurrent LLM calls
+        retrieval_mode: DEPRECATED - Use `config` instead
+        bert_model: Sentence-transformer model name
+        config: ClusterizerConfig instance (recommended)
+        max_texts_per_run: Threshold for enabling tree merge (default: 500)
+    
+    Returns:
+        Dict with 'categories', 'assignments', and 'metadata'
+    
+    Examples:
+        # Standard usage (auto-detects if tree merge needed)
+        >>> result = await clusterize_texts(texts, config=CONFIG_BALANCED_HYBRID)
+        
+        # Force higher threshold before tree merge
+        >>> result = await clusterize_texts(
+        ...     texts,
+        ...     max_texts_per_run=1000,
+        ...     config=CONFIG_BALANCED_HYBRID
+        ... )
+    """
+    
+    # Handle config resolution
+    if config is None:
+        if retrieval_mode is not None:
+            logger.warning(
+                "Using retrieval_mode parameter is deprecated. "
+                "Please use config=CONFIG_* presets instead."
+            )
+            if retrieval_mode == RETRIEVAL_MODE.HYBRID:
+                config = CONFIG_BALANCED_HYBRID
+            elif retrieval_mode == RETRIEVAL_MODE.BERT:
+                config = CONFIG_SEMANTIC_BERT
+            elif retrieval_mode == RETRIEVAL_MODE.TFIDF:
+                config = CONFIG_BALANCED_TFIDF
+            else:
+                logger.warning(f"Unknown retrieval_mode '{retrieval_mode}', using default")
+                config = DEFAULT_CONFIG
+        else:
+            config = DEFAULT_CONFIG
+    
+    # Auto-detect: Use tree merge for large datasets
+    if len(texts) > max_texts_per_run:
+        logger.info(f"🌳 Auto-detected large dataset ({len(texts)} > {max_texts_per_run}). Using tree merge.")
+        return await clusterize_texts_large(
+            texts=texts,
+            max_passes=max_passes,
+            prefilter_k=prefilter_k,
+            batch_size=batch_size,
+            max_concurrent=max_concurrent,
+            config=config,
+            texts_per_workflow=max_texts_per_run,
+            token_threshold=DEFAULT_TOKEN_BIG_TEXT,
+            max_parallel_merges=DEFAULT_MAX_PARALLEL_MERGES
+        )
+    
+    # Standard execution for small datasets
+    logger.info(f"Using configuration: {config.get_description()}")
+    global _rate_limiter
+    _rate_limiter = LLMRateLimiter(max_concurrent)
+    
+    # Apply adaptive batch sizing
+    if batch_size == DEFAULT_BATCH_SIZE:
+        adaptive_batch_size = calculate_adaptive_batch_size(len(texts))
+        if adaptive_batch_size != batch_size:
+            logger.info(f"Auto-adjusting batch size: {batch_size} → {adaptive_batch_size}")
+            batch_size = adaptive_batch_size
+    
     graph = build_clusterizer_graph()
     
-    # Setup initial state with config
     initial_state = {
         'texts': texts,
         'current_index': 0,
@@ -2582,35 +2741,35 @@ async def execute_clusterizer_graph(
         'processing_complete': False,
         'consolidation_complete': False,
         'current_pass': 1,
-        'max_passes': config.max_passes,
-        'prefilter_k': config.prefilter_k,
+        'max_passes': max_passes,
+        'prefilter_k': prefilter_k,
         'batch_size': batch_size,
-        'config': config,  # Pass entire config
-        'bert_model': DEFAULT_BERT_MODEL,  # Could be made configurable
+        'config': config,
+        'bert_model': bert_model,
         '_loop_counter': 0
     }
     
-    # Graph config
     graph_config = {
         'configurable': {'thread_id': 'clusterizer_1'},
         'recursion_limit': 1000
     }
     
-    # Log execution start
-    logger.info("="*70)
-    logger.info("CLUSTERIZATION EXECUTION")
-    logger.info("="*70)
-    logger.info(f"Texts: {len(texts)}")
-    logger.info(f"Config: {config.get_description()}")
-    logger.info(f"Batch size: {batch_size}")
-    logger.info(f"Max passes: {config.max_passes}")
-    logger.info(f"Max concurrent: {config.max_concurrent}")
-    logger.info(f"Retrieval mode: {config.retrieval_mode}")
-    logger.info("="*70 + "\n")
+    logger.info("Starting BERT-enhanced clusterization")
+    logger.info("  Texts: %d | Batch: %d | Mode: %s | Strategy: %s", 
+                len(texts), batch_size, config.retrieval_mode, config.scoring_strategy)
     
-    # Execute graph
     step_count = 0
     last_state = None
+    
+    logger.info(f"\n{'='*60}")
+    logger.info(f"BERT-ENHANCED CLUSTERIZATION")
+    logger.info(f"{'='*60}")
+    logger.info(f"Texts: {len(texts)}")
+    logger.info(f"Config: {config.get_description()}")
+    logger.info(f"Batch size: {batch_size} (parallel)")
+    logger.info(f"Max concurrent: {max_concurrent}")
+    logger.info(f"Max passes: {max_passes}")
+    logger.info(f"{'='*60}\n")
     
     async for event in graph.astream(initial_state, graph_config):
         step_count += 1
@@ -2626,48 +2785,37 @@ async def execute_clusterizer_graph(
                     total = len(payload.get('texts', []))
                     pass_num = payload.get('current_pass', 1)
                     cat_count = len(payload.get('categories', []))
-                    logger.info(
-                        f" | Pass {pass_num} | Text {idx}/{total} | Categories: {cat_count}"
-                    )
+                    logger.info(f" | Pass {pass_num} | Text {idx}/{total} | Categories: {cat_count}")
                 
                 if any(k in payload for k in ('categories', 'consolidation_complete', 'assignments')):
                     last_state = payload
         except Exception as e:
-            logger.debug(f" [Processing: {e}]")
+            logger.info(f" [Error: {e}]")
     
-    logger.info(f"\n" + "="*70)
-    logger.info(f"EXECUTION COMPLETE: {step_count} steps")
-    logger.info("="*70 + "\n")
+    logger.info(f"\n{'='*60}\n")
     
-    # Get final state
     if last_state is None:
         final_state = await graph.ainvoke(initial_state, graph_config)
     else:
         final_state = last_state
     
-    # Build result with proper types
-    assignments_list = final_state.get('assignments', [])
+    logger.info("Clusterization complete after %d steps", step_count)
     
-    # Calculate confidence statistics
+    # Statistics
+    assignments_list = final_state.get('assignments', [])
     if assignments_list:
         confidences = [a.get('confidence', 0.0) for a in assignments_list]
-        confidence_stats = {
-            'average': round(sum(confidences) / len(confidences), 3),
-            'min': round(min(confidences), 3),
-            'max': round(max(confidences), 3),
-            'high_confidence_count': sum(1 for c in confidences if c >= 0.75),
-            'medium_confidence_count': sum(1 for c in confidences if 0.5 <= c < 0.75),
-            'low_confidence_count': sum(1 for c in confidences if c < 0.5),
-        }
+        avg_confidence = sum(confidences) / len(confidences)
+        min_confidence = min(confidences)
+        max_confidence = max(confidences)
+        high_conf = sum(1 for c in confidences if c >= 0.75)
+        med_conf = sum(1 for c in confidences if 0.5 <= c < 0.75)
+        low_conf = sum(1 for c in confidences if c < 0.5)
     else:
-        confidence_stats = {
-            'average': 0.0, 'min': 0.0, 'max': 0.0,
-            'high_confidence_count': 0,
-            'medium_confidence_count': 0,
-            'low_confidence_count': 0,
-        }
+        avg_confidence = min_confidence = max_confidence = 0.0
+        high_conf = med_conf = low_conf = 0
     
-    result = {
+    return {
         'categories': [
             Category(**c) if not isinstance(c, Category) else c
             for c in final_state.get('categories', [])
@@ -2683,381 +2831,31 @@ async def execute_clusterizer_graph(
             'total_steps': step_count,
             'parallel_processing': True,
             'batch_size': batch_size,
-            'max_concurrent': config.max_concurrent,
-            'config': config.to_dict(),
+            'max_concurrent': max_concurrent,
+            'config': {
+                'retrieval_mode': config.retrieval_mode,
+                'scoring_strategy': config.scoring_strategy,
+                'new_category_threshold': config.new_category_threshold,
+                'new_category_bonus': config.new_category_bonus,
+            },
             'retrieval_mode': config.retrieval_mode,
-            'bert_enabled': config.retrieval_mode in ['bert', 'hybrid'],
-            'confidence_stats': confidence_stats,
-            'used_tree_merge': False,  # Will be overridden if tree merge used
+            'bert_enabled': config.retrieval_mode in [RETRIEVAL_MODE.BERT, RETRIEVAL_MODE.HYBRID],
+            'confidence_stats': {
+                'average': round(avg_confidence, 3),
+                'min': round(min_confidence, 3),
+                'max': round(max_confidence, 3),
+                'high_confidence_count': high_conf,
+                'medium_confidence_count': med_conf,
+                'low_confidence_count': low_conf
+            },
+            'used_tree_merge': False  # Standard execution
         }
     }
-
-    result = remove_empty_categories(result)
-
-    return result
-
-
-# ============================================================================
-# BACKWARD COMPATIBILITY
-# ============================================================================
-
-def _build_config_from_kwargs(kwargs: Dict[str, Any]) -> ClusterConfig:
-    """
-    Build ClusterConfig from old API parameters.
-    
-    Provides full backward compatibility by mapping old parameter names
-    to the new unified configuration structure.
-    
-    Args:
-        kwargs: Dictionary of old-style parameters
-    
-    Returns:
-        ClusterConfig instance
-    """
-    
-    # Check if old 'config' parameter was passed
-    if 'config' in kwargs:
-        old_config = kwargs['config']
-        
-        # If it's already a ClusterConfig, return it
-        if isinstance(old_config, ClusterConfig):
-            return old_config
-        
-        # If it's old ClusterConfig, convert it
-        if hasattr(old_config, 'retrieval_mode'):
-            return _convert_old_config(old_config, kwargs)
-    
-    # Extract old parameters with defaults
-    retrieval_mode = kwargs.get('retrieval_mode', RetrievalMode.HYBRID)
-    max_passes = kwargs.get('max_passes', 2)
-    batch_size = kwargs.get('batch_size', DEFAULT_BATCH_SIZE)
-    max_concurrent = kwargs.get('max_concurrent', DEFAULT_MAX_CONCURRENT_LLM_CALLS)
-    prefilter_k = kwargs.get('prefilter_k', DEFAULT_PREFILTER_K)
-    max_texts_per_run = kwargs.get('max_texts_per_run', DEFAULT_TEXTS_PER_WORKFLOW)
-    texts_per_workflow = kwargs.get('texts_per_workflow', max_texts_per_run)  # Alternative name
-    token_threshold = kwargs.get('token_threshold', DEFAULT_TOKEN_BIG_TEXT)
-    max_parallel_merges = kwargs.get('max_parallel_merges', DEFAULT_MAX_PARALLEL_MERGES)
-    enable_tree_merge = kwargs.get('enable_tree_merge', True)
-    
-    # Log conversion if parameters were provided
-    if kwargs:
-        logger.info("Converting legacy parameters to ClusterConfig")
-    
-    # Select appropriate base preset
-    base_config = _select_base_preset(retrieval_mode, max_passes, batch_size)
-    
-    # Apply all overrides
-    return base_config.with_overrides(
-        batch_size=batch_size,
-        max_passes=max_passes,
-        max_concurrent=max_concurrent,
-        prefilter_k=prefilter_k,
-        max_texts_per_run=texts_per_workflow,
-        token_threshold=token_threshold,
-        max_parallel_merges=max_parallel_merges,
-        enable_tree_merge=enable_tree_merge,
-    )
-
-
-def _convert_old_config(old_config, kwargs: Dict[str, Any]) -> ClusterConfig:
-    """Convert old ClusterConfig to new ClusterConfig."""
-    
-    return ClusterConfig(
-        # Algorithmic parameters from old config
-        retrieval_mode=old_config.retrieval_mode,
-        scoring_strategy=old_config.scoring_strategy,
-        confidence_weights=old_config.confidence_weights,
-        new_category_threshold=old_config.new_category_threshold,
-        new_category_bonus=old_config.new_category_bonus,
-        
-        # Execution parameters from kwargs (with defaults)
-        batch_size=kwargs.get('batch_size', DEFAULT_BATCH_SIZE),
-        max_passes=kwargs.get('max_passes', 2),
-        max_concurrent=kwargs.get('max_concurrent', DEFAULT_MAX_CONCURRENT_LLM_CALLS),
-        prefilter_k=kwargs.get('prefilter_k', DEFAULT_PREFILTER_K),
-        max_texts_per_run=kwargs.get('max_texts_per_run', DEFAULT_TEXTS_PER_WORKFLOW),
-        token_threshold=kwargs.get('token_threshold', DEFAULT_TOKEN_BIG_TEXT),
-        max_parallel_merges=kwargs.get('max_parallel_merges', DEFAULT_MAX_PARALLEL_MERGES),
-        enable_tree_merge=kwargs.get('enable_tree_merge', True),
-    )
-
-
-def _select_base_preset(
-    retrieval_mode: str, 
-    max_passes: int, 
-    batch_size: int
-) -> ClusterConfig:
-    """
-    Select appropriate preset based on old parameters.
-    
-    Logic:
-    - BERT mode → semantic preset
-    - TF-IDF + 1 pass + large batch → fast preset
-    - 3+ passes → quality preset
-    - Otherwise → balanced preset
-    """
-    
-    if retrieval_mode == 'bert':
-        return ClusterConfig.semantic()
-    elif retrieval_mode == 'tfidf' and max_passes == 1 and batch_size >= 50:
-        return ClusterConfig.fast()
-    elif max_passes >= 3:
-        return ClusterConfig.quality()
-    else:
-        return ClusterConfig.balanced()
-
-
-# ============================================================================
-# INTERNAL IMPLEMENTATION
-# ============================================================================
-
-async def _clusterize_standard(
-    texts: List[str], 
-    config: ClusterConfig
-) -> Dict[str, Any]:
-    """
-    Standard execution for small datasets.
-    
-    Args:
-        texts: List of texts to categorize
-        config: ClusterConfig with all parameters
-    
-    Returns:
-        Clustering result dict
-    """
-    
-    # Setup rate limiter
-    _rate_limiter = LLMRateLimiter(config.max_concurrent)
-    
-    # Apply adaptive batch sizing if using default
-    batch_size = config.batch_size
-    if batch_size == DEFAULT_BATCH_SIZE:
-        adaptive_batch_size = calculate_adaptive_batch_size(len(texts))
-        if adaptive_batch_size != batch_size:
-            logger.info(f"Auto-adjusting batch size: {batch_size} → {adaptive_batch_size}")
-            batch_size = adaptive_batch_size
-    
-    config.batch_size = batch_size
-
-    # Execute graph with config parameters
-    result = await execute_clusterizer_graph(texts=texts, config=config)
-    
-    # Mark as standard execution
-    result['metadata']['used_tree_merge'] = False
-    
-    return result
-
-
-async def _clusterize_with_tree_merge(
-    texts: List[str],
-    config: ClusterConfig
-) -> Dict[str, Any]:
-    """
-    Tree merge execution for large datasets.
-    
-    Workflow:
-    1. Calculate optimal workflow distribution
-    2. Perform dry assignment (handle big texts)
-    3. Execute workflows in parallel
-    4. Hierarchically merge results
-    5. Consolidate big text chunks
-    
-    Args:
-        texts: List of texts to categorize
-        config: ClusterConfig with all parameters
-    
-    Returns:
-        Clustering result with tree merge metadata
-    """
-    from text_assignment_manager import TextAssignmentManager, Text
-    from tree_merge_processor import TreeMergeProcessor
-    
-    logger.info("=" * 70)
-    logger.info("TREE MERGE EXECUTION")
-    logger.info("=" * 70)
-    
-    # Step 1: Calculate optimal parameters
-    logger.info("\nStep 1: Calculating workflow distribution...")
-    
-    batches_per_workflow = max(1, config.max_texts_per_run // config.batch_size)
-    actual_texts_per_workflow = min(
-        config.max_texts_per_run, 
-        batches_per_workflow * config.batch_size
-    )
-    
-    logger.info(f"  Total texts:           {len(texts):,}")
-    logger.info(f"  Batch size:            {config.batch_size}")
-    logger.info(f"  Batches per workflow:  {batches_per_workflow}")
-    logger.info(f"  Texts per workflow:    {actual_texts_per_workflow}")
-    logger.info(f"  Token threshold:       {config.token_threshold}")
-    
-    # Step 2: Create Text objects and perform dry assignment
-    logger.info("\nStep 2: Performing dry assignment...")
-    
-    text_objects = [
-        Text(id=f"text_{i}", content=text)
-        for i, text in enumerate(texts)
-    ]
-    
-    assignment_manager = TextAssignmentManager(
-        batch_size=config.batch_size,
-        max_batches_per_workflow=batches_per_workflow,
-        token_threshold=config.token_threshold
-    )
-    
-    dry_assignment = assignment_manager.dry_assign(text_objects)
-    
-    logger.info(f"\n{dry_assignment.get_summary()}")
-    
-    # Step 3: Process with TreeMergeProcessor
-    logger.info("\nStep 3: Processing with priority queue execution...")
-    
-    processor = TreeMergeProcessor(max_parallel_merges=config.max_parallel_merges)
-    
-    result = await processor.process_with_priority_queue(
-        dry_assignment_result=dry_assignment,
-        clusterizer_config=config,
-        max_passes=config.max_passes,
-        prefilter_k=config.prefilter_k,
-        batch_size=config.batch_size,
-        max_concurrent=config.max_concurrent
-    )
-    
-    # Step 4: Enhance metadata
-    result['metadata'].update({
-        'used_tree_merge': True,
-        'total_workflows': dry_assignment.total_workflows_needed,
-        'total_batches': dry_assignment.total_batches,
-        'texts_per_workflow': actual_texts_per_workflow,
-        'token_threshold': config.token_threshold,
-        'big_texts_tracked': len(dry_assignment.big_text_registry),
-    })
-    
-    logger.info("\n" + "=" * 70)
-    logger.info("TREE MERGE COMPLETE")
-    logger.info("=" * 70 + "\n")
-    
-    return result
-
-# ------------------
-# Public API
-# ------------------
-async def clusterize_texts_large(
-    texts: List[str],
-    config: Optional[ClusterConfig] = None,
-    **deprecated_kwargs
-) -> Dict[str, Any]:
-    """
-    Explicit large dataset clustering with tree merge.
-    
-    NEW API:
-        config = ClusterConfig.from_texts(texts, priority='speed')
-        result = await clusterize_texts_large(texts, config=config)
-    
-    Args:
-        texts: List of text strings to categorize
-        config: ClusterConfig instance
-        **deprecated_kwargs: Old API parameters (backward compatibility)
-    
-    Returns:
-        Dict with enhanced metadata including:
-        - 'used_tree_merge': True
-        - 'total_workflows': int
-        - 'big_texts_consolidated': int
-    
-    Examples:
-        # New API
-        >>> config = ClusterConfig.balanced().with_overrides(
-        ...     max_texts_per_run=300,
-        ...     token_threshold=150
-        ... )
-        >>> result = await clusterize_texts_large(texts, config=config)
-        
-        # Old API - Still works
-        >>> result = await clusterize_texts_large(
-        ...     texts,
-        ...     texts_per_workflow=500,
-        ...     token_threshold=200,
-        ...     config=CONFIG_BALANCED_HYBRID
-        ... )
-    """
-    
-    if config is None:
-        config = _build_config_from_kwargs(deprecated_kwargs)
-        # Ensure tree merge is enabled for explicit large dataset call
-        if not config.enable_tree_merge:
-            config = config.with_overrides(enable_tree_merge=True)
-    
-    logger.info(f"🌳 Explicit tree merge for {len(texts)} texts")
-    return await _clusterize_with_tree_merge(texts, config)
-
-async def clusterize_texts(
-    texts: List[str],
-    config: Optional[ClusterConfig] = None,
-    **deprecated_kwargs
-) -> Dict[str, Any]:
-    """
-    Clusterize texts with automatic tree merge for large datasets.
-    
-    NEW SIMPLIFIED API:
-        config = ClusterConfig.balanced()
-        result = await clusterize_texts(texts, config=config)
-    
-    OR AUTO-RECOMMEND:
-        config = ClusterConfig.from_texts(texts, priority='quality')
-        result = await clusterize_texts(texts, config=config)
-    
-    Args:
-        texts: List of text strings to categorize
-        config: ClusterConfig instance (if None, uses default or builds from deprecated_kwargs)
-        **deprecated_kwargs: Old API parameters (backward compatibility):
-            - max_passes, batch_size, max_concurrent, prefilter_k
-            - retrieval_mode, bert_model, max_texts_per_run
-            - token_threshold, max_parallel_merges
-    
-    Returns:
-        Dict with 'categories', 'assignments', and 'metadata'
-    
-    Examples:
-        # New API - Use preset
-        >>> config = ClusterConfig.balanced()
-        >>> result = await clusterize_texts(texts, config=config)
-        
-        # New API - Auto-recommend
-        >>> config = ClusterConfig.from_texts(texts, priority='quality')
-        >>> result = await clusterize_texts(texts, config=config)
-        
-        # New API - Custom
-        >>> config = ClusterConfig.quality().with_overrides(batch_size=50)
-        >>> result = await clusterize_texts(texts, config=config)
-        
-        # Old API - Still works!
-        >>> result = await clusterize_texts(
-        ...     texts,
-        ...     max_passes=2,
-        ...     batch_size=20,
-        ...     retrieval_mode='hybrid'
-        ... )
-    """
-    
-    # Handle configuration
-    if config is None:
-        config = ClusterConfig.from_texts(texts)
-    
-    # Log configuration
-    logger.info(f"Using configuration: {config.get_description()}")
-    
-    # Auto-detect execution strategy
-    if config.should_use_tree_merge(len(texts)):
-        logger.info(f"🌳 Large dataset ({len(texts)} texts). Using tree merge strategy.")
-        return await _clusterize_with_tree_merge(texts, config)
-    else:
-        logger.info(f"📄 Standard execution for {len(texts)} texts.")
-        return await _clusterize_standard(texts, config)
 
 # ------------------
 # Persistence Functions
 # ------------------
+
 def save_results(result: Dict[str, Any], filename: str = None) -> str:
     """
     Save clusterization results to JSON file with timestamp.
@@ -3102,7 +2900,7 @@ def save_results(result: Dict[str, Any], filename: str = None) -> str:
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(serializable_result, f, indent=2, ensure_ascii=False)
     
-    logger.info(f"✅ Results saved to: {filename}")
+    print(f"✅ Results saved to: {filename}")
     return filename
 
 def load_results(filename: str) -> Dict[str, Any]:
@@ -3177,7 +2975,7 @@ def save_categories_csv(result: Dict[str, Any], filename: str = None) -> str:
                 ', '.join(cat.keywords) if cat.keywords else ''
             ])
     
-    logger.info(f"✅ Categories saved to CSV: {filename}")
+    print(f"✅ Categories saved to CSV: {filename}")
     return filename
 
 def save_assignments_csv(result: Dict[str, Any], filename: str = None) -> str:
@@ -3214,7 +3012,7 @@ def save_assignments_csv(result: Dict[str, Any], filename: str = None) -> str:
                 assign.reasoning
             ])
     
-    logger.info(f"✅ Assignments saved to CSV: {filename}")
+    print(f"✅ Assignments saved to CSV: {filename}")
     return filename
 
 async def clusterize_and_save(
@@ -3239,10 +3037,10 @@ async def clusterize_and_save(
     """
     from datetime import datetime
     
-    logger.info(f"🚀 Starting clusterization of {len(texts)} texts...")
+    print(f"🚀 Starting clusterization of {len(texts)} texts...")
     result = await clusterize_texts(texts, **clusterize_kwargs)
     
-    logger.info(f"✅ Clusterization complete: {len(result['categories'])} categories, {len(result['assignments'])} assignments")
+    print(f"✅ Clusterization complete: {len(result['categories'])} categories, {len(result['assignments'])} assignments")
     
     # Generate timestamp for consistent naming
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3259,7 +3057,7 @@ async def clusterize_and_save(
         saved_files.append(save_categories_csv(result, cat_filename))
         saved_files.append(save_assignments_csv(result, assign_filename))
     
-    logger.info(f"📁 All files saved: {', '.join(saved_files)}")
+    print(f"📁 All files saved: {', '.join(saved_files)}")
     
     return result
 
@@ -3269,7 +3067,7 @@ async def clusterize_and_save(
 
 async def meta_categorize_categories(
     categories: List[Category],
-    config: Optional[ClusterConfig] = None
+    config: Optional[ClusterizerConfig] = None
 ) -> Dict[str, Any]:
     """
     Experimental: Categorize the categories themselves using our existing agentic workflow.
@@ -3371,26 +3169,26 @@ async def meta_categorize_categories(
 
 def print_taxonomy(taxonomy: Dict[str, Any]) -> None:
     """Print hierarchical taxonomy in a readable format."""
-    logger.info(f"\n{'='*60}")
-    logger.info(f"HIERARCHICAL TAXONOMY")
-    logger.info(f"{'='*60}")
+    print(f"\n{'='*60}")
+    print(f"HIERARCHICAL TAXONOMY")
+    print(f"{'='*60}")
     
     for meta_id, meta_info in taxonomy.items():
         meta_name = meta_info['meta_name']
         categories = meta_info['categories']
         total_texts = sum(cat['text_count'] for cat in categories)
         
-        logger.info(f"\n📁 {meta_name} ({len(categories)} categories, {total_texts} texts)")
+        print(f"\n📁 {meta_name} ({len(categories)} categories, {total_texts} texts)")
         if meta_info.get('meta_description'):
-            logger.info(f"   {meta_info['meta_description']}")
+            print(f"   {meta_info['meta_description']}")
         
         # Sort categories by text count (descending)
         sorted_cats = sorted(categories, key=lambda x: x['text_count'], reverse=True)
         for cat in sorted_cats:
             conf = cat.get('confidence', 0)
-            logger.info(f"   └── {cat['name']}: {cat['text_count']} texts (conf: {conf:.2f})")
+            print(f"   └── {cat['name']}: {cat['text_count']} texts (conf: {conf:.2f})")
     
-    logger.info(f"\n{'='*60}\n")
+    print(f"\n{'='*60}\n")
 
 async def clusterize_with_hierarchy(
     texts: List[str],
@@ -3447,11 +3245,12 @@ async def example_small_dataset():
     texts = [f"Sample text {i}" for i in range(10)]
     
     result = await clusterize_texts(
-        texts, config=ClusterConfig.balanced()
+        texts,
+        config=CONFIG_BALANCED_HYBRID
     )
     
-    logger.info(f"Categories: {len(result['categories'])}")
-    logger.info(f"Tree merge used: {result['metadata']['used_tree_merge']}")
+    print(f"Categories: {len(result['categories'])}")
+    print(f"Tree merge used: {result['metadata']['used_tree_merge']}")
 
 
 async def example_large_dataset():
@@ -3461,17 +3260,16 @@ async def example_large_dataset():
     
     result = await clusterize_texts(
         texts,
-        config=ClusterConfig.balanced().with_overrides(
-            batch_size=5,
-            max_texts_per_run=5
-        )
+        max_texts_per_run=5,  # Will create 2 workflows
+        batch_size=5,  # Set small batch size to enable multiple workflows
+        config=CONFIG_BALANCED_HYBRID
     )
     
-    logger.info(f"Categories: {len(result['categories'])}")
-    logger.info(f"Tree merge used: {result['metadata']['used_tree_merge']}")
+    print(f"Categories: {len(result['categories'])}")
+    print(f"Tree merge used: {result['metadata']['used_tree_merge']}")
     if result['metadata']['used_tree_merge']:
-        logger.info(f"Total workflows: {result['metadata']['total_workflows']}")
-        logger.info(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
+        print(f"Total workflows: {result['metadata']['total_workflows']}")
+        print(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
 
 
 async def example_explicit_tree_merge():
@@ -3481,67 +3279,25 @@ async def example_explicit_tree_merge():
     
     result = await clusterize_texts_large(
         texts,
-        config=ClusterConfig.semantic().with_overrides(
-            texts_per_workflow=5,
-            batch_size=5,
-            token_threshold=150,
-            max_parallel_merges=2
-        )
+        texts_per_workflow=5,    # 2 workflows with batch_size=5
+        batch_size=5,            # Set small batch size for multiple workflows
+        token_threshold=150,     # Lower threshold for big texts
+        max_parallel_merges=2,   # Conservative parallelism
+        config=CONFIG_SEMANTIC_BERT
     )
     
-    logger.info(f"Categories: {len(result['categories'])}")
-    logger.info(f"Workflows: {result['metadata']['total_workflows']}")
+    print(f"Categories: {len(result['categories'])}")
+    print(f"Workflows: {result['metadata']['total_workflows']}")
 
-async def test_cnae_ground_truth():
-    """Test against known ground truth."""
-    texts = [
-        "Beneficiamento de café",
-        "Web design",
-        "Desenvolvimento de software customizável",
-        "Desenvolvimento de software não-customizável",
-        "Consultoria em tecnologia",
-        "Suporte técnico e manutenção em TI",
-        "Tratamento de dados e hospedagem",
-        "Portais e provedores de conteúdo",
-        "Agências de notícias",
-        "Outras atividades de informação"
-    ]
-    
-    config = ClusterConfig.balanced()  # Use BERT for best results
-    result = await clusterize_texts(texts, config=config)
-    
-    # Validate
-    assignments = {a.text: a.category_id for a in result['assignments']}
-    categories = {c.id: c.name for c in result['categories']}
-    
-    logger.info("\n" + "="*60)
-    logger.info("GROUND TRUTH VALIDATION")
-    logger.info("="*60)
-    
-    # Group assignments by category
-    by_category = {}
-    for text, cat_id in assignments.items():
-        cat_name = categories.get(cat_id, "Unknown")
-        if cat_name not in by_category:
-            by_category[cat_name] = []
-        by_category[cat_name].append(text)
-    
-    for cat_name, texts_in_cat in by_category.items():
-        logger.info(f"\n{cat_name}:")
-        for text in texts_in_cat:
-            logger.info(f"  - {text}")
-    
 
 if __name__ == "__main__":
     import asyncio
-
-    asyncio.run(test_cnae_ground_truth())
-
-#    logger.info("Example 1: Small dataset")
-#    asyncio.run(example_small_dataset())
-#     
-#     logger.info("\nExample 2: Large dataset (auto tree merge)")
-#     asyncio.run(example_large_dataset())
-#     
-#     logger.info("\nExample 3: Explicit tree merge")
-#     asyncio.run(example_explicit_tree_merge())
+    
+    print("Example 1: Small dataset")
+    asyncio.run(example_small_dataset())
+    
+    print("\nExample 2: Large dataset (auto tree merge)")
+    asyncio.run(example_large_dataset())
+    
+    print("\nExample 3: Explicit tree merge")
+    asyncio.run(example_explicit_tree_merge())

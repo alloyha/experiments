@@ -1,0 +1,70 @@
+2025-10-19 08:15:32,479 - use_case_file - INFO - ================================================================================
+2025-10-19 08:15:32,479 - use_case_file - INFO - Executing: UC-BASIC-001 - Minimal Dataset (2-3 texts)
+2025-10-19 08:15:32,479 - use_case_file - INFO - Category: basic_operations
+2025-10-19 08:15:32,479 - use_case_file - INFO - Description: Test smallest viable dataset for clustering
+2025-10-19 08:15:32,479 - use_case_file - INFO - Input size: 2 texts
+2025-10-19 08:15:32,479 - use_case_file - INFO - Config: Balanced (Hybrid)
+2025-10-19 08:15:32,479 - use_case_file - INFO - ================================================================================
+2025-10-19 08:15:45,657 - use_case_file - INFO - 
+Result: FAILED
+2025-10-19 08:15:45,658 - use_case_file - INFO - Execution time: 13.18s
+2025-10-19 08:15:45,658 - use_case_file - INFO - Actual outcomes: {'num_categories': 2, 'num_assignments': 2, 'used_tree_merge': False, 'total_workflows': 1, 'passes': 2, 'avg_confidence': 0.676, 'retrieval_mode': 'hybrid'}
+2025-10-19 08:15:45,658 - use_case_file - INFO - Validation results: {'min_categories': False, 'max_categories': False, 'all_texts_assigned': False}
+2025-10-19 08:15:45,658 - use_case_file - INFO - Clustering metadata: {'total_passes': 2, 'total_texts': 2, 'total_categories': 2, 'total_steps': 6, 'parallel_processing': True, 'batch_size': 10, 'max_concurrent': 5, 'config': {'retrieval_mode': 'hybrid', 'scoring_strategy': 'balanced', 'confidence_weights': {'llm_score': 0.35, 'tfidf_similarity': 0.1, 'bert_similarity': 0.25, 'keyword_overlap': 0.2, 'category_maturity': 0.05, 'pass_number': 0.05}, 'new_category_threshold': 0.6, 'new_category_bonus': 1.1, 'batch_size': 10, 'max_passes': 2, 'max_concurrent': 5, 'prefilter_k': 3, 'max_texts_per_run': 500, 'token_threshold': 200, 'max_parallel_merges': 4, 'enable_tree_merge': True}, 'retrieval_mode': 'hybrid', 'bert_enabled': True, 'confidence_stats': {'average': 0.676, 'min': 0.671, 'max': 0.681, 'high_confidence_count': 0, 'medium_confidence_count': 2, 'low_confidence_count': 0}, 'used_tree_merge': False}
+2025-10-19 08:15:45,658 - use_case_file - INFO - 
+
+2025-10-19 08:15:45,658 - use_case_file - ERROR - Fatal error executing UC-BASIC-001
+Traceback (most recent call last):
+  File "/home/pingu/github/experiments/data/agent_clusterizer/use_cases.py", line 3186, in run_all_use_cases
+    UseCaseExecutor.print_progress(i, total, use_case.id, result)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'UseCaseExecutor' has no attribute 'print_progress'
+2025-10-19 08:15:45,659 - use_case_file - INFO - ================================================================================
+2025-10-19 08:15:45,659 - use_case_file - INFO - Executing: UC-BASIC-002 - Small Homogeneous Dataset
+2025-10-19 08:15:45,659 - use_case_file - INFO - Category: basic_operations
+2025-10-19 08:15:45,660 - use_case_file - INFO - Description: 10 texts from same domain - should create 1-2 categories
+2025-10-19 08:15:45,660 - use_case_file - INFO - Input size: 10 texts
+2025-10-19 08:15:45,660 - use_case_file - INFO - Config: Balanced (Hybrid)
+2025-10-19 08:15:45,660 - use_case_file - INFO - ================================================================================
+2025-10-19 08:15:57,359 - use_case_file - INFO - 
+Result: FAILED
+2025-10-19 08:15:57,359 - use_case_file - INFO - Execution time: 11.70s
+2025-10-19 08:15:57,359 - use_case_file - INFO - Actual outcomes: {'num_categories': 7, 'num_assignments': 10, 'used_tree_merge': False, 'total_workflows': 1, 'passes': 2, 'avg_confidence': 0.597, 'retrieval_mode': 'hybrid'}
+2025-10-19 08:15:57,359 - use_case_file - INFO - Validation results: {'min_categories': False, 'max_categories': False, 'dominant_category_ratio': False}
+2025-10-19 08:15:57,359 - use_case_file - INFO - Clustering metadata: {'total_passes': 2, 'total_texts': 10, 'total_categories': 7, 'total_steps': 6, 'parallel_processing': True, 'batch_size': 10, 'max_concurrent': 5, 'config': {'retrieval_mode': 'hybrid', 'scoring_strategy': 'balanced', 'confidence_weights': {'llm_score': 0.35, 'tfidf_similarity': 0.1, 'bert_similarity': 0.25, 'keyword_overlap': 0.2, 'category_maturity': 0.05, 'pass_number': 0.05}, 'new_category_threshold': 0.6, 'new_category_bonus': 1.1, 'batch_size': 10, 'max_passes': 2, 'max_concurrent': 5, 'prefilter_k': 3, 'max_texts_per_run': 500, 'token_threshold': 200, 'max_parallel_merges': 4, 'enable_tree_merge': True}, 'retrieval_mode': 'hybrid', 'bert_enabled': True, 'confidence_stats': {'average': 0.597, 'min': 0.452, 'max': 0.75, 'high_confidence_count': 1, 'medium_confidence_count': 7, 'low_confidence_count': 2}, 'used_tree_merge': False}
+2025-10-19 08:15:57,359 - use_case_file - INFO - 
+
+2025-10-19 08:15:57,359 - use_case_file - ERROR - Fatal error executing UC-BASIC-002
+Traceback (most recent call last):
+  File "/home/pingu/github/experiments/data/agent_clusterizer/use_cases.py", line 3186, in run_all_use_cases
+    UseCaseExecutor.print_progress(i, total, use_case.id, result)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'UseCaseExecutor' has no attribute 'print_progress'
+2025-10-19 08:15:57,360 - use_case_file - INFO - ================================================================================
+2025-10-19 08:15:57,360 - use_case_file - INFO - Executing: UC-BASIC-003 - Small Heterogeneous Dataset
+2025-10-19 08:15:57,360 - use_case_file - INFO - Category: basic_operations
+2025-10-19 08:15:57,360 - use_case_file - INFO - Description: 10 texts from distinct domains - should create 3-5 categories
+2025-10-19 08:15:57,360 - use_case_file - INFO - Input size: 10 texts
+2025-10-19 08:15:57,360 - use_case_file - INFO - Config: Balanced (Hybrid)
+2025-10-19 08:15:57,361 - use_case_file - INFO - ================================================================================
+2025-10-19 08:16:08,429 - use_case_file - INFO - 
+Result: FAILED
+2025-10-19 08:16:08,429 - use_case_file - INFO - Execution time: 11.07s
+2025-10-19 08:16:08,429 - use_case_file - INFO - Actual outcomes: {'num_categories': 10, 'num_assignments': 10, 'used_tree_merge': False, 'total_workflows': 1, 'passes': 2, 'avg_confidence': 0.771, 'retrieval_mode': 'hybrid'}
+2025-10-19 08:16:08,429 - use_case_file - INFO - Validation results: {'min_categories': False, 'max_categories': False, 'no_dominant_category': False}
+2025-10-19 08:16:08,429 - use_case_file - INFO - Clustering metadata: {'total_passes': 2, 'total_texts': 10, 'total_categories': 10, 'total_steps': 6, 'parallel_processing': True, 'batch_size': 10, 'max_concurrent': 5, 'config': {'retrieval_mode': 'hybrid', 'scoring_strategy': 'balanced', 'confidence_weights': {'llm_score': 0.35, 'tfidf_similarity': 0.1, 'bert_similarity': 0.25, 'keyword_overlap': 0.2, 'category_maturity': 0.05, 'pass_number': 0.05}, 'new_category_threshold': 0.6, 'new_category_bonus': 1.1, 'batch_size': 10, 'max_passes': 2, 'max_concurrent': 5, 'prefilter_k': 3, 'max_texts_per_run': 500, 'token_threshold': 200, 'max_parallel_merges': 4, 'enable_tree_merge': True}, 'retrieval_mode': 'hybrid', 'bert_enabled': True, 'confidence_stats': {'average': 0.771, 'min': 0.657, 'max': 0.896, 'high_confidence_count': 5, 'medium_confidence_count': 5, 'low_confidence_count': 0}, 'used_tree_merge': False}
+2025-10-19 08:16:08,430 - use_case_file - INFO - 
+
+2025-10-19 08:16:08,430 - use_case_file - ERROR - Fatal error executing UC-BASIC-003
+Traceback (most recent call last):
+  File "/home/pingu/github/experiments/data/agent_clusterizer/use_cases.py", line 3186, in run_all_use_cases
+    UseCaseExecutor.print_progress(i, total, use_case.id, result)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'UseCaseExecutor' has no attribute 'print_progress'
+2025-10-19 08:16:08,430 - use_case_file - INFO - ================================================================================
+2025-10-19 08:16:08,430 - use_case_file - INFO - Executing: UC-BASIC-004 - Medium Dataset with Natural Clusters
+2025-10-19 08:16:08,430 - use_case_file - INFO - Category: basic_operations
+2025-10-19 08:16:08,430 - use_case_file - INFO - Description: 50 texts with 5 clear topic clusters
+2025-10-19 08:16:08,431 - use_case_file - INFO - Input size: 50 texts
+2025-10-19 08:16:08,431 - use_case_file - INFO - Config: Balanced (Hybrid)
+2025-10-19 08:16:08,431 - use_case_file - INFO - ================================================================================

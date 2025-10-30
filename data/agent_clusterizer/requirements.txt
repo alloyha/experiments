@@ -1,5 +1,0 @@
-langgraph
-pydantic-ai
-scikit-learn
-pydantic
-sentence-transformers

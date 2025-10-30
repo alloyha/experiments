@@ -667,7 +667,7 @@ async def example_integration():
     ]
     
     # Step 2: Dry assignment
-    logger.info("Step 1: Performing dry assignment...")
+    print("Step 1: Performing dry assignment...")
     assignment_manager = TextAssignmentManager(
         batch_size=5,           # 5 texts per batch
         max_batches_per_workflow=10,  # 10 batches per workflow = 50 texts/workflow
@@ -675,10 +675,10 @@ async def example_integration():
     )
     
     dry_assignment = assignment_manager.dry_assign(texts)
-    logger.info(dry_assignment.get_summary())
+    print(dry_assignment.get_summary())
     
     # Step 3: Process with TreeMergeProcessor
-    logger.info("\nStep 2: Processing with TreeMergeProcessor...")
+    print("\nStep 2: Processing with TreeMergeProcessor...")
     processor = TreeMergeProcessor(max_parallel_merges=4)
     
     result = await processor.process_with_dry_assignment(
@@ -690,19 +690,19 @@ async def example_integration():
     )
     
     # Step 4: Analyze results
-    logger.info("\n" + "="*70)
-    logger.info("RESULTS")
-    logger.info("="*70)
-    logger.info(f"Categories: {len(result['categories'])}")
-    logger.info(f"Assignments: {len(result['assignments'])}")
-    logger.info(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
+    print("\n" + "="*70)
+    print("RESULTS")
+    print("="*70)
+    print(f"Categories: {len(result['categories'])}")
+    print(f"Assignments: {len(result['assignments'])}")
+    print(f"Big texts consolidated: {result['metadata'].get('big_texts_consolidated', 0)}")
     
     # Show sample categories
-    logger.info("\nTop Categories:")
+    print("\nTop Categories:")
     sorted_cats = sorted(result['categories'], key=lambda c: c.text_count, reverse=True)
     for cat in sorted_cats[:5]:
-        logger.info(f"  - {cat.name}: {cat.text_count} texts")
-        logger.info(f"    Keywords: {', '.join(cat.keywords[:5])}")
+        print(f"  - {cat.name}: {cat.text_count} texts")
+        print(f"    Keywords: {', '.join(cat.keywords[:5])}")
 
 
 if __name__ == "__main__":
