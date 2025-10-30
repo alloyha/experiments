@@ -6,8 +6,8 @@
 
 ```bash
 # Create virtual environment
-python3 -m venv trading_bot_env
-source trading_bot_env/bin/activate  # On Windows: trading_bot_env\Scripts\activate
+python3 -m venv boty
+source boty/bin/activate  # On Windows: trading_bot_env\Scripts\activate
 
 # Install required packages
 pip install -r requirements.txt
