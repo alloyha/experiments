@@ -1,8 +1,8 @@
 import asyncio
 import pandas as pd
 from datetime import datetime, timedelta
-from trading_bot_core import BinanceConnector
-from trading_bot_strategy import EMACrossoverStrategy
+from boty.core import BinanceConnector
+from boty.strategies import EMACrossoverStrategy
 import matplotlib.pyplot as plt
 
 async def download_historical_data(symbol='BTC/USDT', days=30):

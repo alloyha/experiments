@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from boty.core import BinanceConnector, StateManager, setup_logging
-from boty.strategy import EMACrossoverStrategy, RiskController, RiskParams
+from boty.strategies import EMACrossoverStrategy, RiskController, RiskParams
 
 async def test_exchange_connection():
     """Test 1: Can we connect to exchange?"""
@@ -26,6 +26,11 @@ async def test_exchange_connection():
     df = await connector.get_candles('BTC/USDT', '15m', 50)
     print(f"✅ Fetched {len(df)} candles")
     print(f"   Latest close: ${df.iloc[-1]['close']:,.2f}")
+    # Close connector to release aiohttp resources
+    try:
+        await connector.close()
+    except Exception:
+        pass
 
 async def test_strategy():
     """Test 2: Does strategy generate signals?"""
@@ -41,12 +46,16 @@ async def test_strategy():
     print(f"✅ Signal: {signal.action.value}")
     print(f"   Reason: {signal.reason}")
     print(f"   Confidence: {signal.confidence:.2f}")
+    try:
+        await connector.close()
+    except Exception:
+        pass
 
 async def test_risk_controller():
     """Test 3: Does risk controller validate properly?"""
     print("\n=== Test 3: Risk Controller ===")
     
-    from trading_bot_core import Signal, SignalAction
+    from boty.data_models import Signal, SignalAction
     
     risk_params = RiskParams(max_position_size=1000, risk_per_trade=0.02)
     risk = RiskController(risk_params)
@@ -62,7 +71,7 @@ async def test_state_manager():
     """Test 4: Can we save/load state?"""
     print("\n=== Test 4: State Manager ===")
     
-    from trading_bot_core import Signal, SignalAction
+    from boty.data_models import Signal, SignalAction
     
     state = StateManager('./test.db')
     
