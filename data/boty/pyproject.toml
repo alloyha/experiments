@@ -1,0 +1,11 @@
+[project]
+name = "boty"
+version = "0.1.0"
+description = "A  crypto exchange bot experiment"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cctx>=1.0.0",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+]
