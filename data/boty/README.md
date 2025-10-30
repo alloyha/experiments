@@ -10,7 +10,7 @@ python3 -m venv trading_bot_env
 source trading_bot_env/bin/activate  # On Windows: trading_bot_env\Scripts\activate
 
 # Install required packages
-pip install ccxt pandas numpy sqlite3
+pip install -r requirements.txt
 ```
 
 ### Step 2: Get Binance Testnet API Keys
@@ -22,21 +22,28 @@ pip install ccxt pandas numpy sqlite3
 
 ### Step 3: Project Structure
 
-Create this folder structure:
+The project structure is already set up as follows:
 
 ```
-trading_bot/
-├── trading_bot_core.py        # Exchange connector & state management
-├── trading_bot_strategy.py    # Strategies & risk controller
-├── trading_bot_main.py         # Main orchestrator
+boty/
+├── __init__.py
 ├── config.py                   # Configuration (API keys)
-├── test_backtest.py            # Backtesting script
+├── connectors.py               # Exchange connector
+├── core.py                     # Core components (state management, logging)
+├── data_models.py              # Data models (Signal, Position, etc.)
+├── main.py                     # Main orchestrator
+├── phase1_validator.py         # Phase 1 validation suite
+├── strategies.py               # Strategies & risk controller
+├── tests/                      # Test scripts
+│   ├── test_backtest.py        # Backtesting script
+│   ├── test_components.py      # Component tests
+│   └── ...
 └── data/                       # For storing historical data
 ```
 
 ### Step 4: Create Configuration File
 
-Create `config.py`:
+The `config.py` file is already included in the repository. Ensure your environment variables are set for API keys:
 
 ```python
 # config.py
@@ -77,232 +84,18 @@ TESTNET_CONFIG = {
 
 ### Test 1: Component Testing
 
-Create `test_components.py`:
+Run the component tests to validate individual modules:
 
-```python
-import asyncio
-import logging
-from trading_bot_core import BinanceConnector, StateManager, setup_logging
-from trading_bot_strategy import EMACrossoverStrategy, RiskController, RiskParams
-
-async def test_exchange_connection():
-    """Test 1: Can we connect to exchange?"""
-    print("\n=== Test 1: Exchange Connection ===")
-    
-    connector = BinanceConnector(
-        api_key='your_key',
-        api_secret='your_secret',
-        testnet=True
-    )
-    
-    # Test ticker
-    ticker = await connector.get_ticker('BTC/USDT')
-    print(f"✅ BTC Price: ${ticker.last:,.2f}")
-    
-    # Test balance
-    balance = await connector.get_balance()
-    print(f"✅ Balance: {balance}")
-    
-    # Test candles
-    df = await connector.get_candles('BTC/USDT', '15m', 50)
-    print(f"✅ Fetched {len(df)} candles")
-    print(f"   Latest close: ${df.iloc[-1]['close']:,.2f}")
-
-async def test_strategy():
-    """Test 2: Does strategy generate signals?"""
-    print("\n=== Test 2: Strategy Testing ===")
-    
-    connector = BinanceConnector('key', 'secret', testnet=True)
-    df = await connector.get_candles('BTC/USDT', '15m', 200)
-    
-    strategy = EMACrossoverStrategy()
-    df = strategy.calculate_indicators(df)
-    signal = strategy.generate_signal(df, None)
-    
-    print(f"✅ Signal: {signal.action.value}")
-    print(f"   Reason: {signal.reason}")
-    print(f"   Confidence: {signal.confidence:.2f}")
-
-async def test_risk_controller():
-    """Test 3: Does risk controller validate properly?"""
-    print("\n=== Test 3: Risk Controller ===")
-    
-    from trading_bot_core import Signal, SignalAction
-    
-    risk_params = RiskParams(max_position_size=1000, risk_per_trade=0.02)
-    risk = RiskController(risk_params)
-    
-    signal = Signal(SignalAction.BUY, 0.8, "Test")
-    validation = risk.validate_trade(signal, 42000, 10000, None)
-    
-    print(f"✅ Validation: {'APPROVED' if validation.approved else 'REJECTED'}")
-    if validation.approved:
-        print(f"   Approved size: {validation.approved_size:.6f}")
-
-async def test_state_manager():
-    """Test 4: Can we save/load state?"""
-    print("\n=== Test 4: State Manager ===")
-    
-    from trading_bot_core import Signal, SignalAction
-    
-    state = StateManager('./test.db')
-    
-    signal = Signal(SignalAction.HOLD, 0.0, "Test log")
-    state.log_decision(signal, 'BTC/USDT', 'TEST', {}, {})
-    
-    print("✅ Decision logged to database")
-    
-    stats = state.get_performance_stats()
-    print(f"   Total trades: {stats['total_trades']}")
-
-async def run_all_tests():
-    """Run all component tests"""
-    setup_logging()
-    
-    print("\n" + "="*60)
-    print("RUNNING COMPONENT TESTS")
-    print("="*60)
-    
-    await test_exchange_connection()
-    await test_strategy()
-    await test_risk_controller()
-    await test_state_manager()
-    
-    print("\n" + "="*60)
-    print("ALL TESTS COMPLETED!")
-    print("="*60)
-
-if __name__ == '__main__':
-    asyncio.run(run_all_tests())
-```
-
-Run tests:
 ```bash
-python test_components.py
+python3 -m tests.test_components
 ```
 
 ### Test 2: Backtesting
 
-Create `test_backtest.py`:
+Run the backtesting script to evaluate strategies:
 
-```python
-import asyncio
-import pandas as pd
-from datetime import datetime, timedelta
-from trading_bot_core import BinanceConnector
-from trading_bot_strategy import EMACrossoverStrategy
-import matplotlib.pyplot as plt
-
-async def download_historical_data(symbol='BTC/USDT', days=30):
-    """Download historical data for backtesting"""
-    print(f"Downloading {days} days of {symbol} data...")
-    
-    connector = BinanceConnector('key', 'secret', testnet=True)
-    
-    # Download in chunks (500 candles at a time)
-    all_candles = []
-    end_time = datetime.now()
-    
-    for _ in range(days * 96 // 500 + 1):  # 96 15-min candles per day
-        df = await connector.get_candles(symbol, '15m', 500)
-        all_candles.append(df)
-        
-        if len(all_candles) > days * 96 // 500:
-            break
-    
-    full_df = pd.concat(all_candles).drop_duplicates()
-    full_df = full_df.sort_values('timestamp').reset_index(drop=True)
-    
-    # Save to CSV
-    full_df.to_csv(f'./data/{symbol.replace("/", "_")}_15m_{days}d.csv', index=False)
-    print(f"✅ Saved {len(full_df)} candles to CSV")
-    
-    return full_df
-
-def backtest_strategy(df, strategy):
-    """Simple backtesting engine"""
-    print("\n=== Running Backtest ===")
-    
-    # Track state
-    position = None
-    trades = []
-    equity = 10000  # Starting capital
-    equity_curve = [equity]
-    
-    # Simulate trading
-    for i in range(100, len(df)):
-        df_slice = df.iloc[:i+1].copy()
-        df_slice = strategy.calculate_indicators(df_slice)
-        
-        current_price = df_slice.iloc[-1]['close']
-        signal = strategy.generate_signal(df_slice, position)
-        
-        # Buy signal
-        if signal.action.value == 'BUY' and position is None:
-            size = (equity * 0.95) / current_price
-            position = {
-                'entry_price': current_price,
-                'size': size,
-                'entry_time': df_slice.iloc[-1]['timestamp']
-            }
-            print(f"BUY: {size:.6f} @ ${current_price:.2f}")
-        
-        # Sell signal
-        elif signal.action.value == 'SELL' and position:
-            exit_price = current_price
-            pnl = (exit_price - position['entry_price']) * position['size']
-            equity += pnl
-            
-            trades.append({
-                'entry': position['entry_price'],
-                'exit': exit_price,
-                'pnl': pnl,
-                'pnl_pct': (pnl / (position['entry_price'] * position['size'])) * 100
-            })
-            
-            print(f"SELL: {position['size']:.6f} @ ${exit_price:.2f}, P&L: ${pnl:.2f}")
-            position = None
-        
-        equity_curve.append(equity)
-    
-    # Calculate stats
-    if trades:
-        winning_trades = [t for t in trades if t['pnl'] > 0]
-        
-        print("\n=== Backtest Results ===")
-        print(f"Total Trades: {len(trades)}")
-        print(f"Win Rate: {len(winning_trades) / len(trades):.1%}")
-        print(f"Total P&L: ${sum(t['pnl'] for t in trades):.2f}")
-        print(f"Final Equity: ${equity:.2f}")
-        print(f"Return: {((equity - 10000) / 10000 * 100):.2f}%")
-        
-        # Plot equity curve
-        plt.figure(figsize=(12, 6))
-        plt.plot(equity_curve)
-        plt.title('Equity Curve')
-        plt.xlabel('Time')
-        plt.ylabel('Equity ($)')
-        plt.grid(True)
-        plt.savefig('./backtest_equity_curve.png')
-        print("✅ Equity curve saved to backtest_equity_curve.png")
-    
-    return trades, equity_curve
-
-async def main():
-    # Download data
-    df = await download_historical_data('BTC/USDT', days=30)
-    
-    # Run backtest
-    strategy = EMACrossoverStrategy(fast_period=12, slow_period=26)
-    trades, equity_curve = backtest_strategy(df, strategy)
-
-if __name__ == '__main__':
-    asyncio.run(main())
-```
-
-Run backtest:
 ```bash
-python test_backtest.py
+python3 -m tests.test_backtest
 ```
 
 ---
@@ -313,17 +106,17 @@ python test_backtest.py
 
 1. **Run bot on testnet**:
 ```bash
-python trading_bot_main.py
+python3 -m boty.main
 ```
 
 2. **Monitor logs**:
 ```bash
-tail -f trading_bot_paper.log
+tail -f trading_bot_testnet.log
 ```
 
 3. **Check database**:
 ```bash
-sqlite3 trading_bot_paper.db
+sqlite3 trading_bot_testnet.db
 
 # View decisions
 SELECT * FROM decisions ORDER BY timestamp DESC LIMIT 10;
