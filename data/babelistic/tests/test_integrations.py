@@ -1,7 +1,7 @@
 import numpy as np
 
 
-from babilistic import (
+from babelistic import (
     ProbabilityEstimator,
     EuclideanSpace,
     GeoSpace,

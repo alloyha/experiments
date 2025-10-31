@@ -18,7 +18,7 @@ class ProbabilityDistance(ABC):
     
     @abstractmethod
     def compute(self, p: np.ndarray, q: np.ndarray, 
-                weights: Optional[np.ndarray] = None) -> float:
+                weights: Optional[np.ndarray] = None) -> float:  # pragma: no cover
         """
         Compute distance/divergence between distributions p and q.
         
@@ -37,7 +37,7 @@ class ProbabilityDistance(ABC):
         pass
     
     @abstractmethod
-    def is_metric(self) -> bool:
+    def is_metric(self) -> bool:  # pragma: no cover
         """Whether this satisfies metric axioms (symmetry, triangle inequality)"""
         pass
 

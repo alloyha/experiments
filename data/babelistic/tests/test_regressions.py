@@ -1,6 +1,6 @@
 import numpy as np
 
-from babilistic.metric_spaces import EuclideanSpace
+from babelistic.metric_spaces import EuclideanSpace
 
 # ============================================================================
 # EDGE CASE TESTS
@@ -12,7 +12,7 @@ class TestEdgeCases:
     @staticmethod
     def test_zero_uncertainty():
         """Test deterministic case (zero uncertainty)"""
-        from babilistic import (
+        from babelistic import (
             ProbabilityEstimator, EuclideanSpace, DiskRegion,
             GaussianDistribution, GaussianKernel, FFTConvolution,
             QuadratureIntegrator
@@ -35,7 +35,7 @@ class TestEdgeCases:
     @staticmethod
     def test_empty_region():
         """Test with very small region"""
-        from babilistic import (
+        from babelistic import (
             ProbabilityEstimator, EuclideanSpace, DiskRegion,
             GaussianDistribution, GaussianKernel, DirectConvolution,
             QuadratureIntegrator
@@ -57,7 +57,7 @@ class TestEdgeCases:
     @staticmethod
     def test_large_bandwidth():
         """Test with very large bandwidth"""
-        from babilistic import (
+        from babelistic import (
             EuclideanSpace, DiskRegion, GaussianKernel, DirectConvolution
         )
         
@@ -81,7 +81,7 @@ class TestEdgeCases:
     @staticmethod
     def test_degenerate_covariance():
         """Test with singular/near-singular covariance"""
-        from babilistic import GaussianDistribution
+        from babelistic import GaussianDistribution
         
         # Nearly singular covariance
         cov = np.array([[1.0, 0.9999], [0.9999, 1.0]])
@@ -98,7 +98,7 @@ class TestEdgeCases:
     @staticmethod
     def test_boundary_points():
         """Test points exactly on region boundary"""
-        from babilistic import DiskRegion, PolygonRegion
+        from babelistic import DiskRegion, PolygonRegion
         
         # Disk boundary
         disk = DiskRegion([0, 0], 1.0)
@@ -118,7 +118,7 @@ class TestEdgeCases:
     def test_compute_probability_zero_total_fallback_exception(self):
         """Test when total_prob=0 and fallback fails"""
         from unittest.mock import Mock, patch
-        from babilistic import (
+        from babelistic import (
             ProbabilityEstimator, Region, GaussianDistribution, GaussianKernel,
             DirectConvolution, QuadratureIntegrator, UncertaintyDistribution,
             ProbabilityResult, EuclideanSpace, DiskRegion
@@ -151,7 +151,7 @@ class TestEdgeCases:
     @staticmethod
     def test_empirical_pdf_shape_bug():
         """Regression: EmpiricalDistribution.pdf() shape mismatch"""
-        from babilistic import EmpiricalDistribution
+        from babelistic import EmpiricalDistribution
         
         samples = np.random.randn(500, 2)
         dist = EmpiricalDistribution(samples, bandwidth=0.5)
@@ -166,7 +166,7 @@ class TestEdgeCases:
     @staticmethod
     def test_flatiter_multiplication_bug():
         """Regression: flatiter multiplication in distance metrics"""
-        from babilistic import TotalVariationDistance
+        from babelistic import TotalVariationDistance
         
         tv = TotalVariationDistance()
         
@@ -183,7 +183,7 @@ class TestEdgeCases:
     @staticmethod
     def test_kernel_decay_assertion():
         """Regression: Gaussian kernel decay test was too strict"""
-        from babilistic import GaussianKernel
+        from babelistic import GaussianKernel
         
         kernel = GaussianKernel()
         distances = np.array([0.0, 0.5, 1.0, 2.0])
@@ -195,7 +195,7 @@ class TestEdgeCases:
 
     def test_geofence_with_zero_uncertainties(self):
         """Test geofence with both uncertainties = 0"""
-        from babilistic import geofence_to_probability
+        from babelistic import geofence_to_probability
 
         def dummy_metric(lat1, lon1, lat2, lon2):
             dlat = np.asarray(lat1) - np.asarray(lat2)
@@ -220,7 +220,7 @@ class TestEdgeCases:
     
     def test_wasserstein_with_identical_distributions(self):
         """Test Wasserstein distance with identical distributions"""
-        from babilistic import (
+        from babelistic import (
             EuclideanSpace,
             WassersteinDistance,
         )
@@ -237,7 +237,7 @@ class TestEdgeCases:
     
     def test_all_regions_with_point_on_boundary(self):
         """Test all region types with points exactly on boundary"""
-        from babilistic import (
+        from babelistic import (
             DiskRegion,
             PolygonRegion,
             EllipseRegion,

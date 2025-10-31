@@ -4,7 +4,7 @@ import pytest
 
 from unittest.mock import patch
 
-from babilistic import (
+from babelistic import (
     EuclideanSpace, KLDivergence, JSDistance, WassersteinDistance,
     TotalVariationDistance, HellingerDistance,
 )
@@ -17,7 +17,7 @@ class TestDistanceFunctions:
     """Test distance function edge cases"""
 
     def test_probability_distance_abstract(self):
-        from babilistic.distance_functions import ProbabilityDistance
+        from babelistic.distance_functions import ProbabilityDistance
         
         class DummyDistance(ProbabilityDistance):
             pass
@@ -27,7 +27,7 @@ class TestDistanceFunctions:
 
     def test_probability_distance_cannot_instantiate(self):
         """Verify ProbabilityDistance is abstract"""
-        from babilistic.distance_functions import ProbabilityDistance
+        from babelistic.distance_functions import ProbabilityDistance
         
         # Cannot instantiate abstract class
         with pytest.raises(TypeError):
@@ -177,7 +177,7 @@ class TestProbabilityDistances:
     @staticmethod
     def test_kl_divergence_properties():
         """Test KL divergence properties"""
-        from babilistic import KLDivergence, EuclideanSpace, GaussianDistribution
+        from babelistic import KLDivergence, EuclideanSpace, GaussianDistribution
         
         kl = KLDivergence()
         
@@ -206,7 +206,7 @@ class TestProbabilityDistances:
     @staticmethod
     def test_wasserstein_scales_with_distance():
         """Test Wasserstein distance scales with separation"""
-        from babilistic import WassersteinDistance, EuclideanSpace, GaussianDistribution
+        from babelistic import WassersteinDistance, EuclideanSpace, GaussianDistribution
         
         space = EuclideanSpace(2)
         wasserstein = WassersteinDistance(space, approximate=True)
@@ -232,7 +232,7 @@ class TestProbabilityDistances:
     @staticmethod
     def test_kl_and_js_and_tv_hellinger_basic():
         """Test KL, JS, TV, and Hellinger distances on simple distributions"""
-        from babilistic import (
+        from babelistic import (
             KLDivergence, JSDistance,
             TotalVariationDistance, HellingerDistance
         )
@@ -264,7 +264,7 @@ class TestProbabilityDistances:
 
     def test_wasserstein_approximate_on_simple_grid(self):
         """Test approximate Wasserstein distance on simple grid"""
-        from babilistic import WassersteinDistance, EuclideanSpace
+        from babelistic import WassersteinDistance, EuclideanSpace
 
         space = EuclideanSpace(2)
         grid = space.create_grid((-1, 1, -1, 1), 8)

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from babilistic import (
+from babelistic import (
     GaussianDistribution,
     StudentTDistribution,
     LogNormalDistribution,
@@ -20,7 +20,7 @@ class TestDistributions:
     @staticmethod
     def test_gaussian_properties():
         """Test Gaussian distribution properties"""
-        from babilistic import GaussianDistribution
+        from babelistic import GaussianDistribution
         
         mean = np.array([0.0, 0.0])
         cov = np.eye(2)
@@ -41,7 +41,7 @@ class TestDistributions:
     @staticmethod
     def test_student_t_heavy_tails():
         """Test Student-t has heavier tails than Gaussian"""
-        from babilistic import StudentTDistribution, GaussianDistribution
+        from babelistic import StudentTDistribution, GaussianDistribution
         
         mean = np.array([0.0, 0.0])
         cov = np.eye(2)
@@ -63,7 +63,7 @@ class TestDistributions:
     @staticmethod
     def test_lognormal_positivity():
         """Test log-normal is always positive"""
-        from babilistic import LogNormalDistribution
+        from babelistic import LogNormalDistribution
         
         dist = LogNormalDistribution(mean=np.array([0.0, 0.0]), cov=np.eye(2) * 0.5)
         
@@ -79,7 +79,7 @@ class TestDistributions:
     @staticmethod
     def test_empirical_distribution():
         """Test empirical distribution from samples"""
-        from babilistic import EmpiricalDistribution
+        from babelistic import EmpiricalDistribution
         
         # Generate synthetic data
         true_mean = np.array([2.0, -1.0])
@@ -102,7 +102,7 @@ class TestDistributions:
     @staticmethod
     def test_mixture_distribution():
         """Test mixture distribution composition"""
-        from babilistic import MixtureDistribution, GaussianDistribution
+        from babelistic import MixtureDistribution, GaussianDistribution
         
         comp1 = GaussianDistribution(np.array([-2, 0]), np.eye(2) * 0.5)
         comp2 = GaussianDistribution(np.array([2, 0]), np.eye(2) * 0.5)
@@ -121,7 +121,7 @@ class TestDistributions:
 
     @staticmethod
     def test_gaussian_pdf_single_and_grid_and_mean():
-        from babilistic import GaussianDistribution
+        from babelistic import GaussianDistribution
 
         mean = np.array([0.5, -0.2])
         cov = np.array([[0.2, 0.05], [0.05, 0.1]])
@@ -143,7 +143,7 @@ class TestDistributions:
 
     @staticmethod
     def test_gaussian_near_singular_covariance():
-        from babilistic import GaussianDistribution
+        from babelistic import GaussianDistribution
 
         mean = np.array([0.0, 0.0])
         cov = np.eye(2) * 1e-10
@@ -156,7 +156,7 @@ class TestDistributions:
 
     @staticmethod
     def test_studentt_pdf_and_mean():
-        from babilistic import StudentTDistribution
+        from babelistic import StudentTDistribution
 
         mean = np.array([1.0, 2.0])
         cov = np.eye(2) * 0.5
@@ -176,7 +176,7 @@ class TestDistributions:
 
     @staticmethod
     def test_empirical_kde_pdf_and_sample_shape():
-        from babilistic import EmpiricalDistribution
+        from babelistic import EmpiricalDistribution
 
         samples = np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]])
         ed = EmpiricalDistribution(samples, bandwidth=0.5)
@@ -287,7 +287,7 @@ class TestDistributions:
 
 def test_gaussian_array_shapes():
         """Cover different array shape handling (line 55)"""
-        from babilistic.distributions import GaussianDistribution
+        from babelistic.distributions import GaussianDistribution
         
         dist = GaussianDistribution(mean=np.array([0, 0]), cov=np.eye(2))
         
@@ -308,7 +308,7 @@ def test_gaussian_array_shapes():
     
 def test_student_t_edge_cases():
     """Cover Student-t edge cases (lines 99-105)"""
-    from babilistic.distributions import StudentTDistribution
+    from babelistic.distributions import StudentTDistribution
     
     # Very low df (heavy tails)
     dist_heavy = StudentTDistribution([0, 0], np.eye(2), df=1.0)
@@ -326,7 +326,7 @@ def test_student_t_edge_cases():
 
 def test_lognormal_edge_values():
     """Cover log-normal boundary cases (lines 191-199)"""
-    from babilistic.distributions import LogNormalDistribution
+    from babelistic.distributions import LogNormalDistribution
     
     dist = LogNormalDistribution(mean=np.array([0, 0]), cov=np.eye(2) * 0.1)
     
@@ -344,7 +344,7 @@ def test_lognormal_edge_values():
 
 def test_empirical_kde_bandwidth():
     """Cover empirical distribution bandwidth selection (lines 264-278)"""
-    from babilistic.distributions import EmpiricalDistribution
+    from babelistic.distributions import EmpiricalDistribution
     
     samples = np.random.randn(100, 2)
     
@@ -363,7 +363,7 @@ def test_empirical_kde_bandwidth():
 
 def test_mixture_edge_cases():
     """Cover mixture distribution edge cases"""
-    from babilistic.distributions import MixtureDistribution, GaussianDistribution
+    from babelistic.distributions import MixtureDistribution, GaussianDistribution
     
     comp1 = GaussianDistribution([0, 0], np.eye(2))
     comp2 = GaussianDistribution([2, 2], np.eye(2))

@@ -2,7 +2,7 @@ import numpy as np
 
 import pytest
 
-from babilistic import (
+from babelistic import (
     MonteCarloIntegrator,
     QuadratureIntegrator,
 )

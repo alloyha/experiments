@@ -1,5 +1,5 @@
 import numpy as np
-from babilistic import geofence_to_probability, GeofenceAdapter, GeofenceRegion, GaussianDistribution, QuadratureIntegrator
+from babelistic import geofence_to_probability, GeofenceAdapter, GeofenceRegion, GaussianDistribution, QuadratureIntegrator
 
 def mock_distance(lat1, lon1, lat2, lon2):
     return np.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2) * 111000
@@ -16,7 +16,7 @@ print('probability:', result.probability)
 print('metadata:', result.metadata)
 
 # More diagnostics: recreate internal steps
-from babilistic import GeofenceAdapter, GeofenceRegion, GeofenceMetricSpace, GaussianKernel, QuadratureIntegrator
+from babelistic import GeofenceAdapter, GeofenceRegion, GeofenceMetricSpace, GaussianKernel, QuadratureIntegrator
 adapter = GeofenceAdapter(mock_distance)
 space = adapter.to_metric_space()
 region = GeofenceRegion(reference_lat=37.7750, reference_lon=-122.4195,

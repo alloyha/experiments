@@ -374,3 +374,48 @@ class EmpiricalDistribution(UncertaintyDistribution):
     
     def mean(self) -> np.ndarray:
         return self._mean
+
+
+class RegionDistribution(UncertaintyDistribution):
+    """
+    Treat a region as a uniform distribution over its interior.
+    
+    This allows region-to-region queries like:
+    "What's the probability that a random point in region A
+     is within distance D of region B?"
+    """
+    
+    def __init__(self, region, bounds, n_samples=10000):
+        self.region = region
+        # Sample points uniformly from the region
+        self.samples = self._sample_region_uniform(region, bounds, n_samples)
+    
+    def _sample_region_uniform(self, region, bounds, n):
+        # Rejection sampling
+        samples = []
+        while len(samples) < n:
+            # Sample uniformly from bounding box
+            x = np.random.uniform(bounds[0], bounds[1])
+            y = np.random.uniform(bounds[2], bounds[3])
+            point = np.array([x, y])
+            
+            # Accept if inside region
+            if region.indicator(point) > 0.5:
+                samples.append(point)
+        
+        return np.array(samples)
+    
+    def pdf(self, x):
+        # Uniform over region interior
+        indicator_vals = self.region.indicator(x)
+        # Normalize by region area (approximate)
+        area = len(self.samples) / 10000  # rough estimate
+        return indicator_vals / area
+    
+    def sample(self, n):
+        # Resample from cached samples
+        idx = np.random.choice(len(self.samples), n, replace=True)
+        return self.samples[idx]
+    
+    def mean(self):
+        return np.mean(self.samples, axis=0)

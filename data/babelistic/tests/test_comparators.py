@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock, MagicMock
 
 # Import all modules
-from babilistic import (
+from babelistic import (
     # Metric Spaces
     EuclideanSpace, ManhattanSpace, SphericalSpace, GeoSpace,
     # Regions

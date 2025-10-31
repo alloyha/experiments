@@ -2,33 +2,33 @@ import numpy as np
 
 import pytest
 
-from babilistic import ProbabilityEstimator
+from babelistic import ProbabilityEstimator
 
-from babilistic import (
+from babelistic import (
     GaussianKernel, EpanechnikovKernel, TriangularKernel,
     QuarticKernel, UniformKernel, MaternKernel
 )
 
-from babilistic import (
+from babelistic import (
     MonteCarloIntegrator,
     QuadratureIntegrator,
 )
 
-from babilistic import (
+from babelistic import (
     EuclideanSpace,
     ManhattanSpace,
     GeoSpace,
 )
 
-from babilistic import (
+from babelistic import (
     DiskRegion,
 )
 
-from babilistic import (
+from babelistic import (
     GaussianDistribution,
 )
 
-from babilistic import (
+from babelistic import (
     DirectConvolution,
 )
 
@@ -74,7 +74,7 @@ class TestKernels:
     @staticmethod
     def test_kernel_monotonicity():
         """Test that kernels decay monotonically"""
-        from babilistic import GaussianKernel, MaternKernel
+        from babelistic import GaussianKernel, MaternKernel
         
         distances = np.linspace(0, 3, 100)
         
@@ -88,7 +88,7 @@ class TestKernels:
     @staticmethod
     def test_matern_special_cases():
         """Test Matérn kernel special cases"""
-        from babilistic import MaternKernel
+        from babelistic import MaternKernel
         
         distances = np.array([0.0, 0.5, 1.0, 2.0])
         
@@ -103,7 +103,7 @@ class TestKernels:
     @staticmethod
     def test_kernel_properties():
         """Test mathematical properties of kernels"""
-        from babilistic import EpanechnikovKernel, QuarticKernel
+        from babelistic import EpanechnikovKernel, QuarticKernel
         
         # Epanechnikov: (1 - t²) for |t| ≤ 1
         epan = EpanechnikovKernel()
@@ -167,7 +167,7 @@ class TestKernels:
 
 
 def test_gaussian_kernel_evaluate_and_support():
-    from babilistic import GaussianKernel
+    from babelistic import GaussianKernel
 
     k = GaussianKernel()
     d = np.array([0.0, 1.0, 3.0])
@@ -180,7 +180,7 @@ def test_gaussian_kernel_evaluate_and_support():
 
 
 def test_epanechnikov_kernel_support_and_boundary():
-    from babilistic import EpanechnikovKernel
+    from babelistic import EpanechnikovKernel
 
     k = EpanechnikovKernel()
     d = np.array([0.0, 1.0, 1.5])

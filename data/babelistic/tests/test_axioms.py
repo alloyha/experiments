@@ -10,7 +10,7 @@ class TestMathematicalProperties:
     @staticmethod
     def test_metric_axioms():
         """Test metric space axioms"""
-        from babilistic import EuclideanSpace, ManhattanSpace
+        from babelistic import EuclideanSpace, ManhattanSpace
         
         for space in [EuclideanSpace(2), ManhattanSpace(2)]:
             p1 = np.array([0, 0])
@@ -35,7 +35,7 @@ class TestMathematicalProperties:
     @staticmethod
     def test_probability_bounds():
         """Test probabilities are in [0, 1]"""
-        from babilistic import (
+        from babelistic import (
             ProbabilityEstimator, EuclideanSpace, DiskRegion,
             GaussianDistribution, GaussianKernel, FFTConvolution,
             QuadratureIntegrator
@@ -65,7 +65,7 @@ class TestMathematicalProperties:
     @staticmethod
     def test_bandwidth_convergence():
         """Test w_field → indicator as bandwidth → 0"""
-        from babilistic import (
+        from babelistic import (
             EuclideanSpace, DiskRegion, GaussianKernel, FFTConvolution
         )
         
@@ -96,7 +96,7 @@ class TestMathematicalProperties:
     @staticmethod
     def test_distribution_normalization():
         """Test that distributions integrate to 1"""
-        from babilistic import (
+        from babelistic import (
             GaussianDistribution, StudentTDistribution, EuclideanSpace,
             QuadratureIntegrator
         )

@@ -13,17 +13,17 @@ class MetricSpace(ABC):
     """Abstract metric space with distance and integration support"""
     
     @abstractmethod
-    def distance(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
+    def distance(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:   # pragma: no cover
         """Compute distance d(x1, x2). Supports broadcasting."""
         pass
     
     @abstractmethod
-    def area_element(self, x: np.ndarray) -> np.ndarray:
+    def area_element(self, x: np.ndarray) -> np.ndarray:   # pragma: no cover
         """Compute local area/volume element for integration"""
         pass
     
     @abstractmethod
-    def create_grid(self, bounds: Tuple, resolution: int) -> Dict[str, np.ndarray]:
+    def create_grid(self, bounds: Tuple, resolution: int) -> Dict[str, np.ndarray]:   # pragma: no cover
         """Create computational grid with points and weights"""
         pass
 
@@ -32,17 +32,17 @@ class Region(ABC):
     """Abstract region representation"""
     
     @abstractmethod
-    def indicator(self, x: np.ndarray) -> np.ndarray:
+    def indicator(self, x: np.ndarray) -> np.ndarray:   # pragma: no cover
         """Membership function: 1 inside, 0 outside, [0,1] on boundary"""
         pass
     
     @abstractmethod
-    def sample_boundary(self, n: int) -> np.ndarray:
+    def sample_boundary(self, n: int) -> np.ndarray:   # pragma: no cover
         """Sample n points from boundary for uncertainty analysis"""
         pass
     
     @abstractmethod
-    def bounds(self) -> Tuple:
+    def bounds(self) -> Tuple:   # pragma: no cover
         """Return bounding box for grid creation"""
         pass
 
@@ -51,17 +51,17 @@ class UncertaintyDistribution(ABC):
     """Abstract probability distribution for query points"""
     
     @abstractmethod
-    def pdf(self, x: np.ndarray) -> np.ndarray:
+    def pdf(self, x: np.ndarray) -> np.ndarray:  # pragma: no cover
         """Probability density at points x"""
         pass
     
     @abstractmethod
-    def sample(self, n: int) -> np.ndarray:
+    def sample(self, n: int) -> np.ndarray:  # pragma: no cover
         """Generate n samples from distribution"""
         pass
     
     @abstractmethod
-    def mean(self) -> np.ndarray:
+    def mean(self) -> np.ndarray:  # pragma: no cover
         """Distribution mean"""
         pass
 
@@ -70,17 +70,17 @@ class Kernel(ABC):
     """Abstract smoothing kernel"""
     
     @abstractmethod
-    def evaluate(self, distance: np.ndarray, bandwidth: float) -> np.ndarray:
+    def evaluate(self, distance: np.ndarray, bandwidth: float) -> np.ndarray:  # pragma: no cover
         """Evaluate kernel at given distances"""
         pass
     
     @abstractmethod
-    def support_radius(self, bandwidth: float) -> float:
+    def support_radius(self, bandwidth: float) -> float:  # pragma: no cover
         """Return radius beyond which kernel ≈ 0"""
         pass
     
     @abstractmethod
-    def is_compact(self) -> bool:
+    def is_compact(self) -> bool:  # pragma: no cover
         """Whether kernel has compact support"""
         pass
 
@@ -94,7 +94,7 @@ class ConvolutionStrategy(ABC):
                  kernel: Kernel,
                  bandwidth: float,
                  grid: Dict[str, np.ndarray],
-                 metric_space: MetricSpace) -> np.ndarray:
+                 metric_space: MetricSpace) -> np.ndarray:  # pragma: no cover
         """Compute w(x) = (I_R * K)(x)"""
         pass
 
@@ -105,13 +105,13 @@ class Integrator(ABC):
     @abstractmethod
     def integrate(self,
                   integrand: np.ndarray,
-                  weights: np.ndarray) -> float:
+                  weights: np.ndarray) -> float:  # pragma: no cover
         """Compute ∫ f(x) dx using quadrature weights"""
         pass
     
     @abstractmethod
     def estimate_error(self,
                        integrand: np.ndarray,
-                       weights: np.ndarray) -> float:
+                       weights: np.ndarray) -> float:  # pragma: no cover
         """Estimate integration error (if possible)"""
         pass

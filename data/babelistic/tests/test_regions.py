@@ -2,7 +2,7 @@ import numpy as np
 
 import pytest
 
-from babilistic import (
+from babelistic import (
     DiskRegion,
     PolygonRegion,
     EllipseRegion,
@@ -21,7 +21,7 @@ class TestRegions:
     @staticmethod
     def test_disk_region():
         """Test disk/circle region"""
-        from babilistic import DiskRegion
+        from babelistic import DiskRegion
         
         disk = DiskRegion(center=[0, 0], radius=1.0)
         
@@ -38,7 +38,7 @@ class TestRegions:
     @staticmethod
     def test_ellipse_region():
         """Test elliptical region with rotation"""
-        from babilistic import EllipseRegion
+        from babelistic import EllipseRegion
         
         ellipse = EllipseRegion(
             center=[1, 1],
@@ -58,7 +58,7 @@ class TestRegions:
     @staticmethod
     def test_polygon_region():
         """Test polygon region"""
-        from babilistic import PolygonRegion
+        from babelistic import PolygonRegion
         
         square = PolygonRegion(np.array([[0, 0], [1, 0], [1, 1], [0, 1]]))
         
@@ -68,7 +68,7 @@ class TestRegions:
     @staticmethod
     def test_buffered_polygon():
         """Test buffered polygon region"""
-        from babilistic import BufferedPolygonRegion
+        from babelistic import BufferedPolygonRegion
         
         square = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
         
@@ -85,7 +85,7 @@ class TestRegions:
     @staticmethod
     def test_multi_region_union():
         """Test multi-region union"""
-        from babilistic import MultiRegion, DiskRegion
+        from babelistic import MultiRegion, DiskRegion
         
         disk1 = DiskRegion([0, 0], 1.0)
         disk2 = DiskRegion([2, 0], 1.0)
@@ -100,7 +100,7 @@ class TestRegions:
     @staticmethod
     def test_multi_region_intersection():
         """Test multi-region intersection"""
-        from babilistic import MultiRegion, DiskRegion
+        from babelistic import MultiRegion, DiskRegion
         
         disk1 = DiskRegion([0, 0], 1.5)
         disk2 = DiskRegion([1, 0], 1.5)
@@ -114,7 +114,7 @@ class TestRegions:
 
     @staticmethod
     def test_disk_region_indicator_and_bounds():
-        from babilistic import DiskRegion
+        from babelistic import DiskRegion
 
         region = DiskRegion(center=[0.0, 0.0], radius=1.0)
         inside = np.array([0.0, 0.0])
@@ -128,7 +128,7 @@ class TestRegions:
 
     @staticmethod
     def test_polygon_and_ellipse_region_basic():
-        from babilistic import PolygonRegion, EllipseRegion
+        from babelistic import PolygonRegion, EllipseRegion
 
         square = PolygonRegion(vertices=np.array([[0, 0], [1, 0], [1, 1], [0, 1]]))
         assert square.indicator(np.array([0.5, 0.5])) == 1.0
@@ -140,7 +140,7 @@ class TestRegions:
 
     @staticmethod
     def test_buffered_polygon_and_point_to_segment():
-        from babilistic import BufferedPolygonRegion
+        from babelistic import BufferedPolygonRegion
 
         verts = np.array([[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]])
         buf = BufferedPolygonRegion(vertices=verts, buffer=0.5)
@@ -152,7 +152,7 @@ class TestRegions:
 
     @staticmethod
     def test_implicit_region_indicator_and_sample_boundary_cache():
-        from babilistic import ImplicitRegion
+        from babelistic import ImplicitRegion
 
         # sdf for unit circle centered at origin
         def sdf(x):
@@ -359,8 +359,8 @@ class TestRegions:
 
 def test_disk_region_edge_cases():
     """Cover disk region edge cases (line 37)"""
-    from babilistic.regions import DiskRegion
-    from babilistic.metric_spaces import EuclideanSpace, ManhattanSpace
+    from babelistic.regions import DiskRegion
+    from babelistic.metric_spaces import EuclideanSpace, ManhattanSpace
     
     # Test with different metric spaces
     euclidean_disk = DiskRegion([0, 0], 1.0, metric_space=EuclideanSpace(2))
@@ -372,7 +372,7 @@ def test_disk_region_edge_cases():
 
 def test_ellipse_boundary_sampling():
     """Cover ellipse boundary generation (lines 311)"""
-    from babilistic.regions import EllipseRegion
+    from babelistic.regions import EllipseRegion
     
     ellipse = EllipseRegion([1, 1], [2, 1], rotation_deg=0)
     
@@ -390,7 +390,7 @@ def test_ellipse_boundary_sampling():
 
 def test_buffered_polygon_negative_buffer():
     """Cover negative buffer (erosion) case (lines 361-381)"""
-    from babilistic.regions import BufferedPolygonRegion
+    from babelistic.regions import BufferedPolygonRegion
     
     square = np.array([[0, 0], [2, 0], [2, 2], [0, 2]])
     
@@ -409,7 +409,7 @@ def test_buffered_polygon_negative_buffer():
 
 def test_multi_region_empty():
     """Cover multi-region with empty list (lines 433, 439)"""
-    from babilistic.regions import MultiRegion, DiskRegion
+    from babelistic.regions import MultiRegion, DiskRegion
     
     disk1 = DiskRegion([0, 0], 1)
     disk2 = DiskRegion([3, 3], 1)
@@ -427,7 +427,7 @@ def test_multi_region_empty():
 
 def test_implicit_region_boundary():
     """Cover implicit region boundary sampling (lines 114-115, 132)"""
-    from babilistic.regions import ImplicitRegion
+    from babelistic.regions import ImplicitRegion
     
     # Circle via SDF
     def circle_sdf(x):

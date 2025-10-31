@@ -1,14 +1,14 @@
 """
-Comprehensive examples for the `babilistic` package.
+Comprehensive examples for the `babelistic` package.
 
-These examples were extracted from `babilistic/main.py` and placed here
+These examples were extracted from `babelistic/main.py` and placed here
 so they are separate from the library code. Run this file directly to
 execute the demonstrations.
 """
 
 import numpy as np
 
-from babilistic import (
+from babelistic import (
     EuclideanSpace,
     PolygonRegion,
     DiskRegion,
@@ -442,7 +442,7 @@ def example_new_components():
 if __name__ == '__main__':
     # Optionally run library tests first
     try:
-        from babilistic import run_all_tests
+        from babelistic import run_all_tests
         passed, failed = run_all_tests()
     except Exception:
         passed = failed = 0

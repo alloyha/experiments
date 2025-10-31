@@ -6,8 +6,8 @@ from ..core import (
     ProbabilityResult,
     ProbabilityEstimator
 )
-from ..regions import Region
-from ..distributions import GaussianDistribution
+from ..regions import Region, BufferedPolygonRegion
+from ..distributions import GaussianDistribution, RegionDistribution
 from ..kernels import Kernel, GaussianKernel
 from ..integrators import Integrator, QuadratureIntegrator
 from ..convolution_strategies import ConvolutionStrategy, DirectConvolution
@@ -468,6 +468,96 @@ def geofence_to_probability(
         pass
 
     return result
+
+def geofence_region_probability(
+    subject,  # Can be: (lat, lon, uncertainty) OR Region object
+    reference,  # Can be: (lat, lon, uncertainty) OR Region object
+    distance_threshold: float,
+    distance_metric,
+    space: Optional[MetricSpace] = None,
+    **kwargs
+) -> ProbabilityResult:
+    """
+    Compute geofence probability for point-to-point, point-to-region, or region-to-region.
+    
+    Examples
+    --------
+    # Point-to-point (current behavior)
+    >>> result = geofence_region_probability(
+    ...     subject=(37.7749, -122.4194, 10.0),  # lat, lon, uncertainty
+    ...     reference=(37.7750, -122.4195, 5.0),
+    ...     distance_threshold=50.0,
+    ...     distance_metric=haversine_distance
+    ... )
+    
+    # Point-to-region
+    >>> building = PolygonRegion(vertices)
+    >>> result = geofence_region_probability(
+    ...     subject=(37.7749, -122.4194, 10.0),
+    ...     reference=building,
+    ...     distance_threshold=0.0,  # Inside/outside only
+    ...     distance_metric=haversine_distance
+    ... )
+    
+    # Point-to-buffered-region
+    >>> result = geofence_region_probability(
+    ...     subject=(37.7749, -122.4194, 10.0),
+    ...     reference=building,
+    ...     distance_threshold=50.0,  # Within 50m of building
+    ...     distance_metric=haversine_distance
+    ... )
+    
+    # Region-to-region
+    >>> zone_a = PolygonRegion(vertices_a)
+    >>> zone_b = PolygonRegion(vertices_b)
+    >>> result = geofence_region_probability(
+    ...     subject=zone_a,
+    ...     reference=zone_b,
+    ...     distance_threshold=100.0,
+    ...     distance_metric=haversine_distance
+    ... )
+    """
+    
+    # Parse subject
+    if isinstance(subject, tuple):
+        # Point with uncertainty
+        subject_lat, subject_lon, subject_unc = subject
+        subject_dist = GaussianDistribution(...)
+    elif isinstance(subject, Region):
+        # Region as uniform distribution
+        subject_dist = RegionDistribution(subject, bounds=subject.bounds())
+    else:
+        raise ValueError("subject must be (lat, lon, unc) or Region")
+    
+    # Parse reference
+    if isinstance(reference, tuple):
+        # Point with uncertainty → create disk region
+        ref_lat, ref_lon, ref_unc = reference
+        region = GeofenceRegion(ref_lat, ref_lon, ref_unc, distance_threshold, ...)
+    elif isinstance(reference, Region):
+        # Region → buffer it by distance_threshold
+        if distance_threshold > 0:
+            region = BufferedPolygonRegion(
+                vertices=reference.sample_boundary(100),
+                buffer=distance_threshold
+            )
+        else:
+            region = reference
+    else:
+        raise ValueError("reference must be (lat, lon, unc) or Region")
+    
+    # Use framework
+    space = space or GeoSpace(radius=6371.0)
+    estimator = ProbabilityEstimator(
+        metric_space=space,
+        region=region,
+        query_distribution=subject_dist,
+        kernel=GaussianKernel(),
+        convolution_strategy=DirectConvolution(),
+        integrator=QuadratureIntegrator()
+    )
+    
+    return estimator.compute(**kwargs)
 
 
 # ============================================================================

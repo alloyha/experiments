@@ -2,7 +2,7 @@ import numpy as np
 
 import pytest
 
-from babilistic import (
+from babelistic import (
     EpanechnikovKernel,
     MonteCarloIntegrator,
     GeofenceMetricSpace,
@@ -23,7 +23,7 @@ class TestGeofence:
     @staticmethod
     def test_geofence_adapter():
         """Test GeofenceAdapter converts distance functions"""
-        from babilistic import GeofenceAdapter
+        from babelistic import GeofenceAdapter
         
         def mock_distance(lat1, lon1, lat2, lon2):
             return np.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2) * 111000
@@ -41,7 +41,7 @@ class TestGeofence:
     @staticmethod
     def test_geofence_region():
         """Test GeofenceRegion indicator"""
-        from babilistic import GeofenceRegion
+        from babelistic import GeofenceRegion
         
         def mock_distance(lat1, lon1, lat2, lon2):
             return np.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2) * 111000
@@ -64,7 +64,7 @@ class TestGeofence:
     @staticmethod
     def test_analytic_approximation():
         """Test analytic geofence probability"""
-        from babilistic import estimate_geofence_probability_analytic
+        from babelistic import estimate_geofence_probability_analytic
         
         # Known case: high probability when inside
         prob = estimate_geofence_probability_analytic(
@@ -88,7 +88,7 @@ class TestGeofence:
 
     def test_geofence_adapter_edge_cases(self):
         """Cover GeofenceAdapter different input shapes"""
-        from babilistic import GeofenceAdapter
+        from babelistic import GeofenceAdapter
         
         def mock_distance(lat1, lon1, lat2, lon2):
             return np.abs(lat1 - lat2) + np.abs(lon1 - lon2)
@@ -113,7 +113,7 @@ class TestGeofence:
     
     def test_geofence_region_bounds(self):
         """Cover GeofenceRegion bounds calculation (lines 262)"""
-        from babilistic import GeofenceRegion
+        from babelistic import GeofenceRegion
         
         def mock_distance(lat1, lon1, lat2, lon2):
             return np.abs(lat1 - lat2) + np.abs(lon1 - lon2)
@@ -133,7 +133,7 @@ class TestGeofence:
     
     def test_geofence_to_probability_bandwidth_autoselect(self):
         """Cover automatic bandwidth selection (lines 277-297)"""
-        from babilistic.integrations.geofence import geofence_to_probability
+        from babelistic.integrations.geofence import geofence_to_probability
         
         def mock_distance(lat1, lon1, lat2, lon2):
             return np.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2) * 111000
@@ -154,7 +154,7 @@ class TestGeofence:
 
     def test_geofence_osm_metric_branch_and_normalization(self):
         """Cover OSM metric branch and normalization fallback"""
-        from babilistic import (
+        from babelistic import (
             ProbabilityEstimator, EuclideanSpace, DiskRegion,
             GaussianDistribution, GaussianKernel, DirectConvolution,
             QuadratureIntegrator
@@ -189,7 +189,7 @@ class TestGeofence:
 
     def test_geofence_to_probability_trivial_metric(self):
         # Distance metric that always returns zero -> subject always at reference
-        from babilistic import geofence_to_probability
+        from babelistic import geofence_to_probability
         
         def zero_metric(lat1, lon1, lat2, lon2):
             if np.ndim(lat1) == 0:
@@ -213,7 +213,7 @@ class TestGeofence:
 
     def test_geofence_to_probability_far_metric(self):
         # Distance metric that always returns large distance -> probability ~ 0
-        from babilistic import geofence_to_probability
+        from babelistic import geofence_to_probability
         
         def far_metric(lat1, lon1, lat2, lon2):
             if np.ndim(lat1) == 0:
@@ -237,7 +237,7 @@ class TestGeofence:
 
     def test_geofence_anisotropic_subject_covariance(self):
         """Test geofence probability with anisotropic subject covariance"""
-        from babilistic import geofence_to_probability
+        from babelistic import geofence_to_probability
 
         # Use anisotropic covariance for subject_uncertainty (2x2 matrix)
         def simple_metric(lat1, lon1, lat2, lon2):
@@ -265,7 +265,7 @@ class TestGeofence:
 
     def test_estimate_geofence_probability_analytic_basic(self):
         """Test analytic geofence probability estimation"""
-        from babilistic import estimate_geofence_probability_analytic
+        from babelistic import estimate_geofence_probability_analytic
 
         p = estimate_geofence_probability_analytic(
             subject_uncertainty=10.0,

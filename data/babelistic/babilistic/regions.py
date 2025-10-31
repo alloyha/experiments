@@ -447,11 +447,11 @@ class MultiRegion(Region):
         
         if self.operation == 'union':
             # Union: 1 if ANY region contains point
-            # Probabilistic: max or sum (we use max for boolean logic)
+            # Probabelistic: max or sum (we use max for boolean logic)
             return np.max(indicators, axis=0)
         else:  # intersection
             # Intersection: 1 if ALL regions contain point
-            # Probabilistic: min or product (we use min for boolean logic)
+            # Probabelistic: min or product (we use min for boolean logic)
             return np.min(indicators, axis=0)
     
     def sample_boundary(self, n: int) -> np.ndarray:

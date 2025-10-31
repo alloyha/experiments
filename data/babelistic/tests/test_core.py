@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 
-from babilistic import (
+from babelistic import (
     Region,
     ProbabilityEstimator,
     MetricSpace,

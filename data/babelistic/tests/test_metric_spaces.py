@@ -2,7 +2,7 @@ import numpy as np
 
 import pytest
 
-from babilistic import (
+from babelistic import (
     EuclideanSpace,
     GeoSpace,
     ManhattanSpace,
@@ -19,7 +19,7 @@ class TestMetricSpaces:
     @staticmethod
     def test_euclidean_distance():
         """Test Euclidean distance calculation"""
-        from babilistic import EuclideanSpace
+        from babelistic import EuclideanSpace
         
         space = EuclideanSpace(2)
         
@@ -47,7 +47,7 @@ class TestMetricSpaces:
     @staticmethod
     def test_geo_distance():
         """Test spherical (haversine) distance"""
-        from babilistic import GeoSpace
+        from babelistic import GeoSpace
         
         space = GeoSpace(radius=6371000)
         
@@ -69,7 +69,7 @@ class TestMetricSpaces:
     @staticmethod
     def test_manhattan_distance():
         """Test Manhattan (L1) distance"""
-        from babilistic import ManhattanSpace
+        from babelistic import ManhattanSpace
         
         space = ManhattanSpace(2)
         
@@ -83,7 +83,7 @@ class TestMetricSpaces:
     @staticmethod
     def test_area_elements():
         """Test area element computation"""
-        from babilistic import EuclideanSpace, GeoSpace as SphericalSpace
+        from babelistic import EuclideanSpace, GeoSpace as SphericalSpace
         
         # Euclidean: constant area element
         euclidean = EuclideanSpace(2)
@@ -103,7 +103,7 @@ class TestMetricSpaces:
     @staticmethod
     def test_grid_creation():
         """Test grid generation for all spaces"""
-        from babilistic import EuclideanSpace, GeoSpace as SphericalSpace
+        from babelistic import EuclideanSpace, GeoSpace as SphericalSpace
         
         # Euclidean grid
         euclidean = EuclideanSpace(2)

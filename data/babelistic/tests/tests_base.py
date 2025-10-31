@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock, MagicMock
 
 # Import all modules
-from babilistic import (
+from babelistic import (
     # Metric Spaces
     EuclideanSpace, ManhattanSpace, SphericalSpace, GeoSpace,
     # Regions
@@ -39,7 +39,7 @@ class TestAbstractBases:
     """Test that abstract methods raise NotImplementedError"""
     
     def test_metric_space_abstract(self):
-        from babilistic.base import MetricSpace
+        from babelistic.base import MetricSpace
         
         class DummyMetricSpace(MetricSpace):
             pass
@@ -48,7 +48,7 @@ class TestAbstractBases:
             DummyMetricSpace()
     
     def test_region_abstract(self):
-        from babilistic.base import Region
+        from babelistic.base import Region
         
         class DummyRegion(Region):
             pass
@@ -57,7 +57,7 @@ class TestAbstractBases:
             DummyRegion()
     
     def test_uncertainty_distribution_abstract(self):
-        from babilistic.base import UncertaintyDistribution
+        from babelistic.base import UncertaintyDistribution
         
         class DummyDistribution(UncertaintyDistribution):
             pass
@@ -66,7 +66,7 @@ class TestAbstractBases:
             DummyDistribution()
     
     def test_kernel_abstract(self):
-        from babilistic.base import Kernel
+        from babelistic.base import Kernel
         
         class DummyKernel(Kernel):
             pass
@@ -75,7 +75,7 @@ class TestAbstractBases:
             DummyKernel()
     
     def test_convolution_strategy_abstract(self):
-        from babilistic.base import ConvolutionStrategy
+        from babelistic.base import ConvolutionStrategy
         
         class DummyConvolution(ConvolutionStrategy):
             pass
@@ -84,7 +84,7 @@ class TestAbstractBases:
             DummyConvolution()
     
     def test_integrator_abstract(self):
-        from babilistic.base import Integrator
+        from babelistic.base import Integrator
         
         class DummyIntegrator(Integrator):
             pass
@@ -94,7 +94,7 @@ class TestAbstractBases:
     
     def test_abstract_classes_are_abstract(self):
         """Verify abstract classes cannot be instantiated"""
-        from babilistic.base import (
+        from babelistic.base import (
             MetricSpace, Region, UncertaintyDistribution,
             Kernel, ConvolutionStrategy, Integrator
         )
@@ -110,7 +110,7 @@ class TestAbstractBases:
     
     def test_abstract_distance_function(self):
         """Test ProbabilityDistance abstract class"""
-        from babilistic.distance_functions import ProbabilityDistance
+        from babelistic.distance_functions import ProbabilityDistance
         
         with pytest.raises(TypeError):
             ProbabilityDistance()
