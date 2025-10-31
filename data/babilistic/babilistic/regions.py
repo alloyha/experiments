@@ -130,6 +130,7 @@ class ImplicitRegion(Region):
         
         if len(boundary_pts) < n:
             return boundary_pts
+    
         idx = np.random.choice(len(boundary_pts), n, replace=False)
         return boundary_pts[idx]
     

@@ -1,5 +1,14 @@
 import numpy as np
 
+import pytest
+
+from babilistic import (
+    EuclideanSpace,
+    GeoSpace,
+    ManhattanSpace,
+    SphericalSpace,
+)   
+
 # ============================================================================
 # UNIT TESTS: METRIC SPACES
 # ============================================================================
@@ -113,3 +122,57 @@ class TestMetricSpaces:
         assert 'LON' in grid_sphere
         assert grid_sphere['points'].shape[-1] == 2  # [lat, lon]
 
+    def test_euclidean_3d_raises(self):
+        space = EuclideanSpace(3)
+        with pytest.raises(NotImplementedError, match="Only 2D"):
+            space.create_grid((0, 1, 0, 1, 0, 1), 10)
+    
+    def test_spherical_space(self):
+        space = SphericalSpace(radius=6371.0)
+        
+        # Test distance
+        x1 = np.array([0, 0])
+        x2 = np.array([1, 1])
+        dist = space.distance(x1, x2)
+        assert dist > 0
+        
+        # Test area element
+        points = np.array([[0, 0], [45, 45]])
+        areas = space.area_element(points)
+        assert len(areas) == 2
+        assert np.all(areas > 0)
+        
+        # Test grid creation
+        grid = space.create_grid((0, 10, 0, 10), 20)
+        assert 'points' in grid
+        assert 'weights' in grid
+    
+    def test_manhattan_distance_scalar(self):
+        space = ManhattanSpace(2)
+        x1 = np.array([0, 0])
+        x2 = np.array([1, 1])
+        dist = space.distance(x1, x2)
+        assert dist == 2.0
+    
+    def test_manhattan_area_element(self):
+        space = ManhattanSpace(2)
+        points = np.array([[0, 0], [1, 1]])
+        areas = space.area_element(points)
+        assert np.all(areas == 1.0)
+    
+    def test_manhattan_create_grid(self):
+        space = ManhattanSpace(2)
+        grid = space.create_grid((0, 2, 0, 2), 10)
+        assert 'points' in grid
+    
+    def test_manhattan_distance_array(self):
+        """Test ManhattanSpace.distance with array input"""
+        space = ManhattanSpace(2)
+        
+        # Array of points
+        x1 = np.array([[0, 0], [1, 1]])
+        x2 = np.array([2, 2])
+        
+        distances = space.distance(x1, x2)
+        assert len(distances) == 2
+        assert np.all(distances >= 0)

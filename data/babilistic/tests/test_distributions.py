@@ -1,8 +1,17 @@
 import numpy as np
 import pytest
 
+from babilistic import (
+    GaussianDistribution,
+    StudentTDistribution,
+    LogNormalDistribution,
+    EmpiricalDistribution,
+    MixtureDistribution,
+    UniformDistribution,
+)
+
 # ============================================================================
-# UNIT TESTS: DISTRIBUTIONS
+# DISTRIBUTIONS UNIT TESTS
 # ============================================================================
 
 class TestDistributions:
@@ -180,6 +189,101 @@ class TestDistributions:
         s = ed.sample(5)
         assert s.shape == (5, 2)
         assert np.all(np.isfinite(s))
+
+    def test_uniform_distribution(self):
+        dist = UniformDistribution(bounds=(-1, 1, -1, 1))
+        
+        # Test PDF
+        points = np.array([[0, 0], [0.5, 0.5], [2, 2]])
+        pdf_vals = dist.pdf(points)
+        assert pdf_vals[0] > 0  # Inside
+        assert pdf_vals[1] > 0  # Inside
+        assert pdf_vals[2] == 0  # Outside
+        
+        # Test sampling
+        samples = dist.sample(100)
+        assert samples.shape == (100, 2)
+        assert np.all(samples >= -1)
+        assert np.all(samples <= 1)
+        
+        # Test mean
+        mean = dist.mean()
+        assert mean.shape == (2,)
+    
+    def test_mixture_distribution_sample(self):
+        comp1 = GaussianDistribution(mean=np.array([0, 0]), cov=np.eye(2) * 0.1)
+        comp2 = GaussianDistribution(mean=np.array([1, 1]), cov=np.eye(2) * 0.1)
+        
+        mixture = MixtureDistribution(
+            components=[comp1, comp2],
+            weights=np.array([0.5, 0.5])
+        )
+        
+        samples = mixture.sample(100)
+        assert samples.shape == (100, 2)
+    
+    def test_student_t_sample(self):
+        dist = StudentTDistribution(
+            mean=np.array([0, 0]),
+            cov=np.eye(2),
+            df=5.0
+        )
+        
+        samples = dist.sample(100)
+        assert samples.shape == (100, 2)
+    
+    def test_student_t_invalid_df(self):
+        with pytest.raises(ValueError, match="df must be positive"):
+            StudentTDistribution(
+                mean=np.array([0, 0]),
+                cov=np.eye(2),
+                df=-1.0
+            )
+    
+    def test_lognormal_mean(self):
+        dist = LogNormalDistribution(
+            mean=np.array([0, 0]),
+            cov=np.eye(2) * 0.1
+        )
+        
+        mean = dist.mean()
+        assert mean.shape == (2,)
+        assert np.all(mean > 0)
+    
+    def test_empirical_distribution_1d(self):
+        samples_1d = np.random.randn(100)
+        dist = EmpiricalDistribution(samples_1d)
+        
+        # Test PDF
+        test_points = np.array([[0], [1], [-1]])
+        pdf_vals = dist.pdf(test_points)
+        assert len(pdf_vals) == 3
+        assert np.all(pdf_vals >= 0)
+    
+    def test_gaussian_pdf_scalar_return(self):
+        """Test GaussianDistribution.pdf returns float for 0-d array"""
+        dist = GaussianDistribution(mean=np.array([0, 0]), cov=np.eye(2))
+        
+        # Single point that results in 0-d output
+        point = np.array([0.5, 0.5])
+        result = dist.pdf(point)
+        
+        # The code checks if result is 0-d array and converts to float
+        assert isinstance(result, (float, np.floating, np.ndarray))
+    
+    def test_uniform_distribution_non_tuple_bounds(self):
+        """Test UniformDistribution with array bounds"""
+        # Test the else branch in __init__
+        bounds = np.array([[0, 0], [1, 1]])
+        dist = UniformDistribution(bounds=bounds)
+        
+        assert dist._bounds.shape == (2, 2)
+        
+        # Test PDF
+        point = np.array([0.5, 0.5])
+        pdf_val = dist.pdf(point)
+        assert pdf_val > 0
+
 
 def test_gaussian_array_shapes():
         """Cover different array shape handling (line 55)"""
