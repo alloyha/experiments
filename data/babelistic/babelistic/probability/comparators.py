@@ -1,13 +1,9 @@
 import numpy as np
 from typing import Any, Dict, List
 
-from .distance_functions import (
-    ProbabilityDistance, 
-    KLDivergence, 
-    WassersteinDistance
-)
-from .distributions import UncertaintyDistribution  
-from .core import ProbabilityEstimator
+from ..base import DistanceFunction, UncertaintyDistribution
+from ..geometry.distance_functions import KLDivergence, WassersteinDistance
+from ..estimators import ProbabilityEstimator
 
 # ============================================================================
 # INTEGRATION WITH FRAMEWORK
@@ -19,7 +15,7 @@ class DistributionComparator:
     Useful for sensitivity analysis, convergence testing, etc.
     """
     
-    def __init__(self, distance_metric: ProbabilityDistance):
+    def __init__(self, distance_metric: DistanceFunction):
         self.distance = distance_metric
     
     def compare_w_fields(self, 

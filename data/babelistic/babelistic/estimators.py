@@ -11,22 +11,20 @@ from typing import Tuple, Optional, Union, Callable, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from .metric_spaces import (
-    MetricSpace, 
+from .base import Region, Integrator, MetricSpace
+from .geometry.metric_spaces import (
     EuclideanSpace, 
     ManhattanSpace, 
     SphericalSpace,
 )
-from .distance_functions import (
-    ProbabilityDistance,
+from .geometry.distance_functions import (
     KLDivergence,
     JSDistance,
     TotalVariationDistance,
     HellingerDistance,
     WassersteinDistance,
 )
-from .regions import (
-    Region,
+from .geometry.regions import (
     DiskRegion,
     PolygonRegion,
     EllipseRegion,
@@ -34,7 +32,7 @@ from .regions import (
     BufferedPolygonRegion,
     MultiRegion,
 )
-from .distributions import (
+from .probability.distributions import (
     UncertaintyDistribution,
     GaussianDistribution,
     UniformDistribution,
@@ -43,7 +41,7 @@ from .distributions import (
     MixtureDistribution,
     EmpiricalDistribution,
 )
-from .kernels import (
+from .probability.kernels import (
     Kernel,
     GaussianKernel,
     EpanechnikovKernel,
@@ -52,14 +50,13 @@ from .kernels import (
     TriangularKernel,
     MaternKernel,
 )
-from .convolution_strategies import (
+from .computation.convolution_strategies import (
     ConvolutionStrategy,
     DirectConvolution,
     SparseConvolution,
     FFTConvolution,
 )
-from .integrators import (
-    Integrator,
+from .computation.integrators import (
     QuadratureIntegrator,
     MonteCarloIntegrator
 )

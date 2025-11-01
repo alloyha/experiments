@@ -2,16 +2,17 @@ from typing import Callable, Tuple, Dict, Optional, Union
 
 import numpy as np
 
-from ..core import (
+from ..base import Region, MetricSpace, Kernel, Integrator
+from ..estimators import (
     ProbabilityResult,
     ProbabilityEstimator
 )
-from ..regions import Region, BufferedPolygonRegion
-from ..distributions import GaussianDistribution, RegionDistribution
-from ..kernels import Kernel, GaussianKernel
-from ..integrators import Integrator, QuadratureIntegrator
-from ..convolution_strategies import ConvolutionStrategy, DirectConvolution
-from ..metric_spaces import MetricSpace
+from ..geometry.metric_spaces import GeoSpace
+from ..geometry.regions import BufferedPolygonRegion
+from ..probability.distributions import GaussianDistribution, RegionDistribution
+from ..probability.kernels import GaussianKernel
+from ..computation.integrators import QuadratureIntegrator
+from ..computation.convolution_strategies import ConvolutionStrategy, DirectConvolution
 
 
 # ============================================================================

@@ -7,7 +7,7 @@ from typing import Tuple, Callable, Optional, List
 import matplotlib
 import numpy as np
 
-from .base import Region, MetricSpace
+from ..base import Region, MetricSpace
 from .metric_spaces import EuclideanSpace
 
 
@@ -41,6 +41,25 @@ class DiskRegion(Region):
         margin = self.radius * 1.5
         return (self.center[0] - margin, self.center[0] + margin,
                 self.center[1] - margin, self.center[1] + margin)
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly from disk using rejection sampling"""
+        samples = []
+        while len(samples) < n_samples:
+            # Sample from bounding square
+            x = np.random.uniform(-self.radius, self.radius, size=2)
+            # Accept if inside disk
+            if np.linalg.norm(x) <= self.radius:
+                samples.append(self.center + x)
+        return np.array(samples)
+    
+    def area(self) -> float:
+        """Area = πr²"""
+        return np.pi * self.radius ** 2
+    
+    def centroid(self) -> np.ndarray:
+        """Centroid = center"""
+        return self.center.copy()
 
 
 class PolygonRegion(Region):
@@ -86,6 +105,36 @@ class PolygonRegion(Region):
         xmin, ymin = self.vertices.min(axis=0)
         xmax, ymax = self.vertices.max(axis=0)
         return (xmin - margin, xmax + margin, ymin - margin, ymax + margin)
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly from polygon using triangulation"""
+        # Get bounding box
+        min_x, min_y = self.vertices.min(axis=0)
+        max_x, max_y = self.vertices.max(axis=0)
+        
+        samples = []
+        while len(samples) < n_samples:
+            # Rejection sampling
+            x = np.random.uniform(min_x, max_x)
+            y = np.random.uniform(min_y, max_y)
+            point = np.array([x, y])
+            
+            if self.indicator(point) > 0.5:
+                samples.append(point)
+        
+        return np.array(samples)
+    
+    def area(self) -> float:
+        """Compute polygon area using shoelace formula"""
+        x = self.vertices[:, 0]
+        y = self.vertices[:, 1]
+        return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+    
+    def centroid(self) -> np.ndarray:
+        """Compute polygon centroid"""
+        # For simplicity, use mean of vertices (works for convex polygons)
+        # For proper centroid of arbitrary polygons, use weighted triangulation
+        return np.mean(self.vertices, axis=0)
 
 
 class ImplicitRegion(Region):
@@ -136,6 +185,59 @@ class ImplicitRegion(Region):
     
     def bounds(self) -> Tuple:
         return self._bounds
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly using rejection sampling"""
+        samples = []
+        xmin, xmax, ymin, ymax = self._bounds
+        
+        while len(samples) < n_samples:
+            x = np.random.uniform(xmin, xmax)
+            y = np.random.uniform(ymin, ymax)
+            point = np.array([x, y])
+            
+            if self.indicator(point) > 0.5:
+                samples.append(point)
+        
+        return np.array(samples)
+    
+    def area(self) -> float:
+        """Approximate area using grid sampling"""
+        xmin, xmax, ymin, ymax = self._bounds
+        
+        # Use grid to estimate area
+        resolution = 200
+        x = np.linspace(xmin, xmax, resolution)
+        y = np.linspace(ymin, ymax, resolution)
+        xx, yy = np.meshgrid(x, y)
+        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        
+        indicators = self.indicator(points)
+        cell_area = ((xmax - xmin) * (ymax - ymin)) / (resolution ** 2)
+        
+        return np.sum(indicators) * cell_area
+    
+    def centroid(self) -> np.ndarray:
+        """Approximate centroid using grid sampling"""
+        xmin, xmax, ymin, ymax = self._bounds
+        
+        resolution = 200
+        x = np.linspace(xmin, xmax, resolution)
+        y = np.linspace(ymin, ymax, resolution)
+        xx, yy = np.meshgrid(x, y)
+        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        
+        indicators = self.indicator(points)
+        
+        # Weighted average
+        total_weight = np.sum(indicators)
+        if total_weight < 1e-10:
+            return np.array([(xmin + xmax) / 2, (ymin + ymax) / 2])
+        
+        cx = np.sum(points[:, 0] * indicators) / total_weight
+        cy = np.sum(points[:, 1] * indicators) / total_weight
+        
+        return np.array([cx, cy])
 
 
 
@@ -251,6 +353,32 @@ class EllipseRegion(Region):
             self.center[1] - dy - margin,
             self.center[1] + dy + margin
         )
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly from ellipse using rejection sampling"""
+        samples = []
+        
+        # Get bounding box
+        xmin, xmax, ymin, ymax = self.bounds()
+        
+        while len(samples) < n_samples:
+            # Rejection sampling
+            x = np.random.uniform(xmin, xmax)
+            y = np.random.uniform(ymin, ymax)
+            point = np.array([x, y])
+            
+            if self.indicator(point) > 0.5:
+                samples.append(point)
+        
+        return np.array(samples)
+    
+    def area(self) -> float:
+        """Area = π * a * b"""
+        return np.pi * self.semi_axes[0] * self.semi_axes[1]
+    
+    def centroid(self) -> np.ndarray:
+        """Centroid = center"""
+        return self.center.copy()
 
 
 class BufferedPolygonRegion(Region):
@@ -393,6 +521,59 @@ class BufferedPolygonRegion(Region):
             ymin - margin,
             ymax + margin
         )
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly from buffered polygon"""
+        samples = []
+        xmin, xmax, ymin, ymax = self.bounds()
+        
+        while len(samples) < n_samples:
+            x = np.random.uniform(xmin, xmax)
+            y = np.random.uniform(ymin, ymax)
+            point = np.array([x, y])
+            
+            if self.indicator(point) > 0.5:
+                samples.append(point)
+        
+        return np.array(samples)
+    
+    def area(self) -> float:
+        """Approximate area of buffered polygon"""
+        # Use grid estimation
+        xmin, xmax, ymin, ymax = self.bounds()
+        
+        resolution = 200
+        x = np.linspace(xmin, xmax, resolution)
+        y = np.linspace(ymin, ymax, resolution)
+        xx, yy = np.meshgrid(x, y)
+        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        
+        indicators = self.indicator(points)
+        cell_area = ((xmax - xmin) * (ymax - ymin)) / (resolution ** 2)
+        
+        return np.sum(indicators) * cell_area
+    
+    def centroid(self) -> np.ndarray:
+        """Approximate centroid of buffered polygon"""
+        xmin, xmax, ymin, ymax = self.bounds()
+        
+        resolution = 200
+        x = np.linspace(xmin, xmax, resolution)
+        y = np.linspace(ymin, ymax, resolution)
+        xx, yy = np.meshgrid(x, y)
+        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        
+        indicators = self.indicator(points)
+        
+        total_weight = np.sum(indicators)
+        if total_weight < 1e-10:
+            # Fallback to base polygon centroid
+            return np.mean(self.vertices, axis=0)
+        
+        cx = np.sum(points[:, 0] * indicators) / total_weight
+        cy = np.sum(points[:, 1] * indicators) / total_weight
+        
+        return np.array([cx, cy])
 
 
 class MultiRegion(Region):
@@ -477,3 +658,93 @@ class MultiRegion(Region):
         
         return (xmin, xmax, ymin, ymax)
 
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """Sample uniformly from multi-region"""
+        
+        if self.operation == 'union':
+            # For union, sample proportionally from each region based on area
+            areas = [region.area() for region in self.regions]
+            total_area = sum(areas)
+            
+            samples = []
+            for region, area in zip(self.regions, areas):
+                n_from_region = int(n_samples * area / total_area)
+                region_samples = region.sample_uniform(n_from_region)
+                samples.append(region_samples)
+            
+            # Fill remaining samples
+            remaining = n_samples - sum(len(s) for s in samples)
+            if remaining > 0:
+                extra = self.regions[0].sample_uniform(remaining)
+                samples.append(extra)
+            
+            return np.vstack(samples) if samples else np.array([]).reshape(0, 2)
+        
+        else:  # intersection
+            # For intersection, use rejection sampling
+            xmin, xmax, ymin, ymax = self.bounds()
+            samples = []
+            
+            while len(samples) < n_samples:
+                x = np.random.uniform(xmin, xmax)
+                y = np.random.uniform(ymin, ymax)
+                point = np.array([x, y])
+                
+                if self.indicator(point) > 0.5:
+                    samples.append(point)
+            
+            return np.array(samples)
+    
+    def area(self) -> float:
+        """Compute area of multi-region"""
+        if self.operation == 'union':
+            # Approximate using grid (exact union area is complex)
+            xmin, xmax, ymin, ymax = self.bounds()
+            
+            resolution = 200
+            x = np.linspace(xmin, xmax, resolution)
+            y = np.linspace(ymin, ymax, resolution)
+            xx, yy = np.meshgrid(x, y)
+            points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+            
+            indicators = self.indicator(points)
+            cell_area = ((xmax - xmin) * (ymax - ymin)) / (resolution ** 2)
+            
+            return np.sum(indicators) * cell_area
+        
+        else:  # intersection
+            # Same grid-based approach
+            xmin, xmax, ymin, ymax = self.bounds()
+            
+            resolution = 200
+            x = np.linspace(xmin, xmax, resolution)
+            y = np.linspace(ymin, ymax, resolution)
+            xx, yy = np.meshgrid(x, y)
+            points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+            
+            indicators = self.indicator(points)
+            cell_area = ((xmax - xmin) * (ymax - ymin)) / (resolution ** 2)
+            
+            return np.sum(indicators) * cell_area
+    
+    def centroid(self) -> np.ndarray:
+        """Compute centroid of multi-region"""
+        xmin, xmax, ymin, ymax = self.bounds()
+        
+        resolution = 200
+        x = np.linspace(xmin, xmax, resolution)
+        y = np.linspace(ymin, ymax, resolution)
+        xx, yy = np.meshgrid(x, y)
+        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        
+        indicators = self.indicator(points)
+        
+        total_weight = np.sum(indicators)
+        if total_weight < 1e-10:
+            # Fallback to bounding box center
+            return np.array([(xmin + xmax) / 2, (ymin + ymax) / 2])
+        
+        cx = np.sum(points[:, 0] * indicators) / total_weight
+        cy = np.sum(points[:, 1] * indicators) / total_weight
+        
+        return np.array([cx, cy])

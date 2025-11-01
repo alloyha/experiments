@@ -28,6 +28,38 @@ class MetricSpace(ABC):
         pass
 
 
+class DistanceFunction(ABC):
+    """
+    Abstract probability distance/divergence measure.
+    Quantifies dissimilarity between two probability distributions.
+    """
+    
+    @abstractmethod
+    def compute(self, p: np.ndarray, q: np.ndarray, 
+                weights: Optional[np.ndarray] = None) -> float:  # pragma: no cover
+        """
+        Compute distance/divergence between distributions p and q.
+        
+        Parameters
+        ----------
+        p, q : np.ndarray
+            Probability densities (need not be normalized if using weights)
+        weights : np.ndarray, optional
+            Integration weights for discrete approximation
+            
+        Returns
+        -------
+        distance : float
+            Non-negative distance/divergence value
+        """
+        pass
+    
+    @abstractmethod
+    def is_metric(self) -> bool:  # pragma: no cover
+        """Whether this satisfies metric axioms (symmetry, triangle inequality)"""
+        pass
+
+
 class Region(ABC):
     """Abstract region representation"""
     
@@ -44,6 +76,21 @@ class Region(ABC):
     @abstractmethod
     def bounds(self) -> Tuple:   # pragma: no cover
         """Return bounding box for grid creation"""
+        pass
+    
+    @abstractmethod
+    def sample_uniform(self, n_samples: int) -> np.ndarray:   # pragma: no cover
+        """Sample points uniformly from region"""
+        pass
+    
+    @abstractmethod
+    def area(self) -> float:   # pragma: no cover
+        """Compute region area"""
+        pass
+    
+    @abstractmethod
+    def centroid(self) -> np.ndarray:   # pragma: no cover
+        """Compute centroid"""
         pass
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-from babelistic.metric_spaces import EuclideanSpace
+from babelistic.geometry.metric_spaces import EuclideanSpace
 
 # ============================================================================
 # EDGE CASE TESTS

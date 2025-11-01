@@ -7,7 +7,7 @@ from typing import Tuple, Dict
 import numpy as np
 
 
-from .base import MetricSpace
+from ..base import MetricSpace
 
 class EuclideanSpace(MetricSpace):
     """Standard Euclidean R^n space"""

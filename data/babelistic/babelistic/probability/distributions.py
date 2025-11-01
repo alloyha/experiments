@@ -6,7 +6,7 @@ from typing import Tuple, List, Optional
 
 import numpy as np
 
-from .base import UncertaintyDistribution
+from ..base import UncertaintyDistribution
 
 
 class GaussianDistribution(UncertaintyDistribution):

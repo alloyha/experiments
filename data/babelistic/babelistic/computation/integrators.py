@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from .base import Integrator
+from ..base import Integrator
 
 class QuadratureIntegrator(Integrator):
     """Standard quadrature integration"""

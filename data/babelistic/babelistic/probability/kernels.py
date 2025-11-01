@@ -6,7 +6,7 @@ from typing import Protocol
 
 import numpy as np
 
-from .base import MetricSpace, Region, UncertaintyDistribution, Kernel
+from ..base import MetricSpace, Region, UncertaintyDistribution, Kernel
 
 class GaussianKernel(Kernel):
     """Gaussian kernel: exp(-d²/(2h²))"""

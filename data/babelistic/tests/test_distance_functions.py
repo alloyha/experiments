@@ -17,21 +17,21 @@ class TestDistanceFunctions:
     """Test distance function edge cases"""
 
     def test_probability_distance_abstract(self):
-        from babelistic.distance_functions import ProbabilityDistance
+        from babelistic.base import DistanceFunction
         
-        class DummyDistance(ProbabilityDistance):
+        class DummyDistance(DistanceFunction):
             pass
         
         with pytest.raises(TypeError):
             DummyDistance()
 
     def test_probability_distance_cannot_instantiate(self):
-        """Verify ProbabilityDistance is abstract"""
-        from babelistic.distance_functions import ProbabilityDistance
+        """Verify DistanceFunction is abstract"""
+        from babelistic.base import DistanceFunction
         
         # Cannot instantiate abstract class
         with pytest.raises(TypeError):
-            ProbabilityDistance()
+            DistanceFunction()
         
         # Lines 37 and 42 are the abstract method bodies (pass statements)
         # These cannot be executed directly - they're covered through subclasses
@@ -171,7 +171,7 @@ class TestDistanceFunctions:
 # PROBABILITY DISTANCE
 # ============================================================================
 
-class TestProbabilityDistances:
+class TestDistanceFunction:
     """Tests for probability distance metrics"""
     
     @staticmethod

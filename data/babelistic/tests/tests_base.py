@@ -109,8 +109,8 @@ class TestAbstractBases:
                 cls()
     
     def test_abstract_distance_function(self):
-        """Test ProbabilityDistance abstract class"""
-        from babelistic.distance_functions import ProbabilityDistance
+        """Test DistanceFunction abstract class"""
+        from babelistic.base import DistanceFunction
         
         with pytest.raises(TypeError):
-            ProbabilityDistance()
+            DistanceFunction()

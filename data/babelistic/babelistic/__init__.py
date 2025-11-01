@@ -1,20 +1,29 @@
-from .metric_spaces import (
+from .base import (
     MetricSpace,
+    DistanceFunction,
+    Region,
+    UncertaintyDistribution,
+    Kernel,
+    ConvolutionStrategy,
+    Integrator,
+)
+
+from .geometry.metric_spaces import (
     EuclideanSpace,
     ManhattanSpace,
     SphericalSpace,
     GeoSpace,
 )
-from .distance_functions import (
-    ProbabilityDistance,
+
+from .geometry.distance_functions import (
     KLDivergence,
     JSDistance,
     TotalVariationDistance,
     HellingerDistance,
     WassersteinDistance,
 )
-from .regions import (
-    Region,
+
+from .geometry.regions import (
     DiskRegion,
     PolygonRegion,
     EllipseRegion,
@@ -22,8 +31,8 @@ from .regions import (
     BufferedPolygonRegion,
     MultiRegion,
 )
-from .distributions import (
-    UncertaintyDistribution,
+
+from .probability.distributions import (
     GaussianDistribution,
     UniformDistribution,
     StudentTDistribution,
@@ -31,8 +40,8 @@ from .distributions import (
     MixtureDistribution,
     EmpiricalDistribution,
 )
-from .kernels import (
-    Kernel,
+
+from .probability.kernels import (
     GaussianKernel,
     EpanechnikovKernel,
     UniformKernel,
@@ -40,26 +49,26 @@ from .kernels import (
     TriangularKernel,
     MaternKernel,
 )
-from .convolution_strategies import (
-    ConvolutionStrategy,
+
+from .probability.comparators import (
+    DistributionComparator,
+)
+
+from .computation.convolution_strategies import (
     DirectConvolution,
     SparseConvolution,
     FFTConvolution,
 )
-from .integrators import (
-    Integrator,
+
+from .computation.integrators import (
     QuadratureIntegrator,
     MonteCarloIntegrator,
 )
 
 # Expose high-level API from main
-from .core import (
+from .estimators import (
     ProbabilityEstimator,
     ProbabilityResult,
-)
-
-from .comparators import (
-    DistributionComparator,
 )
 
 from .integrations.geofence import (
@@ -79,7 +88,7 @@ __all__ = [
     "SphericalSpace",
     "GeoSpace",
     # distances
-    "ProbabilityDistance",
+    "DistanceFunction",
     "KLDivergence",
     "JSDistance",
     "TotalVariationDistance",

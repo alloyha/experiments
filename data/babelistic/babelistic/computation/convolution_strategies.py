@@ -6,8 +6,8 @@ from typing import Dict
 
 import numpy as np
 
-from .base import ConvolutionStrategy, Kernel, MetricSpace
-from .metric_spaces import EuclideanSpace
+from ..base import ConvolutionStrategy, Kernel, MetricSpace
+from ..geometry.metric_spaces import EuclideanSpace
 
 
 class DirectConvolution(ConvolutionStrategy):

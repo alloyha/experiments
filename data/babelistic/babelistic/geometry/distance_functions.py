@@ -7,42 +7,11 @@ from typing import Optional
 
 import numpy as np
 
-from .regions import MetricSpace
+
+from ..base import DistanceFunction, MetricSpace
 
 
-class ProbabilityDistance(ABC):
-    """
-    Abstract probability distance/divergence measure.
-    Quantifies dissimilarity between two probability distributions.
-    """
-    
-    @abstractmethod
-    def compute(self, p: np.ndarray, q: np.ndarray, 
-                weights: Optional[np.ndarray] = None) -> float:  # pragma: no cover
-        """
-        Compute distance/divergence between distributions p and q.
-        
-        Parameters
-        ----------
-        p, q : np.ndarray
-            Probability densities (need not be normalized if using weights)
-        weights : np.ndarray, optional
-            Integration weights for discrete approximation
-            
-        Returns
-        -------
-        distance : float
-            Non-negative distance/divergence value
-        """
-        pass
-    
-    @abstractmethod
-    def is_metric(self) -> bool:  # pragma: no cover
-        """Whether this satisfies metric axioms (symmetry, triangle inequality)"""
-        pass
-
-
-class KLDivergence(ProbabilityDistance):
+class KLDivergence(DistanceFunction ):
     """Kullback-Leibler divergence: D_KL(p||q) = ∫ p(x) log(p(x)/q(x)) dx"""
     
     def __init__(self, epsilon: float = 1e-12):
@@ -74,7 +43,7 @@ class KLDivergence(ProbabilityDistance):
         return False  # KL is not symmetric
 
 
-class JSDistance(ProbabilityDistance):
+class JSDistance(DistanceFunction):
     """Jensen-Shannon distance (symmetrized KL): sqrt(JS_divergence)"""
     
     def __init__(self, epsilon: float = 1e-12):
@@ -111,7 +80,7 @@ class JSDistance(ProbabilityDistance):
         return True  # JS distance is a metric
 
 
-class WassersteinDistance(ProbabilityDistance):
+class WassersteinDistance(DistanceFunction):
     """
     Wasserstein-1 (Earth Mover's) distance.
     Requires underlying metric space.
@@ -216,7 +185,7 @@ class WassersteinDistance(ProbabilityDistance):
         return True  # Wasserstein is a metric
 
 
-class TotalVariationDistance(ProbabilityDistance):
+class TotalVariationDistance(DistanceFunction):
     """Total variation distance: (1/2) ∫ |p(x) - q(x)| dx"""
     
     def compute(self, p: np.ndarray, q: np.ndarray, 
@@ -241,7 +210,7 @@ class TotalVariationDistance(ProbabilityDistance):
         return True
 
 
-class HellingerDistance(ProbabilityDistance):
+class HellingerDistance(DistanceFunction):
     """Hellinger distance: sqrt(1 - ∫ sqrt(p(x)q(x)) dx)"""
     
     def compute(self, p: np.ndarray, q: np.ndarray, 

@@ -18,6 +18,10 @@ from enum import Enum
 from dataclasses import dataclass
 import numpy as np
 
+from .geometry.regions import Region, PolygonRegion
+from .geometry.metric_spaces import MetricSpace, GeoSpace
+from .probability.distributions import GaussianDistribution, UncertaintyDistribution
+
 
 # ============================================================================
 # LAYER 1: PHYSICAL ENTITIES (unchanged)
@@ -91,7 +95,7 @@ class KnownPoint(EpistemicState):
 
 class UncertainPoint(EpistemicState):
     """Uncertain location (probability distribution)"""
-    def __init__(self, distribution: 'UncertaintyDistribution'):
+    def __init__(self, distribution: UncertaintyDistribution):
         self.distribution = distribution
     
     def epistemic_type(self):
@@ -104,7 +108,7 @@ class UncertainPoint(EpistemicState):
 
 class KnownRegion(EpistemicState):
     """Crisp boundaries (indicator ∈ {0, 1})"""
-    def __init__(self, region: 'Region'):
+    def __init__(self, region: Region):
         self.region = region
     
     def epistemic_type(self):

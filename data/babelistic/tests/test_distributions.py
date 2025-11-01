@@ -287,7 +287,7 @@ class TestDistributions:
 
 def test_gaussian_array_shapes():
         """Cover different array shape handling (line 55)"""
-        from babelistic.distributions import GaussianDistribution
+        from babelistic.probability.distributions import GaussianDistribution
         
         dist = GaussianDistribution(mean=np.array([0, 0]), cov=np.eye(2))
         
@@ -308,7 +308,7 @@ def test_gaussian_array_shapes():
     
 def test_student_t_edge_cases():
     """Cover Student-t edge cases (lines 99-105)"""
-    from babelistic.distributions import StudentTDistribution
+    from babelistic.probability.distributions import StudentTDistribution
     
     # Very low df (heavy tails)
     dist_heavy = StudentTDistribution([0, 0], np.eye(2), df=1.0)
@@ -326,7 +326,7 @@ def test_student_t_edge_cases():
 
 def test_lognormal_edge_values():
     """Cover log-normal boundary cases (lines 191-199)"""
-    from babelistic.distributions import LogNormalDistribution
+    from babelistic.probability.distributions import LogNormalDistribution
     
     dist = LogNormalDistribution(mean=np.array([0, 0]), cov=np.eye(2) * 0.1)
     
@@ -344,7 +344,7 @@ def test_lognormal_edge_values():
 
 def test_empirical_kde_bandwidth():
     """Cover empirical distribution bandwidth selection (lines 264-278)"""
-    from babelistic.distributions import EmpiricalDistribution
+    from babelistic.probability.distributions import EmpiricalDistribution
     
     samples = np.random.randn(100, 2)
     
@@ -363,7 +363,7 @@ def test_empirical_kde_bandwidth():
 
 def test_mixture_edge_cases():
     """Cover mixture distribution edge cases"""
-    from babelistic.distributions import MixtureDistribution, GaussianDistribution
+    from babelistic.probability.distributions import MixtureDistribution, GaussianDistribution
     
     comp1 = GaussianDistribution([0, 0], np.eye(2))
     comp2 = GaussianDistribution([2, 2], np.eye(2))

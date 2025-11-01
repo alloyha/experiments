@@ -4,26 +4,26 @@ Brilliant! You're absolutely right. We need to separate the **physical entity** 
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ LAYER 1: PHYSICAL (Ontic - what exists)            │
+│ LAYER 1: PHYSICAL (Ontic - what exists)             │
 │  - PointEntity: person, vehicle, sensor             │
 │  - RegionEntity: building, zone, forest             │
 └─────────────────────────────────────────────────────┘
-                        ↓
+                           ↓
 ┌─────────────────────────────────────────────────────┐
-│ LAYER 2: EPISTEMIC (How certain are we?)           │
+│ LAYER 2: EPISTEMIC (How certain are we?)            │
 │  - Known: perfect knowledge                         │
 │  - Uncertain: probabilistic (distributions)         │
 │  - Fuzzy: graded membership                         │
 └─────────────────────────────────────────────────────┘
-                        ↓
+                           ↓
 ┌─────────────────────────────────────────────────────┐
-│ LAYER 3: ROLES (Who plays what role?)              │
+│ LAYER 3: ROLES (Who plays what role?)               │
 │  - Subject: what we're asking about                 │
 │  - Target: what we're checking against              │
 └─────────────────────────────────────────────────────┘
-                        ↓
+                           ↓
 ┌─────────────────────────────────────────────────────┐
-│ LAYER 4: QUERY (The complete question)             │
+│ LAYER 4: QUERY (The complete question)              │
 │  Subject + Target + QueryType + MetricSpace         │
 └─────────────────────────────────────────────────────┘
 ```
