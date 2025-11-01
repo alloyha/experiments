@@ -1,0 +1,45 @@
+FROM apache/spark:3.5.3
+
+# Switch to root to install packages
+USER root
+
+# Install Python packages via pip
+RUN pip install --no-cache-dir \
+    delta-spark==3.2.0 \
+    pyiceberg==0.7.1 \
+    psutil==7.0.0 \
+    pyspark==3.5.3
+
+# Create scripts directory if it doesn't exist
+RUN mkdir -p /opt/spark/scripts
+
+# Download required JDBC drivers and JARs for Delta, Iceberg
+# These will be added to the classpath automatically
+RUN mkdir -p /opt/spark/jars/extras && \
+    cd /opt/spark/jars/extras && \
+    # Delta Lake JAR
+    curl -L -o delta-spark_2.12-3.2.0.jar \
+      https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/3.2.0/delta-spark_2.12-3.2.0.jar && \
+    # Iceberg Spark Runtime
+    curl -L -o iceberg-spark-runtime-3.5_2.12-1.5.0.jar \
+      https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.5.0/iceberg-spark-runtime-3.5_2.12-1.5.0.jar && \
+    # Hadoop AWS for S3 support
+    curl -L -o hadoop-aws-3.3.6.jar \
+      https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.6/hadoop-aws-3.3.6.jar && \
+    # AWS Java SDK Bundle
+    curl -L -o aws-java-sdk-bundle-1.12.565.jar \
+      https://repo1.maven.org/maven2/software/amazon/awssdk/aws-java-sdk-bundle/1.12.565/aws-java-sdk-bundle-1.12.565.jar
+
+# Set environment variables for classpath
+ENV CLASSPATH="/opt/spark/jars/extras/*:$CLASSPATH"
+ENV SPARK_EXTRA_CLASSPATH="/opt/spark/jars/extras/*"
+
+# Fix Ivy cache permissions issue - create writable cache directory
+RUN mkdir -p /home/spark/.ivy2/cache && \
+    chown -R spark:spark /home/spark/.ivy2
+
+# Switch back to spark user
+USER spark
+
+# Default command
+CMD ["/opt/entrypoint.sh"]

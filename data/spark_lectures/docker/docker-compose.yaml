@@ -1,0 +1,260 @@
+# Spark Data Layout Masterclass - Core Infrastructure
+# 
+# Services:
+#   - MinIO: S3-compatible object storage
+#   - PostgreSQL: Hive metastore database
+#   - Hive Metastore: Table metadata management
+#   - Spark Master: Cluster coordinator
+#   - Spark Workers: Compute nodes
+#   - Iceberg REST: Iceberg catalog service
+#
+# Usage:
+#   docker-compose up -d
+#   docker-compose exec spark-master bash
+#
+# Access points:
+#   - Spark Master UI: http://localhost:8080
+#   - MinIO Console: http://localhost:9001 (admin/password)
+#   - Hive Metastore: thrift://localhost:9083
+
+services:
+  # ============================================================================
+  # MinIO - S3-compatible object storage
+  # ============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+      MINIO_DOMAIN: minio
+    networks:
+      spark_net:
+        aliases:
+          - warehouse.minio
+          - lakehouse.minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # PostgreSQL - Backend for Hive Metastore
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-metastore
+    hostname: postgres
+    environment:
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+      POSTGRES_DB: metastore
+    networks:
+      - spark_net
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Hive Metastore - Metadata service for tables
+  # ============================================================================
+  hive-metastore:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.hive
+    container_name: hive-metastore
+    hostname: hive-metastore
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - spark_net
+    ports:
+      - "9083:9083"   # Thrift port
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: >
+        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
+        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore
+        -Djavax.jdo.option.ConnectionUserName=hive
+        -Djavax.jdo.option.ConnectionPassword=hive
+      # S3 configuration for MinIO
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+    volumes:
+      - hive-metastore-data:/opt/hive/data/warehouse
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # Spark Master with all table formats
+  # ============================================================================
+  spark-master:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.spark
+    container_name: spark-master
+    hostname: spark-master
+    depends_on:
+      hive-metastore:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - spark_net
+    ports:
+      - "8080:8080"   # Spark Master Web UI
+      - "7077:7077"   # Spark Master port
+      - "8888:8888"   # Jupyter Lab
+      - "4040-4045:4040-4045"  # Spark Application UIs
+    environment:
+      # Spark configuration
+      SPARK_MODE: master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
+      SPARK_MASTER_WEBUI_PORT: 8080
+      
+      # AWS/S3 configuration
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+      
+      # Hive Metastore
+      HIVE_METASTORE_URIS: thrift://hive-metastore:9083
+      
+      # Jupyter
+      JUPYTER_ENABLE_LAB: "yes"
+      JUPYTER_TOKEN: admin
+      
+    volumes:
+      - ./warehouse:/opt/spark/warehouse
+      - ./notebooks:/opt/spark/notebooks
+      - ./data:/opt/spark/data
+      - ./scripts:/opt/spark/scripts
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - spark-logs:/opt/spark/logs
+    command: |
+      bash -c "
+      mkdir -p /opt/spark/logs && chmod 777 /opt/spark/logs
+      /opt/spark/sbin/start-master.sh -h spark-master
+      sleep infinity
+      "
+
+  # ============================================================================
+  # Spark Worker 1
+  # ============================================================================
+  spark-worker-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.spark
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    depends_on:
+      - spark-master
+    networks:
+      - spark_net
+    ports:
+      - "8081:8081"   # Worker Web UI
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 4G
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_WEBUI_PORT: 8081
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+    volumes:
+      - ./warehouse:/opt/spark/warehouse
+      - ./data:/opt/spark/data
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - spark-worker-1-logs:/opt/spark/logs
+    command: bash -c "mkdir -p /opt/spark/logs && chmod 777 /opt/spark/logs && /opt/spark/sbin/start-slave.sh -c 2 -m 4G spark://spark-master:7077 && sleep infinity"
+
+  # ============================================================================
+  # Spark Worker 2
+  # ============================================================================
+  spark-worker-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.spark
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    depends_on:
+      - spark-master
+    networks:
+      - spark_net
+    ports:
+      - "8082:8081"   # Worker Web UI
+    environment:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+    volumes:
+      - ./warehouse:/opt/spark/warehouse
+      - ./data:/opt/spark/data
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - spark-worker-2-logs:/opt/spark/logs
+    command: bash -c "mkdir -p /opt/spark/logs && chmod 777 /opt/spark/logs && /opt/spark/sbin/start-slave.sh -c 2 -m 4G spark://spark-master:7077 && sleep infinity"
+
+  # ============================================================================
+  # Iceberg REST Catalog
+  # ============================================================================
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: iceberg-rest
+    hostname: iceberg-rest
+    depends_on:
+      - minio
+    networks:
+      - spark_net
+    ports:
+      - "8181:8181"
+    environment:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+      CATALOG_WAREHOUSE: s3://iceberg/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+
+networks:
+  spark_net:
+    driver: bridge
+
+volumes:
+  minio-data:
+    driver: local
+  postgres-data:
+    driver: local
+  hive-metastore-data:
+    driver: local
+  spark-logs:
+    driver: local
+  spark-worker-1-logs:
+    driver: local
+  spark-worker-2-logs:
+    driver: local
