@@ -312,7 +312,10 @@ class RedisSagaStorage(SagaStorage):
             status_index = self._index_key(f"status:{status.value}")
             saga_ids = await redis_client.smembers(status_index)
             
-            for saga_id in saga_ids:
+            # Decode bytes to strings
+            decoded_saga_ids = [s.decode() if isinstance(s, bytes) else s for s in saga_ids]
+            
+            for saga_id in decoded_saga_ids:
                 saga_data = await self.load_saga_state(saga_id)
                 if not saga_data:
                     continue

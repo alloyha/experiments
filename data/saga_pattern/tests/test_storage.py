@@ -299,3 +299,183 @@ class TestInMemorySagaStorage:
         
         loaded = await storage.load_saga_state("context-test")
         assert loaded is not None
+    
+    @pytest.mark.asyncio
+    async def test_update_step_state(self):
+        """Test updating individual step state"""
+        storage = InMemorySagaStorage()
+        
+        # Create saga with steps
+        await storage.save_saga_state(
+            saga_id="step-update",
+            saga_name="StepTest",
+            status=SagaStatus.EXECUTING,
+            steps=[
+                {"name": "step1", "status": "pending", "result": None, "error": None}
+            ],
+            context={}
+        )
+        
+        # Update step
+        from datetime import datetime
+        await storage.update_step_state(
+            saga_id="step-update",
+            step_name="step1",
+            status=SagaStepStatus.COMPLETED,
+            result={"data": "test"},
+            error=None,
+            executed_at=datetime.utcnow()
+        )
+        
+        # Verify update
+        loaded = await storage.load_saga_state("step-update")
+        assert loaded["steps"][0]["status"] == "completed"
+        assert loaded["steps"][0]["result"] == {"data": "test"}
+    
+    @pytest.mark.asyncio
+    async def test_update_step_state_saga_not_found(self):
+        """Test update_step_state raises error for missing saga"""
+        storage = InMemorySagaStorage()
+        
+        with pytest.raises(SagaStorageError, match="not found"):
+            await storage.update_step_state(
+                saga_id="nonexistent",
+                step_name="step1",
+                status=SagaStepStatus.COMPLETED,
+                result=None,
+                error=None
+            )
+    
+    @pytest.mark.asyncio
+    async def test_update_step_state_step_not_found(self):
+        """Test update_step_state raises error for missing step"""
+        storage = InMemorySagaStorage()
+        
+        await storage.save_saga_state(
+            saga_id="saga-123",
+            saga_name="Test",
+            status=SagaStatus.EXECUTING,
+            steps=[{"name": "step1", "status": "pending"}],
+            context={}
+        )
+        
+        with pytest.raises(SagaStorageError, match="Step .* not found"):
+            await storage.update_step_state(
+                saga_id="saga-123",
+                step_name="nonexistent_step",
+                status=SagaStepStatus.COMPLETED,
+                result=None,
+                error=None
+            )
+    
+    @pytest.mark.asyncio
+    async def test_get_saga_statistics(self):
+        """Test getting saga statistics"""
+        storage = InMemorySagaStorage()
+        
+        # Create multiple sagas
+        await storage.save_saga_state(
+            saga_id="completed-1",
+            saga_name="Test",
+            status=SagaStatus.COMPLETED,
+            steps=[],
+            context={}
+        )
+        
+        await storage.save_saga_state(
+            saga_id="failed-1",
+            saga_name="Test",
+            status=SagaStatus.FAILED,
+            steps=[],
+            context={}
+        )
+        
+        stats = await storage.get_saga_statistics()
+        assert stats["total_sagas"] == 2
+        assert "by_status" in stats
+        assert stats["by_status"]["completed"] >= 1
+        assert stats["by_status"]["failed"] >= 1
+        assert "memory_usage_bytes" in stats
+    
+    @pytest.mark.asyncio
+    async def test_cleanup_completed_sagas(self):
+        """Test cleanup of old completed sagas"""
+        storage = InMemorySagaStorage()
+        
+        # Create old saga
+        await storage.save_saga_state(
+            saga_id="old-saga",
+            saga_name="Old",
+            status=SagaStatus.COMPLETED,
+            steps=[],
+            context={}
+        )
+        
+        # Sleep to make it older
+        import asyncio
+        await asyncio.sleep(0.1)
+        
+        # Cleanup
+        from datetime import datetime
+        deleted = await storage.cleanup_completed_sagas(older_than=datetime.utcnow())
+        
+        assert deleted >= 1
+        loaded = await storage.load_saga_state("old-saga")
+        assert loaded is None
+    
+    @pytest.mark.asyncio
+    async def test_cleanup_sagas_invalid_timestamp(self):
+        """Test cleanup handles sagas with invalid timestamps"""
+        storage = InMemorySagaStorage()
+        
+        # Manually insert saga with bad timestamp
+        async with storage._lock:
+            storage._sagas["bad-timestamp"] = {
+                "saga_id": "bad-timestamp",
+                "status": "completed",
+                "updated_at": "invalid-date"
+            }
+        
+        # Should not crash
+        from datetime import datetime
+        deleted = await storage.cleanup_completed_sagas(older_than=datetime.utcnow())
+        
+        # Bad saga should still exist (skipped due to invalid timestamp)
+        assert "bad-timestamp" in storage._sagas
+    
+    @pytest.mark.asyncio
+    async def test_clear_all(self):
+        """Test clearing all sagas"""
+        storage = InMemorySagaStorage()
+        
+        # Add some sagas
+        for i in range(3):
+            await storage.save_saga_state(
+                saga_id=f"saga-{i}",
+                saga_name="Test",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={}
+            )
+        
+        count = await storage.clear_all()
+        assert count == 3
+        assert storage.get_saga_count() == 0
+    
+    @pytest.mark.asyncio
+    async def test_get_saga_count(self):
+        """Test getting saga count"""
+        storage = InMemorySagaStorage()
+        
+        assert storage.get_saga_count() == 0
+        
+        await storage.save_saga_state(
+            saga_id="test",
+            saga_name="Test",
+            status=SagaStatus.COMPLETED,
+            steps=[],
+            context={}
+        )
+        
+        assert storage.get_saga_count() == 1
+

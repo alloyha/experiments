@@ -204,6 +204,8 @@ filterwarnings = [
     "ignore:coroutine 'sleep' was never awaited:RuntimeWarning:statemachine",
     # Ignore RuntimeWarning from stdlib (caused by statemachine)
     "ignore:coroutine 'sleep' was never awaited:RuntimeWarning",
+    # Ignore unawaited AsyncMock coroutines from our tests
+    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning",
 ]
 
 # ============================================================================
@@ -211,7 +213,7 @@ filterwarnings = [
 # ============================================================================
 
 [tool.coverage.run]
-source = ["saga"]
+source = ["sage"]
 branch = true
 
 [tool.coverage.report]
@@ -229,11 +231,11 @@ exclude_lines = [
 ]
 omit = [
     "*/tests/*",
+    "*/examples/*",
     "*/__init__.py",
-    "saga/__init__.py",
-    "saga/*/__init__.py",
-    "sagas/__init__.py",
-    "sagas/*/__init__.py",
+    "sage/__init__.py",
+    "sage/*/__init__.py",
+    "examples/*",
 ]
 
 [tool.coverage.html]

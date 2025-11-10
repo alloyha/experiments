@@ -3,7 +3,7 @@ Pytest configuration and shared fixtures for saga pattern tests
 """
 
 import pytest
-from sagas.actions.notification import NotificationService
+from examples.actions.notification import NotificationService
 
 
 @pytest.fixture(autouse=True)
