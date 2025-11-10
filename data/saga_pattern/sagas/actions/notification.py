@@ -5,6 +5,7 @@ Reusable notification actions for email, SMS, and push notifications.
 """
 
 import asyncio
+import os
 import random
 from typing import Any, Dict, List
 from sage.core import SagaContext
@@ -13,6 +14,10 @@ from sage.exceptions import SagaStepError
 
 class NotificationService:
     """Mock notification service for demonstration"""
+    
+    # Control SMS failure rate for testing
+    # Set SMS_FAILURE_RATE=0 in tests to make it deterministic
+    SMS_FAILURE_RATE = float(os.getenv("SMS_FAILURE_RATE", "0.02"))
     
     @staticmethod
     async def send_email(
@@ -47,8 +52,9 @@ class NotificationService:
         
         await asyncio.sleep(0.03)
         
-        # Simulate 2% SMS delivery failure
-        if random.random() < 0.02:
+        # Simulate SMS delivery failure (controlled by SMS_FAILURE_RATE env var)
+        # Set SMS_FAILURE_RATE=0 in tests for deterministic behavior
+        if random.random() < NotificationService.SMS_FAILURE_RATE:
             raise Exception(f"Failed to send SMS to {phone}")
         
         return {

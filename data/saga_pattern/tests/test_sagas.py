@@ -591,14 +591,6 @@ import asyncio
 from sage import SagaOrchestrator
 
 
-@pytest.fixture(scope="function")
-def event_loop():
-    """Create event loop for async tests"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture
 def orchestrator():
     """Provide fresh orchestrator for each test"""

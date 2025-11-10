@@ -56,12 +56,12 @@ def orchestrator():
 @pytest.fixture
 async def simple_saga():
     """Create simple test saga"""
-    saga = TestSaga("SimpleSaga")
+    saga = SimpleSaga("SimpleSaga")
     return saga
 
 
-class TestSaga(Saga):
-    """Simple saga for testing"""
+class SimpleSaga(Saga):
+    """Simple saga for testing (renamed from TestSaga to avoid pytest collection warning)"""
     def __init__(self, name: str = "TestSaga", retry_backoff_base: float = 0.01, **kwargs):
         super().__init__(name=name, retry_backoff_base=retry_backoff_base, **kwargs)
 
@@ -76,7 +76,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_saga_initialization(self):
         """Test saga is initialized correctly"""
-        saga = TestSaga("MyTest")
+        saga = SimpleSaga("MyTest")
         
         assert saga.name == "MyTest"
         assert saga.version == "1.0"
@@ -89,7 +89,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_add_step_basic(self):
         """Test adding basic step"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action(ctx): return "result"
         async def compensation(result, ctx): pass
@@ -104,7 +104,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_add_step_with_options(self):
         """Test adding step with all options"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         await saga.add_step(
             "step1",
@@ -125,7 +125,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_cannot_add_steps_during_execution(self):
         """Test that steps cannot be added while saga is executing"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def slow_action(ctx):
             await asyncio.sleep(0.5)
@@ -146,7 +146,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_successful_execution_single_step(self):
         """Test successful execution with one step"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         executed = []
         
         async def action(ctx):
@@ -166,7 +166,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_successful_execution_multiple_steps(self):
         """Test successful execution with multiple steps"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         executed = []
         
         async def action1(ctx):
@@ -194,7 +194,7 @@ class TestCoreSaga:
     @pytest.mark.asyncio
     async def test_execution_order(self):
         """Test that steps execute in order"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         execution_order = []
         
         async def make_action(name):
@@ -248,7 +248,7 @@ class TestSagaContext:
     @pytest.mark.asyncio
     async def test_context_passed_between_steps(self):
         """Test context data is shared between steps"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def step1(ctx):
             ctx.set("step1_data", "from_step1")
@@ -280,7 +280,7 @@ class TestFailureAndCompensation:
     @pytest.mark.asyncio
     async def test_step_failure_triggers_compensation(self):
         """Test that step failure triggers compensation of previous steps"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         compensations = []
         
         async def action1(ctx):
@@ -305,7 +305,7 @@ class TestFailureAndCompensation:
     @pytest.mark.asyncio
     async def test_compensation_in_reverse_order(self):
         """Test compensations execute in reverse order"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         compensations = []
         
         async def action(ctx):
@@ -335,7 +335,7 @@ class TestFailureAndCompensation:
     @pytest.mark.asyncio
     async def test_compensation_failure_changes_status(self):
         """Test that compensation failure changes status to FAILED"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action(ctx):
             return "result"
@@ -358,7 +358,7 @@ class TestFailureAndCompensation:
     @pytest.mark.asyncio
     async def test_partial_compensation_failure(self):
         """Test that saga continues compensating even if one fails"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         compensations = []
         
         async def action(ctx):
@@ -393,7 +393,7 @@ class TestFailureAndCompensation:
     @pytest.mark.asyncio
     async def test_step_without_compensation(self):
         """Test steps without compensation are skipped during rollback"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         compensations = []
         
         async def action(ctx):
@@ -425,7 +425,7 @@ class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_step_retries_on_failure(self):
         """Test that failing steps are retried"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         attempts = []
         
         async def flaky_action(ctx):
@@ -445,7 +445,7 @@ class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_step_retry_exhaustion(self):
         """Test step fails after exhausting retries"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         attempts = []
         
         async def always_fails(ctx):
@@ -464,7 +464,7 @@ class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_retry_with_exponential_backoff(self):
         """Test that retries use exponential backoff"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         attempt_times = []
         
         async def flaky_action(ctx):
@@ -489,7 +489,7 @@ class TestRetryLogic:
     async def test_configurable_retry_backoff_base(self):
         """Test that retry backoff base timeout is configurable"""
         # Create saga with custom retry backoff base (0.1s instead of default 0.01s)
-        saga = TestSaga(retry_backoff_base=0.1)
+        saga = SimpleSaga(retry_backoff_base=0.1)
         attempt_times = []
         
         async def flaky_action(ctx):
@@ -518,7 +518,7 @@ class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_successful_step_no_retry(self):
         """Test successful steps don't retry"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         attempts = []
         
         async def action(ctx):
@@ -542,7 +542,7 @@ class TestTimeouts:
     @pytest.mark.asyncio
     async def test_step_timeout(self):
         """Test that slow steps timeout"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def slow_action(ctx):
             await asyncio.sleep(5.0)
@@ -558,7 +558,7 @@ class TestTimeouts:
     @pytest.mark.asyncio
     async def test_compensation_timeout(self):
         """Test that slow compensations timeout"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action(ctx):
             return "result"
@@ -586,7 +586,7 @@ class TestTimeouts:
     @pytest.mark.asyncio
     async def test_fast_step_no_timeout(self):
         """Test that fast steps don't timeout"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def fast_action(ctx):
             await asyncio.sleep(0.1)
@@ -609,7 +609,7 @@ class TestIdempotency:
     @pytest.mark.asyncio
     async def test_idempotency_key_prevents_duplicate(self):
         """Test same idempotency key prevents duplicate execution"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         executions = []
         
         async def action(ctx):
@@ -627,7 +627,7 @@ class TestIdempotency:
     @pytest.mark.asyncio
     async def test_different_keys_allow_execution(self):
         """Test different idempotency keys allow execution"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         executions = []
         
         async def action(ctx):
@@ -652,7 +652,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_initial_state_pending(self):
         """Test saga starts in PENDING state"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         assert saga.status == SagaStatus.PENDING
         # State machine needs to be activated for async state machines
@@ -662,7 +662,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_transition_to_executing(self):
         """Test transition to EXECUTING state"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action(ctx):
             # Check state during execution
@@ -675,7 +675,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_transition_to_completed(self):
         """Test successful transition to COMPLETED"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         await saga.add_step("step1", lambda ctx: "done")
         result = await saga.execute()
@@ -686,7 +686,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_transition_to_compensating_then_rolled_back(self):
         """Test failure transitions through COMPENSATING to ROLLED_BACK"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         states_seen = []
         
         async def action(ctx):
@@ -709,7 +709,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_empty_saga_succeeds(self):
         """Test saga completes successfully with no steps"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         # Empty saga now completes successfully with 0 steps
         result = await saga.execute()
@@ -719,7 +719,7 @@ class TestStateMachine:
     @pytest.mark.asyncio
     async def test_timestamps_recorded(self):
         """Test that execution timestamps are recorded"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         await saga.add_step("step1", lambda ctx: "done")
         await saga.execute()
@@ -741,10 +741,10 @@ class TestOrchestrator:
         """Test orchestrator tracks executed sagas"""
         orchestrator = SagaOrchestrator()
         
-        saga1 = TestSaga("Saga1")
+        saga1 = SimpleSaga("Saga1")
         await saga1.add_step("step1", lambda ctx: "done")
         
-        saga2 = TestSaga("Saga2")
+        saga2 = SimpleSaga("Saga2")
         await saga2.add_step("step1", lambda ctx: "done")
         
         await orchestrator.execute_saga(saga1)
@@ -759,7 +759,7 @@ class TestOrchestrator:
         """Test retrieving saga from orchestrator"""
         orchestrator = SagaOrchestrator()
         
-        saga = TestSaga("TestSaga")
+        saga = SimpleSaga("TestSaga")
         await saga.add_step("step1", lambda ctx: "done")
         await orchestrator.execute_saga(saga)
         
@@ -792,12 +792,12 @@ class TestOrchestrator:
             return "done"
         
         # Successful saga
-        saga1 = TestSaga("Success")
+        saga1 = SimpleSaga("Success")
         await saga1.add_step("step1", success_action)
         await orchestrator.execute_saga(saga1)
         
         # Failed saga
-        saga2 = TestSaga("Failed")
+        saga2 = SimpleSaga("Failed")
         await saga2.add_step("step1", failure_action)
         await saga2.add_step("step2", dummy_action)
         await orchestrator.execute_saga(saga2)
@@ -816,7 +816,7 @@ class TestOrchestrator:
         async def action(ctx):
             return "done"
         
-        saga = TestSaga()
+        saga = SimpleSaga()
         await saga.add_step("step1", action)
         await orchestrator.execute_saga(saga)
         
@@ -1642,7 +1642,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_saga_completes_successfully(self):
         """Test saga with no steps completes successfully"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         # Empty saga now completes successfully with 0 steps
         result = await saga.execute()
@@ -1652,7 +1652,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_saga_can_be_executed_multiple_times(self):
         """Test saga can be executed multiple times"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         executions = []
         
         async def action(ctx):
@@ -1671,7 +1671,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_very_long_saga(self):
         """Test saga with many steps"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         for i in range(100):
             await saga.add_step(f"step{i}", lambda ctx: f"result{i}")
@@ -1684,7 +1684,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_saga_with_complex_data_in_context(self):
         """Test saga handles complex data structures in context"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action1(ctx):
             return {
@@ -1708,7 +1708,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_exception_in_compensation_doesnt_stop_other_compensations(self):
         """Test that one failing compensation doesn't prevent others"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         compensations_run = []
         
         async def action(ctx):
@@ -1747,7 +1747,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_null_and_none_handling(self):
         """Test saga handles None/null values correctly"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def returns_none(ctx):
             return None
@@ -1775,7 +1775,7 @@ class TestConcurrency:
     @pytest.mark.asyncio
     async def test_concurrent_saga_execution_protected(self):
         """Test saga rejects concurrent or duplicate execution attempts"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         execution_started = asyncio.Event()
         
         async def slow_action(ctx):
@@ -1816,8 +1816,8 @@ class TestConcurrency:
     @pytest.mark.asyncio
     async def test_multiple_sagas_execute_concurrently(self):
         """Test multiple different sagas can execute concurrently"""
-        saga1 = TestSaga("Saga1")
-        saga2 = TestSaga("Saga2")
+        saga1 = SimpleSaga("Saga1")
+        saga2 = SimpleSaga("Saga2")
         
         await saga1.add_step("step", lambda ctx: asyncio.sleep(0.5) or "done")
         await saga2.add_step("step", lambda ctx: asyncio.sleep(0.5) or "done")
@@ -1839,7 +1839,7 @@ class TestConcurrency:
         
         sagas = []
         for i in range(10):
-            saga = TestSaga(f"Saga{i}")
+            saga = SimpleSaga(f"Saga{i}")
             await saga.add_step("step", lambda ctx: "done")
             sagas.append(saga)
         
@@ -1864,7 +1864,7 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_execution_time_recorded(self):
         """Test execution time is accurately recorded"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def slow_step(ctx):
             await asyncio.sleep(0.5)
@@ -1880,7 +1880,7 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_overhead_is_minimal(self):
         """Test framework overhead is minimal"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         # Add 10 fast steps
         for i in range(10):
@@ -1896,7 +1896,7 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_memory_efficient_context(self):
         """Test context doesn't leak memory"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def action(ctx):
             # Store large data
@@ -2041,10 +2041,10 @@ class TestIntegration:
             return "done"
         
         # Sequential saga
-        seq_saga = TestSaga("Sequential")
+        seq_saga = SimpleSaga("Sequential")
         await seq_saga.add_step("step1", step1_action)
         
-        # DAG saga
+        # DAG saga - use dependencies parameter for parallel execution
         dag_saga = DAGSaga("Parallel")
         await dag_saga.add_step("step1", dag_step1_action, dependencies=set())
         await dag_saga.add_step("step2", dag_step2_action, dependencies={"step1"})
@@ -2067,7 +2067,7 @@ class TestRealWorldScenarios:
     @pytest.mark.asyncio
     async def test_microservice_timeout_recovery(self):
         """Test handling of microservice timeouts"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         
         async def call_slow_service(ctx):
             await asyncio.sleep(10)  # Will timeout
@@ -2093,7 +2093,7 @@ class TestRealWorldScenarios:
     @pytest.mark.asyncio
     async def test_partial_success_with_compensation(self):
         """Test partial success scenario with proper compensation"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         successful_steps = []
         compensated_steps = []
         
@@ -2127,7 +2127,7 @@ class TestRealWorldScenarios:
     @pytest.mark.asyncio
     async def test_idempotent_external_api_calls(self):
         """Test idempotent behavior for external API calls"""
-        saga = TestSaga()
+        saga = SimpleSaga()
         api_calls = []
         
         async def call_external_api(ctx):

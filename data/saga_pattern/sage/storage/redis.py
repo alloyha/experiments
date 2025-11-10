@@ -371,4 +371,4 @@ class RedisSagaStorage(SagaStorage):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
         if self._redis:
-            await self._redis.close()
+            await self._redis.aclose()
