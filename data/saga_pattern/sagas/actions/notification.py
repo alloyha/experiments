@@ -5,7 +5,6 @@ Reusable notification actions for email, SMS, and push notifications.
 """
 
 import asyncio
-import os
 import random
 from typing import Any, Dict, List
 from sage.core import SagaContext
@@ -15,9 +14,29 @@ from sage.exceptions import SagaStepError
 class NotificationService:
     """Mock notification service for demonstration"""
     
-    # Control SMS failure rate for testing
-    # Set SMS_FAILURE_RATE=0 in tests to make it deterministic
-    SMS_FAILURE_RATE = float(os.getenv("SMS_FAILURE_RATE", "0.02"))
+    # Control failure rates - can be overridden for testing
+    _email_failure_rate: float = 0.01
+    _sms_failure_rate: float = 0.02
+    
+    @classmethod
+    def set_failure_rates(cls, email: float = None, sms: float = None):
+        """
+        Set failure rates for testing purposes
+        
+        Args:
+            email: Email failure rate (0.0 to 1.0), None to keep current
+            sms: SMS failure rate (0.0 to 1.0), None to keep current
+        """
+        if email is not None:
+            cls._email_failure_rate = email
+        if sms is not None:
+            cls._sms_failure_rate = sms
+    
+    @classmethod
+    def reset_failure_rates(cls):
+        """Reset failure rates to defaults"""
+        cls._email_failure_rate = 0.01
+        cls._sms_failure_rate = 0.02
     
     @staticmethod
     async def send_email(
@@ -31,8 +50,8 @@ class NotificationService:
         
         await asyncio.sleep(0.05)  # Simulate API latency
         
-        # Simulate 1% email delivery failure
-        if random.random() < 0.01:
+        # Simulate email delivery failure
+        if random.random() < NotificationService._email_failure_rate:
             raise Exception(f"Failed to send email to {to}")
         
         return {
@@ -52,9 +71,8 @@ class NotificationService:
         
         await asyncio.sleep(0.03)
         
-        # Simulate SMS delivery failure (controlled by SMS_FAILURE_RATE env var)
-        # Set SMS_FAILURE_RATE=0 in tests for deterministic behavior
-        if random.random() < NotificationService.SMS_FAILURE_RATE:
+        # Simulate SMS delivery failure
+        if random.random() < NotificationService._sms_failure_rate:
             raise Exception(f"Failed to send SMS to {phone}")
         
         return {

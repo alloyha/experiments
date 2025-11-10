@@ -297,7 +297,7 @@ class TestNotificationActions:
     
     @pytest.mark.asyncio
     async def test_send_sms(self):
-        """Test sending SMS notification"""
+        """Test sending SMS notification (deterministic by default)"""
         from sagas.actions.notification import send_sms
         
         ctx = SagaContext()
@@ -308,6 +308,23 @@ class TestNotificationActions:
         )
         
         assert result["sent"] is True
+    
+    @pytest.mark.asyncio
+    async def test_notification_service_control(self):
+        """Test that notification service failure rates can be controlled"""
+        from sagas.actions.notification import NotificationService
+        
+        # By default in tests, failures are disabled (via conftest.py)
+        assert NotificationService._sms_failure_rate == 0.0
+        assert NotificationService._email_failure_rate == 0.0
+        
+        # Can manually enable for testing failure scenarios
+        NotificationService.set_failure_rates(sms=1.0)  # 100% failure
+        assert NotificationService._sms_failure_rate == 1.0
+        
+        # Reset works
+        NotificationService.set_failure_rates(sms=0.0)
+        assert NotificationService._sms_failure_rate == 0.0
 
 
 # ============================================
