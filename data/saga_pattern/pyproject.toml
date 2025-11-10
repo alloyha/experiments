@@ -185,6 +185,28 @@ exclude = [
 ]
 
 # ============================================================================
+# Pytest Configuration
+# ============================================================================
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Filter warnings from external libraries
+filterwarnings = [
+    "error",  # Treat warnings as errors by default
+    # Ignore deprecation warnings from testcontainers
+    "ignore:The @wait_container_is_ready decorator is deprecated:DeprecationWarning:testcontainers",
+    # Ignore RuntimeWarning from statemachine library
+    "ignore:coroutine 'sleep' was never awaited:RuntimeWarning:statemachine",
+    # Ignore RuntimeWarning from stdlib (caused by statemachine)
+    "ignore:coroutine 'sleep' was never awaited:RuntimeWarning",
+]
+
+# ============================================================================
 # Coverage Configuration
 # ============================================================================
 
