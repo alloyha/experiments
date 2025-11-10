@@ -1,0 +1,397 @@
+"""
+Tests for PostgreSQL and Redis storage backends using testcontainers
+
+These tests spin up real PostgreSQL and Redis containers to test
+the storage implementations with actual database connections.
+"""
+
+import pytest
+import asyncio
+from datetime import datetime
+from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
+
+from sage.storage.base import SagaStorageError, SagaNotFoundError
+from sage.storage.postgresql import PostgreSQLSagaStorage
+from sage.storage.redis import RedisSagaStorage
+from sage.types import SagaStatus, SagaStepStatus
+
+
+# Session-scoped fixtures - containers are expensive to start
+# These are shared across the entire test session
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Fixture that provides a PostgreSQL container for the test session
+    
+    Note: Container startup takes ~25-30s. This is shared across all PostgreSQL tests.
+    """
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
+
+
+@pytest.fixture(scope="session")
+def redis_container():
+    """Fixture that provides a Redis container for the test session
+    
+    Note: Container startup takes ~5-8s. This is shared across all Redis tests.
+    """
+    with RedisContainer("redis:7-alpine") as redis:
+        yield redis
+
+
+# Mark to run storage tests sequentially to avoid container conflicts
+# With pytest-xdist, group ensures all tests in this class run on same worker
+@pytest.mark.xdist_group(name="postgres")
+class TestPostgreSQLStorage:
+    """Tests for PostgreSQL storage with real database"""
+    
+    @pytest.mark.asyncio
+    async def test_save_and_load_saga_state(self, postgres_container):
+        """Test saving and loading saga state"""
+        # testcontainers returns postgresql+psycopg2://, but asyncpg expects postgresql://
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Save saga state
+            await storage.save_saga_state(
+                saga_id="test-123",
+                saga_name="TestSaga",
+                status=SagaStatus.COMPLETED,
+                steps=[
+                    {
+                        "name": "step1",
+                        "status": "completed",
+                        "result": {"data": "value"},
+                        "error": None,
+                        "retry_count": 0,
+                    }
+                ],
+                context={"user_id": "user-456"},
+                metadata={"version": "1.0"}
+            )
+            
+            # Load saga state
+            state = await storage.load_saga_state("test-123")
+            
+            assert state is not None
+            assert state["saga_id"] == "test-123"
+            assert state["saga_name"] == "TestSaga"
+            assert state["status"] == "completed"  # Enum values are lowercase
+            assert state["context"] == {"user_id": "user-456"}
+            assert state["metadata"] == {"version": "1.0"}
+            assert len(state["steps"]) == 1
+            assert state["steps"][0]["name"] == "step1"
+    
+    @pytest.mark.asyncio
+    async def test_load_nonexistent_saga(self, postgres_container):
+        """Test loading a saga that doesn't exist"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            state = await storage.load_saga_state("nonexistent")
+            assert state is None
+    
+    @pytest.mark.asyncio
+    async def test_delete_saga_state(self, postgres_container):
+        """Test deleting saga state"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Save saga
+            await storage.save_saga_state(
+                saga_id="delete-me",
+                saga_name="DeleteTest",
+                status=SagaStatus.FAILED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # Verify it exists
+            state = await storage.load_saga_state("delete-me")
+            assert state is not None
+            
+            # Delete it
+            result = await storage.delete_saga_state("delete-me")
+            assert result is True
+            
+            # Verify it's gone
+            state = await storage.load_saga_state("delete-me")
+            assert state is None
+    
+    @pytest.mark.asyncio
+    async def test_list_sagas_by_status(self, postgres_container):
+        """Test listing sagas filtered by status"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Create multiple sagas
+            await storage.save_saga_state(
+                saga_id="completed-1",
+                saga_name="Test1",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            await storage.save_saga_state(
+                saga_id="failed-1",
+                saga_name="Test2",
+                status=SagaStatus.FAILED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # List completed sagas
+            completed = await storage.list_sagas(status=SagaStatus.COMPLETED, limit=10)
+            assert len(completed) >= 1
+            assert any(s["saga_id"] == "completed-1" for s in completed)
+            
+            # List failed sagas
+            failed = await storage.list_sagas(status=SagaStatus.FAILED, limit=10)
+            assert len(failed) >= 1
+            assert any(s["saga_id"] == "failed-1" for s in failed)
+    
+    @pytest.mark.asyncio
+    async def test_list_sagas_by_name(self, postgres_container):
+        """Test listing sagas filtered by name"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            await storage.save_saga_state(
+                saga_id="unique-saga-123",
+                saga_name="UniqueSagaName",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # List by name
+            sagas = await storage.list_sagas(saga_name="UniqueSagaName", limit=10)
+            assert len(sagas) >= 1
+            assert any(s["saga_id"] == "unique-saga-123" for s in sagas)
+    
+    @pytest.mark.asyncio
+    async def test_update_existing_saga(self, postgres_container):
+        """Test updating an existing saga state"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Create saga
+            await storage.save_saga_state(
+                saga_id="update-test",
+                saga_name="UpdateTest",
+                status=SagaStatus.EXECUTING,
+                steps=[],
+                context={"counter": 1},
+                metadata={}
+            )
+            
+            # Update saga
+            await storage.save_saga_state(
+                saga_id="update-test",
+                saga_name="UpdateTest",
+                status=SagaStatus.COMPLETED,
+                steps=[{"name": "step1", "status": "completed", "result": None, "error": None, "retry_count": 0}],
+                context={"counter": 2},
+                metadata={}
+            )
+            
+            # Load and verify
+            state = await storage.load_saga_state("update-test")
+            assert state["status"] == "completed"  # Enum values are lowercase
+            assert state["context"]["counter"] == 2
+            assert len(state["steps"]) == 1
+
+
+# Use pytest-xdist group to ensure all Redis tests run on same worker
+@pytest.mark.xdist_group(name="redis")
+class TestRedisStorage:
+    """Tests for Redis storage with real Redis instance"""
+    
+    @pytest.mark.asyncio
+    async def test_save_and_load_saga_state(self, redis_container):
+        """Test saving and loading saga state"""
+        # Build Redis URL from container host and port
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url) as storage:
+            # Save saga state
+            await storage.save_saga_state(
+                saga_id="redis-test-123",
+                saga_name="RedisTestSaga",
+                status=SagaStatus.COMPLETED,
+                steps=[
+                    {
+                        "name": "step1",
+                        "status": "completed",
+                        "result": {"data": "value"},
+                    }
+                ],
+                context={"user_id": "user-789"},
+                metadata={"version": "2.0"}
+            )
+            
+            # Load saga state
+            state = await storage.load_saga_state("redis-test-123")
+            
+            assert state is not None
+            assert state["saga_id"] == "redis-test-123"
+            assert state["saga_name"] == "RedisTestSaga"
+            assert state["status"] == "completed"
+            assert state["context"]["user_id"] == "user-789"
+            assert len(state["steps"]) == 1
+    
+    @pytest.mark.asyncio
+    async def test_load_nonexistent_saga(self, redis_container):
+        """Test loading a saga that doesn't exist"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url) as storage:
+            state = await storage.load_saga_state("nonexistent-redis")
+            assert state is None
+    
+    @pytest.mark.asyncio
+    async def test_delete_saga_state(self, redis_container):
+        """Test deleting saga state"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url) as storage:
+            # Save saga
+            await storage.save_saga_state(
+                saga_id="redis-delete-me",
+                saga_name="RedisDeleteTest",
+                status=SagaStatus.FAILED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # Verify it exists
+            state = await storage.load_saga_state("redis-delete-me")
+            assert state is not None
+            
+            # Delete it
+            result = await storage.delete_saga_state("redis-delete-me")
+            assert result is True
+            
+            # Verify it's gone
+            state = await storage.load_saga_state("redis-delete-me")
+            assert state is None
+    
+    @pytest.mark.asyncio
+    async def test_list_sagas_by_status(self, redis_container):
+        """Test listing sagas filtered by status"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url) as storage:
+            # Create multiple sagas
+            await storage.save_saga_state(
+                saga_id="redis-completed-1",
+                saga_name="RedisTest1",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            await storage.save_saga_state(
+                saga_id="redis-failed-1",
+                saga_name="RedisTest2",
+                status=SagaStatus.FAILED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # List completed sagas
+            completed = await storage.list_sagas(status=SagaStatus.COMPLETED, limit=10)
+            assert len(completed) >= 1
+            assert any(s["saga_id"] == "redis-completed-1" for s in completed)
+    
+    @pytest.mark.asyncio
+    async def test_ttl_applied_to_completed_sagas(self, redis_container):
+        """Test that TTL is applied to completed sagas"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url, default_ttl=1) as storage:
+            # Save completed saga
+            await storage.save_saga_state(
+                saga_id="redis-ttl-test",
+                saga_name="TTLTest",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # Verify it exists
+            state = await storage.load_saga_state("redis-ttl-test")
+            assert state is not None
+            
+            # Wait for TTL to expire
+            await asyncio.sleep(1.5)
+            
+            # Verify it's expired
+            state = await storage.load_saga_state("redis-ttl-test")
+            assert state is None
+    
+    @pytest.mark.asyncio
+    async def test_update_existing_saga(self, redis_container):
+        """Test updating an existing saga state"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url=redis_url) as storage:
+            # Create saga
+            await storage.save_saga_state(
+                saga_id="redis-update-test",
+                saga_name="RedisUpdateTest",
+                status=SagaStatus.EXECUTING,
+                steps=[],
+                context={"counter": 1},
+                metadata={}
+            )
+            
+            # Update saga
+            await storage.save_saga_state(
+                saga_id="redis-update-test",
+                saga_name="RedisUpdateTest",
+                status=SagaStatus.COMPLETED,
+                steps=[{"name": "step1", "status": "completed"}],
+                context={"counter": 2},
+                metadata={}
+            )
+            
+            # Load and verify
+            state = await storage.load_saga_state("redis-update-test")
+            assert state["status"] == "completed"
+            assert state["context"]["counter"] == 2
+            assert len(state["steps"]) == 1
+
