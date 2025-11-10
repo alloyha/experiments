@@ -339,6 +339,7 @@ class TestRedisStorage:
         port = redis_container.get_exposed_port(6379)
         redis_url = f"redis://{host}:{port}"
         
+        # Use 1 second TTL for fast test
         async with RedisSagaStorage(redis_url=redis_url, default_ttl=1) as storage:
             # Save completed saga
             await storage.save_saga_state(
@@ -354,8 +355,9 @@ class TestRedisStorage:
             state = await storage.load_saga_state("redis-ttl-test")
             assert state is not None
             
-            # Wait for TTL to expire
-            await asyncio.sleep(1.5)
+            # Wait for TTL to expire with some buffer
+            # Redis TTL expiration happens in background, so we need to wait a bit longer
+            await asyncio.sleep(2.5)
             
             # Verify it's expired
             state = await storage.load_saga_state("redis-ttl-test")
