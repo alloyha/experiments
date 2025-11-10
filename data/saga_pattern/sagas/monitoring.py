@@ -98,14 +98,6 @@ class MonitoredSagaOrchestrator(SagaOrchestrator):
 # ============================================
 # DEMO RUNNER
 # ============================================
-
-
-
-
-
-
-
-
 async def demo_failure_with_rollback():
     """Demo: Saga failure with successful rollback"""
     print("\n" + "=" * 60)
@@ -152,8 +144,6 @@ async def demo_failure_with_rollback():
 
 async def main():
     """Run all demos"""
-    await demo_order_processing()
-    await demo_travel_booking()
     await demo_failure_with_rollback()
 
     print("\n" + "=" * 60)
