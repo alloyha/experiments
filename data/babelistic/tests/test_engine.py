@@ -299,10 +299,10 @@ class TestMonteCarloStrategy:
         
         # Ensemble of regions: some contain point, some don't
         ensemble = [
-            DiskRegion(np.array([0, 0]), radius=2.0),  # Contains
-            DiskRegion(np.array([0, 0]), radius=1.5),  # Contains
-            DiskRegion(np.array([5, 0]), radius=1.0),  # Doesn't contain
-            DiskRegion(np.array([0, 0]), radius=0.5),  # Doesn't contain
+            DiskRegion(np.array([0, 0]), radius=2.0),  # Contains (point at center)
+            DiskRegion(np.array([0, 0]), radius=1.5),  # Contains (point at center)
+            DiskRegion(np.array([5, 0]), radius=1.0),  # Doesn't contain (point far from center)
+            DiskRegion(np.array([0, 0]), radius=0.5),  # Contains (point at center)
         ]
         
         query = self._make_query_point_uncertain_region(point, ensemble, QueryType.MEMBERSHIP)
@@ -310,8 +310,8 @@ class TestMonteCarloStrategy:
         strategy = MonteCarloStrategy()
         result = strategy.compute(query)
         
-        # 2 out of 4 regions contain the point
-        np.testing.assert_allclose(result.value, 0.5, rtol=0.01)
+        # 3 out of 4 regions contain the point (only the far one doesn't)
+        np.testing.assert_allclose(result.value, 0.75, rtol=0.01)
     
     def test_uncertain_region_subset(self):
         """Test: P(R̃₁ ⊆ R₂)"""
@@ -433,16 +433,23 @@ class TestMonteCarloStrategy:
         from babelistic.ontology import Query, QueryType, Subject, Target, UncertainPoint, PointEntity
         from babelistic.geometry.metric_spaces import EuclideanSpace
         
-        query = Query(
-            subject=Subject(PointEntity(), UncertainPoint(dist1)),
-            target=Target(PointEntity(), UncertainPoint(dist2)),
-            query_type=query_type,
-            metric_space=EuclideanSpace()
-        )
+        # Build kwargs dict for Query
+        kwargs = {
+            'subject': Subject(PointEntity(), UncertainPoint(dist1)),
+            'target': Target(PointEntity(), UncertainPoint(dist2)),
+            'query_type': query_type,
+            'metric_space': EuclideanSpace()
+        }
         
-        # Always set these for tests
+        # Add distance_threshold for PROXIMITY queries
         if query_type == QueryType.PROXIMITY:
-            query.distance_threshold = 2.0  # Add this
+            kwargs['distance_threshold'] = 2.0
+        
+        query = Query(**kwargs)
+        
+        # Set sampling parameters
+        if query_type == QueryType.PROXIMITY:
+            query.n_samples = 5000
         
         query.bounds = [[-10, 10], [-10, 10]]  # Add this
         query.resolution = 50
@@ -688,3 +695,125 @@ class TestQueryRouter:
             query_type=query_type,
             metric_space=EuclideanSpace()
         )
+
+# ============================================================================
+# PHASE 1.6: Integration Tests - End-to-End
+# ============================================================================
+
+class TestEndToEnd:
+    """Integration tests for complete query pipeline"""
+    
+    def test_complete_geofence_workflow(self):
+        """Test classic geofence: uncertain point × known region"""
+        from babelistic.geometry.regions import PolygonRegion
+        from babelistic.probability.distributions import GaussianDistribution
+        from babelistic.engine import solve_query
+        from babelistic.ontology import Query, Subject, Target, UncertainPoint, KnownRegion
+        from babelistic.ontology import PointEntity, RegionEntity, QueryType
+        from babelistic.geometry.metric_spaces import GeoSpace
+        
+        # GPS location with uncertainty
+        gps_location = GaussianDistribution(
+            mean=np.array([37.7749, -122.4194]),  # San Francisco
+            cov=np.diag([9e-9, 9e-9])  # ~10m uncertainty (10m = 10/111km degrees ≈ 9e-5 degrees std, variance = 9e-9)
+        )
+        
+        # Geofence boundary (simplified square)
+        fence_vertices = np.array([
+            [37.7740, -122.4200],
+            [37.7760, -122.4200],
+            [37.7760, -122.4180],
+            [37.7740, -122.4180]
+        ])
+        fence = PolygonRegion(fence_vertices)
+        
+        # Create query
+        query = Query(
+            subject=Subject(PointEntity(), UncertainPoint(gps_location)),
+            target=Target(RegionEntity("geofence"), KnownRegion(fence)),
+            query_type=QueryType.MEMBERSHIP,
+            metric_space=GeoSpace()
+        )
+        
+        # Solve using Monte Carlo strategy (more reliable for point-in-polygon)
+        result = solve_query(query, force_strategy='monte_carlo')
+        
+        # Should be high probability (GPS mean is inside fence, small uncertainty)
+        assert 0.95 < result.value <= 1.0
+        assert result.computation_method is not None
+        assert result.error_estimate is not None
+    
+    def test_building_overlap_analysis(self):
+        """Test region × region overlap analysis"""
+        from babelistic.geometry.regions import PolygonRegion
+        from babelistic.geometry.metric_spaces import EuclideanSpace
+        from babelistic.engine import solve_query
+        from babelistic.ontology import Query, Subject, Target, KnownRegion
+        from babelistic.ontology import RegionEntity, QueryType
+                
+        # Two building footprints
+        building1 = PolygonRegion(np.array([[0, 0], [10, 0], [10, 10], [0, 10]]))
+        building2 = PolygonRegion(np.array([[5, 5], [15, 5], [15, 15], [5, 15]]))
+        
+        # Query 1: Do they intersect?
+        query_intersection = Query(
+            subject=Subject(RegionEntity("building1"), KnownRegion(building1)),
+            target=Target(RegionEntity("building2"), KnownRegion(building2)),
+            query_type=QueryType.INTERSECTION,
+            metric_space=EuclideanSpace()
+        )
+        
+        result = solve_query(query_intersection)
+        assert result.value == 1.0  # Yes, they overlap
+        
+        # Query 2: What fraction overlaps?
+        query_fraction = Query(
+            subject=Subject(RegionEntity("building1"), KnownRegion(building1)),
+            target=Target(RegionEntity("building2"), KnownRegion(building2)),
+            query_type=QueryType.OVERLAP_FRACTION,
+            metric_space=EuclideanSpace()
+        )
+        
+        result = solve_query(query_fraction)
+        
+        # Overlap is 5×5 = 25 square units
+        # Building1 is 10×10 = 100 square units
+        # Fraction = 25/100 = 0.25
+        np.testing.assert_allclose(result.value, 0.25, rtol=0.1)
+    
+    def test_uncertain_hazard_zone_proximity(self):
+        """Test uncertain point × uncertain region proximity"""
+        from babelistic.geometry.regions import DiskRegion
+        from babelistic.probability.distributions import GaussianDistribution
+        from babelistic.engine import solve_query
+        from babelistic.ontology import Query, Subject, Target, UncertainPoint, UncertainRegion
+        from babelistic.ontology import PointEntity, RegionEntity, QueryType
+        from babelistic.geometry.metric_spaces import EuclideanSpace
+        
+        # Person with GPS uncertainty
+        person_location = GaussianDistribution(
+            mean=np.array([0, 0]),
+            cov=np.diag([1.0, 1.0])
+        )
+        
+        # Hazard zone with uncertain boundary (ensemble of possible zones)
+        hazard_ensemble = [
+            DiskRegion(np.array([5, 0]), radius=2.0),
+            DiskRegion(np.array([6, 0]), radius=2.5),
+            DiskRegion(np.array([4, 0]), radius=1.5),
+        ]
+        
+        # Query: Is person within 2m of hazard zone?
+        query = Query(
+            subject=Subject(PointEntity(), UncertainPoint(person_location)),
+            target=Target(RegionEntity("hazard"), UncertainRegion(hazard_ensemble)),
+            query_type=QueryType.PROXIMITY,
+            metric_space=EuclideanSpace(),
+            distance_threshold=2.0
+        )
+        
+        result = solve_query(query, force_strategy='monte_carlo')
+        
+        # Person is ~5m away on average, within 2m threshold is unlikely
+        assert result.value < 0.3
+        assert result.error_estimate is not None

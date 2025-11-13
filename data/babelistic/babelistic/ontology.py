@@ -326,7 +326,7 @@ class Query:
                     # Use sensible default
                     self.region_distance_semantics = RegionDistanceSemantics.BOUNDARY_TO_BOUNDARY
         
-        # Rule 6: PROXIMITY requires distance_threshold
+        # Rule 6: PROXIMITY requires distance_threshold for non-point×point; point×point allowed with threshold
         if self.query_type == QueryType.PROXIMITY:
             if self.distance_threshold is None:
                 raise ValueError("PROXIMITY query requires distance_threshold parameter")

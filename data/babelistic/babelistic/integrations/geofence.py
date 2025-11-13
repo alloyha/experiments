@@ -280,6 +280,54 @@ class GeofenceRegion(Region):
             ref_lon_deg - margin_lon,
             ref_lon_deg + margin_lon
         )
+    
+    def sample_uniform(self, n_samples: int) -> np.ndarray:
+        """
+        Sample uniformly from geofence region (disk around reference point).
+        
+        Uses polar coordinates for uniform sampling.
+        """
+        # Convert reference to degrees
+        ref_lat_deg = np.degrees(self.ref_lat)
+        ref_lon_deg = np.degrees(self.ref_lon)
+        
+        # Approximate scales (meters per degree)
+        lat_scale = 111320.0
+        lon_scale = lat_scale * np.cos(np.radians(ref_lat_deg))
+        
+        # Sample in local Cartesian coordinates (approximate)
+        # r ~ sqrt(U) for uniform density
+        r = np.sqrt(np.random.uniform(0, 1, n_samples)) * self.d0
+        theta = np.random.uniform(0, 2*np.pi, n_samples)
+        
+        # Convert to lat/lon offsets
+        x_m = r * np.cos(theta)  # meters east
+        y_m = r * np.sin(theta)  # meters north
+        
+        # Convert to degrees
+        dlat = y_m / lat_scale
+        dlon = x_m / lon_scale
+        
+        # Add to reference
+        lats = ref_lat_deg + dlat
+        lons = ref_lon_deg + dlon
+        
+        return np.column_stack([lats, lons])
+    
+    def area(self) -> float:
+        """
+        Area of geofence disk in square meters.
+        
+        A = πr²
+        """
+        return np.pi * self.d0 ** 2
+    
+    def centroid(self) -> np.ndarray:
+        """
+        Centroid is the reference point (in degrees).
+        """
+        return np.array([np.degrees(self.ref_lat), np.degrees(self.ref_lon)])
+
 
 
 def geofence_to_probability(

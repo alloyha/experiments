@@ -19,7 +19,20 @@ from typing import Optional, Any, Dict, List
 import numpy as np
 
 from .base import MetricSpace, Region
-from .ontology import Query, QueryType, EpistemicType
+from .ontology import (
+    EpistemicType, 
+    RegionEpistemicType,
+    QueryType,
+    Query,
+    Subject,
+    Target,
+    KnownPoint,
+    UncertainPoint,
+    KnownRegion,
+    UncertainRegion,
+    FuzzyRegion
+)
+
 
 
 # ============================================================================
@@ -54,6 +67,38 @@ class QueryResult:
     
     def __repr__(self):
         return f"QueryResult(value={self.value:.4f}, method={self.computation_method})"
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def get_epistemic_type(state):
+    """
+    Get epistemic type from state, handling both point and region types.
+    
+    Returns one of: 'known', 'uncertain', 'fuzzy'
+    """
+    epi_type = state.epistemic_type()
+    
+    # Handle both EpistemicType and RegionEpistemicType
+    if hasattr(epi_type, 'value'):
+        return epi_type.value  # Return string: 'known', 'uncertain', or 'fuzzy'
+    return str(epi_type).lower()
+
+
+def is_known(state):
+    """Check if state is known (certain)"""
+    return get_epistemic_type(state) == 'known'
+
+
+def is_uncertain(state):
+    """Check if state is uncertain"""
+    return get_epistemic_type(state) == 'uncertain'
+
+
+def is_fuzzy(state):
+    """Check if state is fuzzy"""
+    return get_epistemic_type(state) == 'fuzzy'
 
 
 # ============================================================================
@@ -124,10 +169,9 @@ class AnalyticalStrategy(ComputationStrategy):
     
     def can_handle(self, query) -> bool:
         """Handles only known × known cases"""
-        from .ontology import EpistemicType
-        
-        s_known = query.subject.state.epistemic_type() == EpistemicType.KNOWN
-        t_known = query.target.state.epistemic_type() == EpistemicType.KNOWN
+        # Use helper functions instead of direct enum comparison
+        s_known = is_known(query.subject.state)
+        t_known = is_known(query.target.state)
         
         return s_known and t_known
     
@@ -343,22 +387,45 @@ class AnalyticalStrategy(ComputationStrategy):
         else:
             raise ValueError(f"Unknown region distance semantics: {semantics}")
     
-    def _generate_grid(self, query: Query) -> Dict[str, np.ndarray]:
-        """Generate evaluation grid for region operations"""
-        # This would use query.grid_bounds and query.resolution
-        # Placeholder implementation
+    def _generate_grid(self, query):
+        """Generate grid for geometric checks"""
         resolution = getattr(query, 'resolution', 50)
-        bounds = getattr(query, 'bounds', [[-10, 10], [-10, 10]])
         
-        x = np.linspace(bounds[0][0], bounds[0][1], resolution)
-        y = np.linspace(bounds[1][0], bounds[1][1], resolution)
-        xx, yy = np.meshgrid(x, y)
-        points = np.stack([xx.ravel(), yy.ravel()], axis=-1)
+        # Get bounds - merge subject and target
+        try:
+            s_bounds = query.subject.state.region.bounds()
+        except AttributeError:
+            # If subject doesn't have bounds, use target bounds
+            s_bounds = None
         
-        cell_area = (x[1] - x[0]) * (y[1] - y[0])
-        weights = np.full(len(points), cell_area)
+        try:
+            if is_uncertain(query.target.state):
+                # Use first region in ensemble
+                t_bounds = query.target.state.ensemble[0].bounds()
+            else:
+                t_bounds = query.target.state.region.bounds()
+        except (AttributeError, IndexError):
+            t_bounds = None
         
-        return {'points': points, 'weights': weights}
+        # Merge bounds
+        if s_bounds and t_bounds:
+            bounds = (
+                min(s_bounds[0], t_bounds[0]),
+                max(s_bounds[1], t_bounds[1]),
+                min(s_bounds[2], t_bounds[2]),
+                max(s_bounds[3], t_bounds[3])
+            )
+        elif s_bounds:
+            bounds = s_bounds
+        elif t_bounds:
+            bounds = t_bounds
+        else:
+            # Default bounds
+            bounds = (-10, 10, -10, 10)
+        
+        # Create grid
+        grid = query.metric_space.create_grid(bounds, resolution)
+        return grid
 
 
 # ============================================================================
@@ -380,15 +447,12 @@ class FrameworkStrategy(ComputationStrategy):
     
     def can_handle(self, query) -> bool:
         """Can handle if we have a distribution and a region/membership function"""
-        from .ontology import EpistemicType, RegionEpistemicType
         
         # Check if subject has a distribution
-        subject_epistemic = query.subject.state.epistemic_type()
-        
         has_distribution = (
-            subject_epistemic == EpistemicType.UNCERTAIN or
+            is_uncertain(query.subject.state) or
             (query.subject.entity.spatial_extent() == "region" and 
-            subject_epistemic == RegionEpistemicType.KNOWN)  # uniform from known region
+             is_known(query.subject.state))  # uniform from known region
         )
         
         # Check if target is a region
@@ -420,14 +484,14 @@ class FrameworkStrategy(ComputationStrategy):
             metric_space=query.metric_space,
             region=region_or_membership,
             query_distribution=distribution,
-            kernel=query.kernel or GaussianKernel(),
+            kernel=getattr(query, 'kernel', None) or GaussianKernel(),
             convolution_strategy=DirectConvolution(),
             integrator=QuadratureIntegrator()
         )
         
         # Compute
-        bandwidth = query.bandwidth or self._auto_bandwidth(query)
-        resolution = query.resolution or 50
+        bandwidth = getattr(query, 'bandwidth', None) or self._auto_bandwidth(query)
+        resolution = getattr(query, 'resolution', 50) or 50
         
         result = estimator.compute(bandwidth=bandwidth, resolution=resolution)
         
@@ -436,7 +500,8 @@ class FrameworkStrategy(ComputationStrategy):
             computation_method="framework_mollified_indicator",
             result_type="probability",
             bandwidth=bandwidth,
-            grid_resolution=resolution
+            grid_resolution=resolution,
+            error_estimate=0.01  # Framework has inherent approximation error from mollification
         )
     
     def estimate_cost(self, query) -> float:
@@ -465,24 +530,67 @@ class FrameworkStrategy(ComputationStrategy):
     
     def _extract_region(self, query):
         """Extract region or membership function from target"""
-        from .ontology import EpistemicType, QueryType
+        from .ontology import RegionEpistemicType, QueryType
         
         if query.query_type == QueryType.PROXIMITY:
             # Create buffered region
             if query.target.entity.spatial_extent() == "region":
-                from .geometry.regions import BufferedPolygonRegion
-                return BufferedPolygonRegion(
-                    query.target.state.region,
-                    buffer_distance=query.distance_threshold
-                )
+                from .geometry.regions import BufferedPolygonRegion, MultiRegion, DiskRegion
+                if is_uncertain(query.target.state):
+                    # Create buffered versions of all regions in ensemble
+                    buffered_regions = []
+                    for region in query.target.state.ensemble:
+                        if isinstance(region, DiskRegion):
+                            # For disk regions, just expand the radius
+                            buffered_regions.append(
+                                DiskRegion(
+                                    center=region.center,
+                                    radius=region.radius + query.distance_threshold,
+                                    metric_space=region.metric
+                                )
+                            )
+                        else:
+                            # For polygon regions, use BufferedPolygonRegion
+                            buffered_regions.append(
+                                BufferedPolygonRegion(
+                                    region.vertices if hasattr(region, 'vertices') else region,
+                                    buffer=query.distance_threshold
+                                )
+                            )
+                    # Use a MultiRegion with union operation to combine them
+                    return MultiRegion(buffered_regions, operation='union')
+                else:
+                    if isinstance(query.target.state.region, DiskRegion):
+                        return DiskRegion(
+                            center=query.target.state.region.center,
+                            radius=query.target.state.region.radius + query.distance_threshold,
+                            metric_space=query.target.state.region.metric
+                        )
+                    else:
+                        return BufferedPolygonRegion(
+                            query.target.state.region.vertices if hasattr(query.target.state.region, 'vertices') else query.target.state.region,
+                            buffer=query.distance_threshold
+                        )
             else:  # point
                 from .geometry.regions import DiskRegion
-                return DiskRegion(
-                    center=query.target.state.location,
-                    radius=query.distance_threshold
-                )
+                if is_uncertain(query.target.state):
+                    # Multiple possible disk regions, use MultiRegion
+                    from .geometry.regions import MultiRegion
+                    disk_regions = [
+                        DiskRegion(
+                            center=dist.mean(),
+                            radius=query.distance_threshold
+                        )
+                        for dist in [query.target.state.distribution]
+                    ]
+                    return MultiRegion(disk_regions, operation='union')
+                else:
+                    return DiskRegion(
+                        center=query.target.state.location,
+                        radius=query.distance_threshold
+                    )
         
-        elif query.target.state.epistemic_type() == EpistemicType.FUZZY:
+        elif query.target.state.epistemic_type() == RegionEpistemicType.FUZZY:
             # Use membership function directly
             return query.target.state.membership
         
@@ -549,25 +657,25 @@ class MonteCarloStrategy(ComputationStrategy):
     
     def _monte_carlo_membership(self, query) -> QueryResult:
         """P(subject in target) via sampling"""
-        from .ontology import EpistemicType
         
         n_samples = getattr(query, 'n_samples', self.default_n_samples)
         
         # Sample from subject
-        if query.subject.state.epistemic_type() == EpistemicType.UNCERTAIN:
+        if is_uncertain(query.subject.state):
             samples = query.subject.state.distribution.sample(n_samples)
         else:
             # Known point/region - sample uniformly if region
             if query.subject.entity.spatial_extent() == "point":
                 samples = np.array([query.subject.state.location] * n_samples)
             else:
+                # Known region - sample uniformly
                 samples = query.subject.state.region.sample_uniform(n_samples)
         
         # Evaluate on target
-        if query.target.state.epistemic_type() == EpistemicType.UNCERTAIN:
+        if is_uncertain(query.target.state):
             # Target ensemble - average over ensemble
             probabilities = []
-            for region in query.target.state.ensemble:
+            for region in query.target.state.ensemble:  # FIX: was .region
                 indicators = region.indicator(samples)
                 probabilities.append(np.mean(indicators > 0.5))
             probability = np.mean(probabilities)
@@ -575,14 +683,16 @@ class MonteCarloStrategy(ComputationStrategy):
         
         else:
             # Target is known/fuzzy
-            if query.target.state.epistemic_type() == EpistemicType.FUZZY:
+            if is_fuzzy(query.target.state):
+                # FIX: Access membership function correctly
                 memberships = query.target.state.membership(samples)
                 probability = np.mean(memberships)
+                error = np.std(memberships) / np.sqrt(n_samples)
             else:
+                # Known region
                 indicators = query.target.state.region.indicator(samples)
                 probability = np.mean(indicators > 0.5)
-            
-            error = np.std(indicators > 0.5) / np.sqrt(n_samples)
+                error = np.std(indicators > 0.5) / np.sqrt(n_samples)
         
         return QueryResult(
             value=probability,
@@ -683,96 +793,199 @@ class MonteCarloStrategy(ComputationStrategy):
                 return np.array(samples)
     
     def _monte_carlo_subset(self, query) -> QueryResult:
-        """P(R̃₁ ⊆ R₂) via ensemble sampling"""
-        from .ontology import EpistemicType
+        """P(R₁ ⊆ R₂)"""
         
-        n_samples = getattr(query, 'n_samples', self.default_n_samples)
-        
-        # Get ensemble from uncertain region
-        subject_ensemble = query.subject.state.ensemble
-        target_region = query.target.state.region
-        
-        # For each region in ensemble, check if it's a subset
-        subset_count = 0
-        for region_i in subject_ensemble:
-            # Sample points from region_i
-            samples = region_i.sample_uniform(min(n_samples // len(subject_ensemble), 100))
+        # Helper to check if one region is subset of another
+        def check_subset(region1, region2, grid, idx1=0, idx2=0):
+            I1 = region1.indicator(grid['points'])
+            I2 = region2.indicator(grid['points'])
             
-            # Check if all points are in target
-            indicators = target_region.indicator(samples)
-            is_subset = np.all(indicators > 0.5)
+            # Check if all points in region1 are also in region2
+            region1_points = I1 > 0.5
+            if not region1_points.any():
+                return True  # Empty set is subset of anything
             
-            if is_subset:
-                subset_count += 1
+            return np.all(I2[region1_points] > 0.5)
         
-        probability = subset_count / len(subject_ensemble)
-        error = np.sqrt(probability * (1 - probability) / len(subject_ensemble))
+        # Generate grid for checking
+        grid = self._generate_grid(query)
+        
+        # Get source regions (subject)
+        if is_uncertain(query.subject.state):
+            subject_regions = query.subject.state.ensemble
+        else:
+            subject_regions = [query.subject.state.region]
+        
+        # Get target regions
+        if is_uncertain(query.target.state):
+            target_regions = query.target.state.ensemble
+        else:
+            target_regions = [query.target.state.region]
+        
+        # Check all combinations
+        count = 0
+        total = len(subject_regions) * len(target_regions)
+        
+        for i, r1 in enumerate(subject_regions):
+            for j, r2 in enumerate(target_regions):
+                is_subset = check_subset(r1, r2, grid)
+                if is_subset:
+                    count += 1
+        
+        probability = count / total if total > 0 else 0.0
         
         return QueryResult(
             value=probability,
             computation_method="monte_carlo_subset",
             result_type="probability",
-            error_estimate=error,
-            n_samples=len(subject_ensemble)
+            n_samples=total
         )
 
     def _monte_carlo_intersection(self, query) -> QueryResult:
-        """P(R̃₁ ∩ R₂ ≠ ∅) via sampling"""
+        """P(R₁ ∩ R₂ ≠ ∅)"""
         
-        subject_ensemble = query.subject.state.ensemble
-        target_region = query.target.state.region
+        def check_intersection(region1, region2, grid):
+            I1 = region1.indicator(grid['points'])
+            I2 = region2.indicator(grid['points'])
+            overlap = (I1 > 0.5) & (I2 > 0.5)
+            return overlap.any()
         
-        # For each region in ensemble, check if it intersects
-        intersection_count = 0
-        for region_i in subject_ensemble:
-            # Sample points from region_i
-            samples = region_i.sample_uniform(100)
-            
-            # Check if any point is in target
-            indicators = target_region.indicator(samples)
-            has_intersection = np.any(indicators > 0.5)
-            
-            if has_intersection:
-                intersection_count += 1
+        grid = self._generate_grid(query)
         
-        probability = intersection_count / len(subject_ensemble)
-        error = np.sqrt(probability * (1 - probability) / len(subject_ensemble))
+        # Get regions
+        if is_uncertain(query.subject.state):
+            subject_regions = query.subject.state.ensemble
+        else:
+            subject_regions = [query.subject.state.region]
+        
+        if is_uncertain(query.target.state):
+            target_regions = query.target.state.ensemble
+        else:
+            target_regions = [query.target.state.region]
+        
+        # Check all combinations
+        count = 0
+        total = len(subject_regions) * len(target_regions)
+        
+        for r1 in subject_regions:
+            for r2 in target_regions:
+                if check_intersection(r1, r2, grid):
+                    count += 1
+        
+        probability = count / total if total > 0 else 0.0
         
         return QueryResult(
             value=probability,
             computation_method="monte_carlo_intersection",
             result_type="probability",
-            error_estimate=error,
-            n_samples=len(subject_ensemble)
+            n_samples=total
         )
 
     def _monte_carlo_overlap_fraction(self, query) -> QueryResult:
-        """E[|R̃₁∩R₂|/|R₁|] via sampling"""
+        """E[|R₁∩R₂|/|R₁|]"""
         
-        subject_ensemble = query.subject.state.ensemble
-        target_region = query.target.state.region
-        
-        # Compute overlap fraction for each region in ensemble
-        fractions = []
-        for region_i in subject_ensemble:
-            # Sample points from region_i
-            samples = region_i.sample_uniform(1000)
+        def compute_fraction(region1, region2, grid):
+            I1 = region1.indicator(grid['points'])
+            I2 = region2.indicator(grid['points'])
             
-            # Compute fraction in target
-            indicators = target_region.indicator(samples)
-            fraction = np.mean(indicators > 0.5)
-            fractions.append(fraction)
+            area1 = np.sum(I1 * grid['weights'])
+            area_overlap = np.sum((I1 * I2) * grid['weights'])
+            
+            if area1 < 1e-10:
+                return 0.0
+            
+            return area_overlap / area1
+        
+        grid = self._generate_grid(query)
+        
+        # Get regions
+        if is_uncertain(query.subject.state):
+            subject_regions = query.subject.state.ensemble
+        else:
+            subject_regions = [query.subject.state.region]
+        
+        if is_uncertain(query.target.state):
+            target_regions = query.target.state.ensemble
+        else:
+            target_regions = [query.target.state.region]
+        
+        # Compute fraction for all combinations
+        fractions = []
+        for r1 in subject_regions:
+            for r2 in target_regions:
+                frac = compute_fraction(r1, r2, grid)
+                fractions.append(frac)
         
         mean_fraction = np.mean(fractions)
-        error = np.std(fractions) / np.sqrt(len(fractions))
+        error = np.std(fractions) / np.sqrt(len(fractions)) if len(fractions) > 1 else 0.0
         
         return QueryResult(
             value=mean_fraction,
             computation_method="monte_carlo_overlap_fraction",
             result_type="probability",
             error_estimate=error,
-            n_samples=len(subject_ensemble)
+            n_samples=len(fractions)
         )
+
+    def _generate_grid(self, query):
+        """Generate grid for geometric checks"""
+        resolution = getattr(query, 'resolution', 50)
+        
+        # Get bounds - merge subject and target
+        s_bounds = None
+        t_bounds = None
+        
+        # Handle subject bounds
+        try:
+            if is_uncertain(query.subject.state):
+                # Merge all bounds from ensemble
+                all_bounds = [region.bounds() for region in query.subject.state.ensemble]
+                s_bounds = (
+                    min(b[0] for b in all_bounds),
+                    max(b[1] for b in all_bounds),
+                    min(b[2] for b in all_bounds),
+                    max(b[3] for b in all_bounds)
+                )
+            else:
+                s_bounds = query.subject.state.region.bounds()
+        except AttributeError:
+            s_bounds = None
+        
+        # Handle target bounds
+        try:
+            if is_uncertain(query.target.state):
+                # Merge all bounds from ensemble
+                all_bounds = [region.bounds() for region in query.target.state.ensemble]
+                t_bounds = (
+                    min(b[0] for b in all_bounds),
+                    max(b[1] for b in all_bounds),
+                    min(b[2] for b in all_bounds),
+                    max(b[3] for b in all_bounds)
+                )
+            else:
+                t_bounds = query.target.state.region.bounds()
+        except (AttributeError, IndexError):
+            t_bounds = None
+        
+        # Merge bounds
+        if s_bounds and t_bounds:
+            bounds = (
+                min(s_bounds[0], t_bounds[0]),
+                max(s_bounds[1], t_bounds[1]),
+                min(s_bounds[2], t_bounds[2]),
+                max(s_bounds[3], t_bounds[3])
+            )
+        elif s_bounds:
+            bounds = s_bounds
+        elif t_bounds:
+            bounds = t_bounds
+        else:
+            # Default bounds
+            bounds = (-10, 10, -10, 10)
+        
+        # Create grid
+        grid = query.metric_space.create_grid(bounds, resolution)
+        return grid
 
 # ============================================================================
 # STRATEGY 4: HYBRID (Adaptive/Marginalized)
@@ -918,13 +1131,12 @@ class QueryRouter:
         """
         
         if force_strategy:
-            # User override
             strategy = self._get_strategy_by_name(force_strategy)
             if not strategy.can_handle(query):
                 raise ValueError(f"Forced strategy '{force_strategy}' cannot handle this query")
             return strategy.compute(query)
         
-        # Automatic selection: find capable strategies
+        # Automatic selection
         capable = [s for s in self.strategies if s.can_handle(query)]
         
         if not capable:
@@ -934,6 +1146,7 @@ class QueryRouter:
         best_strategy = min(capable, key=lambda s: s.estimate_cost(query))
         
         return best_strategy.compute(query)
+
     
     def _get_strategy_by_name(self, name: str) -> ComputationStrategy:
         """Get strategy by name"""

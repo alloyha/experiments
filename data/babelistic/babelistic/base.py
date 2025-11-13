@@ -162,3 +162,4 @@ class Integrator(ABC):
                        weights: np.ndarray) -> float:  # pragma: no cover
         """Estimate integration error (if possible)"""
         pass
+
