@@ -5,14 +5,13 @@ Provides an abstract interface for storing outbox events.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Any
+from typing import Any
 
 from sage.outbox.types import OutboxEvent, OutboxStatus
 
 
 class OutboxStorageError(Exception):
     """Base exception for outbox storage errors."""
-    pass
 
 
 class OutboxStorage(ABC):
@@ -38,12 +37,12 @@ class OutboxStorage(ABC):
         ...     batch_size=100
         ... )
     """
-    
+
     @abstractmethod
     async def insert(
         self,
         event: OutboxEvent,
-        connection: Optional[Any] = None,
+        connection: Any | None = None,
     ) -> OutboxEvent:
         """
         Insert a new outbox event.
@@ -59,14 +58,14 @@ class OutboxStorage(ABC):
             OutboxStorageError: If insert fails
         """
         ...
-    
+
     @abstractmethod
     async def claim_batch(
         self,
         worker_id: str,
         batch_size: int = 100,
         older_than_seconds: float = 0.0,
-    ) -> List[OutboxEvent]:
+    ) -> list[OutboxEvent]:
         """
         Claim a batch of pending events for processing.
         
@@ -84,14 +83,14 @@ class OutboxStorage(ABC):
             OutboxStorageError: If claim fails
         """
         ...
-    
+
     @abstractmethod
     async def update_status(
         self,
         event_id: str,
         status: OutboxStatus,
-        error_message: Optional[str] = None,
-        connection: Optional[Any] = None,
+        error_message: str | None = None,
+        connection: Any | None = None,
     ) -> OutboxEvent:
         """
         Update the status of an event.
@@ -109,9 +108,9 @@ class OutboxStorage(ABC):
             OutboxStorageError: If update fails
         """
         ...
-    
+
     @abstractmethod
-    async def get_by_id(self, event_id: str) -> Optional[OutboxEvent]:
+    async def get_by_id(self, event_id: str) -> OutboxEvent | None:
         """
         Get an event by its ID.
         
@@ -122,9 +121,9 @@ class OutboxStorage(ABC):
             The event if found, None otherwise
         """
         ...
-    
+
     @abstractmethod
-    async def get_events_by_saga(self, saga_id: str) -> List[OutboxEvent]:
+    async def get_events_by_saga(self, saga_id: str) -> list[OutboxEvent]:
         """
         Get all events for a saga.
         
@@ -135,12 +134,12 @@ class OutboxStorage(ABC):
             List of events for the saga
         """
         ...
-    
+
     @abstractmethod
     async def get_stuck_events(
         self,
         claimed_older_than_seconds: float = 300.0,
-    ) -> List[OutboxEvent]:
+    ) -> list[OutboxEvent]:
         """
         Get events that appear to be stuck (claimed but not processed).
         
@@ -151,7 +150,7 @@ class OutboxStorage(ABC):
             List of stuck events
         """
         ...
-    
+
     @abstractmethod
     async def release_stuck_events(
         self,
@@ -167,16 +166,16 @@ class OutboxStorage(ABC):
             Number of events released
         """
         ...
-    
+
     @abstractmethod
     async def get_pending_count(self) -> int:
         """Get count of pending events."""
         ...
-    
+
     @abstractmethod
     async def get_dead_letter_events(
         self,
         limit: int = 100,
-    ) -> List[OutboxEvent]:
+    ) -> list[OutboxEvent]:
         """Get events in dead letter queue."""
         ...

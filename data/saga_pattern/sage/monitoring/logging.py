@@ -5,15 +5,16 @@ Provides structured logging utilities specifically designed for saga pattern tra
 with proper context propagation and correlation IDs for distributed systems.
 """
 
-import logging
 import json
-from typing import Any, Dict, Optional
-from datetime import datetime, timezone
+import logging
 from contextvars import ContextVar
-from sage.types import SagaStatus, SagaStepStatus
+from datetime import UTC, datetime
+from typing import Any
+
+from sage.types import SagaStatus
 
 # Context variables for propagating saga context
-saga_context: ContextVar[Dict[str, Any]] = ContextVar("saga_context", default={})
+saga_context: ContextVar[dict[str, Any]] = ContextVar("saga_context", default={})
 
 
 class SagaJsonFormatter(logging.Formatter):
@@ -22,15 +23,15 @@ class SagaJsonFormatter(logging.Formatter):
     
     Ensures all saga-related logs include correlation IDs and context
     """
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as structured JSON"""
-        
+
         # Get saga context if available
         context = saga_context.get({})
-        
+
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -38,7 +39,7 @@ class SagaJsonFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
-        
+
         # Add saga context if available
         if context:
             log_entry.update({
@@ -47,7 +48,7 @@ class SagaJsonFormatter(logging.Formatter):
                 "step_name": context.get("step_name"),
                 "correlation_id": context.get("correlation_id"),
             })
-        
+
         # Add any extra fields from the log record
         if hasattr(record, "saga_id"):
             log_entry["saga_id"] = record.saga_id
@@ -63,7 +64,7 @@ class SagaJsonFormatter(logging.Formatter):
             log_entry["retry_count"] = record.retry_count
         if hasattr(record, "error_type"):
             log_entry["error_type"] = record.error_type
-            
+
         return json.dumps(log_entry)
 
 
@@ -71,18 +72,18 @@ class SagaContextFilter(logging.Filter):
     """
     Logging filter that adds saga context to log records
     """
-    
+
     def filter(self, record: logging.LogRecord) -> bool:
         """Add saga context to log record"""
-        
+
         context = saga_context.get({})
-        
+
         # Add saga context fields to the record
         record.saga_id = context.get("saga_id", "unknown")
         record.saga_name = context.get("saga_name", "unknown")
         record.step_name = context.get("step_name", "")
         record.correlation_id = context.get("correlation_id", "")
-        
+
         return True
 
 
@@ -90,23 +91,23 @@ class SagaLogger:
     """
     Saga-aware logger with automatic context propagation
     """
-    
+
     def __init__(self, name: str):
         self.logger = logging.getLogger(name)
-        
+
         # Add saga context filter
         saga_filter = SagaContextFilter()
         self.logger.addFilter(saga_filter)
-    
+
     def set_saga_context(
-        self, 
-        saga_id: str, 
-        saga_name: str, 
-        step_name: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        self,
+        saga_id: str,
+        saga_name: str,
+        step_name: str | None = None,
+        correlation_id: str | None = None
     ) -> None:
         """Set saga context for current execution"""
-        
+
         context = {
             "saga_id": saga_id,
             "saga_name": saga_name,
@@ -114,20 +115,20 @@ class SagaLogger:
             "correlation_id": correlation_id or saga_id,
         }
         saga_context.set(context)
-    
+
     def clear_saga_context(self) -> None:
         """Clear saga context"""
         saga_context.set({})
-    
+
     def saga_started(
-        self, 
-        saga_id: str, 
-        saga_name: str, 
+        self,
+        saga_id: str,
+        saga_name: str,
         total_steps: int,
-        correlation_id: Optional[str] = None
+        correlation_id: str | None = None
     ) -> None:
         """Log saga start"""
-        
+
         self.set_saga_context(saga_id, saga_name, correlation_id=correlation_id)
         self.logger.info(
             f"Saga started: {saga_name}",
@@ -138,25 +139,25 @@ class SagaLogger:
                 "correlation_id": correlation_id or saga_id,
             }
         )
-    
+
     def saga_completed(
-        self, 
-        saga_id: str, 
-        saga_name: str, 
+        self,
+        saga_id: str,
+        saga_name: str,
         status: SagaStatus,
         duration_ms: float,
         completed_steps: int,
         total_steps: int
     ) -> None:
         """Log saga completion"""
-        
+
         log_level = logging.INFO if status == SagaStatus.COMPLETED else logging.WARNING
-        
+
         self.logger.log(
             log_level,
             f"Saga finished: {saga_name} - Status: {status.value}",
             extra={
-                "saga_id": saga_id, 
+                "saga_id": saga_id,
                 "saga_name": saga_name,
                 "status": status.value,
                 "duration_ms": duration_ms,
@@ -164,35 +165,35 @@ class SagaLogger:
                 "total_steps": total_steps,
             }
         )
-    
+
     def step_started(
-        self, 
-        saga_id: str, 
-        saga_name: str, 
+        self,
+        saga_id: str,
+        saga_name: str,
         step_name: str
     ) -> None:
         """Log step start"""
-        
+
         self.set_saga_context(saga_id, saga_name, step_name)
         self.logger.info(
             f"Step started: {step_name}",
             extra={
                 "saga_id": saga_id,
-                "saga_name": saga_name, 
+                "saga_name": saga_name,
                 "step_name": step_name,
             }
         )
-    
+
     def step_completed(
         self,
         saga_id: str,
-        saga_name: str, 
+        saga_name: str,
         step_name: str,
         duration_ms: float,
         retry_count: int = 0
     ) -> None:
         """Log step completion"""
-        
+
         self.logger.info(
             f"Step completed: {step_name}",
             extra={
@@ -203,19 +204,19 @@ class SagaLogger:
                 "retry_count": retry_count,
             }
         )
-    
+
     def step_failed(
         self,
         saga_id: str,
         saga_name: str,
-        step_name: str, 
+        step_name: str,
         error: Exception,
         retry_count: int = 0
     ) -> None:
         """Log step failure"""
-        
+
         self.logger.error(
-            f"Step failed: {step_name} - {str(error)}",
+            f"Step failed: {step_name} - {error!s}",
             extra={
                 "saga_id": saga_id,
                 "saga_name": saga_name,
@@ -226,7 +227,7 @@ class SagaLogger:
             },
             exc_info=True
         )
-    
+
     def compensation_started(
         self,
         saga_id: str,
@@ -234,7 +235,7 @@ class SagaLogger:
         step_name: str
     ) -> None:
         """Log compensation start"""
-        
+
         self.logger.warning(
             f"Compensation started: {step_name}",
             extra={
@@ -243,7 +244,7 @@ class SagaLogger:
                 "step_name": step_name,
             }
         )
-    
+
     def compensation_completed(
         self,
         saga_id: str,
@@ -252,7 +253,7 @@ class SagaLogger:
         duration_ms: float
     ) -> None:
         """Log compensation completion"""
-        
+
         self.logger.warning(
             f"Compensation completed: {step_name}",
             extra={
@@ -262,7 +263,7 @@ class SagaLogger:
                 "duration_ms": duration_ms,
             }
         )
-    
+
     def compensation_failed(
         self,
         saga_id: str,
@@ -271,9 +272,9 @@ class SagaLogger:
         error: Exception
     ) -> None:
         """Log compensation failure - critical error"""
-        
+
         self.logger.critical(
-            f"Compensation FAILED: {step_name} - {str(error)}",
+            f"Compensation FAILED: {step_name} - {error!s}",
             extra={
                 "saga_id": saga_id,
                 "saga_name": saga_name,
@@ -301,18 +302,18 @@ def setup_saga_logging(
     Returns:
         Configured SagaLogger instance
     """
-    
+
     # Configure root logger
     root_logger = logging.getLogger("saga")
     root_logger.setLevel(getattr(logging, log_level.upper()))
-    
+
     # Remove existing handlers
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     if include_console:
         console_handler = logging.StreamHandler()
-        
+
         if json_format:
             console_handler.setFormatter(SagaJsonFormatter())
         else:
@@ -321,9 +322,9 @@ def setup_saga_logging(
                 "[%(saga_id)s:%(step_name)s] - %(message)s"
             )
             console_handler.setFormatter(formatter)
-        
+
         root_logger.addHandler(console_handler)
-    
+
     return SagaLogger("saga")
 
 

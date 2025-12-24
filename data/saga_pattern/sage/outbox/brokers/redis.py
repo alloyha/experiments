@@ -17,17 +17,17 @@ Usage:
 
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Any
 
+from sage.exceptions import MissingDependencyError
 from sage.outbox.brokers.base import (
     BaseBroker,
     BrokerConfig,
     BrokerConnectionError,
-    BrokerPublishError,
     BrokerError,
+    BrokerPublishError,
 )
-from sage.exceptions import MissingDependencyError
 
 # Try to import redis
 try:
@@ -112,7 +112,7 @@ class RedisBroker(BaseBroker):
         >>> await broker.close()
     """
 
-    def __init__(self, config: Optional[RedisBrokerConfig] = None):
+    def __init__(self, config: RedisBrokerConfig | None = None):
         """
         Initialize Redis broker.
 
@@ -131,7 +131,7 @@ class RedisBroker(BaseBroker):
 
         super().__init__(config or RedisBrokerConfig())
         self.config: RedisBrokerConfig = config or RedisBrokerConfig()
-        self._client: Optional[redis.Redis] = None
+        self._client: redis.Redis | None = None
 
     @classmethod
     def from_env(cls) -> "RedisBroker":
@@ -171,8 +171,8 @@ class RedisBroker(BaseBroker):
         self,
         topic: str,
         message: bytes,
-        headers: Optional[Dict[str, str]] = None,
-        key: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        key: str | None = None,
     ) -> None:
         """
         Publish a message to Redis Streams.
@@ -194,7 +194,7 @@ class RedisBroker(BaseBroker):
 
         try:
             # Build stream entry fields
-            fields: Dict[str, bytes] = {
+            fields: dict[str, bytes] = {
                 b"topic": topic.encode() if isinstance(topic, str) else topic,
                 b"payload": message,
             }
@@ -288,7 +288,7 @@ class RedisBroker(BaseBroker):
     async def read_messages(
         self,
         count: int = 10,
-        block_ms: Optional[int] = None,
+        block_ms: int | None = None,
     ) -> list:
         """
         Read messages from the stream as a consumer.
@@ -331,7 +331,7 @@ class RedisBroker(BaseBroker):
             message_id,
         )
 
-    async def get_stream_info(self) -> Dict[str, Any]:
+    async def get_stream_info(self) -> dict[str, Any]:
         """
         Get information about the stream.
 

@@ -5,10 +5,11 @@ This module provides a user-friendly factory function for creating storage
 backends without needing to import specific storage classes directly.
 """
 
-from typing import Optional, Any, Dict, Union
+from typing import Any
+
+from sage.exceptions import MissingDependencyError
 from sage.storage.base import SagaStorage
 from sage.storage.memory import InMemorySagaStorage
-from sage.exceptions import MissingDependencyError
 
 
 def create_storage(
@@ -17,9 +18,9 @@ def create_storage(
     # Redis options
     redis_url: str = "redis://localhost:6379",
     key_prefix: str = "saga:",
-    default_ttl: Optional[int] = None,
+    default_ttl: int | None = None,
     # PostgreSQL options
-    connection_string: Optional[str] = None,
+    connection_string: str | None = None,
     pool_min_size: int = 5,
     pool_max_size: int = 20,
     # Additional kwargs
@@ -66,11 +67,11 @@ def create_storage(
         ... )
     """
     backend = backend.lower().strip()
-    
+
     if backend == "memory":
         return InMemorySagaStorage()
-    
-    elif backend == "redis":
+
+    if backend == "redis":
         try:
             from sage.storage.redis import RedisSagaStorage
             return RedisSagaStorage(
@@ -81,7 +82,7 @@ def create_storage(
             )
         except MissingDependencyError:  # pragma: no cover
             raise
-    
+
     elif backend in ("postgresql", "postgres", "pg"):
         if not connection_string:
             raise ValueError(
@@ -98,7 +99,7 @@ def create_storage(
             )
         except MissingDependencyError:  # pragma: no cover
             raise
-    
+
     else:
         available_backends = ["memory", "redis", "postgresql"]
         raise ValueError(
@@ -107,7 +108,7 @@ def create_storage(
         )
 
 
-def get_available_backends() -> Dict[str, Dict[str, Any]]:
+def get_available_backends() -> dict[str, dict[str, Any]]:
     """
     Get information about available storage backends.
     
@@ -131,7 +132,7 @@ def get_available_backends() -> Dict[str, Dict[str, Any]]:
             "best_for": "Development, testing, single-process applications"
         }
     }
-    
+
     # Check Redis availability
     try:
         import redis.asyncio
@@ -148,7 +149,7 @@ def get_available_backends() -> Dict[str, Dict[str, Any]]:
             "install": "pip install redis",
             "best_for": "Distributed systems, high throughput, auto-expiration"
         }
-    
+
     # Check PostgreSQL availability
     try:
         import asyncpg
@@ -165,7 +166,7 @@ def get_available_backends() -> Dict[str, Dict[str, Any]]:
             "install": "pip install asyncpg",
             "best_for": "ACID compliance, complex queries, data integrity"
         }
-    
+
     return backends
 
 
@@ -176,16 +177,16 @@ def print_available_backends() -> None:
     Useful for checking which backends are available in the current environment.
     """
     backends = get_available_backends()
-    
+
     print("\n╔═══════════════════════════════════════════════════════════════════╗")
     print("║                    Available Storage Backends                     ║")
     print("╠═══════════════════════════════════════════════════════════════════╣")
-    
+
     for name, info in backends.items():
         status = "✓" if info["available"] else "✗"
         print(f"║  {status} {name:<12} - {info['description']:<42} ║")
-        
+
         if not info["available"] and info["install"]:  # pragma: no cover
             print(f"║    Install: {info['install']:<52} ║")
-    
+
     print("╚═══════════════════════════════════════════════════════════════════╝\n")

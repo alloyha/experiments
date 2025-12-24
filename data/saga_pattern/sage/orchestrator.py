@@ -1,6 +1,6 @@
-from typing import Any, Dict
 import asyncio
 import logging
+from typing import Any
 
 from sage.core import Saga, SagaResult
 from sage.types import SagaStatus
@@ -75,7 +75,7 @@ class SagaOrchestrator:
                 "total_sagas": len(self.sagas),
                 **status_counts,
             }
-    
+
     def _count_saga_statuses(self) -> dict[str, int]:
         """Count sagas by status."""
         from collections import Counter

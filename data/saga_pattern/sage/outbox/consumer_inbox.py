@@ -4,8 +4,9 @@ Consumer-side deduplication using inbox pattern.
 Ensures exactly-once processing despite at-least-once delivery.
 """
 import logging
-from datetime import datetime, timezone
-from typing import Callable, Awaitable, TypeVar, Optional
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import TypeVar
 
 # Optional prometheus metrics
 try:
@@ -23,7 +24,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Metrics (no-op if prometheus not installed)
 INBOX_PROCESSED = Counter(
@@ -58,11 +59,11 @@ class ConsumerInbox:
             handler=process_order
         )
     """
-    
+
     def __init__(self, storage, consumer_name: str):
         self.storage = storage
         self.consumer_name = consumer_name
-    
+
     async def process_idempotent(
         self,
         event_id: str,
@@ -70,15 +71,15 @@ class ConsumerInbox:
         event_type: str,
         payload: dict,
         handler: Callable[[dict], Awaitable[T]]
-    ) -> Optional[T]:
+    ) -> T | None:
         """
         Process message idempotently.
         
         Returns:
             Handler result if processed, None if duplicate
         """
-        start_time = datetime.now(timezone.utc)
-        
+        start_time = datetime.now(UTC)
+
         # Try to insert (atomic dedup check)
         is_duplicate = await self.storage.check_and_insert_inbox(
             event_id=event_id,
@@ -87,43 +88,43 @@ class ConsumerInbox:
             event_type=event_type,
             payload=payload
         )
-        
+
         if is_duplicate:
             # Already processed - skip
             INBOX_DUPLICATES.labels(
                 consumer_name=self.consumer_name,
                 event_type=event_type
             ).inc()
-            
+
             logger.info(f"Duplicate message: {event_id}, skipping")
             return None
-        
+
         # New message - execute handler
         try:
             result = await handler(payload)
-            
+
             # Update duration
-            duration_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+            duration_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             await self.storage.update_inbox_duration(event_id, duration_ms)
-            
+
             INBOX_PROCESSED.labels(
                 consumer_name=self.consumer_name,
                 event_type=event_type
             ).inc()
-            
+
             logger.info(f"Processed event: {event_id} ({duration_ms}ms)")
             return result
-            
+
         except Exception as exc:
             logger.error(f"Failed to process: {event_id}: {exc}", exc_info=True)
             raise
-    
+
     async def cleanup_old_entries(self, older_than_days: int = 7) -> int:
         """Delete old inbox entries."""
         deleted = await self.storage.cleanup_inbox(
             consumer_name=self.consumer_name,
             older_than_days=older_than_days
         )
-        
+
         logger.info(f"Cleaned up {deleted} old inbox entries")
         return deleted

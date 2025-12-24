@@ -9,7 +9,6 @@ All type definitions, enums, and dataclasses
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-from datetime import datetime
 
 
 class SagaStatus(Enum):
@@ -51,11 +50,11 @@ class SagaResult:
     execution_time: float = 0.0
     context: Any = None
     compensation_errors: list[Exception] = field(default_factory=list)
-    
+
     @property
     def is_completed(self) -> bool:
         return self.status == SagaStatus.COMPLETED
-    
+
     @property
     def is_rolled_back(self) -> bool:
         return self.status == SagaStatus.ROLLED_BACK

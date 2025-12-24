@@ -11,13 +11,16 @@ Usage:
     >>> await broker.publish("orders", b'{"order_id": 1}')
 """
 
-from typing import Dict, Optional
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
-from sage.outbox.brokers.base import BaseBroker, BrokerConfig, BrokerConnectionError, BrokerPublishError
 from sage.exceptions import MissingDependencyError
-
+from sage.outbox.brokers.base import (
+    BaseBroker,
+    BrokerConfig,
+    BrokerConnectionError,
+    BrokerPublishError,
+)
 
 # Check for aiokafka availability
 try:
@@ -51,20 +54,20 @@ class KafkaBrokerConfig(BrokerConfig):
         sasl_password: SASL password
         security_protocol: Security protocol (PLAINTEXT, SASL_SSL, etc.)
     """
-    
+
     bootstrap_servers: str = "localhost:9092"
     client_id: str = "sage-outbox"
     acks: str = "all"
     enable_idempotence: bool = True
     max_batch_size: int = 16384
     linger_ms: int = 5
-    compression_type: Optional[str] = "gzip"
+    compression_type: str | None = "gzip"
     request_timeout_ms: int = 30000
-    
+
     # Security
-    sasl_mechanism: Optional[str] = None
-    sasl_username: Optional[str] = None
-    sasl_password: Optional[str] = None
+    sasl_mechanism: str | None = None
+    sasl_username: str | None = None
+    sasl_password: str | None = None
     security_protocol: str = "PLAINTEXT"
 
 
@@ -96,8 +99,8 @@ class KafkaBroker(BaseBroker):
         >>> 
         >>> await broker.close()
     """
-    
-    def __init__(self, config: Optional[KafkaBrokerConfig] = None):
+
+    def __init__(self, config: KafkaBrokerConfig | None = None):
         """
         Initialize Kafka broker.
         
@@ -109,16 +112,16 @@ class KafkaBroker(BaseBroker):
         """
         if not KAFKA_AVAILABLE:
             raise MissingDependencyError("aiokafka", "Kafka message broker")  # pragma: no cover
-        
+
         self.config = config or KafkaBrokerConfig()
-        self._producer: Optional[AIOKafkaProducer] = None
+        self._producer: AIOKafkaProducer | None = None
         self._connected = False
-    
+
     @classmethod
     def from_env(cls) -> "KafkaBroker":
         """Create Kafka broker from environment variables."""
         import os
-        
+
         config = KafkaBrokerConfig(
             bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
             client_id=os.getenv("KAFKA_CLIENT_ID", "sage-outbox"),
@@ -128,12 +131,12 @@ class KafkaBroker(BaseBroker):
             security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         )
         return cls(config)
-    
+
     async def connect(self) -> None:
         """Establish connection to Kafka."""
         if self._connected:
             return
-        
+
         try:
             producer_kwargs = {
                 "bootstrap_servers": self.config.bootstrap_servers,
@@ -144,37 +147,37 @@ class KafkaBroker(BaseBroker):
                 "linger_ms": self.config.linger_ms,
                 "request_timeout_ms": self.config.request_timeout_ms,
             }
-            
+
             if self.config.compression_type:
                 producer_kwargs["compression_type"] = self.config.compression_type
-            
+
             # Add security settings if configured
             if self.config.sasl_mechanism:  # pragma: no cover
                 producer_kwargs["sasl_mechanism"] = self.config.sasl_mechanism
                 producer_kwargs["sasl_plain_username"] = self.config.sasl_username
                 producer_kwargs["sasl_plain_password"] = self.config.sasl_password
                 producer_kwargs["security_protocol"] = self.config.security_protocol
-            
+
             self._producer = AIOKafkaProducer(**producer_kwargs)
             await self._producer.start()
             self._connected = True
-            
+
             logger.info(f"Connected to Kafka at {self.config.bootstrap_servers}")
-            
+
         except KafkaError as e:  # pragma: no cover
             raise BrokerConnectionError(f"Failed to connect to Kafka: {e}") from e
-    
+
     async def publish(  # pragma: no cover
         self,
         topic: str,
         message: bytes,
-        headers: Optional[Dict[str, str]] = None,
-        key: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        key: str | None = None,
     ) -> None:
         """Publish a message to Kafka."""
         if not self._connected or not self._producer:  # pragma: no cover
             raise BrokerConnectionError("Kafka producer not connected")
-        
+
         try:
             # Convert headers to Kafka format
             kafka_headers = None
@@ -183,10 +186,10 @@ class KafkaBroker(BaseBroker):
                     (k, v.encode("utf-8") if isinstance(v, str) else v)
                     for k, v in headers.items()
                 ]
-            
+
             # Encode key if provided
             key_bytes = key.encode("utf-8") if key else None
-            
+
             # Send message
             await self._producer.send_and_wait(
                 topic=topic,
@@ -194,12 +197,12 @@ class KafkaBroker(BaseBroker):
                 key=key_bytes,
                 headers=kafka_headers,
             )
-            
+
             logger.debug(f"Published message to Kafka topic {topic}")
-            
+
         except KafkaError as e:  # pragma: no cover
             raise BrokerPublishError(f"Failed to publish to Kafka: {e}") from e
-    
+
     async def close(self) -> None:  # pragma: no cover
         """Close the Kafka producer."""
         if self._producer:
@@ -207,12 +210,12 @@ class KafkaBroker(BaseBroker):
             self._producer = None
         self._connected = False
         logger.info("Kafka producer closed")
-    
+
     async def health_check(self) -> bool:  # pragma: no cover
         """Check Kafka connection health."""
         if not self._connected or not self._producer:  # pragma: no cover
             return False
-        
+
         try:
             # Try to get cluster metadata as a health check
             await self._producer.client.fetch_all_metadata()

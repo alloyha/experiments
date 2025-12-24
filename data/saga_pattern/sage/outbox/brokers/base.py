@@ -6,8 +6,8 @@ must follow, enabling support for Kafka, RabbitMQ, NATS, and others.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any, Protocol, runtime_checkable
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
 
 from sage.outbox.types import OutboxEvent
 
@@ -20,13 +20,13 @@ class MessageBroker(Protocol):
     All broker implementations (Kafka, RabbitMQ, NATS, etc.) must
     implement this protocol to be usable with the outbox pattern.
     """
-    
+
     async def publish(
         self,
         topic: str,
         message: bytes,
-        headers: Optional[Dict[str, str]] = None,
-        key: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        key: str | None = None,
     ) -> None:
         """
         Publish a message to the broker.
@@ -41,11 +41,11 @@ class MessageBroker(Protocol):
             BrokerError: If publishing fails
         """
         ...
-    
+
     async def close(self) -> None:
         """Close the broker connection."""
         ...
-    
+
     async def health_check(self) -> bool:
         """
         Check if the broker connection is healthy.
@@ -58,17 +58,14 @@ class MessageBroker(Protocol):
 
 class BrokerError(Exception):
     """Base exception for broker errors."""
-    pass
 
 
 class BrokerConnectionError(BrokerError):
     """Error connecting to the broker."""
-    pass
 
 
 class BrokerPublishError(BrokerError):
     """Error publishing a message."""
-    pass
 
 
 @dataclass
@@ -78,7 +75,7 @@ class BrokerConfig:
     
     Subclass for broker-specific config.
     """
-    
+
     # Common settings
     connection_timeout_seconds: float = 30.0
     publish_timeout_seconds: float = 10.0
@@ -92,46 +89,46 @@ class BaseBroker(ABC):
     
     Provides common functionality and enforces the MessageBroker protocol.
     """
-    
-    def __init__(self, config: Optional[BrokerConfig] = None):
+
+    def __init__(self, config: BrokerConfig | None = None):
         self.config = config or BrokerConfig()
         self._connected = False
-    
+
     @abstractmethod
     async def connect(self) -> None:
         """Establish connection to the broker."""
         ...
-    
+
     @abstractmethod
     async def publish(
         self,
         topic: str,
         message: bytes,
-        headers: Optional[Dict[str, str]] = None,
-        key: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        key: str | None = None,
     ) -> None:
         """Publish a message to the broker."""
         ...
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Close the broker connection."""
         ...
-    
+
     @abstractmethod
     async def health_check(self) -> bool:
         """Check broker health."""
         ...
-    
+
     @property
     def is_connected(self) -> bool:
         """Check if broker is connected."""
         return self._connected
-    
+
     async def publish_event(
         self,
         event: OutboxEvent,
-        topic: Optional[str] = None,
+        topic: str | None = None,
     ) -> None:
         """
         Publish an outbox event to the broker.
@@ -144,9 +141,9 @@ class BaseBroker(ABC):
             topic: Optional topic override (defaults to event_type)
         """
         import json
-        
+
         topic = topic or event.event_type
-        
+
         # Build message payload
         payload = {
             "event_id": event.event_id,
@@ -157,9 +154,9 @@ class BaseBroker(ABC):
             "payload": event.payload,
             "timestamp": event.created_at.isoformat() if event.created_at else None,
         }
-        
+
         message = json.dumps(payload).encode("utf-8")
-        
+
         # Merge headers
         headers = {
             "event_id": event.event_id,
@@ -168,7 +165,7 @@ class BaseBroker(ABC):
             "content_type": "application/json",
             **event.headers,
         }
-        
+
         await self.publish(
             topic=topic,
             message=message,

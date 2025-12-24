@@ -20,11 +20,11 @@ Quick Start:
     ... )
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, Optional, List
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
 
 class OutboxStatus(Enum):
@@ -36,19 +36,19 @@ class OutboxStatus(Enum):
                 ↓         ↓
               FAILED → DEAD_LETTER
     """
-    
+
     PENDING = "pending"
     """Event is waiting to be published"""
-    
+
     CLAIMED = "claimed"
     """Event has been claimed by a worker for publishing"""
-    
+
     SENT = "sent"
     """Event was successfully published to the broker"""
-    
+
     FAILED = "failed"
     """Event failed to publish (will retry)"""
-    
+
     DEAD_LETTER = "dead_letter"
     """Event exceeded max retries, moved to dead letter queue"""
 
@@ -87,32 +87,32 @@ class OutboxEvent:
         ...     headers={"trace_id": "abc123"}
         ... )
     """
-    
+
     saga_id: str
     event_type: str
-    payload: Dict[str, Any]
-    
+    payload: dict[str, Any]
+
     # Optional fields with defaults
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     aggregate_type: str = "saga"
-    aggregate_id: Optional[str] = None
-    headers: Dict[str, str] = field(default_factory=dict)
+    aggregate_id: str | None = None
+    headers: dict[str, str] = field(default_factory=dict)
     status: OutboxStatus = OutboxStatus.PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    claimed_at: Optional[datetime] = None
-    sent_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    claimed_at: datetime | None = None
+    sent_at: datetime | None = None
     retry_count: int = 0
-    last_error: Optional[str] = None
-    worker_id: Optional[str] = None
-    routing_key: Optional[str] = None
-    partition_key: Optional[str] = None
-    
+    last_error: str | None = None
+    worker_id: str | None = None
+    routing_key: str | None = None
+    partition_key: str | None = None
+
     def __post_init__(self):
         """Set aggregate_id to saga_id if not specified."""
         if self.aggregate_id is None:
             self.aggregate_id = self.saga_id
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for serialization."""
         return {
             "event_id": self.event_id,
@@ -130,26 +130,26 @@ class OutboxEvent:
             "last_error": self.last_error,
             "worker_id": self.worker_id,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OutboxEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "OutboxEvent":
         """Create event from dictionary."""
         status = data.get("status", "pending")
         if isinstance(status, str):
             status = OutboxStatus(status)
-        
+
         created_at = data.get("created_at")
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
-        
+
         claimed_at = data.get("claimed_at")
         if isinstance(claimed_at, str):
             claimed_at = datetime.fromisoformat(claimed_at)
-        
+
         sent_at = data.get("sent_at")
         if isinstance(sent_at, str):
             sent_at = datetime.fromisoformat(sent_at)
-        
+
         return cls(
             event_id=data.get("event_id", str(uuid.uuid4())),
             saga_id=data["saga_id"],
@@ -159,7 +159,7 @@ class OutboxEvent:
             payload=data["payload"],
             headers=data.get("headers", {}),
             status=status,
-            created_at=created_at or datetime.now(timezone.utc),
+            created_at=created_at or datetime.now(UTC),
             claimed_at=claimed_at,
             sent_at=sent_at,
             retry_count=data.get("retry_count", 0),
@@ -182,7 +182,7 @@ class OutboxConfig:
         optimistic_timeout_ms: Timeout for optimistic publish in milliseconds
         archive_after_days: Days to keep sent events before archiving
     """
-    
+
     batch_size: int = 100
     poll_interval_seconds: float = 1.0
     claim_timeout_seconds: float = 300.0  # 5 minutes
@@ -190,12 +190,12 @@ class OutboxConfig:
     optimistic_publish: bool = True
     optimistic_timeout_ms: int = 500
     archive_after_days: int = 7
-    
+
     @classmethod
     def from_env(cls) -> "OutboxConfig":
         """Create config from environment variables."""
         import os
-        
+
         return cls(
             batch_size=int(os.getenv("OUTBOX_BATCH_SIZE", 100)),
             poll_interval_seconds=float(os.getenv("OUTBOX_POLL_INTERVAL", 1.0)),
@@ -209,13 +209,12 @@ class OutboxConfig:
 
 class OutboxError(Exception):
     """Base exception for outbox errors."""
-    pass
 
 
 class OutboxPublishError(OutboxError):
     """Error publishing message to broker."""
-    
-    def __init__(self, event: OutboxEvent, message: str, cause: Optional[Exception] = None):
+
+    def __init__(self, event: OutboxEvent, message: str, cause: Exception | None = None):
         self.event = event
         self.cause = cause
         super().__init__(f"Failed to publish event {event.event_id}: {message}")
@@ -223,4 +222,3 @@ class OutboxPublishError(OutboxError):
 
 class OutboxClaimError(OutboxError):
     """Error claiming events from outbox."""
-    pass

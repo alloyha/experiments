@@ -16,14 +16,13 @@ Usage:
     >>> await storage.insert(event)
 """
 
-from typing import List, Optional, Any
-from datetime import datetime, timezone, timedelta
 import json
+from datetime import UTC, datetime, timedelta
+from typing import Any, Optional
 
-from sage.outbox.types import OutboxEvent, OutboxStatus
-from sage.outbox.storage.base import OutboxStorage, OutboxStorageError
 from sage.exceptions import MissingDependencyError
-
+from sage.outbox.storage.base import OutboxStorage, OutboxStorageError
+from sage.outbox.types import OutboxEvent, OutboxStatus
 
 # Check for asyncpg availability
 try:
@@ -119,7 +118,7 @@ class PostgreSQLOutboxStorage(OutboxStorage):
         ...         await saga_storage.save(saga, conn=conn)
         ...         await outbox_storage.insert(event, connection=conn)
     """
-    
+
     def __init__(
         self,
         connection_string: str,
@@ -139,12 +138,12 @@ class PostgreSQLOutboxStorage(OutboxStorage):
         """
         if not ASYNCPG_AVAILABLE:
             raise MissingDependencyError("asyncpg", "PostgreSQL outbox storage")  # pragma: no cover
-        
+
         self.connection_string = connection_string
         self.pool_min_size = pool_min_size
         self.pool_max_size = pool_max_size
-        self._pool: Optional[asyncpg.Pool] = None
-    
+        self._pool: asyncpg.Pool | None = None
+
     async def initialize(self) -> None:  # pragma: no cover
         """Initialize the connection pool and create schema."""
         self._pool = await asyncpg.create_pool(
@@ -152,33 +151,33 @@ class PostgreSQLOutboxStorage(OutboxStorage):
             min_size=self.pool_min_size,
             max_size=self.pool_max_size,
         )
-        
+
         # Create schema
         async with self._pool.acquire() as conn:
             await conn.execute(OUTBOX_SCHEMA)
-    
+
     async def close(self) -> None:  # pragma: no cover
         """Close the connection pool."""
         if self._pool:
             await self._pool.close()
             self._pool = None
-    
-    def _get_connection(self, connection: Optional[Any] = None):  # pragma: no cover
+
+    def _get_connection(self, connection: Any | None = None):  # pragma: no cover
         """Get a connection - either provided or from pool."""
         if connection:
             return connection
         if not self._pool:
             raise OutboxStorageError("Storage not initialized. Call initialize() first.")
         return self._pool
-    
+
     async def insert(  # pragma: no cover
         self,
         event: OutboxEvent,
-        connection: Optional[Any] = None,
+        connection: Any | None = None,
     ) -> OutboxEvent:
         """Insert a new outbox event."""
         conn = self._get_connection(connection)
-        
+
         query = """
             INSERT INTO saga_outbox (
                 event_id, saga_id, aggregate_type, aggregate_id,
@@ -186,7 +185,7 @@ class PostgreSQLOutboxStorage(OutboxStorage):
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
         """
-        
+
         async def _insert(c):
             await c.execute(
                 query,
@@ -201,25 +200,24 @@ class PostgreSQLOutboxStorage(OutboxStorage):
                 event.created_at,
             )
             return event
-        
-        if hasattr(conn, 'execute'):
+
+        if hasattr(conn, "execute"):
             return await _insert(conn)
-        else:
-            async with conn.acquire() as c:
-                return await _insert(c)
-    
+        async with conn.acquire() as c:
+            return await _insert(c)
+
     async def claim_batch(  # pragma: no cover
         self,
         worker_id: str,
         batch_size: int = 100,
         older_than_seconds: float = 0.0,
-    ) -> List[OutboxEvent]:
+    ) -> list[OutboxEvent]:
         """Claim a batch of pending events for processing."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=older_than_seconds)
-        
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=older_than_seconds)
+
         # Use FOR UPDATE SKIP LOCKED for concurrency safety
         query = """
             WITH claimed AS (
@@ -238,21 +236,21 @@ class PostgreSQLOutboxStorage(OutboxStorage):
             WHERE event_id IN (SELECT event_id FROM claimed)
             RETURNING *
         """
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(query, cutoff, batch_size, worker_id)
             return [self._row_to_event(row) for row in rows]
-    
+
     async def update_status(  # pragma: no cover
         self,
         event_id: str,
         status: OutboxStatus,
-        error_message: Optional[str] = None,
-        connection: Optional[Any] = None,
+        error_message: str | None = None,
+        connection: Any | None = None,
     ) -> OutboxEvent:
         """Update the status of an event."""
         conn = self._get_connection(connection)
-        
+
         if status == OutboxStatus.SENT:
             query = """
                 UPDATE saga_outbox 
@@ -289,62 +287,61 @@ class PostgreSQLOutboxStorage(OutboxStorage):
                 RETURNING *
             """
             params = (event_id, status.value)
-        
+
         async def _update(c):
             row = await c.fetchrow(query, *params)
             if not row:
                 raise OutboxStorageError(f"Event {event_id} not found")
             return self._row_to_event(row)
-        
-        if hasattr(conn, 'fetchrow'):
+
+        if hasattr(conn, "fetchrow"):
             return await _update(conn)
-        else:
-            async with conn.acquire() as c:
-                return await _update(c)
-    
-    async def get_by_id(self, event_id: str) -> Optional[OutboxEvent]:  # pragma: no cover
+        async with conn.acquire() as c:
+            return await _update(c)
+
+    async def get_by_id(self, event_id: str) -> OutboxEvent | None:  # pragma: no cover
         """Get an event by its ID."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
+
         query = "SELECT * FROM saga_outbox WHERE event_id = $1"
-        
+
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(query, event_id)
             return self._row_to_event(row) if row else None
-    
-    async def get_events_by_saga(self, saga_id: str) -> List[OutboxEvent]:  # pragma: no cover
+
+    async def get_events_by_saga(self, saga_id: str) -> list[OutboxEvent]:  # pragma: no cover
         """Get all events for a saga."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
+
         query = "SELECT * FROM saga_outbox WHERE saga_id = $1 ORDER BY created_at"
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(query, saga_id)
             return [self._row_to_event(row) for row in rows]
-    
+
     async def get_stuck_events(
         self,
         claimed_older_than_seconds: float = 300.0,
-    ) -> List[OutboxEvent]:  # pragma: no cover
+    ) -> list[OutboxEvent]:  # pragma: no cover
         """Get events that appear to be stuck."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=claimed_older_than_seconds)
-        
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=claimed_older_than_seconds)
+
         query = """
             SELECT * FROM saga_outbox 
             WHERE status = 'claimed' 
               AND claimed_at < $1
             ORDER BY claimed_at
         """
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(query, cutoff)
             return [self._row_to_event(row) for row in rows]
-    
+
     async def release_stuck_events(
         self,
         claimed_older_than_seconds: float = 300.0,
@@ -352,9 +349,9 @@ class PostgreSQLOutboxStorage(OutboxStorage):
         """Release stuck events back to PENDING status."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=claimed_older_than_seconds)
-        
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=claimed_older_than_seconds)
+
         query = """
             UPDATE saga_outbox 
             SET status = 'pending',
@@ -363,41 +360,41 @@ class PostgreSQLOutboxStorage(OutboxStorage):
             WHERE status = 'claimed' 
               AND claimed_at < $1
         """
-        
+
         async with self._pool.acquire() as conn:
             result = await conn.execute(query, cutoff)
             # Parse "UPDATE N" to get count
             return int(result.split()[-1])
-    
+
     async def get_pending_count(self) -> int:  # pragma: no cover
         """Get count of pending events."""
         if not self._pool:
             raise OutboxStorageError("Storage not initialized")
-        
+
         query = "SELECT COUNT(*) FROM saga_outbox WHERE status = 'pending'"
-        
+
         async with self._pool.acquire() as conn:
             return await conn.fetchval(query)
-    
+
     async def get_dead_letter_events(
         self,
         limit: int = 100,
-    ) -> List[OutboxEvent]:  # pragma: no cover
+    ) -> list[OutboxEvent]:  # pragma: no cover
         """Get events in dead letter queue."""
         if not self._pool:  # pragma: no cover
             raise OutboxStorageError("Storage not initialized")
-        
+
         query = """
             SELECT * FROM saga_outbox 
             WHERE status = 'dead_letter'
             ORDER BY created_at DESC
             LIMIT $1
         """
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(query, limit)
             return [self._row_to_event(row) for row in rows]
-    
+
     async def archive_sent_events(
         self,
         older_than_days: int = 7,
@@ -405,56 +402,55 @@ class PostgreSQLOutboxStorage(OutboxStorage):
         """Move old sent events to archive table."""
         if not self._pool:  # pragma: no cover
             raise OutboxStorageError("Storage not initialized")
-        
-        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
-        
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                # Copy to archive
-                insert_query = """
+
+        cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
+
+        async with self._pool.acquire() as conn, conn.transaction():
+            # Copy to archive
+            insert_query = """
                     INSERT INTO saga_outbox_archive
                     SELECT * FROM saga_outbox 
                     WHERE status = 'sent' AND sent_at < $1
                 """
-                await conn.execute(insert_query, cutoff)
-                
-                # Delete from main table
-                delete_query = """
+            await conn.execute(insert_query, cutoff)
+
+            # Delete from main table
+            delete_query = """
                     DELETE FROM saga_outbox 
                     WHERE status = 'sent' AND sent_at < $1
                 """
-                result = await conn.execute(delete_query, cutoff)
-                return int(result.split()[-1])
-    
+            result = await conn.execute(delete_query, cutoff)
+            return int(result.split()[-1])
+
     def _row_to_event(self, row: "asyncpg.Record") -> OutboxEvent:  # pragma: no cover
         """Convert database row to OutboxEvent."""
-        payload = row['payload']
+        payload = row["payload"]
         if isinstance(payload, str):
             payload = json.loads(payload)
-        
-        headers = row['headers']
+
+        headers = row["headers"]
         if isinstance(headers, str):
             headers = json.loads(headers)
-        
+
         return OutboxEvent(
-            event_id=str(row['event_id']),
-            saga_id=row['saga_id'],
-            aggregate_type=row['aggregate_type'],
-            aggregate_id=row['aggregate_id'],
-            event_type=row['event_type'],
+            event_id=str(row["event_id"]),
+            saga_id=row["saga_id"],
+            aggregate_type=row["aggregate_type"],
+            aggregate_id=row["aggregate_id"],
+            event_type=row["event_type"],
             payload=payload,
             headers=headers,
-            status=OutboxStatus(row['status']),
-            created_at=row['created_at'],
-            claimed_at=row['claimed_at'],
-            sent_at=row['sent_at'],
-            retry_count=row['retry_count'],
-            last_error=row['last_error'],
-            worker_id=row['worker_id'],
+            status=OutboxStatus(row["status"]),
+            created_at=row["created_at"],
+            claimed_at=row["claimed_at"],
+            sent_at=row["sent_at"],
+            retry_count=row["retry_count"],
+            last_error=row["last_error"],
+            worker_id=row["worker_id"],
         )
-    
+
     # Consumer Inbox Methods
-    
+
     async def check_and_insert_inbox(
         self,
         event_id: str,
@@ -497,14 +493,12 @@ class PostgreSQLOutboxStorage(OutboxStorage):
                 return False  # Not a duplicate
             except asyncpg.UniqueViolationError:
                 return True  # Duplicate
-        
+
         if connection:
             return await _execute(connection)
-        else:
-            async with self._pool.acquire() as conn:
-                async with conn.transaction():
-                    return await _execute(conn)
-    
+        async with self._pool.acquire() as conn, conn.transaction():
+            return await _execute(conn)
+
     async def update_inbox_duration(
         self,
         event_id: str,
@@ -521,7 +515,7 @@ class PostgreSQLOutboxStorage(OutboxStorage):
                 duration_ms,
                 event_id
             )
-    
+
     async def cleanup_inbox(
         self,
         consumer_name: str,

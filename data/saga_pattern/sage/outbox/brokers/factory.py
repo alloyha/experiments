@@ -15,14 +15,14 @@ Usage:
     >>> await broker.connect()
 """
 
-from typing import Optional, Dict, List, Any
+from typing import Any
 
-from sage.outbox.brokers.base import MessageBroker, BrokerError
-from sage.outbox.brokers.memory import InMemoryBroker
 from sage.exceptions import MissingDependencyError
+from sage.outbox.brokers.base import MessageBroker
+from sage.outbox.brokers.memory import InMemoryBroker
 
 
-def get_available_brokers() -> List[str]:
+def get_available_brokers() -> list[str]:
     """
     Get list of available broker backends.
     
@@ -30,28 +30,28 @@ def get_available_brokers() -> List[str]:
         List of broker names that can be used
     """
     available = ["memory"]  # Always available
-    
+
     try:
         from sage.outbox.brokers.kafka import KAFKA_AVAILABLE
         if KAFKA_AVAILABLE:
             available.append("kafka")
     except ImportError:
         pass  # pragma: no cover
-    
+
     try:
         from sage.outbox.brokers.rabbitmq import RABBITMQ_AVAILABLE
         if RABBITMQ_AVAILABLE:
             available.append("rabbitmq")
     except ImportError:
         pass  # pragma: no cover
-    
+
     try:
         from sage.outbox.brokers.redis import REDIS_AVAILABLE
         if REDIS_AVAILABLE:
             available.append("redis")
     except ImportError:
         pass  # pragma: no cover
-    
+
     return available
 
 
@@ -60,10 +60,10 @@ def print_available_brokers() -> None:
     print("\n╔══════════════════════════════════════════════════════════════╗")
     print("║                    Available Brokers                         ║")
     print("╠══════════════════════════════════════════════════════════════╣")
-    
+
     # Memory (always available)
     print("║  ✅ memory     - In-memory (for testing)                     ║")
-    
+
     # Kafka
     try:
         from sage.outbox.brokers.kafka import KAFKA_AVAILABLE
@@ -73,7 +73,7 @@ def print_available_brokers() -> None:
             print("║  ❌ kafka      - pip install aiokafka                       ║")  # pragma: no cover
     except ImportError:
         print("║  ❌ kafka      - pip install aiokafka                       ║")  # pragma: no cover
-    
+
     # RabbitMQ
     try:
         from sage.outbox.brokers.rabbitmq import RABBITMQ_AVAILABLE
@@ -83,7 +83,7 @@ def print_available_brokers() -> None:
             print("║  ❌ rabbitmq   - pip install aio-pika                        ║")  # pragma: no cover
     except ImportError:
         print("║  ❌ rabbitmq   - pip install aio-pika                        ║")  # pragma: no cover
-    
+
     # Redis
     try:
         from sage.outbox.brokers.redis import REDIS_AVAILABLE
@@ -93,13 +93,13 @@ def print_available_brokers() -> None:
             print("║  ❌ redis      - pip install redis                            ║")  # pragma: no cover
     except ImportError:
         print("║  ❌ redis      - pip install redis                            ║")  # pragma: no cover
-    
+
     print("╚══════════════════════════════════════════════════════════════╝\n")
 
 
 def _create_kafka_broker(kwargs: dict):
     """Create Kafka broker instance."""
-    from sage.outbox.brokers.kafka import KafkaBroker, KafkaBrokerConfig, KAFKA_AVAILABLE
+    from sage.outbox.brokers.kafka import KAFKA_AVAILABLE, KafkaBroker, KafkaBrokerConfig
     if not KAFKA_AVAILABLE:
         raise MissingDependencyError("aiokafka", "Kafka message broker")
     config = KafkaBrokerConfig(**kwargs) if kwargs else None
@@ -108,7 +108,11 @@ def _create_kafka_broker(kwargs: dict):
 
 def _create_rabbitmq_broker(kwargs: dict):
     """Create RabbitMQ broker instance."""
-    from sage.outbox.brokers.rabbitmq import RabbitMQBroker, RabbitMQBrokerConfig, RABBITMQ_AVAILABLE
+    from sage.outbox.brokers.rabbitmq import (
+        RABBITMQ_AVAILABLE,
+        RabbitMQBroker,
+        RabbitMQBrokerConfig,
+    )
     if not RABBITMQ_AVAILABLE:
         raise MissingDependencyError("aio-pika", "RabbitMQ message broker")
     config = RabbitMQBrokerConfig(**kwargs) if kwargs else None
@@ -117,7 +121,7 @@ def _create_rabbitmq_broker(kwargs: dict):
 
 def _create_redis_broker(kwargs: dict):
     """Create Redis broker instance."""
-    from sage.outbox.brokers.redis import RedisBroker, RedisBrokerConfig, REDIS_AVAILABLE
+    from sage.outbox.brokers.redis import REDIS_AVAILABLE, RedisBroker, RedisBrokerConfig
     if not REDIS_AVAILABLE:
         raise MissingDependencyError("redis", "Redis message broker")
     config = RedisBrokerConfig(**kwargs) if kwargs else None
@@ -164,16 +168,16 @@ def create_broker(
         >>> broker = create_broker("rabbitmq", url="amqp://guest:guest@localhost/")
     """
     broker_type = broker_type.lower().strip()
-    
+
     if broker_type not in _BROKER_REGISTRY:
         available = get_available_brokers()
         raise ValueError(
             f"Unknown broker type: '{broker_type}'\n"
             f"Available brokers: {', '.join(available)}"
         )
-    
+
     factory, dependency = _BROKER_REGISTRY[broker_type]
-    
+
     try:
         return factory(kwargs)
     except ImportError:
@@ -206,23 +210,22 @@ def create_broker_from_env() -> MessageBroker:
         Configured broker instance
     """
     import os
-    
+
     broker_type = os.getenv("BROKER_TYPE", "memory").lower()
-    
+
     if broker_type == "memory":
         return InMemoryBroker()
-    
-    elif broker_type == "kafka":
+
+    if broker_type == "kafka":
         from sage.outbox.brokers.kafka import KafkaBroker
         return KafkaBroker.from_env()
-    
-    elif broker_type in ("rabbitmq", "rabbit", "amqp"):
+
+    if broker_type in ("rabbitmq", "rabbit", "amqp"):
         from sage.outbox.brokers.rabbitmq import RabbitMQBroker
         return RabbitMQBroker.from_env()
-    
-    elif broker_type == "redis":
+
+    if broker_type == "redis":
         from sage.outbox.brokers.redis import RedisBroker
         return RedisBroker.from_env()
-    
-    else:
-        raise ValueError(f"Unknown BROKER_TYPE: {broker_type}")
+
+    raise ValueError(f"Unknown BROKER_TYPE: {broker_type}")

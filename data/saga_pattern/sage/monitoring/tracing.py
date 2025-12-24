@@ -24,13 +24,14 @@ Quick Start:
 """
 
 import functools
-from typing import Any, Dict, Optional, Callable, TypeVar, ParamSpec
+from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Any, ParamSpec, TypeVar
 
 try:
-    from opentelemetry import trace, context
-    from opentelemetry.trace import Status, StatusCode, Span
+    from opentelemetry import context, trace
+    from opentelemetry.trace import Span, Status, StatusCode
     from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
     TRACING_AVAILABLE = True
 except ImportError:
@@ -46,7 +47,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 # Context variable for current trace context
-trace_context: ContextVar[Dict[str, Any]] = ContextVar("trace_context", default={})
+trace_context: ContextVar[dict[str, Any]] = ContextVar("trace_context", default={})
 
 
 def is_tracing_available() -> bool:
@@ -79,22 +80,22 @@ class SagaTracer:
         ...     # Saga execution code
         ...     pass
     """
-    
+
     def __init__(self, service_name: str = "saga-service"):
         self.service_name = service_name
-        
+
         if TRACING_AVAILABLE:
             self.tracer = trace.get_tracer(__name__)
         else:
             self.tracer = None
-    
+
     @contextmanager
     def start_saga_trace(
         self,
         saga_id: str,
         saga_name: str,
         total_steps: int,
-        parent_context: Optional[Dict[str, str]] = None
+        parent_context: dict[str, str] | None = None
     ):
         """
         Start a distributed trace for saga execution
@@ -105,23 +106,23 @@ class SagaTracer:
             total_steps: Total number of steps in saga
             parent_context: Parent trace context (for chaining sagas)
         """
-        
+
         if not TRACING_AVAILABLE or not self.tracer:
             yield None
             return
-        
+
         # Extract parent context if provided
         if parent_context:
             parent_span_context = TraceContextTextMapPropagator().extract(parent_context)
         else:
             parent_span_context = None
-        
+
         with self.tracer.start_as_current_span(
             name=f"saga.execute.{saga_name}",
             context=parent_span_context,
             kind=trace.SpanKind.INTERNAL
         ) as span:
-            
+
             # Set saga attributes
             span.set_attributes({
                 "saga.id": saga_id,
@@ -129,21 +130,21 @@ class SagaTracer:
                 "saga.total_steps": total_steps,
                 "saga.service": self.service_name,
             })
-            
+
             # Store trace context
             trace_context.set({
                 "saga_id": saga_id,
                 "saga_name": saga_name,
                 "span": span,
             })
-            
+
             try:
                 yield span
             except Exception as e:
                 span.set_status(Status(StatusCode.ERROR, str(e)))
                 span.record_exception(e)
                 raise
-    
+
     @contextmanager
     def start_step_trace(
         self,
@@ -161,16 +162,16 @@ class SagaTracer:
             step_name: Step name
             step_type: Type of step ("action" or "compensation")
         """
-        
+
         if not TRACING_AVAILABLE or not self.tracer:
             yield None
             return
-        
+
         with self.tracer.start_as_current_span(
             name=f"saga.step.{step_type}.{step_name}",
             kind=trace.SpanKind.INTERNAL
         ) as span:
-            
+
             # Set step attributes
             span.set_attributes({
                 "saga.id": saga_id,
@@ -178,14 +179,14 @@ class SagaTracer:
                 "saga.step.name": step_name,
                 "saga.step.type": step_type,
             })
-            
+
             try:
                 yield span
             except Exception as e:
                 span.set_status(Status(StatusCode.ERROR, str(e)))
                 span.record_exception(e)
                 raise
-    
+
     def record_saga_completion(
         self,
         saga_id: str,
@@ -193,13 +194,13 @@ class SagaTracer:
         completed_steps: int,
         total_steps: int,
         duration_ms: float,
-        error: Optional[Exception] = None
+        error: Exception | None = None
     ) -> None:
         """Record saga completion in current trace"""
-        
+
         if not TRACING_AVAILABLE:
             return
-        
+
         current_span = trace.get_current_span()
         if current_span.is_recording():
             current_span.set_attributes({
@@ -208,30 +209,30 @@ class SagaTracer:
                 "saga.total_steps": total_steps,
                 "saga.duration_ms": duration_ms,
             })
-            
+
             if status == SagaStatus.COMPLETED:
                 current_span.set_status(Status(StatusCode.OK))
             else:
                 current_span.set_status(
                     Status(StatusCode.ERROR, f"Saga failed with status: {status.value}")
                 )
-                
+
                 if error:
                     current_span.record_exception(error)
-    
+
     def record_step_completion(
         self,
         step_name: str,
         status: SagaStepStatus,
         duration_ms: float,
         retry_count: int = 0,
-        error: Optional[Exception] = None
+        error: Exception | None = None
     ) -> None:
         """Record step completion in current trace"""
-        
+
         if not TRACING_AVAILABLE:
             return
-        
+
         current_span = trace.get_current_span()
         if current_span.is_recording():
             current_span.set_attributes({
@@ -239,51 +240,51 @@ class SagaTracer:
                 "saga.step.duration_ms": duration_ms,
                 "saga.step.retry_count": retry_count,
             })
-            
+
             if status == SagaStepStatus.COMPLETED:
                 current_span.set_status(Status(StatusCode.OK))
             else:
                 current_span.set_status(
                     Status(StatusCode.ERROR, f"Step failed: {step_name}")
                 )
-                
+
                 if error:
                     current_span.record_exception(error)
-    
-    def get_trace_context(self) -> Dict[str, str]:
+
+    def get_trace_context(self) -> dict[str, str]:
         """
         Get current trace context for propagation to downstream services
         
         Returns:
             Dictionary with trace context headers
         """
-        
+
         if not TRACING_AVAILABLE:
             return {}
-        
+
         # Extract trace context as HTTP headers
         carrier = {}
         TraceContextTextMapPropagator().inject(carrier)
         return carrier
-    
+
     def create_child_span(
         self,
         name: str,
-        attributes: Optional[Dict[str, Any]] = None
+        attributes: dict[str, Any] | None = None
     ):
         """Create a child span for external service calls"""
-        
+
         if not TRACING_AVAILABLE or not self.tracer:
             return None
-        
+
         span = self.tracer.start_span(
             name=name,
             kind=trace.SpanKind.CLIENT
         )
-        
+
         if attributes:
             span.set_attributes(attributes)
-        
+
         return span
 
 
@@ -297,29 +298,29 @@ def trace_saga_action(tracer: SagaTracer):
             # Action implementation
             pass
     """
-    
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            
+
             # Extract saga context from arguments
             saga_context = None
             for arg in args:
-                if hasattr(arg, 'saga_id'):
+                if hasattr(arg, "saga_id"):
                     saga_context = arg
                     break
-            
+
             if not saga_context:
                 # No saga context found, execute without tracing
                 return await func(*args, **kwargs)
-            
-            step_name = getattr(saga_context, 'step_name', func.__name__)
-            saga_id = getattr(saga_context, 'saga_id', 'unknown')
-            saga_name = getattr(saga_context, 'saga_name', 'unknown')
-            
+
+            step_name = getattr(saga_context, "step_name", func.__name__)
+            saga_id = getattr(saga_context, "saga_id", "unknown")
+            saga_name = getattr(saga_context, "saga_name", "unknown")
+
             with tracer.start_step_trace(saga_id, saga_name, step_name, "action"):
                 return await func(*args, **kwargs)
-        
+
         return wrapper
     return decorator
 
@@ -334,26 +335,26 @@ def trace_saga_compensation(tracer: SagaTracer):
             # Compensation implementation
             pass
     """
-    
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            
+
             # Extract saga context from arguments (usually second arg)
             saga_context = None
-            if len(args) >= 2 and hasattr(args[1], 'saga_id'):
+            if len(args) >= 2 and hasattr(args[1], "saga_id"):
                 saga_context = args[1]
-            
+
             if not saga_context:
                 return await func(*args, **kwargs)
-            
-            step_name = getattr(saga_context, 'step_name', func.__name__)
-            saga_id = getattr(saga_context, 'saga_id', 'unknown')
-            saga_name = getattr(saga_context, 'saga_name', 'unknown')
-            
+
+            step_name = getattr(saga_context, "step_name", func.__name__)
+            saga_id = getattr(saga_context, "saga_id", "unknown")
+            saga_name = getattr(saga_context, "saga_name", "unknown")
+
             with tracer.start_step_trace(saga_id, saga_name, step_name, "compensation"):
                 return await func(*args, **kwargs)
-        
+
         return wrapper
     return decorator
 
@@ -364,8 +365,8 @@ saga_tracer = SagaTracer()
 
 def setup_tracing(
     service_name: str = "saga-service",
-    endpoint: Optional[str] = None,
-    headers: Optional[Dict[str, str]] = None
+    endpoint: str | None = None,
+    headers: dict[str, str] | None = None
 ) -> SagaTracer:
     """
     Set up distributed tracing for sagas
@@ -378,39 +379,39 @@ def setup_tracing(
     Returns:
         Configured SagaTracer instance
     """
-    
+
     if not TRACING_AVAILABLE:
         print("Warning: OpenTelemetry not available. Install with: pip install opentelemetry-api opentelemetry-sdk")
         return SagaTracer(service_name)
-    
+
     # Configure tracing provider if endpoint provided
     if endpoint:
         try:
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+            from opentelemetry.sdk.resources import Resource
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
-            from opentelemetry.sdk.resources import Resource
-            
+
             # Create resource
             resource = Resource.create({
                 "service.name": service_name,
                 "service.version": "1.0.0",
             })
-            
+
             # Set up tracer provider
             trace.set_tracer_provider(TracerProvider(resource=resource))
-            
+
             # Set up OTLP exporter
             otlp_exporter = OTLPSpanExporter(
                 endpoint=endpoint,
                 headers=headers or {}
             )
-            
+
             # Add span processor
             span_processor = BatchSpanProcessor(otlp_exporter)
             trace.get_tracer_provider().add_span_processor(span_processor)
-            
+
         except ImportError:
             print("Warning: OTLP exporter not available. Install with: pip install opentelemetry-exporter-otlp")
-    
+
     return SagaTracer(service_name)

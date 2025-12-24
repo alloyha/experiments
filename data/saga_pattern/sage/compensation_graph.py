@@ -15,20 +15,21 @@ Example:
     ...     await asyncio.gather(*[execute_compensation(step) for step in level])
 """
 
-from typing import Dict, List, Callable, Awaitable, Any, Optional, Set
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 
 class CompensationType(Enum):
     """Type of compensation action."""
-    
+
     MECHANICAL = "mechanical"
     """Pure rollback - undo exactly what was done (e.g., delete created record)"""
-    
-    SEMANTIC = "semantic"  
+
+    SEMANTIC = "semantic"
     """Business logic compensation - may differ from exact reverse (e.g., issue refund credit)"""
-    
+
     MANUAL = "manual"
     """Requires human intervention (e.g., review by support team)"""
 
@@ -51,30 +52,29 @@ class CompensationNode:
         timeout_seconds: Timeout for compensation execution
     """
     step_id: str
-    compensation_fn: Callable[[Dict[str, Any]], Awaitable[None]]
-    depends_on: List[str] = field(default_factory=list)
+    compensation_fn: Callable[[dict[str, Any]], Awaitable[None]]
+    depends_on: list[str] = field(default_factory=list)
     compensation_type: CompensationType = CompensationType.MECHANICAL
-    description: Optional[str] = None
+    description: str | None = None
     max_retries: int = 3
     timeout_seconds: float = 30.0
 
 
 class CompensationGraphError(Exception):
     """Base exception for compensation graph errors."""
-    pass
 
 
 class CircularDependencyError(CompensationGraphError):
     """Raised when circular dependencies are detected in the graph."""
-    
-    def __init__(self, cycle: List[str]):
+
+    def __init__(self, cycle: list[str]):
         self.cycle = cycle
         super().__init__(f"Circular dependency detected: {' -> '.join(cycle)}")
 
 
 class MissingDependencyError(CompensationGraphError):
     """Raised when a step depends on a non-existent step."""
-    
+
     def __init__(self, step_id: str, missing_dep: str):
         self.step_id = step_id
         self.missing_dep = missing_dep
@@ -111,19 +111,19 @@ class SagaCompensationGraph:
         >>> # Returns: [["step2"], ["step1"]]
         >>> # step2 has dependency on step1, so step1 compensates AFTER step2
     """
-    
+
     def __init__(self):
-        self.nodes: Dict[str, CompensationNode] = {}
-        self.executed_steps: List[str] = []
-        self._compensation_results: Dict[str, Any] = {}
-    
+        self.nodes: dict[str, CompensationNode] = {}
+        self.executed_steps: list[str] = []
+        self._compensation_results: dict[str, Any] = {}
+
     def register_compensation(
         self,
         step_id: str,
-        compensation_fn: Callable[[Dict[str, Any]], Awaitable[None]],
-        depends_on: Optional[List[str]] = None,
+        compensation_fn: Callable[[dict[str, Any]], Awaitable[None]],
+        depends_on: list[str] | None = None,
         compensation_type: CompensationType = CompensationType.MECHANICAL,
-        description: Optional[str] = None,
+        description: str | None = None,
         max_retries: int = 3,
         timeout_seconds: float = 30.0
     ) -> None:
@@ -161,7 +161,7 @@ class SagaCompensationGraph:
             timeout_seconds=timeout_seconds
         )
         self.nodes[step_id] = node
-    
+
     def mark_step_executed(self, step_id: str) -> None:
         """
         Mark a step as successfully executed.
@@ -173,7 +173,7 @@ class SagaCompensationGraph:
         """
         if step_id not in self.executed_steps:
             self.executed_steps.append(step_id)
-    
+
     def unmark_step_executed(self, step_id: str) -> None:
         """
         Remove a step from the executed list.
@@ -185,8 +185,8 @@ class SagaCompensationGraph:
         """
         if step_id in self.executed_steps:
             self.executed_steps.remove(step_id)
-    
-    def get_executed_steps(self) -> List[str]:
+
+    def get_executed_steps(self) -> list[str]:
         """
         Get list of steps that were executed.
         
@@ -194,8 +194,8 @@ class SagaCompensationGraph:
             List of step IDs in execution order
         """
         return self.executed_steps.copy()
-    
-    def get_compensation_order(self) -> List[List[str]]:
+
+    def get_compensation_order(self) -> list[list[str]]:
         """
         Compute compensation execution order respecting dependencies.
         
@@ -215,20 +215,20 @@ class SagaCompensationGraph:
         to_compensate = self._get_steps_to_compensate()
         if not to_compensate:
             return []
-        
+
         comp_deps = self._build_reverse_dependencies(to_compensate)
         return self._topological_sort_levels(comp_deps, set(to_compensate))
-    
-    def _get_steps_to_compensate(self) -> List[str]:
+
+    def _get_steps_to_compensate(self) -> list[str]:
         """Get executed steps that have compensation registered."""
         return [
-            step_id for step_id in self.executed_steps 
+            step_id for step_id in self.executed_steps
             if step_id in self.nodes
         ]
-    
-    def _build_reverse_dependencies(self, steps: List[str]) -> Dict[str, Set[str]]:
+
+    def _build_reverse_dependencies(self, steps: list[str]) -> dict[str, set[str]]:
         """Build reverse dependency graph for compensation ordering."""
-        comp_deps: Dict[str, Set[str]] = {}
+        comp_deps: dict[str, set[str]] = {}
         for step_id in steps:
             dependents = [
                 other_id for other_id in steps
@@ -236,66 +236,66 @@ class SagaCompensationGraph:
             ]
             comp_deps[step_id] = set(dependents)
         return comp_deps
-    
-    def _topological_sort_levels(self, deps: Dict[str, Set[str]], remaining: Set[str]) -> List[List[str]]:
+
+    def _topological_sort_levels(self, deps: dict[str, set[str]], remaining: set[str]) -> list[list[str]]:
         """Perform topological sort returning levels for parallel execution."""
-        levels: List[List[str]] = []
+        levels: list[list[str]] = []
         in_degree = {step: len(d) for step, d in deps.items()}
         remaining = remaining.copy()
-        
+
         while remaining:
             current_level = [s for s in remaining if in_degree.get(s, 0) == 0]
-            
+
             if not current_level:
                 cycle = self._find_cycle(deps, remaining)
                 raise CircularDependencyError(cycle)
-            
+
             levels.append(current_level)
             self._update_in_degrees(current_level, remaining, deps, in_degree)
-        
+
         return levels
-    
-    def _update_in_degrees(self, processed: List[str], remaining: Set[str], 
-                           deps: Dict[str, Set[str]], in_degree: Dict[str, int]):
+
+    def _update_in_degrees(self, processed: list[str], remaining: set[str],
+                           deps: dict[str, set[str]], in_degree: dict[str, int]):
         """Remove processed nodes and update in-degrees."""
         for step in processed:
             remaining.remove(step)
             for other in remaining:
                 if step in deps.get(other, set()):
                     in_degree[other] -= 1
-    
-    def _find_cycle(self, deps: Dict[str, Set[str]], nodes: Set[str]) -> List[str]:
+
+    def _find_cycle(self, deps: dict[str, set[str]], nodes: set[str]) -> list[str]:
         """Find a cycle in the dependency graph for error reporting."""
         # Simple cycle detection for error message
         visited = set()
         path = []
-        
-        def dfs(node: str) -> Optional[List[str]]:
+
+        def dfs(node: str) -> list[str] | None:
             if node in path:
                 cycle_start = path.index(node)
                 return path[cycle_start:] + [node]
             if node in visited:
                 return None
-            
+
             visited.add(node)
             path.append(node)
-            
+
             for dep in deps.get(node, set()):
                 if dep in nodes:
                     result = dfs(dep)
                     if result:
                         return result
-            
+
             path.pop()
             return None
-        
+
         for node in nodes:
             result = dfs(node)
             if result:
                 return result
-        
+
         return list(nodes)[:3]  # Fallback: return first few nodes
-    
+
     def validate(self) -> None:
         """
         Validate the compensation graph.
@@ -310,24 +310,24 @@ class SagaCompensationGraph:
         """
         self._validate_dependencies_exist()
         self._validate_no_cycles()
-    
+
     def _validate_dependencies_exist(self):
         """Check all dependencies reference existing steps."""
         for step_id, node in self.nodes.items():
             for dep in node.depends_on:
                 if dep not in self.nodes:
                     raise MissingDependencyError(step_id, dep)
-    
+
     def _validate_no_cycles(self):
         """Check for circular dependencies via topological sort."""
-        deps: Dict[str, Set[str]] = {
-            step_id: set(node.depends_on) 
+        deps: dict[str, set[str]] = {
+            step_id: set(node.depends_on)
             for step_id, node in self.nodes.items()
         }
         # Use shared topological sort (will raise if cycle found)
         self._topological_sort_levels(deps, set(self.nodes.keys()))
-    
-    def get_compensation_info(self, step_id: str) -> Optional[CompensationNode]:
+
+    def get_compensation_info(self, step_id: str) -> CompensationNode | None:
         """
         Get compensation information for a step.
         
@@ -338,18 +338,18 @@ class SagaCompensationGraph:
             CompensationNode if found, None otherwise
         """
         return self.nodes.get(step_id)
-    
+
     def clear(self) -> None:
         """Clear all registered compensations and executed steps."""
         self.nodes.clear()
         self.executed_steps.clear()
         self._compensation_results.clear()
-    
+
     def reset_execution(self) -> None:
         """Reset executed steps while keeping compensation registrations."""
         self.executed_steps.clear()
         self._compensation_results.clear()
-    
+
     def __repr__(self) -> str:
         return (
             f"SagaCompensationGraph("

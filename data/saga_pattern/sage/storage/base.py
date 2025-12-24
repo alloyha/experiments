@@ -6,8 +6,9 @@ pluggable storage backends (memory, Redis, PostgreSQL, etc.).
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any
+
 from sage.types import SagaStatus, SagaStepStatus
 
 
@@ -18,16 +19,16 @@ class SagaStorage(ABC):
     Provides interface for storing and retrieving saga execution state,
     enabling saga recovery and state inspection across restarts.
     """
-    
+
     @abstractmethod
     async def save_saga_state(
         self,
         saga_id: str,
         saga_name: str,
         status: SagaStatus,
-        steps: List[Dict[str, Any]],
-        context: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None
+        steps: list[dict[str, Any]],
+        context: dict[str, Any],
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Save saga state to persistent storage
@@ -40,10 +41,9 @@ class SagaStorage(ABC):
             context: Saga execution context
             metadata: Additional metadata (version, timestamps, etc.)
         """
-        pass
-    
+
     @abstractmethod
-    async def load_saga_state(self, saga_id: str) -> Optional[Dict[str, Any]]:
+    async def load_saga_state(self, saga_id: str) -> dict[str, Any] | None:
         """
         Load saga state from persistent storage
         
@@ -53,8 +53,7 @@ class SagaStorage(ABC):
         Returns:
             Saga state dictionary or None if not found
         """
-        pass
-    
+
     @abstractmethod
     async def delete_saga_state(self, saga_id: str) -> bool:
         """
@@ -66,16 +65,15 @@ class SagaStorage(ABC):
         Returns:
             True if deleted, False if not found
         """
-        pass
-    
+
     @abstractmethod
     async def list_sagas(
         self,
-        status: Optional[SagaStatus] = None,
-        saga_name: Optional[str] = None,
+        status: SagaStatus | None = None,
+        saga_name: str | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List sagas with optional filtering
         
@@ -88,8 +86,7 @@ class SagaStorage(ABC):
         Returns:
             List of saga state summaries
         """
-        pass
-    
+
     @abstractmethod
     async def update_step_state(
         self,
@@ -97,8 +94,8 @@ class SagaStorage(ABC):
         step_name: str,
         status: SagaStepStatus,
         result: Any = None,
-        error: Optional[str] = None,
-        executed_at: Optional[datetime] = None
+        error: str | None = None,
+        executed_at: datetime | None = None
     ) -> None:
         """
         Update individual step state
@@ -111,23 +108,21 @@ class SagaStorage(ABC):
             error: Error message if step failed
             executed_at: Timestamp of execution
         """
-        pass
-    
+
     @abstractmethod
-    async def get_saga_statistics(self) -> Dict[str, Any]:
+    async def get_saga_statistics(self) -> dict[str, Any]:
         """
         Get storage statistics
         
         Returns:
             Dictionary with storage statistics (counts by status, etc.)
         """
-        pass
-    
+
     @abstractmethod
     async def cleanup_completed_sagas(
         self,
         older_than: datetime,
-        statuses: Optional[List[SagaStatus]] = None
+        statuses: list[SagaStatus] | None = None
     ) -> int:
         """
         Clean up old completed sagas
@@ -139,38 +134,35 @@ class SagaStorage(ABC):
         Returns:
             Number of sagas deleted
         """
-        pass
-    
+
     @abstractmethod
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Check storage health
         
         Returns:
             Health status information
         """
-        pass
-    
+
     async def __aenter__(self):
         """Async context manager entry"""
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
-        pass
 
 
 class SagaStepState:
     """Helper class for step state representation"""
-    
+
     def __init__(
         self,
         name: str,
         status: SagaStepStatus,
         result: Any = None,
-        error: Optional[str] = None,
-        executed_at: Optional[datetime] = None,
-        compensated_at: Optional[datetime] = None,
+        error: str | None = None,
+        executed_at: datetime | None = None,
+        compensated_at: datetime | None = None,
         retry_count: int = 0
     ):
         self.name = name
@@ -180,8 +172,8 @@ class SagaStepState:
         self.executed_at = executed_at
         self.compensated_at = compensated_at
         self.retry_count = retry_count
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation"""
         return {
             "name": self.name,
@@ -192,18 +184,18 @@ class SagaStepState:
             "compensated_at": self.compensated_at.isoformat() if self.compensated_at else None,
             "retry_count": self.retry_count,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SagaStepState":
+    def from_dict(cls, data: dict[str, Any]) -> "SagaStepState":
         """Create from dictionary representation"""
         executed_at = None
         if data.get("executed_at"):
             executed_at = datetime.fromisoformat(data["executed_at"])
-        
+
         compensated_at = None
         if data.get("compensated_at"):
             compensated_at = datetime.fromisoformat(data["compensated_at"])
-        
+
         return cls(
             name=data["name"],
             status=SagaStepStatus(data["status"]),
@@ -217,14 +209,11 @@ class SagaStepState:
 
 class SagaStorageError(Exception):
     """Base exception for saga storage operations"""
-    pass
 
 
 class SagaNotFoundError(SagaStorageError):
     """Raised when saga is not found in storage"""
-    pass
 
 
 class SagaStorageConnectionError(SagaStorageError):
     """Raised when storage connection fails"""
-    pass

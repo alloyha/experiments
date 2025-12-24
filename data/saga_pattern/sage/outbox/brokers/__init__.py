@@ -15,20 +15,20 @@ Factory:
 """
 
 from sage.outbox.brokers.base import (
-    MessageBroker,
     BaseBroker,
     BrokerConfig,
-    BrokerError,
     BrokerConnectionError,
+    BrokerError,
     BrokerPublishError,
+    MessageBroker,
 )
-from sage.outbox.brokers.memory import InMemoryBroker
 from sage.outbox.brokers.factory import (
     create_broker,
     create_broker_from_env,
     get_available_brokers,
     print_available_brokers,
 )
+from sage.outbox.brokers.memory import InMemoryBroker
 
 
 # Lazy imports for optional backends
@@ -58,13 +58,13 @@ __all__ = [
     "BrokerError",
     "BrokerConnectionError",
     "BrokerPublishError",
-    
+
     # Implementations
     "InMemoryBroker",
     "KafkaBroker",
     "RabbitMQBroker",
     "RedisBroker",
-    
+
     # Factory
     "create_broker",
     "create_broker_from_env",

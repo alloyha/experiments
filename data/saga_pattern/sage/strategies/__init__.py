@@ -2,15 +2,15 @@
 Saga parallel failure handling strategies
 """
 
-from .base import ParallelFailureStrategy, ParallelExecutionStrategy
+from .base import ParallelExecutionStrategy, ParallelFailureStrategy
 from .fail_fast import FailFastStrategy
-from .wait_all import WaitAllStrategy
 from .fail_fast_grace import FailFastWithGraceStrategy
+from .wait_all import WaitAllStrategy
 
 __all__ = [
-    "ParallelFailureStrategy",
-    "ParallelExecutionStrategy",
-    "FailFastStrategy", 
-    "WaitAllStrategy",
+    "FailFastStrategy",
     "FailFastWithGraceStrategy",
+    "ParallelExecutionStrategy",
+    "ParallelFailureStrategy",
+    "WaitAllStrategy",
 ]

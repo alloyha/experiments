@@ -4,10 +4,9 @@ Base classes for parallel execution strategies
 Defines the interface for handling parallel step failures in DAG sagas.
 """
 
-import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict
 from enum import Enum
+from typing import Any
 
 
 class ParallelFailureStrategy(Enum):
@@ -23,9 +22,9 @@ class ParallelExecutionStrategy(ABC):
     
     Defines how to handle parallel step execution and failures.
     """
-    
+
     @abstractmethod
-    async def execute_parallel_steps(self, steps: List[Any]) -> List[Any]:
+    async def execute_parallel_steps(self, steps: list[Any]) -> list[Any]:
         """
         Execute parallel steps according to the strategy
         

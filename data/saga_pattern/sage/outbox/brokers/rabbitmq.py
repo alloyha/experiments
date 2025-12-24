@@ -11,19 +11,22 @@ Usage:
     >>> await broker.publish("orders", b'{"order_id": 1}')
 """
 
-from typing import Dict, Optional
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
-from sage.outbox.brokers.base import BaseBroker, BrokerConfig, BrokerConnectionError, BrokerPublishError
 from sage.exceptions import MissingDependencyError
-
+from sage.outbox.brokers.base import (
+    BaseBroker,
+    BrokerConfig,
+    BrokerConnectionError,
+    BrokerPublishError,
+)
 
 # Check for aio-pika availability
 try:
     import aio_pika
-    from aio_pika import Message, DeliveryMode, ExchangeType
-    from aio_pika.abc import AbstractConnection, AbstractChannel, AbstractExchange
+    from aio_pika import DeliveryMode, ExchangeType, Message
+    from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractExchange
     RABBITMQ_AVAILABLE = True
 except ImportError:
     RABBITMQ_AVAILABLE = False
@@ -50,7 +53,7 @@ class RabbitMQBrokerConfig(BrokerConfig):
         heartbeat: Heartbeat interval in seconds
         connection_timeout: Connection timeout in seconds
     """
-    
+
     url: str = "amqp://guest:guest@localhost/"
     exchange_name: str = "sage.outbox"
     exchange_type: str = "topic"
@@ -89,8 +92,8 @@ class RabbitMQBroker(BaseBroker):
         >>> 
         >>> await broker.close()
     """
-    
-    def __init__(self, config: Optional[RabbitMQBrokerConfig] = None):
+
+    def __init__(self, config: RabbitMQBrokerConfig | None = None):
         """
         Initialize RabbitMQ broker.
         
@@ -102,43 +105,43 @@ class RabbitMQBroker(BaseBroker):
         """
         if not RABBITMQ_AVAILABLE:
             raise MissingDependencyError("aio-pika", "RabbitMQ message broker")  # pragma: no cover
-        
+
         self.config = config or RabbitMQBrokerConfig()
-        self._connection: Optional[AbstractConnection] = None
-        self._channel: Optional[AbstractChannel] = None
-        self._exchange: Optional[AbstractExchange] = None
+        self._connection: AbstractConnection | None = None
+        self._channel: AbstractChannel | None = None
+        self._exchange: AbstractExchange | None = None
         self._connected = False
-    
+
     @classmethod
     def from_env(cls) -> "RabbitMQBroker":
         """Create RabbitMQ broker from environment variables."""
         import os
-        
+
         config = RabbitMQBrokerConfig(
             url=os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/"),
             exchange_name=os.getenv("RABBITMQ_EXCHANGE", "sage.outbox"),
             exchange_type=os.getenv("RABBITMQ_EXCHANGE_TYPE", "topic"),
         )
         return cls(config)
-    
+
     async def connect(self) -> None:
         """Establish connection to RabbitMQ."""
         if self._connected:
             return
-        
+
         try:
             # Connect to RabbitMQ
             self._connection = await aio_pika.connect_robust(
                 self.config.url,
                 timeout=self.config.connection_timeout,
             )
-            
+
             # Create channel with publisher confirms
             self._channel = await self._connection.channel()
-            
+
             if self.config.confirm_delivery:
                 await self._channel.set_qos(prefetch_count=self.config.prefetch_count)
-            
+
             # Declare exchange
             exchange_type = getattr(ExchangeType, self.config.exchange_type.upper())
             self._exchange = await self._channel.declare_exchange(
@@ -146,19 +149,19 @@ class RabbitMQBroker(BaseBroker):
                 exchange_type,
                 durable=self.config.exchange_durable,
             )
-            
+
             self._connected = True
             logger.info(f"Connected to RabbitMQ at {self.config.url}")
-            
+
         except Exception as e:  # pragma: no cover
             raise BrokerConnectionError(f"Failed to connect to RabbitMQ: {e}") from e
-    
+
     async def publish(  # pragma: no cover
         self,
         topic: str,
         message: bytes,
-        headers: Optional[Dict[str, str]] = None,
-        key: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        key: str | None = None,
     ) -> None:
         """
         Publish a message to RabbitMQ.
@@ -171,7 +174,7 @@ class RabbitMQBroker(BaseBroker):
         """
         if not self._connected or not self._exchange:  # pragma: no cover
             raise BrokerConnectionError("RabbitMQ broker not connected")
-        
+
         try:
             # Create message with persistent delivery mode
             msg = Message(
@@ -180,48 +183,48 @@ class RabbitMQBroker(BaseBroker):
                 headers=headers or {},
                 content_type="application/json",
             )
-            
+
             # Publish to exchange with routing key
             await self._exchange.publish(
                 msg,
                 routing_key=topic,
             )
-            
+
             logger.debug(f"Published message to RabbitMQ routing key {topic}")
-            
+
         except Exception as e:  # pragma: no cover
             raise BrokerPublishError(f"Failed to publish to RabbitMQ: {e}") from e
-    
+
     async def close(self) -> None:  # pragma: no cover
         """Close the RabbitMQ connection."""
         if self._channel:
             await self._channel.close()
             self._channel = None
             self._exchange = None
-        
+
         if self._connection:
             await self._connection.close()
             self._connection = None
-        
+
         self._connected = False
         logger.info("RabbitMQ connection closed")
-    
+
     async def health_check(self) -> bool:  # pragma: no cover
         """Check RabbitMQ connection health."""
         if not self._connected or not self._connection:  # pragma: no cover
             return False
-        
+
         try:
             return not self._connection.is_closed
         except Exception:  # pragma: no cover
             return False
-    
+
     async def declare_queue(
         self,
         queue_name: str,
         routing_key: str,
         durable: bool = True,
-        dead_letter_exchange: Optional[str] = None,
+        dead_letter_exchange: str | None = None,
     ) -> None:
         """
         Declare a queue and bind it to the exchange.
@@ -234,17 +237,17 @@ class RabbitMQBroker(BaseBroker):
         """
         if not self._channel or not self._exchange:  # pragma: no cover
             raise BrokerConnectionError("RabbitMQ broker not connected")
-        
+
         arguments = {}  # pragma: no cover
         if dead_letter_exchange:  # pragma: no cover
             arguments["x-dead-letter-exchange"] = dead_letter_exchange
-        
+
         queue = await self._channel.declare_queue(  # pragma: no cover
             queue_name,
             durable=durable,
             arguments=arguments or None,
         )
-        
+
         await queue.bind(self._exchange, routing_key)  # pragma: no cover
         logger.info(f"Declared queue {queue_name} bound to {routing_key}")  # pragma: no cover
 

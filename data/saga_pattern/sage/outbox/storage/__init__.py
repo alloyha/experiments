@@ -20,8 +20,8 @@ def PostgreSQLOutboxStorage(*args, **kwargs):
 
 
 __all__ = [
+    "InMemoryOutboxStorage",
     "OutboxStorage",
     "OutboxStorageError",
-    "InMemoryOutboxStorage",
     "PostgreSQLOutboxStorage",
 ]

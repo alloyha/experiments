@@ -28,15 +28,16 @@ State Diagram:
          └─────────────┘
 """
 
-from typing import Optional, Callable, Any
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from sage.outbox.types import OutboxEvent, OutboxStatus
 
 
 class InvalidStateTransitionError(Exception):
     """Raised when an invalid state transition is attempted."""
-    
+
     def __init__(self, event_id: str, from_status: OutboxStatus, to_status: OutboxStatus):
         self.event_id = event_id
         self.from_status = from_status
@@ -75,7 +76,7 @@ class OutboxStateMachine:
         ...     if event.retry_count >= sm.max_retries:
         ...         event = sm.move_to_dead_letter(event)
     """
-    
+
     # Valid transitions: from_status -> [to_status, ...]
     VALID_TRANSITIONS = {
         OutboxStatus.PENDING: [OutboxStatus.CLAIMED],
@@ -84,11 +85,11 @@ class OutboxStateMachine:
         OutboxStatus.SENT: [],  # Terminal state
         OutboxStatus.DEAD_LETTER: [],  # Terminal state
     }
-    
+
     def __init__(
         self,
         max_retries: int = 10,
-        on_transition: Optional[Callable[[OutboxEvent, OutboxStatus, OutboxStatus], Any]] = None,
+        on_transition: Callable[[OutboxEvent, OutboxStatus, OutboxStatus], Any] | None = None,
     ):
         """
         Initialize the state machine.
@@ -99,7 +100,7 @@ class OutboxStateMachine:
         """
         self.max_retries = max_retries
         self._on_transition = on_transition
-    
+
     def _validate_transition(
         self,
         event: OutboxEvent,
@@ -107,14 +108,14 @@ class OutboxStateMachine:
     ) -> None:
         """Validate that the transition is allowed."""
         valid_targets = self.VALID_TRANSITIONS.get(event.status, [])
-        
+
         if target_status not in valid_targets:
             raise InvalidStateTransitionError(
                 event.event_id,
                 event.status,
                 target_status
             )
-    
+
     def _transition(
         self,
         event: OutboxEvent,
@@ -123,14 +124,14 @@ class OutboxStateMachine:
         """Execute a state transition."""
         old_status = event.status
         self._validate_transition(event, target_status)
-        
+
         event.status = target_status
-        
+
         if self._on_transition:
             self._on_transition(event, old_status, target_status)
-        
+
         return event
-    
+
     def claim(
         self,
         event: OutboxEvent,
@@ -151,9 +152,9 @@ class OutboxStateMachine:
         """
         event = self._transition(event, OutboxStatus.CLAIMED)
         event.worker_id = worker_id
-        event.claimed_at = datetime.now(timezone.utc)
+        event.claimed_at = datetime.now(UTC)
         return event
-    
+
     def mark_sent(self, event: OutboxEvent) -> OutboxEvent:
         """
         Mark event as successfully sent.
@@ -168,9 +169,9 @@ class OutboxStateMachine:
             InvalidStateTransitionError: If event is not CLAIMED
         """
         event = self._transition(event, OutboxStatus.SENT)
-        event.sent_at = datetime.now(timezone.utc)
+        event.sent_at = datetime.now(UTC)
         return event
-    
+
     def mark_failed(
         self,
         event: OutboxEvent,
@@ -193,7 +194,7 @@ class OutboxStateMachine:
         event.retry_count += 1
         event.last_error = error_message
         return event
-    
+
     def retry(self, event: OutboxEvent) -> OutboxEvent:
         """
         Retry a failed event by moving it back to PENDING.
@@ -213,12 +214,12 @@ class OutboxStateMachine:
                 f"Event {event.event_id} has exceeded max retries "
                 f"({event.retry_count}/{self.max_retries})"
             )
-        
+
         event = self._transition(event, OutboxStatus.PENDING)
         event.worker_id = None
         event.claimed_at = None
         return event
-    
+
     def move_to_dead_letter(self, event: OutboxEvent) -> OutboxEvent:
         """
         Move event to dead letter queue.
@@ -233,7 +234,7 @@ class OutboxStateMachine:
             InvalidStateTransitionError: If event is not FAILED
         """
         return self._transition(event, OutboxStatus.DEAD_LETTER)
-    
+
     def can_retry(self, event: OutboxEvent) -> bool:
         """
         Check if an event can be retried.
@@ -248,7 +249,7 @@ class OutboxStateMachine:
             event.status == OutboxStatus.FAILED and
             event.retry_count < self.max_retries
         )
-    
+
     def should_dead_letter(self, event: OutboxEvent) -> bool:
         """
         Check if an event should be moved to dead letter.

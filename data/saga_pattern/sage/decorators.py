@@ -26,54 +26,48 @@ Quick Start:
     ...         await PaymentService.refund(ctx["charge_id"])
 """
 
-from typing import Dict, List, Any, Callable, Awaitable, Optional, TypeVar, Type
-from dataclasses import dataclass, field
-from functools import wraps
 import asyncio
-import inspect
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from typing import Any, TypeVar
 
-from sage.compensation_graph import (
-    SagaCompensationGraph, 
-    CompensationType,
-    CompensationNode
-)
-
+from sage.compensation_graph import CompensationType, SagaCompensationGraph
 
 # Type for saga step functions
-F = TypeVar('F', bound=Callable[..., Awaitable[Any]])
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 @dataclass
 class StepMetadata:
     """Metadata attached to step functions via decorator."""
     name: str
-    depends_on: List[str] = field(default_factory=list)
-    aggregate_type: Optional[str] = None
-    event_type: Optional[str] = None
+    depends_on: list[str] = field(default_factory=list)
+    aggregate_type: str | None = None
+    event_type: str | None = None
     timeout_seconds: float = 60.0
     max_retries: int = 3
-    description: Optional[str] = None
+    description: str | None = None
 
 
-@dataclass  
+@dataclass
 class CompensationMetadata:
     """Metadata attached to compensation functions via decorator."""
     for_step: str
-    depends_on: List[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
     compensation_type: CompensationType = CompensationType.MECHANICAL
     timeout_seconds: float = 30.0
     max_retries: int = 3
-    description: Optional[str] = None
+    description: str | None = None
 
 
 def step(
     name: str,
-    depends_on: Optional[List[str]] = None,
-    aggregate_type: Optional[str] = None,
-    event_type: Optional[str] = None,
+    depends_on: list[str] | None = None,
+    aggregate_type: str | None = None,
+    event_type: str | None = None,
     timeout_seconds: float = 60.0,
     max_retries: int = 3,
-    description: Optional[str] = None
+    description: str | None = None
 ) -> Callable[[F], F]:
     """
     Decorator to mark a method as a saga step.
@@ -116,11 +110,11 @@ def step(
 
 def compensate(
     for_step: str,
-    depends_on: Optional[List[str]] = None,
+    depends_on: list[str] | None = None,
     compensation_type: CompensationType = CompensationType.MECHANICAL,
     timeout_seconds: float = 30.0,
     max_retries: int = 3,
-    description: Optional[str] = None
+    description: str | None = None
 ) -> Callable[[F], F]:
     """
     Decorator to mark a method as compensation for a step.
@@ -168,17 +162,17 @@ class SagaStepDefinition:
     Used internally to track step and compensation pairs.
     """
     step_id: str
-    forward_fn: Callable[[Dict[str, Any]], Awaitable[Optional[Dict[str, Any]]]]
-    compensation_fn: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None
-    depends_on: List[str] = field(default_factory=list)
-    compensation_depends_on: List[str] = field(default_factory=list)
+    forward_fn: Callable[[dict[str, Any]], Awaitable[dict[str, Any] | None]]
+    compensation_fn: Callable[[dict[str, Any]], Awaitable[None]] | None = None
+    depends_on: list[str] = field(default_factory=list)
+    compensation_depends_on: list[str] = field(default_factory=list)
     compensation_type: CompensationType = CompensationType.MECHANICAL
-    aggregate_type: Optional[str] = None
-    event_type: Optional[str] = None
+    aggregate_type: str | None = None
+    event_type: str | None = None
     timeout_seconds: float = 60.0
     compensation_timeout_seconds: float = 30.0
     max_retries: int = 3
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class Saga:
@@ -238,24 +232,24 @@ class Saga:
         >>> saga = OrderSaga()
         >>> result = await saga.run({"order_data": {...}, "amount": 99.99})
     """
-    
+
     def __init__(self):
-        self._steps: List[SagaStepDefinition] = []
-        self._step_registry: Dict[str, SagaStepDefinition] = {}
+        self._steps: list[SagaStepDefinition] = []
+        self._step_registry: dict[str, SagaStepDefinition] = {}
         self._compensation_graph = SagaCompensationGraph()
-        self._context: Dict[str, Any] = {}
+        self._context: dict[str, Any] = {}
         self._collect_steps()
-    
+
     def _collect_steps(self) -> None:
         """Collect decorated methods into step definitions."""
         # First pass: collect all steps
         for attr_name in dir(self):
-            if attr_name.startswith('_'):
+            if attr_name.startswith("_"):
                 continue
-                
+
             attr = getattr(self, attr_name)
-            
-            if hasattr(attr, '_saga_step_meta'):
+
+            if hasattr(attr, "_saga_step_meta"):
                 meta: StepMetadata = attr._saga_step_meta
                 step_def = SagaStepDefinition(
                     step_id=meta.name,
@@ -269,34 +263,34 @@ class Saga:
                 )
                 self._steps.append(step_def)
                 self._step_registry[meta.name] = step_def
-        
+
         # Second pass: attach compensations
         for attr_name in dir(self):
-            if attr_name.startswith('_'):
+            if attr_name.startswith("_"):
                 continue
-                
+
             attr = getattr(self, attr_name)
-            
-            if hasattr(attr, '_saga_compensation_meta'):
+
+            if hasattr(attr, "_saga_compensation_meta"):
                 meta: CompensationMetadata = attr._saga_compensation_meta
                 step_name = meta.for_step
-                
+
                 if step_name in self._step_registry:
                     step = self._step_registry[step_name]
                     step.compensation_fn = attr
                     step.compensation_depends_on = meta.depends_on.copy()
                     step.compensation_type = meta.compensation_type
                     step.compensation_timeout_seconds = meta.timeout_seconds
-    
-    def get_steps(self) -> List[SagaStepDefinition]:
+
+    def get_steps(self) -> list[SagaStepDefinition]:
         """Get all step definitions."""
         return self._steps.copy()
-    
-    def get_step(self, name: str) -> Optional[SagaStepDefinition]:
+
+    def get_step(self, name: str) -> SagaStepDefinition | None:
         """Get a specific step by name."""
         return self._step_registry.get(name)
-    
-    def get_execution_order(self) -> List[List[SagaStepDefinition]]:
+
+    def get_execution_order(self) -> list[list[SagaStepDefinition]]:
         """
         Compute step execution order respecting dependencies.
         
@@ -308,43 +302,43 @@ class Saga:
         """
         if not self._steps:
             return []
-        
+
         step_map = {s.step_id: s for s in self._steps}
         in_degree = {s.step_id: len(s.depends_on) for s in self._steps}
         remaining = set(step_map.keys())
-        
+
         return self._topological_sort_steps(step_map, in_degree, remaining)
-    
+
     def _topological_sort_steps(
-        self, 
-        step_map: Dict[str, SagaStepDefinition], 
-        in_degree: Dict[str, int], 
+        self,
+        step_map: dict[str, SagaStepDefinition],
+        in_degree: dict[str, int],
         remaining: set
-    ) -> List[List[SagaStepDefinition]]:
+    ) -> list[list[SagaStepDefinition]]:
         """Perform topological sort on steps."""
-        levels: List[List[SagaStepDefinition]] = []
-        
+        levels: list[list[SagaStepDefinition]] = []
+
         while remaining:
             current_level = [step_map[sid] for sid in remaining if in_degree[sid] == 0]
-            
+
             if not current_level:
                 raise ValueError("Circular dependency detected in saga steps")
-            
+
             levels.append(current_level)
-            
+
             for step in current_level:
                 remaining.remove(step.step_id)
                 for other_id in remaining:
                     if step.step_id in step_map[other_id].depends_on:
                         in_degree[other_id] -= 1
-        
+
         return levels
-    
+
     async def run(
         self,
-        initial_context: Dict[str, Any],
-        saga_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        initial_context: dict[str, Any],
+        saga_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Execute this saga.
         
@@ -359,11 +353,11 @@ class Saga:
             Exception: If saga fails (compensations will be attempted first)
         """
         import uuid
-        
+
         saga_id = saga_id or str(uuid.uuid4())
         self._context = initial_context.copy()
         self._compensation_graph.reset_execution()
-        
+
         # Register all compensations in the graph
         for step in self._steps:
             if step.compensation_fn:
@@ -375,39 +369,39 @@ class Saga:
                     max_retries=step.max_retries,
                     timeout_seconds=step.compensation_timeout_seconds
                 )
-        
+
         try:
             # Execute steps level by level
             execution_levels = self.get_execution_order()
-            
+
             for level in execution_levels:
                 await self._execute_level(level)
-            
+
             return self._context
-            
-        except Exception as e:
+
+        except Exception:
             # Compensate executed steps
             await self._compensate()
             raise
-    
-    async def _execute_level(self, level: List[SagaStepDefinition]) -> None:
+
+    async def _execute_level(self, level: list[SagaStepDefinition]) -> None:
         """Execute all steps in a level concurrently."""
         if not level:
             return
-        
+
         tasks = [
             self._execute_step(step)
             for step in level
         ]
-        
+
         # Execute in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Check for exceptions
         for result in results:
             if isinstance(result, Exception):
                 raise result
-    
+
     async def _execute_step(self, step: SagaStepDefinition) -> None:
         """Execute a single step."""
         try:
@@ -416,22 +410,22 @@ class Saga:
                 step.forward_fn(self._context),
                 timeout=step.timeout_seconds
             )
-            
+
             # Merge result into context
             if result and isinstance(result, dict):
                 self._context.update(result)
-            
+
             # Mark step as executed for compensation tracking
             self._context[f"__{step.step_id}_completed"] = True
             self._compensation_graph.mark_step_executed(step.step_id)
-            
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             raise TimeoutError(f"Step '{step.step_id}' timed out after {step.timeout_seconds}s")
-    
+
     async def _compensate(self) -> None:
         """Execute compensations in dependency order."""
         comp_levels = self._compensation_graph.get_compensation_order()
-        
+
         for level in comp_levels:
             tasks = [
                 self._execute_compensation(step_id)
@@ -439,13 +433,13 @@ class Saga:
             ]
             # Execute compensations in parallel, don't fail on individual errors
             await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     async def _execute_compensation(self, step_id: str) -> None:
         """Execute a single compensation."""
         node = self._compensation_graph.get_compensation_info(step_id)
         if not node:
             return
-        
+
         try:
             await asyncio.wait_for(
                 node.compensation_fn(self._context),
@@ -455,7 +449,7 @@ class Saga:
         except Exception as e:
             # Log but don't fail - we want all compensations to attempt
             self._context[f"__{step_id}_compensation_error"] = str(e)
-    
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(steps={len(self._steps)})"
 

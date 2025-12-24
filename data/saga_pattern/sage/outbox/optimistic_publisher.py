@@ -5,7 +5,6 @@ Reduces latency from ~100ms (polling) to <10ms (immediate) in happy path.
 """
 import asyncio
 import logging
-from typing import Optional
 
 # Optional prometheus metrics
 try:
@@ -55,7 +54,7 @@ class OptimisticPublisher:
     - Still maintains exactly-once semantics
     - Failures fallback to polling worker (safety net)
     """
-    
+
     def __init__(
         self,
         storage,  # OutboxStorage
@@ -67,7 +66,7 @@ class OptimisticPublisher:
         self.broker = broker
         self.enabled = enabled
         self.timeout_seconds = timeout_seconds
-    
+
     async def publish_after_commit(self, event: OutboxEvent) -> bool:
         """
         Attempt immediate publish after transaction commits.
@@ -79,9 +78,9 @@ class OptimisticPublisher:
         """
         if not self.enabled:
             return False
-        
+
         OPTIMISTIC_SEND_ATTEMPTS.inc()
-        
+
         try:
             with OPTIMISTIC_SEND_LATENCY.time():
                 await asyncio.wait_for(
@@ -93,24 +92,24 @@ class OptimisticPublisher:
                     ),
                     timeout=self.timeout_seconds
                 )
-            
+
             # Success!
             await self.storage.mark_sent(event.event_id)
             OPTIMISTIC_SEND_SUCCESS.inc()
-            
+
             logger.info(f"Optimistic send succeeded: {event.event_id}")
             return True
-            
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             OPTIMISTIC_SEND_FAILURES.labels(reason="timeout").inc()
             logger.warning(f"Optimistic timeout: {event.event_id}, will fallback")
             return False
-            
+
         except Exception as exc:
             OPTIMISTIC_SEND_FAILURES.labels(reason=type(exc).__name__).inc()
             logger.warning(f"Optimistic failed: {event.event_id}, will fallback: {exc}")
             return False
-    
+
     def _resolve_topic(self, event: OutboxEvent) -> str:
         """Map event to broker topic."""
         if event.routing_key:
