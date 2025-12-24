@@ -45,100 +45,53 @@ class FailFastWithGraceStrategy(ParallelExecutionStrategy):
         if not steps:
             return []
         
-        # Create tasks for all steps
         tasks = [asyncio.create_task(step.execute()) for step in steps]
         
         try:
-            # Wait for first failure or all completions
             done, pending = await asyncio.wait(
                 tasks,
                 return_when=asyncio.FIRST_EXCEPTION
             )
             
-            # Check if any completed task failed
-            failed_task = None
-            for task in done:
-                if task.exception():
-                    failed_task = task
-                    break
+            failed_task = self._find_failed_task(done)
             
             if failed_task:
-                # Allow grace period for pending tasks to complete
-                if pending:
-                    try:
-                        await asyncio.wait_for(
-                            asyncio.gather(*pending, return_exceptions=True),
-                            timeout=self.grace_period
-                        )
-                    except asyncio.TimeoutError:
-                        # Cancel tasks that didn't complete within grace period
-                        for task in pending:
-                            if not task.done():
-                                task.cancel()
-                
-                # Raise the original exception
+                await self._handle_failure_with_grace(pending)
                 raise failed_task.exception()
             
-            # All tasks completed successfully
             return [task.result() for task in tasks]
             
         except asyncio.CancelledError:
-            # Handle case where this strategy itself is cancelled
-            for task in tasks:
+            self._cancel_all_tasks(tasks)
+            raise
+    
+    def _find_failed_task(self, done: set) -> asyncio.Task:
+        """Find the first failed task in done set."""
+        for task in done:
+            if task.exception():
+                return task
+        return None
+    
+    async def _handle_failure_with_grace(self, pending: set):
+        """Allow grace period for pending tasks, then cancel."""
+        if not pending:
+            return
+        
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*pending, return_exceptions=True),
+                timeout=self.grace_period
+            )
+        except asyncio.TimeoutError:
+            for task in pending:
                 if not task.done():
                     task.cancel()
-            raise
-                
-            # Check if task has actually started executing
-            if self._is_task_executing(task):
-                in_flight_tasks.append((step_name, task))
-            else:
-                not_started_tasks.append((step_name, task))
-        
-        # Cancel tasks that haven't started
-        for step_name, task in not_started_tasks:
-            task.cancel()
-            step_statuses[step_name] = SagaStepStatus.FAILED
-        
-        # Wait gracefully for in-flight tasks
-        if in_flight_tasks:
-            in_flight_task_objects = [task for _, task in in_flight_tasks]
-            
-            try:
-                # Give in-flight tasks reasonable time to complete
-                results = await asyncio.wait_for(
-                    asyncio.gather(*in_flight_task_objects, return_exceptions=True),
-                    timeout=30.0  # Grace period for completion
-                )
-                
-                # Update statuses based on results
-                for i, (step_name, _) in enumerate(in_flight_tasks):
-                    result = results[i]
-                    if isinstance(result, Exception):
-                        step_statuses[step_name] = SagaStepStatus.FAILED
-                    else:
-                        step_statuses[step_name] = SagaStepStatus.COMPLETED
-                        
-            except asyncio.TimeoutError:
-                # If grace period expires, cancel remaining tasks
-                for step_name, task in in_flight_tasks:
-                    if not task.done():
-                        task.cancel()
-                        step_statuses[step_name] = SagaStepStatus.FAILED
-        
-        # Quick cleanup of any cancelled tasks
-        cancelled_tasks = [task for _, task in not_started_tasks if not task.done()]
-        if cancelled_tasks:
-            await asyncio.gather(*cancelled_tasks, return_exceptions=True)
     
-    def _is_task_executing(self, task: asyncio.Task) -> bool:
-        """
-        Heuristic to determine if a task has actually started executing
-        This is a simplified implementation - in practice, you might want
-        more sophisticated detection based on your step implementation
-        """
-        # Simple heuristic: if task is not done and not cancelled, assume executing
-        return not task.done() and not task.cancelled()
+    def _cancel_all_tasks(self, tasks: list):
+        """Cancel all incomplete tasks."""
+        for task in tasks:
+            if not task.done():
+                task.cancel()
     
     def should_wait_for_completion(self) -> bool:
         """FAIL_FAST_WITH_GRACE waits for in-flight tasks only"""

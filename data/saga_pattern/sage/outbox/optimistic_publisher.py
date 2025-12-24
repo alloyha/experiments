@@ -7,13 +7,25 @@ import asyncio
 import logging
 from typing import Optional
 
-from prometheus_client import Counter, Histogram
+# Optional prometheus metrics
+try:
+    from prometheus_client import Counter, Histogram
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    # No-op fallbacks
+    class _NoOpMetric:
+        def inc(self, *args, **kwargs): pass
+        def observe(self, *args, **kwargs): pass
+        def labels(self, *args, **kwargs): return self
+    Counter = lambda *args, **kwargs: _NoOpMetric()
+    Histogram = lambda *args, **kwargs: _NoOpMetric()
 
 from .types import OutboxEvent
 
 logger = logging.getLogger(__name__)
 
-# Metrics
+# Metrics (no-op if prometheus not installed)
 OPTIMISTIC_SEND_ATTEMPTS = Counter(
     "outbox_optimistic_send_attempts_total",
     "Total optimistic send attempts"

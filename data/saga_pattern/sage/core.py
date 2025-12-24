@@ -294,100 +294,94 @@ class Saga(ABC):  # noqa: B024
     
     async def _execute_dag(self) -> SagaResult:
         """Execute saga using DAG parallel execution"""
+        start_time = datetime.now()
+        step_map = {step.name: step for step in self.steps}
+        strategy = self._get_parallel_strategy()
+        
+        try:
+            # Execute each batch in sequence
+            for batch_idx, batch in enumerate(self.execution_batches):
+                batch_error = await self._execute_batch(
+                    batch_idx, batch, step_map, strategy
+                )
+                
+                if batch_error:
+                    await self._compensate_all()
+                    return self._build_dag_result(
+                        start_time, success=False, 
+                        status=SagaStatus.ROLLED_BACK, error=batch_error
+                    )
+            
+            return self._build_dag_result(start_time, success=True, status=SagaStatus.COMPLETED)
+            
+        except Exception as e:
+            logger.error(f"DAG execution failed for saga {self.name}: {e}")
+            return self._build_dag_result(
+                start_time, success=False, status=SagaStatus.FAILED, error=e
+            )
+    
+    def _get_parallel_strategy(self):
+        """Get the parallel execution strategy implementation."""
         from sage.strategies.fail_fast import FailFastStrategy
         from sage.strategies.wait_all import WaitAllStrategy
         from sage.strategies.fail_fast_grace import FailFastWithGraceStrategy
         
-        start_time = datetime.now()
+        if self.failure_strategy == ParallelFailureStrategy.FAIL_FAST:
+            return FailFastStrategy()
+        elif self.failure_strategy == ParallelFailureStrategy.WAIT_ALL:
+            return WaitAllStrategy()
+        return FailFastWithGraceStrategy()
+    
+    async def _execute_batch(self, batch_idx: int, batch: set, step_map: dict, strategy) -> Exception | None:
+        """Execute a single batch. Returns exception if failed, None if success."""
+        logger.info(f"Executing batch {batch_idx + 1}/{len(self.execution_batches)}: {batch}")
+        
+        batch_executors = [
+            _StepExecutor(step_map[step_name], self.context)
+            for step_name in batch
+        ]
         
         try:
-            completed_step_names = []
-            step_map = {step.name: step for step in self.steps}
+            await strategy.execute_parallel_steps(batch_executors)
+            self._mark_batch_completed(batch, step_map)
+            return None
             
-            # Get strategy implementation
-            if self.failure_strategy == ParallelFailureStrategy.FAIL_FAST:
-                strategy = FailFastStrategy()
-            elif self.failure_strategy == ParallelFailureStrategy.WAIT_ALL:
-                strategy = WaitAllStrategy()
-            else:
-                strategy = FailFastWithGraceStrategy()
-            
-            # Execute each batch in sequence, steps within batch in parallel
-            for batch_idx, batch in enumerate(self.execution_batches):
-                logger.info(f"Executing batch {batch_idx + 1}/{len(self.execution_batches)}: {batch}")
-                
-                # Create executor wrappers for strategy
-                batch_executors = [
-                    _StepExecutor(step_map[step_name], self.context)
-                    for step_name in batch
-                ]
-                
-                try:
-                    # Execute batch using strategy
-                    await strategy.execute_parallel_steps(batch_executors)
-                    
-                    # Mark steps as completed
-                    for step_name in batch:
-                        step = step_map[step_name]
-                        self.completed_steps.append(step)
-                        completed_step_names.append(step_name)
-                        self._executed_step_keys.add(step.idempotency_key)
-                        logger.info(f"Step '{step_name}' completed successfully")
-                    
-                except Exception as batch_error:
-                    logger.error(f"Batch {batch_idx + 1} failed: {batch_error}")
-                    
-                    # Mark any steps that completed successfully before the failure
-                    for executor in batch_executors:
-                        if executor.completed and executor.step not in self.completed_steps:
-                            step = executor.step
-                            self.completed_steps.append(step)
-                            completed_step_names.append(step.name)
-                            self._executed_step_keys.add(step.idempotency_key)
-                            logger.info(f"Step '{step.name}' completed before batch failure")
-                    
-                    # Compensate completed steps
-                    await self._compensate_all()
-                    
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=False,
-                        saga_name=self.name,
-                        status=SagaStatus.ROLLED_BACK,
-                        completed_steps=len(self.completed_steps),
-                        total_steps=len(self.steps),
-                        error=batch_error,
-                        execution_time=execution_time,
-                        context=self.context,
-                        compensation_errors=self.compensation_errors,
-                    )
-            
-            # All batches completed successfully
-            execution_time = (datetime.now() - start_time).total_seconds()
-            return SagaResult(
-                success=True,
-                saga_name=self.name,
-                status=SagaStatus.COMPLETED,
-                completed_steps=len(self.completed_steps),
-                total_steps=len(self.steps),
-                error=None,
-                execution_time=execution_time,
-                context=self.context,
-            )
-            
-        except Exception as e:
-            logger.error(f"DAG execution failed for saga {self.name}: {e}")
-            execution_time = (datetime.now() - start_time).total_seconds()
-            return SagaResult(
-                success=False,
-                saga_name=self.name,
-                status=SagaStatus.FAILED,
-                completed_steps=len(self.completed_steps),
-                total_steps=len(self.steps),
-                error=e,
-                execution_time=execution_time,
-                compensation_errors=self.compensation_errors,
-            )
+        except Exception as batch_error:
+            logger.error(f"Batch {batch_idx + 1} failed: {batch_error}")
+            self._mark_completed_executors(batch_executors)
+            return batch_error
+    
+    def _mark_batch_completed(self, batch: set, step_map: dict):
+        """Mark all steps in batch as completed."""
+        for step_name in batch:
+            step = step_map[step_name]
+            self.completed_steps.append(step)
+            self._executed_step_keys.add(step.idempotency_key)
+            logger.info(f"Step '{step_name}' completed successfully")
+    
+    def _mark_completed_executors(self, executors: list):
+        """Mark any executors that completed before failure."""
+        for executor in executors:
+            if executor.completed and executor.step not in self.completed_steps:
+                step = executor.step
+                self.completed_steps.append(step)
+                self._executed_step_keys.add(step.idempotency_key)
+                logger.info(f"Step '{step.name}' completed before batch failure")
+    
+    def _build_dag_result(self, start_time, success: bool, status: SagaStatus, error: Exception = None) -> SagaResult:
+        """Build a SagaResult for DAG execution."""
+        execution_time = (datetime.now() - start_time).total_seconds()
+        return SagaResult(
+            success=success,
+            saga_name=self.name,
+            status=status,
+            completed_steps=len(self.completed_steps),
+            total_steps=len(self.steps),
+            error=error,
+            execution_time=execution_time,
+            context=self.context if success else self.context,
+            compensation_errors=self.compensation_errors if not success else [],
+        )
 
     def set_failure_strategy(self, strategy: ParallelFailureStrategy) -> None:
         """Set the failure strategy for parallel execution"""
@@ -416,156 +410,154 @@ class Saga(ABC):  # noqa: B024
             start_time = datetime.now()
 
             try:
-                # Handle empty saga (no steps)
-                if len(self.steps) == 0:
-                    logger.info(f"Saga {self.name} has no steps - completing immediately")
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=True,
-                        saga_name=self.name,
-                        status=SagaStatus.COMPLETED,
-                        completed_steps=0,
-                        total_steps=0,
-                        execution_time=execution_time,
-                        context=self.context,
-                    )
-
-                # Build execution plan (may fail with circular dependencies, etc.)
-                try:
-                    self.execution_batches = self._build_execution_batches()
-                    logger.info(f"Saga {self.name} execution plan: {len(self.execution_batches)} batches")
-                except ValueError as ve:
-                    # Pre-execution validation error - return FAILED without state transitions
-                    self.error = ve
-                    logger.error(f"Saga {self.name} failed during planning: {ve}")
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=False,
-                        saga_name=self.name,
-                        status=SagaStatus.FAILED,
-                        completed_steps=0,
-                        total_steps=len(self.steps),
-                        error=ve,
-                        execution_time=execution_time,
-                    )
-                
-                # Transition to EXECUTING (with guard check)
-                try:
-                    await self._state_machine.start()
-                except TransitionNotAllowed as e:
-                    raise SagaExecutionError(f"Cannot start saga: {e}")
-
-                # Choose execution mode based on dependencies
-                if self._has_dependencies:
-                    # DAG/Parallel execution
-                    logger.info(f"Executing saga {self.name} in DAG mode")
-                    result = await self._execute_dag()
-                    
-                    # Update state machine based on result
-                    if result.success:
-                        await self._state_machine.succeed()
-                    else:
-                        try:
-                            await self._state_machine.fail()
-                            await self._state_machine.finish_compensation()
-                        except TransitionNotAllowed:
-                            await self._state_machine.fail_unrecoverable()
-                    
-                    return result
-                else:
-                    # Sequential execution (original behavior)
-                    logger.info(f"Executing saga {self.name} in sequential mode")
-                    
-                    # Execute all steps forward
-                    for step in self.steps:
-                        # Check idempotency - skip if already executed
-                        if step.idempotency_key in self._executed_step_keys:
-                            logger.info(f"Skipping step '{step.name}' - already executed (idempotent)")
-                            continue
-
-                        await self._execute_step_with_retry(step)
-                        self.completed_steps.append(step)
-                        self._executed_step_keys.add(step.idempotency_key)
-
-                    # Transition to COMPLETED
-                    await self._state_machine.succeed()
-
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=True,
-                        saga_name=self.name,
-                        status=SagaStatus.COMPLETED,
-                        completed_steps=len(self.completed_steps),
-                        total_steps=len(self.steps),
-                        execution_time=execution_time,
-                        context=self.context,
-                    )
+                return await self._execute_inner(start_time)
 
             except SagaExecutionError:
-                # Re-raise execution errors (like "saga already executing")
-                # These are not business logic failures that need compensation
                 raise
                 
             except Exception as e:
-                self.error = e
-                logger.error(f"Saga {self.name} failed: {e}", exc_info=True)
-
-                # Transition to COMPENSATING
-                try:
-                    await self._state_machine.fail()
-                except TransitionNotAllowed:
-                    # No completed steps - nothing to compensate
-                    # Still transition to ROLLED_BACK since there's nothing to undo
-                    # (compensation succeeds trivially)
-                    self.status = SagaStatus.ROLLED_BACK
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=False,
-                        saga_name=self.name,
-                        status=SagaStatus.ROLLED_BACK,
-                        completed_steps=0,
-                        total_steps=len(self.steps),
-                        error=e,
-                        execution_time=execution_time,
-                        context=self.context,
-                    )
-
-                # Attempt compensation
-                try:
-                    await self._compensate_all()
-                    await self._state_machine.finish_compensation()
-
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=False,
-                        saga_name=self.name,
-                        status=SagaStatus.ROLLED_BACK,
-                        completed_steps=len(self.completed_steps),
-                        total_steps=len(self.steps),
-                        error=e,
-                        execution_time=execution_time,
-                        context=self.context,
-                        compensation_errors=self.compensation_errors,
-                    )
-
-                except SagaCompensationError as comp_error:
-                    # Compensation failed - enter FAILED state
-                    await self._state_machine.compensation_failed()
-
-                    execution_time = (datetime.now() - start_time).total_seconds()
-                    return SagaResult(
-                        success=False,
-                        saga_name=self.name,
-                        status=SagaStatus.FAILED,
-                        completed_steps=len(self.completed_steps),
-                        total_steps=len(self.steps),
-                        error=e,
-                        execution_time=execution_time,
-                        compensation_errors=self.compensation_errors,
-                    )
+                return await self._handle_execution_failure(e, start_time)
 
             finally:
                 self._executing = False
+    
+    async def _execute_inner(self, start_time) -> SagaResult:
+        """Inner execution logic."""
+        # Handle empty saga
+        if not self.steps:
+            return self._empty_saga_result(start_time)
+
+        # Build execution plan
+        plan_error = self._build_plan()
+        if plan_error:
+            return self._planning_failure_result(plan_error, start_time)
+        
+        # Start state machine
+        try:
+            await self._state_machine.start()
+        except TransitionNotAllowed as e:
+            raise SagaExecutionError(f"Cannot start saga: {e}")
+
+        # Execute based on mode
+        if self._has_dependencies:
+            return await self._execute_dag_mode(start_time)
+        return await self._execute_sequential_mode(start_time)
+    
+    def _empty_saga_result(self, start_time) -> SagaResult:
+        """Result for saga with no steps."""
+        logger.info(f"Saga {self.name} has no steps - completing immediately")
+        return SagaResult(
+            success=True, saga_name=self.name, status=SagaStatus.COMPLETED,
+            completed_steps=0, total_steps=0,
+            execution_time=(datetime.now() - start_time).total_seconds(),
+            context=self.context,
+        )
+    
+    def _build_plan(self) -> Exception | None:
+        """Build execution batches. Returns error if failed."""
+        try:
+            self.execution_batches = self._build_execution_batches()
+            logger.info(f"Saga {self.name} execution plan: {len(self.execution_batches)} batches")
+            return None
+        except ValueError as ve:
+            self.error = ve
+            logger.error(f"Saga {self.name} failed during planning: {ve}")
+            return ve
+    
+    def _planning_failure_result(self, error, start_time) -> SagaResult:
+        """Result for planning failure."""
+        return SagaResult(
+            success=False, saga_name=self.name, status=SagaStatus.FAILED,
+            completed_steps=0, total_steps=len(self.steps), error=error,
+            execution_time=(datetime.now() - start_time).total_seconds(),
+        )
+    
+    async def _execute_dag_mode(self, start_time) -> SagaResult:
+        """Execute in DAG/parallel mode."""
+        logger.info(f"Executing saga {self.name} in DAG mode")
+        result = await self._execute_dag()
+        
+        if result.success:
+            await self._state_machine.succeed()
+        else:
+            await self._finalize_dag_failure()
+        
+        return result
+    
+    async def _finalize_dag_failure(self):
+        """Finalize state machine after DAG failure."""
+        try:
+            await self._state_machine.fail()
+            await self._state_machine.finish_compensation()
+        except TransitionNotAllowed:
+            await self._state_machine.fail_unrecoverable()
+    
+    async def _execute_sequential_mode(self, start_time) -> SagaResult:
+        """Execute in sequential mode."""
+        logger.info(f"Executing saga {self.name} in sequential mode")
+        
+        for step in self.steps:
+            if step.idempotency_key in self._executed_step_keys:
+                logger.info(f"Skipping step '{step.name}' - already executed (idempotent)")
+                continue
+
+            await self._execute_step_with_retry(step)
+            self.completed_steps.append(step)
+            self._executed_step_keys.add(step.idempotency_key)
+
+        await self._state_machine.succeed()
+
+        return SagaResult(
+            success=True, saga_name=self.name, status=SagaStatus.COMPLETED,
+            completed_steps=len(self.completed_steps), total_steps=len(self.steps),
+            execution_time=(datetime.now() - start_time).total_seconds(),
+            context=self.context,
+        )
+    
+    async def _handle_execution_failure(self, error: Exception, start_time) -> SagaResult:
+        """Handle execution failure with compensation."""
+        self.error = error
+        logger.error(f"Saga {self.name} failed: {error}", exc_info=True)
+
+        try:
+            await self._state_machine.fail()
+        except TransitionNotAllowed:
+            return self._no_compensation_result(error, start_time)
+
+        return await self._attempt_compensation(error, start_time)
+    
+    def _no_compensation_result(self, error, start_time) -> SagaResult:
+        """Result when no compensation needed."""
+        self.status = SagaStatus.ROLLED_BACK
+        return SagaResult(
+            success=False, saga_name=self.name, status=SagaStatus.ROLLED_BACK,
+            completed_steps=0, total_steps=len(self.steps), error=error,
+            execution_time=(datetime.now() - start_time).total_seconds(),
+            context=self.context,
+        )
+    
+    async def _attempt_compensation(self, error, start_time) -> SagaResult:
+        """Attempt to compensate and return result."""
+        try:
+            await self._compensate_all()
+            await self._state_machine.finish_compensation()
+
+            return SagaResult(
+                success=False, saga_name=self.name, status=SagaStatus.ROLLED_BACK,
+                completed_steps=len(self.completed_steps), total_steps=len(self.steps),
+                error=error, execution_time=(datetime.now() - start_time).total_seconds(),
+                context=self.context, compensation_errors=self.compensation_errors,
+            )
+
+        except SagaCompensationError:
+            await self._state_machine.compensation_failed()
+
+            return SagaResult(
+                success=False, saga_name=self.name, status=SagaStatus.FAILED,
+                completed_steps=len(self.completed_steps), total_steps=len(self.steps),
+                error=error, execution_time=(datetime.now() - start_time).total_seconds(),
+                compensation_errors=self.compensation_errors,
+            )
 
     async def _execute_step_with_retry(self, step: "SagaStep") -> None:
         """Execute a step with retry logic and exponential backoff"""

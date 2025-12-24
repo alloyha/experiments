@@ -214,6 +214,59 @@ class HighThroughputBenchmark:
                 async with self._lock:
                     self.events_processed += len(event_ids)
     
+    async def _monitor_progress_rich(self, total_events: int) -> bool:
+        """Monitor progress with Rich UI. Returns True if stalled."""
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("•"),
+            TextColumn("[cyan]{task.fields[rate]}/sec"),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                f"Processing with {self.num_workers} workers...",
+                total=total_events,
+                rate="0"
+            )
+            
+            while self.events_processed < total_events:
+                await asyncio.sleep(0.5)
+                elapsed = time.time() - self.process_start_time
+                rate = self.events_processed / elapsed if elapsed > 0 else 0
+                progress.update(
+                    task,
+                    completed=self.events_processed,
+                    rate=f"{rate:,.0f}"
+                )
+                
+                if elapsed > 120 and self.events_processed < total_events * 0.9:
+                    console.print("[red]Warning: Processing appears stalled[/red]")
+                    return True
+        return False
+    
+    async def _monitor_progress_simple(self, total_events: int):
+        """Monitor progress with simple output."""
+        while self.events_processed < total_events:
+            await asyncio.sleep(1)
+            elapsed = time.time() - self.process_start_time
+            rate = self.events_processed / elapsed if elapsed > 0 else 0
+            print(f"  Processed: {self.events_processed:,}/{total_events:,} | Rate: {rate:,.0f}/sec", end="\r")
+    
+    async def _stop_workers(self, workers: list):
+        """Stop all worker tasks."""
+        self._stop = True
+        await asyncio.sleep(0.1)
+        
+        for w in workers:
+            w.cancel()
+            try:
+                await w
+            except asyncio.CancelledError:
+                pass
+    
     async def run_processing_workers(self, total_events: int):
         """Run parallel workers to process events."""
         self.process_start_time = time.time()
@@ -228,53 +281,12 @@ class HighThroughputBenchmark:
         
         # Monitor progress
         if RICH_AVAILABLE:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                TextColumn("•"),
-                TextColumn("[cyan]{task.fields[rate]}/sec"),
-                TimeRemainingColumn(),
-                console=console,
-            ) as progress:
-                task = progress.add_task(
-                    f"Processing with {self.num_workers} workers...",
-                    total=total_events,
-                    rate="0"
-                )
-                
-                while self.events_processed < total_events:
-                    await asyncio.sleep(0.5)
-                    elapsed = time.time() - self.process_start_time
-                    rate = self.events_processed / elapsed if elapsed > 0 else 0
-                    progress.update(
-                        task,
-                        completed=self.events_processed,
-                        rate=f"{rate:,.0f}"
-                    )
-                    
-                    # Check for stalls
-                    if elapsed > 120 and self.events_processed < total_events * 0.9:
-                        console.print("[red]Warning: Processing appears stalled[/red]")
-                        break
+            await self._monitor_progress_rich(total_events)
         else:
-            while self.events_processed < total_events:
-                await asyncio.sleep(1)
-                elapsed = time.time() - self.process_start_time
-                rate = self.events_processed / elapsed if elapsed > 0 else 0
-                print(f"  Processed: {self.events_processed:,}/{total_events:,} | Rate: {rate:,.0f}/sec", end="\r")
+            await self._monitor_progress_simple(total_events)
         
         # Stop workers
-        self._stop = True
-        await asyncio.sleep(0.1)
-        
-        for w in workers:
-            w.cancel()
-            try:
-                await w
-            except asyncio.CancelledError:
-                pass
+        await self._stop_workers(workers)
         
         process_time = time.time() - self.process_start_time
         return process_time

@@ -187,57 +187,80 @@ class RedisSagaStorage(SagaStorage):
         """List sagas with filtering"""
         
         redis_client = await self._get_redis()
-        saga_ids = set()
+        saga_ids = await self._get_filtered_saga_ids(redis_client, status, saga_name)
         
-        # Get saga IDs from indexes
-        if status:
-            status_index = self._index_key(f"status:{status.value}")
-            status_ids = await redis_client.smembers(status_index)
-            # Decode bytes to strings
-            saga_ids.update(s.decode() if isinstance(s, bytes) else s for s in status_ids)
-        
-        if saga_name:
-            name_index = self._index_key(f"name:{saga_name}")
-            name_ids = await redis_client.smembers(name_index)
-            # Decode bytes to strings
-            decoded_name_ids = {s.decode() if isinstance(s, bytes) else s for s in name_ids}
-            if saga_ids:
-                saga_ids.intersection_update(decoded_name_ids)
-            else:
-                saga_ids.update(decoded_name_ids)
-        
-        # If no filters applied, get all saga keys
-        if not saga_ids and not status and not saga_name:
-            pattern = f"{self.key_prefix}*"
-            keys = await redis_client.keys(pattern)
-            saga_ids = {key.decode().replace(self.key_prefix, "") for key in keys 
-                       if ":step:" not in key.decode() and ":index:" not in key.decode()}
-        
-        # Convert to list and apply pagination
+        # Apply pagination
         saga_id_list = list(saga_ids)[offset:offset + limit]
         
-        # Load saga summaries
-        results = []
-        for saga_id in saga_id_list:
-            saga_data = await self.load_saga_state(saga_id)
-            if saga_data:
-                summary = {
-                    "saga_id": saga_data["saga_id"],
-                    "saga_name": saga_data["saga_name"],
-                    "status": saga_data["status"],
-                    "created_at": saga_data["created_at"],
-                    "updated_at": saga_data["updated_at"],
-                    "step_count": len(saga_data["steps"]),
-                    "completed_steps": sum(
-                        1 for step in saga_data["steps"]
-                        if step.get("status") == SagaStepStatus.COMPLETED.value
-                    ),
-                }
-                results.append(summary)
+        # Load and build summaries
+        results = await self._build_saga_summaries(saga_id_list)
         
         # Sort by created_at (newest first)
         results.sort(key=lambda x: x["created_at"], reverse=True)
         return results
+    
+    async def _get_filtered_saga_ids(
+        self, redis_client, status: Optional[SagaStatus], saga_name: Optional[str]
+    ) -> set:
+        """Get saga IDs matching filters."""
+        saga_ids = set()
+        
+        if status:
+            saga_ids = await self._get_ids_by_status(redis_client, status)
+        
+        if saga_name:
+            name_ids = await self._get_ids_by_name(redis_client, saga_name)
+            saga_ids = saga_ids.intersection(name_ids) if saga_ids else name_ids
+        
+        if not saga_ids and not status and not saga_name:
+            saga_ids = await self._get_all_saga_ids(redis_client)
+        
+        return saga_ids
+    
+    async def _get_ids_by_status(self, redis_client, status: SagaStatus) -> set:
+        """Get saga IDs by status."""
+        status_index = self._index_key(f"status:{status.value}")
+        status_ids = await redis_client.smembers(status_index)
+        return {s.decode() if isinstance(s, bytes) else s for s in status_ids}
+    
+    async def _get_ids_by_name(self, redis_client, saga_name: str) -> set:
+        """Get saga IDs by name."""
+        name_index = self._index_key(f"name:{saga_name}")
+        name_ids = await redis_client.smembers(name_index)
+        return {s.decode() if isinstance(s, bytes) else s for s in name_ids}
+    
+    async def _get_all_saga_ids(self, redis_client) -> set:
+        """Get all saga IDs (no filters)."""
+        pattern = f"{self.key_prefix}*"
+        keys = await redis_client.keys(pattern)
+        return {
+            key.decode().replace(self.key_prefix, "") for key in keys 
+            if ":step:" not in key.decode() and ":index:" not in key.decode()
+        }
+    
+    async def _build_saga_summaries(self, saga_id_list: List[str]) -> List[Dict[str, Any]]:
+        """Build summary objects for saga IDs."""
+        results = []
+        for saga_id in saga_id_list:
+            saga_data = await self.load_saga_state(saga_id)
+            if saga_data:
+                results.append(self._create_saga_summary(saga_data))
+        return results
+    
+    def _create_saga_summary(self, saga_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create summary dict from saga data."""
+        return {
+            "saga_id": saga_data["saga_id"],
+            "saga_name": saga_data["saga_name"],
+            "status": saga_data["status"],
+            "created_at": saga_data["created_at"],
+            "updated_at": saga_data["updated_at"],
+            "step_count": len(saga_data["steps"]),
+            "completed_steps": sum(
+                1 for step in saga_data["steps"]
+                if step.get("status") == SagaStepStatus.COMPLETED.value
+            ),
+        }
     
     async def update_step_state(
         self,

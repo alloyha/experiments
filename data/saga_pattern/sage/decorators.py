@@ -312,13 +312,20 @@ class Saga:
         step_map = {s.step_id: s for s in self._steps}
         in_degree = {s.step_id: len(s.depends_on) for s in self._steps}
         remaining = set(step_map.keys())
+        
+        return self._topological_sort_steps(step_map, in_degree, remaining)
+    
+    def _topological_sort_steps(
+        self, 
+        step_map: Dict[str, SagaStepDefinition], 
+        in_degree: Dict[str, int], 
+        remaining: set
+    ) -> List[List[SagaStepDefinition]]:
+        """Perform topological sort on steps."""
         levels: List[List[SagaStepDefinition]] = []
         
         while remaining:
-            current_level = [
-                step_map[sid] for sid in remaining
-                if in_degree[sid] == 0
-            ]
+            current_level = [step_map[sid] for sid in remaining if in_degree[sid] == 0]
             
             if not current_level:
                 raise ValueError("Circular dependency detected in saga steps")

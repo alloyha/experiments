@@ -358,6 +358,38 @@ async def test_bulk(tester: OutboxTester):
         return events_processed >= 90  # Allow some tolerance
 
 
+def _print_stress_progress(current_sent: int, pending: int, claimed: int, rate: float):
+    """Print stress test progress."""
+    if RICH_AVAILABLE:
+        console.print(
+            f"  [cyan]Processed:[/cyan] {current_sent}/1000 | "
+            f"[yellow]Pending:[/yellow] {pending} | "
+            f"[magenta]Claimed:[/magenta] {claimed} | "
+            f"[green]Rate:[/green] {rate:.1f}/sec",
+            end="\r"
+        )
+    else:
+        print(f"  Processed: {current_sent}/1000 | Pending: {pending} | Rate: {rate:.1f}/sec", end="\r")
+
+
+def _print_stress_results(events_processed: int, process_time: float, final_stats: dict):
+    """Print stress test results."""
+    print()  # Ensure new line
+    if RICH_AVAILABLE:
+        panel = Panel(
+            f"[bold]Events Processed:[/bold] {events_processed}/1000\n"
+            f"[bold]Time:[/bold] {process_time:.1f}s\n"
+            f"[bold]Throughput:[/bold] {events_processed/process_time:.1f} events/sec\n"
+            f"[bold]Pending:[/bold] {final_stats['pending']}\n"
+            f"[bold]Failed:[/bold] {final_stats['failed']}",
+            title="Stress Test Results",
+            border_style="green" if events_processed >= 950 else "yellow"
+        )
+        console.print(panel)
+    else:
+        print(f"\nResults: {events_processed}/1000 events in {process_time:.1f}s ({events_processed/process_time:.1f}/sec)")
+
+
 async def test_stress(tester: OutboxTester):
     """
     Scenario 3: Stress Testing
@@ -384,33 +416,32 @@ async def test_stress(tester: OutboxTester):
     insert_time = time.time() - start_time
     success(f"Inserted 1000 events in {insert_time:.2f}s ({1000/insert_time:.0f} events/sec)")
     
-    # Monitor processing with progress
+    # Monitor processing
     info("Monitoring event processing...")
     start_time = time.time()
-    timeout = 180.0  # 3 minutes
+    events_processed, process_time = await _monitor_stress_processing(
+        tester, initial_sent, start_time
+    )
     
+    final_stats = await tester.get_stats()
+    _print_stress_results(events_processed, process_time, final_stats)
+    
+    return _evaluate_stress_result(events_processed)
+
+
+async def _monitor_stress_processing(tester, initial_sent: int, start_time: float):
+    """Monitor stress test processing loop."""
+    timeout = 180.0
     last_count = 0
     stall_time = 0
     
     while time.time() - start_time < timeout:
         stats = await tester.get_stats()
         current_sent = stats["sent"] - initial_sent
-        pending = stats["pending"]
-        claimed = stats["claimed"]
-        
         elapsed = time.time() - start_time
         rate = current_sent / elapsed if elapsed > 0 else 0
         
-        if RICH_AVAILABLE:
-            console.print(
-                f"  [cyan]Processed:[/cyan] {current_sent}/1000 | "
-                f"[yellow]Pending:[/yellow] {pending} | "
-                f"[magenta]Claimed:[/magenta] {claimed} | "
-                f"[green]Rate:[/green] {rate:.1f}/sec",
-                end="\r"
-            )
-        else:
-            print(f"  Processed: {current_sent}/1000 | Pending: {pending} | Rate: {rate:.1f}/sec", end="\r")
+        _print_stress_progress(current_sent, stats["pending"], stats["claimed"], rate)
         
         if current_sent >= 1000:
             print()  # New line
@@ -428,25 +459,11 @@ async def test_stress(tester: OutboxTester):
         
         await asyncio.sleep(2)
     
-    process_time = time.time() - start_time
-    final_stats = await tester.get_stats()
-    events_processed = final_stats["sent"] - initial_sent
-    
-    print()  # Ensure new line
-    if RICH_AVAILABLE:
-        panel = Panel(
-            f"[bold]Events Processed:[/bold] {events_processed}/1000\n"
-            f"[bold]Time:[/bold] {process_time:.1f}s\n"
-            f"[bold]Throughput:[/bold] {events_processed/process_time:.1f} events/sec\n"
-            f"[bold]Pending:[/bold] {final_stats['pending']}\n"
-            f"[bold]Failed:[/bold] {final_stats['failed']}",
-            title="Stress Test Results",
-            border_style="green" if events_processed >= 950 else "yellow"
-        )
-        console.print(panel)
-    else:
-        print(f"\nResults: {events_processed}/1000 events in {process_time:.1f}s ({events_processed/process_time:.1f}/sec)")
-    
+    return current_sent, time.time() - start_time
+
+
+def _evaluate_stress_result(events_processed: int) -> bool:
+    """Evaluate stress test result."""
     if events_processed >= 950:
         success("✓ Stress test PASSED")
         return True
@@ -596,53 +613,8 @@ async def test_idempotency(tester: OutboxTester):
     return True
 
 
-async def run_all_tests(tester: OutboxTester):
-    """Run all test scenarios."""
-    if RICH_AVAILABLE:
-        console.print(Panel.fit(
-            "[bold]Sage Outbox Kubernetes Cluster Tests[/bold]\n"
-            "Running all scenarios...",
-            border_style="bold blue"
-        ))
-    else:
-        print("\n" + "="*50)
-        print("Sage Outbox Kubernetes Cluster Tests")
-        print("="*50)
-    
-    results = {}
-    
-    # Run each test
-    tests = [
-        ("Basic Processing", test_basic),
-        ("Bulk Processing", test_bulk),
-        ("Idempotency", test_idempotency),
-        ("Monitor", test_monitor),
-    ]
-    
-    for name, test_fn in tests:
-        try:
-            result = await test_fn(tester)
-            results[name] = result
-        except Exception as e:
-            error(f"Test '{name}' failed with exception: {e}")
-            results[name] = False
-    
-    # Ask before stress test
-    print()
-    if RICH_AVAILABLE:
-        do_stress = console.input("[yellow]Run stress test (1000 events)? [y/N]: [/yellow]")
-    else:
-        do_stress = input("Run stress test (1000 events)? [y/N]: ")
-    
-    if do_stress.lower() == 'y':
-        try:
-            results["Stress Test"] = await test_stress(tester)
-        except Exception as e:
-            error(f"Stress test failed: {e}")
-            results["Stress Test"] = False
-    
-    # Summary
-    print()
+def _print_test_summary(results: dict):
+    """Print test summary table."""
     if RICH_AVAILABLE:
         console.rule("[bold]Test Summary")
         summary_table = Table()
@@ -658,6 +630,38 @@ async def run_all_tests(tester: OutboxTester):
         print("\n--- Test Summary ---")
         for name, passed in results.items():
             print(f"  {name}: {'PASS' if passed else 'FAIL'}")
+
+
+async def run_all_tests(tester: OutboxTester):
+    """Run all test scenarios."""
+    if RICH_AVAILABLE:
+        console.print(Panel.fit(
+            "[bold]Sage Outbox Kubernetes Cluster Tests[/bold]\n"
+            "Running all scenarios...",
+            border_style="bold blue"
+        ))
+    else:
+        print("\n" + "="*50)
+        print("Sage Outbox Kubernetes Cluster Tests")
+        print("="*50)
+    
+    # Run standard tests
+    tests = [
+        ("Basic Processing", test_basic),
+        ("Bulk Processing", test_bulk),
+        ("Idempotency", test_idempotency),
+        ("Monitor", test_monitor),
+    ]
+    
+    results = await _run_test_suite(tester, tests)
+    
+    # Optional stress test
+    if await _prompt_stress_test():
+        results["Stress Test"] = await _safe_run_test(tester, "Stress Test", test_stress)
+    
+    # Summary
+    print()
+    _print_test_summary(results)
     
     all_passed = all(results.values())
     if all_passed:
@@ -666,6 +670,33 @@ async def run_all_tests(tester: OutboxTester):
         error(f"\n❌ Some tests failed: {[k for k, v in results.items() if not v]}")
     
     return all_passed
+
+
+async def _run_test_suite(tester: OutboxTester, tests: list) -> dict:
+    """Run a suite of tests."""
+    results = {}
+    for name, test_fn in tests:
+        results[name] = await _safe_run_test(tester, name, test_fn)
+    return results
+
+
+async def _safe_run_test(tester: OutboxTester, name: str, test_fn) -> bool:
+    """Run a test with exception handling."""
+    try:
+        return await test_fn(tester)
+    except Exception as e:
+        error(f"Test '{name}' failed with exception: {e}")
+        return False
+
+
+async def _prompt_stress_test() -> bool:
+    """Prompt user for stress test."""
+    print()
+    if RICH_AVAILABLE:
+        do_stress = console.input("[yellow]Run stress test (1000 events)? [y/N]: [/yellow]")
+    else:
+        do_stress = input("Run stress test (1000 events)? [y/N]: ")
+    return do_stress.lower() == 'y'
 
 
 # ============================================================================

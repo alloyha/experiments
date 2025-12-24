@@ -209,66 +209,60 @@ class SagaCompensationGraph:
         Returns:
             List of levels, each level is a list of step IDs
         
-        Example:
-            Given: step2 depends_on step1
-            Execution order: step1 -> step2
-            Compensation order: [[step2], [step1]]  # step2 compensates first
-        
         Raises:
             CircularDependencyError: If circular dependencies exist
         """
-        # Filter to only executed steps that have compensation
-        to_compensate = [
-            step_id for step_id in self.executed_steps 
-            if step_id in self.nodes
-        ]
-        
+        to_compensate = self._get_steps_to_compensate()
         if not to_compensate:
             return []
         
-        # Build dependency graph for executed steps only
-        # For compensation, we REVERSE the dependencies
-        # If step2 depends on step1 for execution,
-        # then step1's compensation depends on step2's compensation
+        comp_deps = self._build_reverse_dependencies(to_compensate)
+        return self._topological_sort_levels(comp_deps, set(to_compensate))
+    
+    def _get_steps_to_compensate(self) -> List[str]:
+        """Get executed steps that have compensation registered."""
+        return [
+            step_id for step_id in self.executed_steps 
+            if step_id in self.nodes
+        ]
+    
+    def _build_reverse_dependencies(self, steps: List[str]) -> Dict[str, Set[str]]:
+        """Build reverse dependency graph for compensation ordering."""
         comp_deps: Dict[str, Set[str]] = {}
-        for step_id in to_compensate:
-            node = self.nodes[step_id]
-            # Find steps that depend on this step (reverse dependencies)
-            dependents = []
-            for other_id in to_compensate:
-                if step_id in self.nodes[other_id].depends_on:
-                    dependents.append(other_id)
+        for step_id in steps:
+            dependents = [
+                other_id for other_id in steps
+                if step_id in self.nodes[other_id].depends_on
+            ]
             comp_deps[step_id] = set(dependents)
-        
-        # Topological sort with levels (Kahn's algorithm)
+        return comp_deps
+    
+    def _topological_sort_levels(self, deps: Dict[str, Set[str]], remaining: Set[str]) -> List[List[str]]:
+        """Perform topological sort returning levels for parallel execution."""
         levels: List[List[str]] = []
-        in_degree = {step: len(deps) for step, deps in comp_deps.items()}
-        remaining = set(to_compensate)
+        in_degree = {step: len(d) for step, d in deps.items()}
+        remaining = remaining.copy()
         
         while remaining:
-            # Find all nodes with no incoming edges (in-degree = 0)
-            current_level = [
-                step for step in remaining 
-                if in_degree.get(step, 0) == 0
-            ]
+            current_level = [s for s in remaining if in_degree.get(s, 0) == 0]
             
             if not current_level:
-                # No nodes with in-degree 0 means there's a cycle
-                cycle = self._find_cycle(comp_deps, remaining)
+                cycle = self._find_cycle(deps, remaining)
                 raise CircularDependencyError(cycle)
             
             levels.append(current_level)
-            
-            # Remove current level nodes and update in-degrees
-            for step in current_level:
-                remaining.remove(step)
-                
-                # Reduce in-degree for nodes that depend on this step
-                for other_step in remaining:
-                    if step in comp_deps.get(other_step, set()):
-                        in_degree[other_step] -= 1
+            self._update_in_degrees(current_level, remaining, deps, in_degree)
         
         return levels
+    
+    def _update_in_degrees(self, processed: List[str], remaining: Set[str], 
+                           deps: Dict[str, Set[str]], in_degree: Dict[str, int]):
+        """Remove processed nodes and update in-degrees."""
+        for step in processed:
+            remaining.remove(step)
+            for other in remaining:
+                if step in deps.get(other, set()):
+                    in_degree[other] -= 1
     
     def _find_cycle(self, deps: Dict[str, Set[str]], nodes: Set[str]) -> List[str]:
         """Find a cycle in the dependency graph for error reporting."""
@@ -314,34 +308,24 @@ class SagaCompensationGraph:
             CircularDependencyError: If circular dependencies exist
             MissingDependencyError: If a step references non-existent dependency
         """
-        # Check for missing dependencies
+        self._validate_dependencies_exist()
+        self._validate_no_cycles()
+    
+    def _validate_dependencies_exist(self):
+        """Check all dependencies reference existing steps."""
         for step_id, node in self.nodes.items():
             for dep in node.depends_on:
                 if dep not in self.nodes:
                     raise MissingDependencyError(step_id, dep)
-        
-        # Check for circular dependencies by doing topological sort
-        all_steps = set(self.nodes.keys())
+    
+    def _validate_no_cycles(self):
+        """Check for circular dependencies via topological sort."""
         deps: Dict[str, Set[str]] = {
             step_id: set(node.depends_on) 
             for step_id, node in self.nodes.items()
         }
-        
-        in_degree = {step: len(d) for step, d in deps.items()}
-        remaining = all_steps.copy()
-        
-        while remaining:
-            current = [s for s in remaining if in_degree.get(s, 0) == 0]
-            
-            if not current:
-                cycle = self._find_cycle(deps, remaining)
-                raise CircularDependencyError(cycle)
-            
-            for step in current:
-                remaining.remove(step)
-                for other in remaining:
-                    if step in deps.get(other, set()):
-                        in_degree[other] -= 1
+        # Use shared topological sort (will raise if cycle found)
+        self._topological_sort_levels(deps, set(self.nodes.keys()))
     
     def get_compensation_info(self, step_id: str) -> Optional[CompensationNode]:
         """

@@ -190,19 +190,15 @@ class SagaOrchestrator:
 
     async def get_statistics(self) -> dict[str, Any]:
         """Get orchestrator statistics"""
+        from collections import Counter
+        
         async with self._lock:
-            total = len(self.sagas)
-            completed = sum(1 for saga in self.sagas.values() if saga.status == SagaStatus.COMPLETED)
-            rolled_back = sum(1 for saga in self.sagas.values() if saga.status == SagaStatus.ROLLED_BACK)
-            failed = sum(1 for saga in self.sagas.values() if saga.status == SagaStatus.FAILED)
-            executing = sum(1 for saga in self.sagas.values() if saga.status == SagaStatus.EXECUTING)
-            pending = sum(1 for saga in self.sagas.values() if saga.status == SagaStatus.PENDING)
-            
+            counts = Counter(saga.status for saga in self.sagas.values())
             return {
-                "total_sagas": total,
-                "completed": completed,
-                "rolled_back": rolled_back,
-                "failed": failed,
-                "executing": executing,
-                "pending": pending,
+                "total_sagas": len(self.sagas),
+                "completed": counts.get(SagaStatus.COMPLETED, 0),
+                "rolled_back": counts.get(SagaStatus.ROLLED_BACK, 0),
+                "failed": counts.get(SagaStatus.FAILED, 0),
+                "executing": counts.get(SagaStatus.EXECUTING, 0),
+                "pending": counts.get(SagaStatus.PENDING, 0),
             }

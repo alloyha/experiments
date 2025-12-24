@@ -7,13 +7,25 @@ import logging
 from datetime import datetime, timezone
 from typing import Callable, Awaitable, TypeVar, Optional
 
-from prometheus_client import Counter, Histogram
+# Optional prometheus metrics
+try:
+    from prometheus_client import Counter, Histogram
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    # No-op fallbacks
+    class _NoOpMetric:
+        def inc(self, *args, **kwargs): pass
+        def observe(self, *args, **kwargs): pass
+        def labels(self, *args, **kwargs): return self
+    Counter = lambda *args, **kwargs: _NoOpMetric()
+    Histogram = lambda *args, **kwargs: _NoOpMetric()
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
-# Metrics
+# Metrics (no-op if prometheus not installed)
 INBOX_PROCESSED = Counter(
     "consumer_inbox_processed_total",
     "Total events processed",

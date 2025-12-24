@@ -462,7 +462,7 @@ class PostgreSQLOutboxStorage(OutboxStorage):
         source_topic: str,
         event_type: str,
         payload: dict,
-        connection: Optional[asyncpg.Connection] = None
+        connection: Optional["asyncpg.Connection"] = None
     ) -> bool:  # pragma: no cover
         """
         Check if event was already processed and insert if not.

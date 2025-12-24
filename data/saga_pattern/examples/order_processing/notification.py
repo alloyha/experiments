@@ -117,22 +117,33 @@ class NotificationService:
         }
 
 
+def _get_ctx_attr(ctx: Any, attr: str, default: Any = None) -> Any:
+    """Safely get attribute from context."""
+    return getattr(ctx, attr)if hasattr(ctx, attr) else default
+
+
 async def send_order_confirmation_email(ctx: Any) -> Dict[str, Any]:
     """Send order confirmation email"""
-    logger.info(f"Sending confirmation email for order {ctx.order_id if hasattr(ctx, 'order_id') else 'unknown'}")
+    order_id = _get_ctx_attr(ctx, 'order_id', 'unknown')
+    user_id = _get_ctx_attr(ctx, 'user_id', 'unknown')
+    user_email = _get_ctx_attr(ctx, 'user_email', f"user-{user_id}@example.com")
+    
+    logger.info(f"Sending confirmation email for order {order_id}")
+    
+    template_data = {
+        "order_id": _get_ctx_attr(ctx, 'order_id'),
+        "user_id": _get_ctx_attr(ctx, 'user_id'),
+        "items": _get_ctx_attr(ctx, 'items', []),
+        "total_amount": _get_ctx_attr(ctx, 'total_amount', 0),
+        "shipment_info": ctx.get("shipment_id") if hasattr(ctx, 'get') else None
+    }
     
     result = await NotificationService.send_email(
-        to=ctx.user_email if hasattr(ctx, 'user_email') else f"user-{ctx.user_id if hasattr(ctx, 'user_id') else 'unknown'}@example.com",
-        subject=f"Order Confirmation - {ctx.order_id if hasattr(ctx, 'order_id') else 'N/A'}",
-        body=f"Your order {ctx.order_id if hasattr(ctx, 'order_id') else 'N/A'} has been confirmed!",
+        to=user_email,
+        subject=f"Order Confirmation - {order_id}",
+        body=f"Your order {order_id} has been confirmed!",
         template="order_confirmation",
-        template_data={
-            "order_id": ctx.order_id if hasattr(ctx, 'order_id') else None,
-            "user_id": ctx.user_id if hasattr(ctx, 'user_id') else None,
-            "items": ctx.items if hasattr(ctx, 'items') else [],
-            "total_amount": ctx.total_amount if hasattr(ctx, 'total_amount') else 0,
-            "shipment_info": ctx.get("shipment_id") if hasattr(ctx, 'get') else None
-        }
+        template_data=template_data
     )
     
     return {

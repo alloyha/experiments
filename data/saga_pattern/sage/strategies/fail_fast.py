@@ -36,36 +36,42 @@ class FailFastStrategy(ParallelExecutionStrategy):
         if not steps:
             return []
         
-        # Create tasks for all steps
         tasks = [asyncio.create_task(step.execute()) for step in steps]
         
         try:
-            # Wait for any task to complete or fail
             done, pending = await asyncio.wait(
                 tasks, 
                 return_when=asyncio.FIRST_EXCEPTION
             )
             
-            # Check if any completed task failed
-            for task in done:
-                if task.exception():
-                    # Cancel all pending tasks immediately
-                    for pending_task in pending:
-                        pending_task.cancel()
-                    
-                    # Wait for cancellations to complete (with short timeout)
-                    if pending:
-                        await asyncio.wait(pending, timeout=1.0)
-                    
-                    # Re-raise the first exception
-                    raise task.exception()
+            failed_exception = await self._check_and_handle_failure(done, pending)
+            if failed_exception:
+                raise failed_exception
             
-            # If we get here, all tasks completed successfully
             return [task.result() for task in tasks]
             
         except asyncio.CancelledError:
-            # Handle case where this strategy itself is cancelled
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
+            self._cancel_all_tasks(tasks)
             raise
+    
+    async def _check_and_handle_failure(self, done: set, pending: set):
+        """Check for failed tasks. If found, cancel pending and return exception."""
+        for task in done:
+            if task.exception():
+                await self._cancel_pending_tasks(pending)
+                return task.exception()
+        return None
+    
+    async def _cancel_pending_tasks(self, pending: set):
+        """Cancel all pending tasks and wait briefly."""
+        for pending_task in pending:
+            pending_task.cancel()
+        
+        if pending:
+            await asyncio.wait(pending, timeout=1.0)
+    
+    def _cancel_all_tasks(self, tasks: list):
+        """Cancel all incomplete tasks."""
+        for task in tasks:
+            if not task.done():
+                task.cancel()

@@ -19,7 +19,9 @@ Usage:
 
 import asyncio
 import logging
+import os
 import signal
+import sys
 from typing import Optional, List, Callable, Awaitable, Any
 from datetime import datetime, timezone
 import uuid
@@ -30,6 +32,11 @@ from sage.outbox.brokers.base import MessageBroker, BrokerError
 from sage.outbox.state_machine import OutboxStateMachine
 
 
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -312,3 +319,99 @@ class OutboxWorker:
             "events_failed": self._events_failed,
             "events_dead_lettered": self._events_dead_lettered,
         }
+
+
+
+def get_storage():
+    """Create storage backend from environment."""
+    database_url = os.getenv("DATABASE_URL")
+    
+    if not database_url:
+        logger.error("DATABASE_URL environment variable is required")
+        sys.exit(1)
+    
+    from sage.outbox.storage.postgresql import PostgreSQLOutboxStorage
+    return PostgreSQLOutboxStorage(connection_string=database_url)
+
+
+def get_broker():
+    """Create broker from environment."""
+    broker_type = os.getenv("BROKER_TYPE", "kafka").lower()
+    
+    # Check for broker-specific URL first, then generic BROKER_URL
+    if broker_type == "rabbitmq":
+        broker_url = os.getenv("RABBITMQ_URL") or os.getenv("BROKER_URL")
+    else:
+        broker_url = os.getenv("KAFKA_BOOTSTRAP_SERVERS") or os.getenv("BROKER_URL")
+    
+    if not broker_url:
+        logger.error(f"No broker URL configured. Set BROKER_URL or {broker_type.upper()}_URL")
+        sys.exit(1)
+    
+    if broker_type == "kafka":
+        from sage.outbox.brokers.kafka import KafkaBroker, KafkaBrokerConfig
+        config = KafkaBrokerConfig(
+            bootstrap_servers=broker_url,
+            topic=os.getenv("KAFKA_TOPIC", "saga-events"),
+        )
+        return KafkaBroker(config=config)
+    elif broker_type == "rabbitmq":
+        from sage.outbox.brokers.rabbitmq import RabbitMQBroker, RabbitMQBrokerConfig
+        config = RabbitMQBrokerConfig(
+            url=broker_url,
+            exchange_name=os.getenv("RABBITMQ_EXCHANGE", "saga-events"),
+        )
+        return RabbitMQBroker(config=config)
+    else:
+        logger.error(f"Unknown broker type: {broker_type}")
+        sys.exit(1)
+
+
+async def main():
+    """Main entry point."""
+    logger.info("Starting Sage Outbox Worker...")
+    
+    # Create storage and broker
+    storage = get_storage()
+    broker = get_broker()
+    
+    # Create worker config
+    from sage.outbox.types import OutboxConfig
+    config = OutboxConfig(
+        batch_size=int(os.getenv("BATCH_SIZE", "100")),
+        poll_interval_seconds=float(os.getenv("POLL_INTERVAL", "1.0")),
+        max_retries=int(os.getenv("MAX_RETRIES", "5")),
+    )
+    
+    # Create worker
+    from sage.outbox.worker import OutboxWorker
+    worker = OutboxWorker(
+        storage=storage,
+        broker=broker,
+        config=config,
+        worker_id=os.getenv("WORKER_ID"),
+    )
+    
+    try:
+        # Initialize connections
+        logger.info("Initializing storage...")
+        await storage.initialize()
+        
+        logger.info("Connecting to broker...")
+        await broker.connect()
+        
+        logger.info(f"Worker {worker.worker_id} starting...")
+        await worker.start()
+        
+    except KeyboardInterrupt:
+        logger.info("Received shutdown signal...")
+    finally:
+        logger.info("Shutting down...")
+        await worker.stop()
+        await broker.close()
+        await storage.close()
+        logger.info("Worker stopped.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
