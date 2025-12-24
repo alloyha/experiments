@@ -10,7 +10,7 @@ Requires: pip install asyncpg
 import json
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sage.storage.base import (
     SagaStorage,
     SagaStepState, 
@@ -19,6 +19,7 @@ from sage.storage.base import (
     SagaStorageConnectionError
 )
 from sage.types import SagaStatus, SagaStepStatus
+from sage.exceptions import MissingDependencyError
 
 try:
     import asyncpg
@@ -34,6 +35,16 @@ class PostgreSQLSagaStorage(SagaStorage):
     
     Uses PostgreSQL for ACID-compliant saga state storage with
     full SQL querying capabilities and referential integrity.
+    
+    Example:
+        >>> async with PostgreSQLSagaStorage("postgresql://user:pass@localhost/db") as storage:
+        ...     await storage.save_saga_state(
+        ...         saga_id="order-123",
+        ...         saga_name="OrderSaga",
+        ...         status=SagaStatus.EXECUTING,
+        ...         steps=[],
+        ...         context={"order_id": "ABC123"}
+        ...     )
     """
     
     # SQL schema for saga tables
@@ -76,7 +87,7 @@ class PostgreSQLSagaStorage(SagaStorage):
         **pool_kwargs
     ):
         if not ASYNCPG_AVAILABLE:
-            raise ImportError("asyncpg not available. Install with: pip install asyncpg")
+            raise MissingDependencyError("asyncpg", "PostgreSQL storage backend")
         
         self.connection_string = connection_string
         self.pool_min_size = pool_min_size
@@ -397,7 +408,7 @@ class PostgreSQLSagaStorage(SagaStorage):
                     "storage_type": "postgresql",
                     "postgresql_version": version.split()[1] if version else "unknown",
                     "pool_size": pool_size,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
         
         except Exception as e:
@@ -405,7 +416,7 @@ class PostgreSQLSagaStorage(SagaStorage):
                 "status": "unhealthy", 
                 "storage_type": "postgresql",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
     
     def _format_bytes(self, bytes_size: int) -> str:

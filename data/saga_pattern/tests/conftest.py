@@ -3,7 +3,8 @@ Pytest configuration and shared fixtures for saga pattern tests
 """
 
 import pytest
-from examples.actions.notification import NotificationService
+import warnings
+from examples.order_processing.notification import NotificationService
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +24,44 @@ def deterministic_notifications():
     NotificationService.reset_failure_rates()
 
 
+@pytest.fixture(autouse=True, scope="session")
+def suppress_otel_warnings():
+    """
+    Suppress OpenTelemetry export warnings during tests.
+    
+    The OTel exporter tries to connect to localhost:4317 which doesn't exist
+    in test environment, causing harmless but noisy error messages.
+    
+    The OTLP exporter uses Python logging (not warnings), so we need to
+    suppress the logger for the gRPC exporter specifically.
+    
+    This is session-scoped to keep logging suppressed during session teardown.
+    """
+    import logging
+    
+    # Suppress the OpenTelemetry exporter logger (logs gRPC connection errors)
+    otel_loggers = [
+        "opentelemetry.exporter.otlp.proto.grpc.exporter",
+        "opentelemetry.exporter.otlp.proto.grpc",
+        "opentelemetry.sdk.trace.export",
+        "grpc._channel",
+    ]
+    
+    for logger_name in otel_loggers:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.CRITICAL + 1)  # Disable all logging
+    
+    # Also filter out Python warnings as a fallback
+    warnings.filterwarnings(
+        "ignore",
+        message=".*StatusCode.UNAVAILABLE.*",
+        category=UserWarning,
+    )
+    
+    yield
+    # Don't restore levels - keep suppressed during session teardown
+
+
 @pytest.fixture
 def enable_notification_failures():
     """
@@ -37,3 +76,4 @@ def enable_notification_failures():
     yield
     # Reset after test
     NotificationService.set_failure_rates(email=0.0, sms=0.0)
+

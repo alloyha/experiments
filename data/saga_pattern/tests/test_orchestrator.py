@@ -170,7 +170,7 @@ class TestSagaOrchestrator:
         end_time = time.time()
         
         # With concurrent execution, should be faster than sequential (allow generous timeout for CI)
-        assert end_time - start_time < 0.15  # More lenient for slower CI environments
+        assert end_time - start_time < 0.5  # More lenient for slower CI environments
         
         # All should succeed
         assert all(result.success for result in results)

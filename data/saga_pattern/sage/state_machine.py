@@ -13,11 +13,23 @@ Step State Diagram:
     PENDING → EXECUTING → COMPLETED
                      ↘ COMPENSATING → COMPENSATED
                      ↘ FAILED (unrecoverable)
+
+Usage:
+    >>> from sage.state_machine import SagaStateMachine
+    >>> 
+    >>> class OrderSaga:
+    ...     steps = [step1, step2]
+    ...     completed_steps = []
+    >>> 
+    >>> saga = OrderSaga()
+    >>> sm = SagaStateMachine(saga)
+    >>> await sm.activate_initial_state()
+    >>> await sm.start()  # Transitions pending -> executing
 """
 
 from statemachine import State, StateMachine
 from statemachine.exceptions import TransitionNotAllowed
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Any
 
 if TYPE_CHECKING:
     from sage.core import Saga
@@ -25,9 +37,40 @@ if TYPE_CHECKING:
 
 class SagaStateMachine(StateMachine):
     """
-    State machine for managing saga lifecycle transitions
+    State machine for managing saga lifecycle transitions.
     
-    Provides async state management with guards and hooks for saga execution.
+    Provides state management with guards and hooks for saga execution.
+    Supports async callbacks via python-statemachine's native async support.
+    
+    States:
+        pending: Initial state, saga not yet started
+        executing: Saga is running steps
+        completed: All steps completed successfully (final)
+        compensating: Running compensation for failed steps
+        rolled_back: All compensations completed (final)
+        failed: Unrecoverable failure (final)
+    
+    Events:
+        start: Begin saga execution (pending -> executing)
+        succeed: Saga completed successfully (executing -> completed)
+        fail: Saga failed, begin compensation (executing -> compensating)
+        fail_unrecoverable: Unrecoverable failure (executing -> failed)
+        finish_compensation: Compensation completed (compensating -> rolled_back)
+        compensation_failed: Compensation failed (compensating -> failed)
+    
+    Usage:
+        >>> sm = SagaStateMachine(saga_instance)
+        >>> await sm.activate_initial_state()
+        >>> 
+        >>> # Start execution
+        >>> await sm.start()
+        >>> 
+        >>> # On success
+        >>> await sm.succeed()
+        >>> 
+        >>> # On failure with compensation
+        >>> await sm.fail()
+        >>> await sm.finish_compensation()
     """
     
     # Define saga states
@@ -39,53 +82,112 @@ class SagaStateMachine(StateMachine):
     failed = State("Failed", final=True)
     
     # Define state transitions with conditions
-    start = pending.to(executing, cond="can_start")
+    # Note: cond is a string method name that returns bool
+    start = pending.to(executing, cond="has_steps")
     succeed = executing.to(completed)
-    fail = executing.to(compensating, cond="can_compensate") 
+    fail = executing.to(compensating, cond="has_completed_steps") 
     fail_unrecoverable = executing.to(failed)
     finish_compensation = compensating.to(rolled_back)
     compensation_failed = compensating.to(failed)
     
-    def __init__(self, saga: "Saga"):
+    def __init__(self, saga: Optional["Saga"] = None, **kwargs):
+        """
+        Initialize the saga state machine.
+        
+        Args:
+            saga: The saga instance to manage state for
+            **kwargs: Additional kwargs passed to StateMachine
+        """
         self.saga = saga
-        super().__init__()
+        super().__init__(**kwargs)
     
-    # Guard conditions
-    def can_start(self) -> bool:
-        """Guard: can only start if we have steps defined"""
-        return len(self.saga.steps) > 0
+    # Guard conditions - these are sync methods that return bool
+    def has_steps(self) -> bool:
+        """Guard: can only start if we have steps defined."""
+        if self.saga is None:
+            return True
+        return len(getattr(self.saga, 'steps', [])) > 0
     
-    def can_compensate(self) -> bool:
-        """Guard: can only compensate if we have completed steps to undo"""
-        return len(self.saga.completed_steps) > 0
+    def has_completed_steps(self) -> bool:
+        """Guard: can only compensate if we have completed steps to undo."""
+        if self.saga is None:
+            return True
+        return len(getattr(self.saga, 'completed_steps', [])) > 0
     
-    # State entry hooks
+    # State entry callbacks - using naming convention on_enter_<state_id>
+    # These can be async when the SM is used in async context
+    
     async def on_enter_executing(self) -> None:
-        """Called when entering EXECUTING state - start saga execution"""
-        await self.saga._on_enter_executing()
+        """Called when entering EXECUTING state - start saga execution."""
+        if self.saga and hasattr(self.saga, '_on_enter_executing'):
+            await self.saga._on_enter_executing()
     
     async def on_enter_compensating(self) -> None:
-        """Called when entering COMPENSATING state - start compensation"""
-        await self.saga._on_enter_compensating()
+        """Called when entering COMPENSATING state - start compensation."""
+        if self.saga and hasattr(self.saga, '_on_enter_compensating'):
+            await self.saga._on_enter_compensating()
     
     async def on_enter_completed(self) -> None:
-        """Called when entering COMPLETED state - saga succeeded"""
-        await self.saga._on_enter_completed()
+        """Called when entering COMPLETED state - saga succeeded."""
+        if self.saga and hasattr(self.saga, '_on_enter_completed'):
+            await self.saga._on_enter_completed()
     
     async def on_enter_rolled_back(self) -> None:
-        """Called when entering ROLLED_BACK state - saga compensated successfully"""
-        await self.saga._on_enter_rolled_back()
+        """Called when entering ROLLED_BACK state - saga compensated successfully."""
+        if self.saga and hasattr(self.saga, '_on_enter_rolled_back'):
+            await self.saga._on_enter_rolled_back()
     
     async def on_enter_failed(self) -> None:
-        """Called when entering FAILED state - unrecoverable failure"""
-        await self.saga._on_enter_failed()
+        """Called when entering FAILED state - unrecoverable failure."""
+        if self.saga and hasattr(self.saga, '_on_enter_failed'):
+            await self.saga._on_enter_failed()
+    
+    # State exit callbacks
+    async def on_exit_pending(self) -> None:
+        """Called when leaving PENDING state."""
+        if self.saga and hasattr(self.saga, '_on_exit_pending'):
+            await self.saga._on_exit_pending()
+    
+    async def on_exit_executing(self) -> None:
+        """Called when leaving EXECUTING state."""
+        if self.saga and hasattr(self.saga, '_on_exit_executing'):
+            await self.saga._on_exit_executing()
+    
+    # Transition callbacks - using naming convention on_<event>
+    async def on_start(self) -> None:
+        """Called when start transition is triggered."""
+        pass  # Override in subclass if needed
+    
+    async def on_succeed(self) -> None:
+        """Called when succeed transition is triggered."""
+        pass  # Override in subclass if needed
+    
+    async def on_fail(self) -> None:
+        """Called when fail transition is triggered."""
+        pass  # Override in subclass if needed
 
 
 class SagaStepStateMachine(StateMachine):
     """
-    State machine for individual saga step execution
+    State machine for individual saga step execution.
     
     Manages the lifecycle of a single step within a saga.
+    
+    States:
+        pending: Step not yet started
+        executing: Step is running
+        completed: Step finished successfully (can still compensate)
+        compensating: Running compensation for this step
+        compensated: Compensation completed (final)
+        failed: Step failed (final)
+    
+    Events:
+        start: Begin step execution
+        succeed: Step completed successfully
+        fail: Step failed
+        compensate: Begin compensation
+        compensation_success: Compensation succeeded
+        compensation_failure: Compensation failed
     """
     
     # Define step states
@@ -104,34 +206,42 @@ class SagaStepStateMachine(StateMachine):
     compensation_success = compensating.to(compensated)
     compensation_failure = compensating.to(failed)
     
-    def __init__(self, step_name: str):
+    def __init__(self, step_name: str = "", **kwargs):
+        """
+        Initialize the step state machine.
+        
+        Args:
+            step_name: Name of the step for logging
+            **kwargs: Additional kwargs passed to StateMachine
+        """
         self.step_name = step_name
-        super().__init__()
+        super().__init__(**kwargs)
     
+    # State entry callbacks
     async def on_enter_executing(self) -> None:
-        """Called when step starts executing"""
+        """Called when step starts executing."""
         pass  # Override in saga implementation if needed
     
     async def on_enter_completed(self) -> None:
-        """Called when step completes successfully"""
+        """Called when step completes successfully."""
         pass  # Override in saga implementation if needed
     
     async def on_enter_compensating(self) -> None:
-        """Called when step starts compensation"""
+        """Called when step starts compensation."""
         pass  # Override in saga implementation if needed
     
     async def on_enter_compensated(self) -> None:
-        """Called when step compensation completes"""
+        """Called when step compensation completes."""
         pass  # Override in saga implementation if needed
     
     async def on_enter_failed(self) -> None:
-        """Called when step fails"""
+        """Called when step fails."""
         pass  # Override in saga implementation if needed
 
 
 def validate_state_transition(current_state: str, target_state: str) -> bool:
     """
-    Validate if a state transition is allowed
+    Validate if a state transition is allowed.
     
     Args:
         current_state: Current state name
@@ -154,7 +264,7 @@ def validate_state_transition(current_state: str, target_state: str) -> bool:
 
 def get_valid_next_states(current_state: str) -> list[str]:
     """
-    Get list of valid next states from current state
+    Get list of valid next states from current state.
     
     Args:
         current_state: Current state name
@@ -172,3 +282,13 @@ def get_valid_next_states(current_state: str) -> list[str]:
     }
     
     return valid_transitions.get(current_state, [])
+
+
+# Re-export TransitionNotAllowed for convenience
+__all__ = [
+    "SagaStateMachine",
+    "SagaStepStateMachine",
+    "TransitionNotAllowed",
+    "validate_state_transition",
+    "get_valid_next_states",
+]

@@ -6,6 +6,7 @@ readme = "README.md"
 dependencies = [
     "python-statemachine>=2.1.0"
 ]
+requires-python = ">=3.11"
 
 [dependency-groups]
 dev = [
@@ -25,6 +26,8 @@ dev = [
     "bandit[toml]>=1.7.5",
     "pip-audit>=2.6.1",
     "radon>=6.0.1",
+    "testcontainers>=4.13.3",
+    "pytest-timeout>=2.4.0",
 ]
 
 storage = [
@@ -35,9 +38,29 @@ storage = [
 
 integration-tests = [
     # Integration testing with real databases (requires Docker)
-    "testcontainers[postgres]>=4.13.0",
-    "testcontainers[redis]>=4.13.0",
+    "testcontainers[kafka,postgres,rabbitmq,redis]>=4.13.0",
 ]
+redis = [
+    "redis>=7.1.0",
+]
+postgres = [
+    "asyncpg>=0.31.0",
+]
+kafka = [
+    "aiokafka>=0.12.0",
+]
+rabbitmq = [
+    "aio-pika>=9.0.0",
+]
+tracing = [
+    "opentelemetry-api>=1.39.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.39.1",
+    "opentelemetry-sdk>=1.39.1",
+]
+prometheus = [
+    "prometheus-client>=0.23.1",
+]
+
 
 # ============================================================================
 # Build System Configuration
@@ -206,6 +229,9 @@ filterwarnings = [
     "ignore:coroutine 'sleep' was never awaited:RuntimeWarning",
     # Ignore unawaited AsyncMock coroutines from our tests
     "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning",
+    # Ignore unknown mark warning during collection (marker is registered but order matters)
+    "ignore::pytest.PytestUnknownMarkWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
 
 # ============================================================================

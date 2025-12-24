@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any
 
 from sage import (
-    Saga,
+    ClassicSaga,
     SagaContext,
     SagaOrchestrator,
     SagaResult,
@@ -50,7 +50,7 @@ class MonitoredSagaOrchestrator(SagaOrchestrator):
             "average_execution_time": 0.0,
         }
 
-    async def execute_saga(self, saga: Saga) -> SagaResult:
+    async def execute_saga(self, saga: ClassicSaga) -> SagaResult:
         """Execute saga with metrics collection"""
         start_time = datetime.now()
 
@@ -107,7 +107,7 @@ async def demo_failure_with_rollback():
     orchestrator = MonitoredSagaOrchestrator()
 
     # Create a saga that will fail
-    class FailingSaga(Saga):
+    class FailingSaga(ClassicSaga):
         async def build(self):
             await self.add_step(
                 "step1",

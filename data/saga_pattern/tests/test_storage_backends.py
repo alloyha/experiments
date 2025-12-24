@@ -7,7 +7,7 @@ the storage implementations with actual database connections.
 
 import pytest
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -306,7 +306,7 @@ class TestPostgreSQLStorage:
             # Cleanup sagas older than now (should delete immediately)
             from datetime import datetime, timedelta
             deleted_count = await storage.cleanup_completed_sagas(
-                older_than=datetime.utcnow() + timedelta(seconds=1)
+                older_than=datetime.now(timezone.utc) + timedelta(seconds=1)
             )
             
             # At least our test saga should be deleted
@@ -386,6 +386,94 @@ class TestPostgreSQLStorage:
         async with PostgreSQLSagaStorage(connection_string) as storage:
             result = await storage.delete_saga_state("nonexistent-saga-xyz")
             assert result is False
+    
+    @pytest.mark.asyncio
+    async def test_save_and_load_with_executed_at_timestamp(self, postgres_container):
+        """Test saving and loading saga with step timestamps (lines 198-201)"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            now = datetime.now(timezone.utc)
+            
+            await storage.save_saga_state(
+                saga_id="timestamp-test-pg",
+                saga_name="TimestampTest",
+                status=SagaStatus.COMPLETED,
+                steps=[
+                    {
+                        "name": "step1",
+                        "status": "completed",
+                        "result": {"data": "value"},
+                        "error": None,
+                        "executed_at": now,
+                        "compensated_at": now,
+                        "retry_count": 0
+                    }
+                ],
+                context={},
+                metadata={}
+            )
+            
+            state = await storage.load_saga_state("timestamp-test-pg")
+            
+            assert state is not None
+            assert state["steps"][0]["executed_at"] is not None
+            assert state["steps"][0]["compensated_at"] is not None
+    
+    @pytest.mark.asyncio
+    async def test_update_step_state_not_found(self, postgres_container):
+        """Test updating step state when step doesn't exist (line 322)"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Create a saga with one step
+            await storage.save_saga_state(
+                saga_id="pg-step-not-found-test",
+                saga_name="StepNotFoundTest",
+                status=SagaStatus.EXECUTING,
+                steps=[{"name": "existing_step", "status": "pending", "result": None, "error": None, "retry_count": 0}],
+                context={},
+                metadata={}
+            )
+            
+            # Try to update a non-existent step
+            with pytest.raises(SagaStorageError, match="not found"):
+                await storage.update_step_state(
+                    saga_id="pg-step-not-found-test",
+                    step_name="nonexistent_step",
+                    status=SagaStepStatus.COMPLETED,
+                    result={"data": "test"}
+                )
+    
+    @pytest.mark.asyncio
+    async def test_cleanup_with_specific_statuses(self, postgres_container):
+        """Test cleanup with specific status list (line 363->366)"""
+        connection_string = postgres_container.get_connection_url().replace(
+            "postgresql+psycopg2://", "postgresql://"
+        )
+        
+        async with PostgreSQLSagaStorage(connection_string) as storage:
+            # Create saga with FAILED status
+            await storage.save_saga_state(
+                saga_id="pg-failed-cleanup",
+                saga_name="FailedCleanup",
+                status=SagaStatus.FAILED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # Cleanup only FAILED status
+            deleted = await storage.cleanup_completed_sagas(
+                older_than=datetime.now(timezone.utc) + timedelta(seconds=1),
+                statuses=[SagaStatus.FAILED]
+            )
+            
+            assert deleted >= 1
 
 
 # Use pytest-xdist_group to ensure all Redis tests run on same worker
@@ -658,7 +746,7 @@ class TestRedisStorage:
             # Cleanup sagas older than now
             from datetime import datetime
             deleted_count = await storage.cleanup_completed_sagas(
-                older_than=datetime.utcnow()
+                older_than=datetime.now(timezone.utc)
             )
             
             # At least our test saga should be deleted
@@ -802,7 +890,7 @@ class TestRedisStorage:
                 "steps": [],
                 "context": {},
                 "metadata": {},
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": "not-a-valid-timestamp"  # Invalid!
             }
             await redis_client.hset(
@@ -818,8 +906,107 @@ class TestRedisStorage:
             
             # Cleanup should skip invalid saga and not crash
             deleted = await storage.cleanup_completed_sagas(
-                older_than=datetime.utcnow() + timedelta(days=1)
+                older_than=datetime.now(timezone.utc) + timedelta(days=1)
             )
             
             # Should succeed without crashing
             assert deleted >= 0
+    
+    @pytest.mark.asyncio
+    async def test_list_sagas_with_status_and_name_filter(self, redis_container):
+        """Test listing sagas with both status and name filters (lines 189-196)"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url, key_prefix="filter-test:") as storage:
+            # Create sagas with specific status and name
+            await storage.save_saga_state(
+                saga_id="redis-filter-1",
+                saga_name="FilterSaga",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            await storage.save_saga_state(
+                saga_id="redis-filter-2",
+                saga_name="OtherSaga",
+                status=SagaStatus.COMPLETED,
+                steps=[],
+                context={},
+                metadata={}
+            )
+            
+            # List with both status and name filter
+            results = await storage.list_sagas(
+                status=SagaStatus.COMPLETED,
+                saga_name="FilterSaga"
+            )
+            
+            matching = [r for r in results if r["saga_id"] == "redis-filter-1"]
+            assert len(matching) >= 1
+    
+    @pytest.mark.asyncio
+    async def test_update_step_state_not_found(self, redis_container):
+        """Test updating step state when step doesn't exist (line 255)"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url, key_prefix="step-not-found:") as storage:
+            # Create a saga with one step
+            await storage.save_saga_state(
+                saga_id="redis-step-not-found",
+                saga_name="StepNotFoundTest",
+                status=SagaStatus.EXECUTING,
+                steps=[{"name": "existing_step", "status": "pending", "result": None}],
+                context={},
+                metadata={}
+            )
+            
+            # Try to update a non-existent step
+            with pytest.raises(SagaStorageError, match="not found"):
+                await storage.update_step_state(
+                    saga_id="redis-step-not-found",
+                    step_name="nonexistent_step",
+                    status=SagaStepStatus.COMPLETED,
+                    result={"data": "test"}
+                )
+    
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent_saga(self, redis_container):
+        """Test deleting a saga that doesn't exist (line 150)"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url, key_prefix="delete-test:") as storage:
+            result = await storage.delete_saga_state("nonexistent-redis-saga-xyz")
+            assert result is False
+    
+    @pytest.mark.asyncio
+    async def test_list_sagas_no_filter_pagination(self, redis_container):
+        """Test listing all sagas without filters uses pattern matching (lines 198-203)"""
+        host = redis_container.get_container_host_ip()
+        port = redis_container.get_exposed_port(6379)
+        redis_url = f"redis://{host}:{port}"
+        
+        async with RedisSagaStorage(redis_url, key_prefix="nofilter:") as storage:
+            # Create multiple sagas
+            for i in range(3):
+                await storage.save_saga_state(
+                    saga_id=f"redis-saga-{i}",
+                    saga_name="NoFilterSaga",
+                    status=SagaStatus.EXECUTING,
+                    steps=[],
+                    context={},
+                    metadata={}
+                )
+            
+            # List without any filters
+            results = await storage.list_sagas(limit=10)
+            
+            assert len(results) >= 3
+

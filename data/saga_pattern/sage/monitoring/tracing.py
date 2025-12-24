@@ -4,8 +4,23 @@ Distributed tracing support for saga execution
 Provides OpenTelemetry-compatible tracing for saga patterns, enabling
 end-to-end observability across distributed saga executions.
 
-Note: This module is optional and requires OpenTelemetry dependencies.
-Install with: pip install opentelemetry-api opentelemetry-sdk
+Note: This module is optional and gracefully degrades when OpenTelemetry 
+is not installed. All tracing operations become no-ops.
+
+Installation:
+    pip install opentelemetry-api opentelemetry-sdk
+    
+    # For OTLP export (optional):
+    pip install opentelemetry-exporter-otlp-proto-grpc
+
+Quick Start:
+    >>> from sage.monitoring.tracing import setup_tracing, is_tracing_available
+    
+    # Check if tracing is available
+    >>> if is_tracing_available():
+    ...     tracer = setup_tracing("my-service")
+    ... else:
+    ...     print("Install opentelemetry for distributed tracing")
 """
 
 import functools
@@ -34,11 +49,35 @@ T = TypeVar("T")
 trace_context: ContextVar[Dict[str, Any]] = ContextVar("trace_context", default={})
 
 
+def is_tracing_available() -> bool:
+    """
+    Check if OpenTelemetry is available for distributed tracing.
+    
+    Returns:
+        True if OpenTelemetry is installed and available, False otherwise.
+    
+    Example:
+        >>> if is_tracing_available():
+        ...     tracer = setup_tracing("my-service")
+        ...     # Use tracer for distributed tracing
+        ... else:
+        ...     print("Tracing not available - install opentelemetry-api opentelemetry-sdk")
+    """
+    return TRACING_AVAILABLE
+
+
 class SagaTracer:
     """
     Distributed tracing for saga execution
     
     Provides automatic span creation and context propagation for saga operations.
+    Gracefully degrades to no-ops when OpenTelemetry is not installed.
+    
+    Example:
+        >>> tracer = SagaTracer("order-service")
+        >>> with tracer.start_saga_trace("order-123", "OrderSaga", 3) as span:
+        ...     # Saga execution code
+        ...     pass
     """
     
     def __init__(self, service_name: str = "saga-service"):

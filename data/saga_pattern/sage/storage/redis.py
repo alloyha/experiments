@@ -10,7 +10,7 @@ Requires: pip install redis
 import json
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sage.storage.base import (
     SagaStorage, 
     SagaStepState, 
@@ -19,6 +19,7 @@ from sage.storage.base import (
     SagaStorageConnectionError
 )
 from sage.types import SagaStatus, SagaStepStatus
+from sage.exceptions import MissingDependencyError
 
 try:
     import redis.asyncio as redis
@@ -34,6 +35,16 @@ class RedisSagaStorage(SagaStorage):
     
     Uses Redis for persistent, distributed saga state storage.
     Supports automatic cleanup and clustering.
+    
+    Example:
+        >>> async with RedisSagaStorage("redis://localhost:6379") as storage:
+        ...     await storage.save_saga_state(
+        ...         saga_id="order-123",
+        ...         saga_name="OrderSaga",
+        ...         status=SagaStatus.EXECUTING,
+        ...         steps=[],
+        ...         context={"order_id": "ABC123"}
+        ...     )
     """
     
     def __init__(
@@ -44,7 +55,7 @@ class RedisSagaStorage(SagaStorage):
         **redis_kwargs
     ):
         if not REDIS_AVAILABLE:
-            raise ImportError("Redis not available. Install with: pip install redis")
+            raise MissingDependencyError("redis", "Redis storage backend")
         
         self.redis_url = redis_url
         self.key_prefix = key_prefix
@@ -97,8 +108,8 @@ class RedisSagaStorage(SagaStorage):
             "steps": steps,
             "context": context,
             "metadata": metadata or {},
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         
         saga_key = self._saga_key(saga_id)
@@ -260,7 +271,7 @@ class RedisSagaStorage(SagaStorage):
             raise SagaStorageError(f"Step {step_name} not found in saga {saga_id}")
         
         # Save updated saga state
-        saga_data["updated_at"] = datetime.utcnow().isoformat()
+        saga_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         await self.save_saga_state(
             saga_id=saga_data["saga_id"],
             saga_name=saga_data["saga_name"],
@@ -355,7 +366,7 @@ class RedisSagaStorage(SagaStorage):
                 "redis_version": info.get("redis_version", "unknown"),
                 "connected_clients": info.get("connected_clients", 0),
                 "used_memory_human": info.get("used_memory_human", "0B"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         
         except Exception as e:
@@ -363,7 +374,7 @@ class RedisSagaStorage(SagaStorage):
                 "status": "unhealthy",
                 "storage_type": "redis",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
     
     async def __aenter__(self):

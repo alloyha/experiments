@@ -12,6 +12,7 @@ from sage.storage.postgresql import PostgreSQLSagaStorage
 from sage.storage.redis import RedisSagaStorage
 from sage.storage.base import SagaStorageError
 from sage.types import SagaStatus, SagaStepStatus
+from sage.exceptions import MissingDependencyError
 
 
 class TestPostgreSQLStorageErrors:
@@ -19,9 +20,9 @@ class TestPostgreSQLStorageErrors:
     
     @pytest.mark.asyncio
     async def test_import_error_when_asyncpg_not_available(self):
-        """Test ImportError is raised when asyncpg is not installed."""
+        """Test MissingDependencyError is raised when asyncpg is not installed."""
         with patch("sage.storage.postgresql.ASYNCPG_AVAILABLE", False):
-            with pytest.raises(ImportError, match="asyncpg not available"):
+            with pytest.raises(MissingDependencyError):
                 PostgreSQLSagaStorage("postgresql://test")
 
 
@@ -30,9 +31,9 @@ class TestRedisStorageErrors:
     
     @pytest.mark.asyncio
     async def test_import_error_when_redis_not_available(self):
-        """Test ImportError is raised when redis is not installed."""
+        """Test MissingDependencyError is raised when redis is not installed."""
         with patch("sage.storage.redis.REDIS_AVAILABLE", False):
-            with pytest.raises(ImportError, match="Redis not available"):
+            with pytest.raises(MissingDependencyError):
                 RedisSagaStorage("redis://test")
 
 

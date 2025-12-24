@@ -4,7 +4,7 @@ Tests for storage backends - memory
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sage.storage.base import SagaStorage, SagaStepState, SagaStorageError
 from sage.storage.memory import InMemorySagaStorage
@@ -324,7 +324,7 @@ class TestInMemorySagaStorage:
             status=SagaStepStatus.COMPLETED,
             result={"data": "test"},
             error=None,
-            executed_at=datetime.utcnow()
+            executed_at=datetime.now(timezone.utc)
         )
         
         # Verify update
@@ -417,7 +417,7 @@ class TestInMemorySagaStorage:
         
         # Cleanup
         from datetime import datetime
-        deleted = await storage.cleanup_completed_sagas(older_than=datetime.utcnow())
+        deleted = await storage.cleanup_completed_sagas(older_than=datetime.now(timezone.utc))
         
         assert deleted >= 1
         loaded = await storage.load_saga_state("old-saga")
@@ -438,7 +438,7 @@ class TestInMemorySagaStorage:
         
         # Should not crash
         from datetime import datetime
-        deleted = await storage.cleanup_completed_sagas(older_than=datetime.utcnow())
+        deleted = await storage.cleanup_completed_sagas(older_than=datetime.now(timezone.utc))
         
         # Bad saga should still exist (skipped due to invalid timestamp)
         assert "bad-timestamp" in storage._sagas

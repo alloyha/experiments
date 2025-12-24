@@ -8,7 +8,7 @@ with proper context propagation and correlation IDs for distributed systems.
 import logging
 import json
 from typing import Any, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from contextvars import ContextVar
 from sage.types import SagaStatus, SagaStepStatus
 
@@ -30,7 +30,7 @@ class SagaJsonFormatter(logging.Formatter):
         context = saga_context.get({})
         
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

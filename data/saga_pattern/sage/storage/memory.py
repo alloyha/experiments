@@ -7,7 +7,7 @@ Not suitable for production use as state is lost on process restart.
 
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sage.storage.base import SagaStorage, SagaStepState, SagaStorageError
 from sage.types import SagaStatus, SagaStepStatus
 
@@ -43,8 +43,8 @@ class InMemorySagaStorage(SagaStorage):
                 "steps": steps,
                 "context": context,
                 "metadata": metadata or {},
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
     
     async def load_saga_state(self, saga_id: str) -> Optional[Dict[str, Any]]:
@@ -138,7 +138,7 @@ class InMemorySagaStorage(SagaStorage):
                 raise SagaStorageError(f"Step {step_name} not found in saga {saga_id}")
             
             # Update saga timestamp
-            saga_data["updated_at"] = datetime.utcnow().isoformat()
+            saga_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     async def get_saga_statistics(self) -> Dict[str, Any]:
         """Get storage statistics"""
@@ -203,7 +203,7 @@ class InMemorySagaStorage(SagaStorage):
                 "storage_type": "in_memory",
                 "total_sagas": len(self._sagas),
                 "memory_usage_bytes": self._estimate_memory_usage(),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
     
     def _estimate_memory_usage(self) -> int:

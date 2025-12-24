@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import List, Set
 
 from sage import (
-    Saga,
+    ClassicSaga,
     DAGSaga,
     SagaContext,
     SagaOrchestrator,
@@ -35,6 +35,9 @@ from sage import (
     SagaTimeoutError,
     SagaExecutionError,
 )
+
+# Alias for backward compatibility in tests
+Saga = ClassicSaga
 
 
 # ============================================
@@ -60,7 +63,7 @@ async def simple_saga():
     return saga
 
 
-class SimpleSaga(Saga):
+class SimpleSaga(ClassicSaga):
     """Simple saga for testing (renamed from TestSaga to avoid pytest collection warning)"""
     def __init__(self, name: str = "TestSaga", retry_backoff_base: float = 0.01, **kwargs):
         super().__init__(name=name, retry_backoff_base=retry_backoff_base, **kwargs)
