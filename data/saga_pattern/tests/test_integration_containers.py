@@ -49,66 +49,77 @@ class TestPostgreSQLOutboxStorageIntegration:
     async def test_postgresql_storage_lifecycle(self, postgres_container):
         """Test full lifecycle: initialize, insert, claim, update, close."""
         from sage.outbox.storage.postgresql import PostgreSQLOutboxStorage, ASYNCPG_AVAILABLE
-        from sage.outbox.types import OutboxEvent, OutboxStatus
         
         if not ASYNCPG_AVAILABLE:
             pytest.skip("asyncpg not installed")
         
-        # Build connection string from container
+        storage = self._create_storage(postgres_container)
+        
+        try:
+            await storage.initialize()
+            event = await self._insert_test_event(storage)
+            await self._verify_insert_and_claim(storage, event)
+            await self._verify_update_and_query(storage, event)
+        finally:
+            await storage.close()
+    
+    def _create_storage(self, postgres_container):
+        """Create PostgreSQL storage from container."""
+        from sage.outbox.storage.postgresql import PostgreSQLOutboxStorage
+        
         connection_string = postgres_container.get_connection_url().replace(
             "postgresql+psycopg2://", "postgresql://"
         )
-        
-        storage = PostgreSQLOutboxStorage(
+        return PostgreSQLOutboxStorage(
             connection_string=connection_string,
             pool_min_size=1,
             pool_max_size=5,
         )
+    
+    async def _insert_test_event(self, storage):
+        """Insert a test event and return it."""
+        from sage.outbox.types import OutboxEvent
         
-        try:
-            # Initialize (creates schema)
-            await storage.initialize()
-            
-            # Insert an event
-            event = OutboxEvent(
-                saga_id="saga-integration-test",
-                event_type="order.created",
-                payload={"order_id": "ORD-123", "amount": 99.99}
-            )
-            await storage.insert(event)
-            
-            # Get by ID
-            retrieved = await storage.get_by_id(event.event_id)
-            assert retrieved is not None
-            assert retrieved.saga_id == "saga-integration-test"
-            
-            # Get pending count
-            count = await storage.get_pending_count()
-            assert count >= 1
-            
-            # Claim batch
-            claimed = await storage.claim_batch(
-                worker_id="test-worker",
-                batch_size=10
-            )
-            assert len(claimed) >= 1
-            assert claimed[0].status == OutboxStatus.CLAIMED
-            assert claimed[0].worker_id == "test-worker"
-            
-            # Update status to SENT
+        event = OutboxEvent(
+            saga_id="saga-integration-test",
+            event_type="order.created",
+            payload={"order_id": "ORD-123", "amount": 99.99}
+        )
+        await storage.insert(event)
+        return event
+    
+    async def _verify_insert_and_claim(self, storage, event):
+        """Verify event was inserted and can be claimed."""
+        from sage.outbox.types import OutboxStatus
+        
+        retrieved = await storage.get_by_id(event.event_id)
+        assert retrieved is not None
+        assert retrieved.saga_id == "saga-integration-test"
+        
+        count = await storage.get_pending_count()
+        assert count >= 1
+        
+        claimed = await storage.claim_batch(worker_id="test-worker", batch_size=10)
+        assert len(claimed) >= 1
+        assert claimed[0].status == OutboxStatus.CLAIMED
+        assert claimed[0].worker_id == "test-worker"
+    
+    async def _verify_update_and_query(self, storage, event):
+        """Verify status update and saga query."""
+        from sage.outbox.types import OutboxStatus
+        
+        # Need to re-claim since previous claim consumed the event
+        claimed = await storage.claim_batch(worker_id="test-worker-2", batch_size=10)
+        if claimed:
             updated = await storage.update_status(
                 event_id=claimed[0].event_id,
                 status=OutboxStatus.SENT
             )
             assert updated.status == OutboxStatus.SENT
             assert updated.sent_at is not None
-            
-            # Get events by saga
-            saga_events = await storage.get_events_by_saga("saga-integration-test")
-            assert len(saga_events) >= 1
-            
-        finally:
-            await storage.close()
+        
+        saga_events = await storage.get_events_by_saga("saga-integration-test")
+        assert len(saga_events) >= 1
     
     @pytest.mark.asyncio
     async def test_postgresql_concurrent_claim(self, postgres_container):

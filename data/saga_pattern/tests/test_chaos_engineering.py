@@ -657,48 +657,55 @@ class TestConcurrentFailures:
         Chaos: System under extreme load
         Expected: Graceful degradation, no crashes
         """
+        storage, broker, num_events = await self._setup_high_load_test()
+        workers, tasks = self._create_worker_tasks(storage, broker)
+        
+        start_time = time.time()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        duration = time.time() - start_time
+        
+        self._assert_high_load_results(results, num_events, duration)
+    
+    async def _setup_high_load_test(self):
+        """Setup storage, broker, and events for high load test."""
         storage = InMemoryOutboxStorage()
         broker = InMemoryBroker()
         await broker.connect()
         
-        # Create many events
         num_events = 50
         for i in range(num_events):
             event = create_test_event(f"event-{i}")
             await storage.insert(event)
         
-        # Add artificial latency to simulate load
+        # Add artificial latency
         original_publish = broker.publish_event
-        
         async def slow_publish(event):
-            await asyncio.sleep(0.005)  # 5ms per publish
+            await asyncio.sleep(0.005)
             return await original_publish(event)
-        
         broker.publish_event = slow_publish
         
-        # Create multiple workers
+        return storage, broker, num_events
+    
+    def _create_worker_tasks(self, storage, broker):
+        """Create workers and their processing tasks."""
         config = OutboxConfig(batch_size=10)
         workers = [OutboxWorker(storage, broker, config) for _ in range(3)]
         
-        # Process with all workers
-        start_time = time.time()
         tasks = []
         for worker in workers:
-            for _ in range(5):  # Each worker processes multiple batches
+            for _ in range(5):
                 tasks.append(worker.process_batch())
         
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        duration = time.time() - start_time
-        
-        # Verify no crashes
+        return workers, tasks
+    
+    def _assert_high_load_results(self, results, num_events, duration):
+        """Assert high load test results."""
         exceptions = [r for r in results if isinstance(r, Exception)]
         assert len(exceptions) == 0, f"Got exceptions: {exceptions}"
         
-        # Verify all events processed
         total_processed = sum(r for r in results if isinstance(r, int))
         assert total_processed == num_events
         
-        # Verify reasonable performance
         assert duration < 5.0  # Should complete within 5 seconds
     
     @pytest.mark.asyncio
