@@ -45,6 +45,13 @@ def get_available_brokers() -> List[str]:
     except ImportError:
         pass  # pragma: no cover
     
+    try:
+        from sage.outbox.brokers.redis import REDIS_AVAILABLE
+        if REDIS_AVAILABLE:
+            available.append("redis")
+    except ImportError:
+        pass  # pragma: no cover
+    
     return available
 
 
@@ -76,6 +83,16 @@ def print_available_brokers() -> None:
             print("║  ❌ rabbitmq   - pip install aio-pika                        ║")  # pragma: no cover
     except ImportError:
         print("║  ❌ rabbitmq   - pip install aio-pika                        ║")  # pragma: no cover
+    
+    # Redis
+    try:
+        from sage.outbox.brokers.redis import REDIS_AVAILABLE
+        if REDIS_AVAILABLE:
+            print("║  ✅ redis      - Redis Streams                                ║")
+        else:
+            print("║  ❌ redis      - pip install redis                            ║")  # pragma: no cover
+    except ImportError:
+        print("║  ❌ redis      - pip install redis                            ║")  # pragma: no cover
     
     print("╚══════════════════════════════════════════════════════════════╝\n")
 
@@ -139,6 +156,19 @@ def create_broker(
         except ImportError:
             raise MissingDependencyError("aio-pika", "RabbitMQ message broker")  # pragma: no cover
     
+    elif broker_type == "redis":
+        try:
+            from sage.outbox.brokers.redis import RedisBroker, RedisBrokerConfig, REDIS_AVAILABLE
+            if not REDIS_AVAILABLE:
+                raise MissingDependencyError("redis", "Redis message broker")
+            
+            config = RedisBrokerConfig(**kwargs) if kwargs else None
+            return RedisBroker(config)
+        except MissingDependencyError:
+            raise
+        except ImportError:
+            raise MissingDependencyError("redis", "Redis message broker")  # pragma: no cover
+    
     else:
         available = get_available_brokers()
         raise ValueError(
@@ -184,6 +214,10 @@ def create_broker_from_env() -> MessageBroker:
     elif broker_type in ("rabbitmq", "rabbit", "amqp"):
         from sage.outbox.brokers.rabbitmq import RabbitMQBroker
         return RabbitMQBroker.from_env()
+    
+    elif broker_type == "redis":
+        from sage.outbox.brokers.redis import RedisBroker
+        return RedisBroker.from_env()
     
     else:
         raise ValueError(f"Unknown BROKER_TYPE: {broker_type}")

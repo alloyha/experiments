@@ -7,6 +7,7 @@ Available backends:
     - InMemoryBroker: For testing
     - KafkaBroker: Apache Kafka (requires aiokafka)
     - RabbitMQBroker: RabbitMQ/AMQP (requires aio-pika)
+    - RedisBroker: Redis Streams (requires redis)
 
 Factory:
     >>> from sage.outbox.brokers import create_broker
@@ -43,6 +44,12 @@ def RabbitMQBroker(*args, **kwargs):
     return _Impl(*args, **kwargs)
 
 
+def RedisBroker(*args, **kwargs):
+    """Redis Streams message broker (requires redis)."""
+    from sage.outbox.brokers.redis import RedisBroker as _Impl
+    return _Impl(*args, **kwargs)
+
+
 __all__ = [
     # Base
     "MessageBroker",
@@ -56,6 +63,7 @@ __all__ = [
     "InMemoryBroker",
     "KafkaBroker",
     "RabbitMQBroker",
+    "RedisBroker",
     
     # Factory
     "create_broker",
