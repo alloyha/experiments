@@ -51,8 +51,8 @@ spec:
       
       containers:
         - name: worker
-          image: ghcr.io/yourusername/sage-outbox-worker:latest  # CHANGEME
-          imagePullPolicy: IfNotPresent
+          image: sage-outbox-worker:latest  # Local image
+          imagePullPolicy: Never  # Use local image
           
           # Environment variables from ConfigMap
           envFrom:
@@ -68,7 +68,7 @@ spec:
                   key: connection-string
             
             - name: BROKER_TYPE
-              value: "kafka"  # or "rabbitmq"
+              value: "rabbitmq"  # Using RabbitMQ for local dev
             
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
@@ -103,24 +103,28 @@ spec:
               cpu: "1000m"
               memory: "1Gi"
           
-          # Health checks
+          # Health checks - exec-based since worker doesn't expose HTTP
           livenessProbe:
-            httpGet:
-              path: /health/live
-              port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+            exec:
+              command:
+                - python
+                - -c
+                - "import sage; print('alive')"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
             failureThreshold: 3
           
           readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 2
+            exec:
+              command:
+                - python
+                - -c
+                - "import sage; print('ready')"
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
           
           # Graceful shutdown
           lifecycle:
