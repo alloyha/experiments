@@ -209,57 +209,34 @@ class Saga:
     - Build the compensation dependency graph
     - Execute steps in parallel where possible
     - Compensate in correct order on failure
+    - Notify all listeners of lifecycle events
+    
+    Class Attributes:
+        saga_name: Optional name for the saga (used in events/metrics)
+        listeners: List of SagaListener instances to notify
     
     Example:
+        >>> from sage.listeners import LoggingSagaListener, MetricsSagaListener
+        >>> 
         >>> class OrderSaga(Saga):
-        ...     '''Saga to place an order with payment processing.'''
+        ...     saga_name = "order-processing"
+        ...     listeners = [LoggingSagaListener(), MetricsSagaListener()]
         ...     
-        ...     @step(name="validate_order")
-        ...     async def validate(self, ctx):
-        ...         # Validation has no compensation - pure check
-        ...         if ctx["total"] <= 0:
-        ...             raise ValueError("Invalid order total")
-        ...         return {"validated": True}
-        ...     
-        ...     @step(name="create_order", depends_on=["validate_order"])
+        ...     @step(name="create_order")
         ...     async def create_order(self, ctx):
-        ...         order = await OrderRepository.create(ctx["order_data"])
-        ...         return {"order_id": order.id}
-        ...     
-        ...     @compensate("create_order")
-        ...     async def cancel_order(self, ctx):
-        ...         await OrderRepository.delete(ctx["order_id"])
-        ...     
-        ...     @step(name="reserve_inventory", depends_on=["create_order"])
-        ...     async def reserve(self, ctx):
-        ...         reservation = await InventoryService.reserve(ctx["items"])
-        ...         return {"reservation_id": reservation.id}
-        ...     
-        ...     @compensate("reserve_inventory")
-        ...     async def release_inventory(self, ctx):
-        ...         await InventoryService.release(ctx["reservation_id"])
-        ...     
-        ...     @step(name="charge_payment", depends_on=["create_order"])
-        ...     async def charge(self, ctx):
-        ...         # Runs in parallel with reserve_inventory
-        ...         charge = await PaymentService.charge(ctx["amount"])
-        ...         return {"charge_id": charge.id}
-        ...     
-        ...     @compensate("charge_payment", depends_on=["reserve_inventory"])
-        ...     async def refund(self, ctx):
-        ...         # Refund after inventory is released
-        ...         await PaymentService.refund(ctx["charge_id"])
-        ...
-        >>> # Execute the saga
-        >>> saga = OrderSaga()
-        >>> result = await saga.run({"order_data": {...}, "amount": 99.99})
+        ...         return {"order_id": "ORD-123"}
     """
+    
+    # Class-level attributes (override in subclass)
+    saga_name: str | None = None
+    listeners: list = []  # List of SagaListener instances
 
     def __init__(self):
         self._steps: list[SagaStepDefinition] = []
         self._step_registry: dict[str, SagaStepDefinition] = {}
         self._compensation_graph = SagaCompensationGraph()
         self._context: dict[str, Any] = {}
+        self._saga_id: str = ""
         self._collect_steps()
 
     def _collect_steps(self) -> None:
@@ -380,9 +357,14 @@ class Saga:
         """
         import uuid
 
-        saga_id = saga_id or str(uuid.uuid4())
+        # Use saga_id from parameter, or from context, or generate new
+        self._saga_id = saga_id or initial_context.get("saga_id") or str(uuid.uuid4())
         self._context = initial_context.copy()
+        self._context["saga_id"] = self._saga_id  # Ensure saga_id is in context
         self._compensation_graph.reset_execution()
+
+        # Get saga name (class attribute or class name)
+        name = self._get_saga_name()
 
         # Register all compensations in the graph
         for step in self._steps:
@@ -397,18 +379,43 @@ class Saga:
                 )
 
         try:
+            # Notify listeners: saga starting
+            await self._notify_listeners("on_saga_start", name, self._saga_id, self._context)
+            
             # Execute steps level by level
             execution_levels = self.get_execution_order()
 
             for level in execution_levels:
                 await self._execute_level(level)
 
+            # Notify listeners: saga completed
+            await self._notify_listeners("on_saga_complete", name, self._saga_id, self._context)
+            
             return self._context
 
-        except Exception:
+        except Exception as e:
             # Compensate executed steps
             await self._compensate()
+            
+            # Notify listeners: saga failed
+            await self._notify_listeners("on_saga_failed", name, self._saga_id, self._context, e)
             raise
+    
+    def _get_saga_name(self) -> str:
+        """Get the saga name from class attribute or class name."""
+        return self.saga_name or self.__class__.__name__
+    
+    async def _notify_listeners(self, event_name: str, *args) -> None:
+        """Notify all listeners of an event."""
+        for listener in self.listeners:
+            try:
+                handler = getattr(listener, event_name, None)
+                if handler:
+                    result = handler(*args)
+                    if inspect.iscoroutine(result):
+                        await result
+            except Exception as e:
+                logger.warning(f"Listener {type(listener).__name__}.{event_name} error: {e}")
 
     async def _execute_level(self, level: list[SagaStepDefinition]) -> None:
         """Execute all steps in a level concurrently."""
@@ -429,7 +436,12 @@ class Saga:
                 raise result
 
     async def _execute_step(self, step: SagaStepDefinition) -> None:
-        """Execute a single step with lifecycle hooks."""
+        """Execute a single step with lifecycle hooks and listeners."""
+        saga_name = self._get_saga_name()
+        
+        # Notify listeners: step entering
+        await self._notify_listeners("on_step_enter", saga_name, step.step_id, self._context)
+        
         # Call on_enter hook
         await self._call_hook(step.on_enter, self._context, step.step_id)
         
@@ -450,14 +462,21 @@ class Saga:
             
             # Call on_success hook
             await self._call_hook(step.on_success, self._context, step.step_id, result)
+            
+            # Notify listeners: step success
+            await self._notify_listeners("on_step_success", saga_name, step.step_id, self._context, result)
 
         except TimeoutError as e:
             # Call on_failure hook
             await self._call_hook(step.on_failure, self._context, step.step_id, e)
+            # Notify listeners: step failure
+            await self._notify_listeners("on_step_failure", saga_name, step.step_id, self._context, e)
             raise TimeoutError(f"Step '{step.step_id}' timed out after {step.timeout_seconds}s")
         except Exception as e:
             # Call on_failure hook
             await self._call_hook(step.on_failure, self._context, step.step_id, e)
+            # Notify listeners: step failure
+            await self._notify_listeners("on_step_failure", saga_name, step.step_id, self._context, e)
             raise
     
     async def _call_hook(self, hook: Callable | None, *args) -> None:
@@ -487,16 +506,21 @@ class Saga:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _execute_compensation(self, step_id: str) -> None:
-        """Execute a single compensation with lifecycle hook."""
+        """Execute a single compensation with lifecycle hook and listeners."""
         node = self._compensation_graph.get_compensation_info(step_id)
         if not node:
             return
+        
+        saga_name = self._get_saga_name()
         
         # Get the on_compensate hook from the step definition
         step = self._step_registry.get(step_id)
         on_compensate = step.on_compensate if step else None
 
         try:
+            # Notify listeners: compensation starting
+            await self._notify_listeners("on_compensation_start", saga_name, step_id, self._context)
+            
             # Call on_compensate hook before compensation
             await self._call_hook(on_compensate, self._context, step_id)
             
@@ -505,6 +529,9 @@ class Saga:
                 timeout=node.timeout_seconds
             )
             self._context[f"__{step_id}_compensated"] = True
+            
+            # Notify listeners: compensation complete
+            await self._notify_listeners("on_compensation_complete", saga_name, step_id, self._context)
         except Exception as e:
             # Log but don't fail - we want all compensations to attempt
             self._context[f"__{step_id}_compensation_error"] = str(e)
