@@ -543,3 +543,6 @@ class Saga:
 # Backward compatibility alias
 DeclarativeSaga = Saga
 
+# Terminology alias: @action is preferred over @step for clarity
+# (A "step" conceptually contains both action AND compensation)
+action = step

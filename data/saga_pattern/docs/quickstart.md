@@ -15,63 +15,142 @@ pip install sage-saga[postgres,rabbitmq]  # For production
 pip install sage-saga[postgres,kafka]     # With Kafka
 ```
 
-## Basic Usage
+## Basic Usage (Declarative API)
 
 ### 1. Define a Saga
 
 ```python
-from sage import Saga, SagaContext
+from sage import Saga, action, compensate
 
-# Define your step functions
-async def reserve_inventory(ctx: SagaContext):
-    order = ctx.get("order")
-    # Reserve items...
-    ctx.set("reservation_id", "RES-123")
-
-async def release_inventory(ctx: SagaContext):
-    reservation_id = ctx.get("reservation_id")
-    # Release reservation...
-
-async def charge_payment(ctx: SagaContext):
-    order = ctx.get("order")
-    # Charge customer...
-    ctx.set("payment_id", "PAY-456")
-
-async def refund_payment(ctx: SagaContext):
-    payment_id = ctx.get("payment_id")
-    # Refund payment...
-
-# Build the saga
-saga = (
-    Saga("order-processing")
-    .step("reserve_inventory")
-        .action(reserve_inventory)
-        .compensation(release_inventory)
-    .step("charge_payment")
-        .action(charge_payment)
-        .compensation(refund_payment)
-    .build()
-)
+class OrderSaga(Saga):
+    saga_name = "order-processing"
+    
+    @action("reserve_inventory")
+    async def reserve_inventory(self, ctx):
+        # Reserve items...
+        return {"reservation_id": "RES-123"}
+    
+    @compensate("reserve_inventory")
+    async def release_inventory(self, ctx):
+        # Release reservation...
+        pass
+    
+    @action("charge_payment", depends_on=["reserve_inventory"])
+    async def charge_payment(self, ctx):
+        # Charge customer...
+        return {"payment_id": "PAY-456"}
+    
+    @compensate("charge_payment")
+    async def refund_payment(self, ctx):
+        # Refund payment...
+        pass
 ```
 
 ### 2. Execute the Saga
 
 ```python
-from sage import SagaContext
+saga = OrderSaga()
+result = await saga.run({
+    "order_id": "ORD-123",
+    "amount": 99.99
+})
 
-# Create context with initial data
-ctx = SagaContext(
-    saga_id="order-001",
-    data={"order": {"id": "ORD-123", "amount": 99.99}}
+if "payment_id" in result:
+    print(f"Order processed: {result['payment_id']}")
+```
+
+---
+
+## Step Lifecycle Hooks
+
+Add per-step callbacks for fine-grained control:
+
+```python
+from sage import Saga, action, compensate
+
+async def log_step_start(ctx, step_name):
+    print(f"Starting step: {step_name}")
+
+async def publish_order_created(ctx, step_name, result):
+    await event_bus.publish("order.created", result)
+
+async def alert_on_failure(ctx, step_name, error):
+    await pagerduty.alert(f"Step {step_name} failed: {error}")
+
+class OrderSaga(Saga):
+    @action(
+        "create_order",
+        on_enter=log_step_start,
+        on_success=publish_order_created,
+        on_failure=alert_on_failure,
+    )
+    async def create_order(self, ctx):
+        return {"order_id": "ORD-123"}
+```
+
+### Available Hooks
+
+| Hook | Signature | When Called |
+|------|-----------|-------------|
+| `on_enter` | `(ctx, step_name)` | Before step executes |
+| `on_success` | `(ctx, step_name, result)` | After successful completion |
+| `on_failure` | `(ctx, step_name, error)` | When step raises exception |
+| `on_compensate` | `(ctx, step_name)` | When compensation runs |
+
+---
+
+## Saga Listeners (Cross-Cutting Concerns)
+
+For metrics, logging, tracing, or outbox publishing across ALL steps:
+
+```python
+from sage import Saga, action
+from sage.listeners import (
+    LoggingSagaListener,
+    MetricsSagaListener,
+    OutboxSagaListener,
 )
 
-# Execute
-result = await saga.execute(ctx)
+class OrderSaga(Saga):
+    saga_name = "order-processing"
+    listeners = [
+        LoggingSagaListener(),
+        MetricsSagaListener(),
+        OutboxSagaListener(storage=outbox_storage),
+    ]
+    
+    @action("create_order")
+    async def create_order(self, ctx):
+        return {"order_id": "ORD-123"}
+    
+    @action("charge_payment", depends_on=["create_order"])
+    async def charge_payment(self, ctx):
+        return {"charge_id": "CHG-456"}
+```
 
-if result.status == "completed":
-    print(f"Order processed successfully!")
-else:
-    print(f"Order failed: {result.error}")
+### Built-in Listeners
+
+| Listener | Purpose |
+|----------|---------|
+| `LoggingSagaListener` | Structured logging for all events |
+| `MetricsSagaListener` | Prometheus-compatible metrics |
+| `TracingSagaListener` | OpenTelemetry distributed tracing |
+| `OutboxSagaListener` | Publish events to outbox for reliable delivery |
+
+### Custom Listeners
+
+```python
+from sage.listeners import SagaListener
+
+class SlackNotificationListener(SagaListener):
+    async def on_saga_failed(self, saga_name, saga_id, ctx, error):
+        await slack.post(f"🔥 Saga {saga_name} failed: {error}")
+    
+    async def on_saga_complete(self, saga_name, saga_id, ctx):
+        await slack.post(f"✅ Saga {saga_name} completed")
+
+class OrderSaga(Saga):
+    listeners = [SlackNotificationListener()]
 ```
 
 ---

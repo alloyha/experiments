@@ -7,17 +7,20 @@ Sage - Enterprise Saga Pattern Implementation
 
 A production-ready implementation of the Saga pattern for distributed transactions
 with support for:
-- Declarative saga definitions with @step and @compensate decorators
+- Declarative saga definitions with @action and @compensate decorators
 - Flexible compensation ordering with dependency graphs
 - Multiple storage backends (Memory, Redis, PostgreSQL)
 - OpenTelemetry distributed tracing
 - Prometheus metrics
+- Saga lifecycle listeners for cross-cutting concerns
 
 Quick Start (Declarative API - Recommended):
-    >>> from sage import Saga, step, compensate
+    >>> from sage import Saga, action, compensate
     >>> 
     >>> class OrderSaga(Saga):
-    ...     @step(name="create_order")
+    ...     saga_name = "order-processing"
+    ...     
+    ...     @action("create_order")
     ...     async def create_order(self, ctx):
     ...         return await OrderService.create(ctx)
     ...     
@@ -27,6 +30,13 @@ Quick Start (Declarative API - Recommended):
     >>> 
     >>> saga = OrderSaga()
     >>> result = await saga.run({"items": [...], "amount": 99.99})
+
+With Listeners (Metrics, Logging, Outbox):
+    >>> from sage.listeners import MetricsSagaListener, OutboxSagaListener
+    >>> 
+    >>> class OrderSaga(Saga):
+    ...     saga_name = "order-processing"
+    ...     listeners = [MetricsSagaListener(), OutboxSagaListener(storage)]
 
 Classic API (Imperative):
     >>> from sage import ClassicSaga
@@ -52,8 +62,9 @@ from sage.decorators import (
     DeclarativeSaga,  # Backward compatibility alias
     Saga,
     SagaStepDefinition,
+    action,  # Preferred terminology
     compensate,
-    step,
+    step,  # Alias for backward compatibility
 )
 from sage.exceptions import (
     MissingDependencyError,
@@ -63,20 +74,40 @@ from sage.exceptions import (
     SagaStepError,
     SagaTimeoutError,
 )
+
+# Import listeners
+from sage.listeners import (
+    LoggingSagaListener,
+    MetricsSagaListener,
+    OutboxSagaListener,
+    SagaListener,
+    TracingSagaListener,
+    default_listeners,
+)
+
 from sage.orchestrator import SagaOrchestrator
 from sage.types import ParallelFailureStrategy, SagaResult, SagaStatus, SagaStepStatus
 
 # Backward compatibility aliases
 DAGSaga = ClassicSaga
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 __all__ = [
     # Declarative API (recommended)
     "Saga",
-    "step",
+    "action",  # Preferred
+    "step",    # Alias for backward compat
     "compensate",
     "SagaStepDefinition",
+
+    # Listeners (cross-cutting concerns)
+    "SagaListener",
+    "LoggingSagaListener",
+    "MetricsSagaListener",
+    "TracingSagaListener",
+    "OutboxSagaListener",
+    "default_listeners",
 
     # Classic/Imperative API
     "ClassicSaga",

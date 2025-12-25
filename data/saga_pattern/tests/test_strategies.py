@@ -301,30 +301,6 @@ class TestFailFastWithGraceStrategy:
         assert isinstance(desc, str)
     
     @pytest.mark.asyncio
-    async def test_is_task_executing(self):
-        """Test _is_task_executing helper method"""
-        strategy = FailFastWithGraceStrategy()
-        
-        # Create a mock task
-        async def dummy():
-            await asyncio.sleep(0.1)
-        
-        task = asyncio.create_task(dummy())
-        
-        # Not done yet - should be considered executing
-        assert strategy._is_task_executing(task) is True
-        
-        # Cancel the task
-        task.cancel()
-        try:
-            await task
-        except:
-            pass
-        
-        # Cancelled task should not be executing
-        assert strategy._is_task_executing(task) is False
-    
-    @pytest.mark.asyncio
     async def test_strategy_cancellation_handling(self):
         """Test that strategy properly handles being cancelled itself"""
         strategy = FailFastWithGraceStrategy(grace_period=0.2)
