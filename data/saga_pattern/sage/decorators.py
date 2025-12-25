@@ -27,14 +27,24 @@ Quick Start:
 """
 
 import asyncio
+import inspect
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 from sage.compensation_graph import CompensationType, SagaCompensationGraph
 
+logger = logging.getLogger(__name__)
+
 # Type for saga step functions
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
+
+# Hook type definitions
+OnEnterHook = Callable[[dict[str, Any], str], Awaitable[None] | None]
+OnSuccessHook = Callable[[dict[str, Any], str, Any], Awaitable[None] | None]
+OnFailureHook = Callable[[dict[str, Any], str, Exception], Awaitable[None] | None]
+OnCompensateHook = Callable[[dict[str, Any], str], Awaitable[None] | None]
 
 
 @dataclass
@@ -47,6 +57,10 @@ class StepMetadata:
     timeout_seconds: float = 60.0
     max_retries: int = 3
     description: str | None = None
+    # Lifecycle hooks
+    on_enter: OnEnterHook | None = None
+    on_success: OnSuccessHook | None = None
+    on_failure: OnFailureHook | None = None
 
 
 @dataclass
@@ -58,6 +72,8 @@ class CompensationMetadata:
     timeout_seconds: float = 30.0
     max_retries: int = 3
     description: str | None = None
+    # Lifecycle hook for compensation
+    on_compensate: OnCompensateHook | None = None
 
 
 def step(
@@ -67,7 +83,10 @@ def step(
     event_type: str | None = None,
     timeout_seconds: float = 60.0,
     max_retries: int = 3,
-    description: str | None = None
+    description: str | None = None,
+    on_enter: OnEnterHook | None = None,
+    on_success: OnSuccessHook | None = None,
+    on_failure: OnFailureHook | None = None,
 ) -> Callable[[F], F]:
     """
     Decorator to mark a method as a saga step.
@@ -80,18 +99,16 @@ def step(
         timeout_seconds: Step execution timeout (default: 60s)
         max_retries: Maximum retry attempts (default: 3)
         description: Human-readable description
+        on_enter: Hook called before step execution (ctx, step_name) -> None
+        on_success: Hook called after success (ctx, step_name, result) -> None
+        on_failure: Hook called on failure (ctx, step_name, error) -> None
     
     Example:
         >>> class OrderSaga(Saga):
-        ...     @step(name="create_order", aggregate_type="order")
+        ...     @step(name="create_order", on_success=publish_order_created)
         ...     async def create_order(self, ctx):
         ...         order = await OrderService.create(ctx["order_data"])
         ...         return {"order_id": order.id}
-        ...     
-        ...     @step(name="charge_payment", depends_on=["create_order"])
-        ...     async def charge_payment(self, ctx):
-        ...         charge = await PaymentService.charge(ctx["amount"])
-        ...         return {"charge_id": charge.id}
     """
     def decorator(func: F) -> F:
         # Store metadata on the function
@@ -102,7 +119,10 @@ def step(
             event_type=event_type,
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
-            description=description or f"Execute {name}"
+            description=description or f"Execute {name}",
+            on_enter=on_enter,
+            on_success=on_success,
+            on_failure=on_failure,
         )
         return func
     return decorator
@@ -114,7 +134,8 @@ def compensate(
     compensation_type: CompensationType = CompensationType.MECHANICAL,
     timeout_seconds: float = 30.0,
     max_retries: int = 3,
-    description: str | None = None
+    description: str | None = None,
+    on_compensate: OnCompensateHook | None = None,
 ) -> Callable[[F], F]:
     """
     Decorator to mark a method as compensation for a step.
@@ -129,17 +150,12 @@ def compensate(
         timeout_seconds: Compensation timeout (default: 30s)
         max_retries: Maximum retry attempts (default: 3)
         description: Human-readable description
+        on_compensate: Hook called when compensation runs (ctx, step_name) -> None
     
     Example:
-        >>> class OrderSaga(Saga):
-        ...     @step(name="charge_payment")
-        ...     async def charge(self, ctx):
-        ...         return await PaymentService.charge(ctx["amount"])
-        ...     
-        ...     @compensate("charge_payment", compensation_type=CompensationType.SEMANTIC)
-        ...     async def refund(self, ctx):
-        ...         # Semantic compensation: issue a refund (not exactly reversing charge)
-        ...         await PaymentService.refund(ctx["charge_id"])
+        >>> @compensate("charge_payment", on_compensate=publish_refund_event)
+        ... async def refund(self, ctx):
+        ...     await PaymentService.refund(ctx["charge_id"])
     """
     def decorator(func: F) -> F:
         func._saga_compensation_meta = CompensationMetadata(
@@ -148,7 +164,8 @@ def compensate(
             compensation_type=compensation_type,
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
-            description=description or f"Compensate {for_step}"
+            description=description or f"Compensate {for_step}",
+            on_compensate=on_compensate,
         )
         return func
     return decorator
@@ -173,6 +190,11 @@ class SagaStepDefinition:
     compensation_timeout_seconds: float = 30.0
     max_retries: int = 3
     description: str | None = None
+    # Lifecycle hooks
+    on_enter: OnEnterHook | None = None
+    on_success: OnSuccessHook | None = None
+    on_failure: OnFailureHook | None = None
+    on_compensate: OnCompensateHook | None = None
 
 
 class Saga:
@@ -259,7 +281,10 @@ class Saga:
                     event_type=meta.event_type,
                     timeout_seconds=meta.timeout_seconds,
                     max_retries=meta.max_retries,
-                    description=meta.description
+                    description=meta.description,
+                    on_enter=meta.on_enter,
+                    on_success=meta.on_success,
+                    on_failure=meta.on_failure,
                 )
                 self._steps.append(step_def)
                 self._step_registry[meta.name] = step_def
@@ -281,6 +306,7 @@ class Saga:
                     step.compensation_depends_on = meta.depends_on.copy()
                     step.compensation_type = meta.compensation_type
                     step.compensation_timeout_seconds = meta.timeout_seconds
+                    step.on_compensate = meta.on_compensate
 
     def get_steps(self) -> list[SagaStepDefinition]:
         """Get all step definitions."""
@@ -403,7 +429,10 @@ class Saga:
                 raise result
 
     async def _execute_step(self, step: SagaStepDefinition) -> None:
-        """Execute a single step."""
+        """Execute a single step with lifecycle hooks."""
+        # Call on_enter hook
+        await self._call_hook(step.on_enter, self._context, step.step_id)
+        
         try:
             # Apply timeout
             result = await asyncio.wait_for(
@@ -418,9 +447,32 @@ class Saga:
             # Mark step as executed for compensation tracking
             self._context[f"__{step.step_id}_completed"] = True
             self._compensation_graph.mark_step_executed(step.step_id)
+            
+            # Call on_success hook
+            await self._call_hook(step.on_success, self._context, step.step_id, result)
 
-        except TimeoutError:
+        except TimeoutError as e:
+            # Call on_failure hook
+            await self._call_hook(step.on_failure, self._context, step.step_id, e)
             raise TimeoutError(f"Step '{step.step_id}' timed out after {step.timeout_seconds}s")
+        except Exception as e:
+            # Call on_failure hook
+            await self._call_hook(step.on_failure, self._context, step.step_id, e)
+            raise
+    
+    async def _call_hook(self, hook: Callable | None, *args) -> None:
+        """Call a hook function, handling both sync and async hooks."""
+        if hook is None:
+            return
+        
+        try:
+            result = hook(*args)
+            # If it's a coroutine, await it
+            if inspect.iscoroutine(result):
+                await result
+        except Exception as e:
+            # Log but don't fail - hooks should not break saga execution
+            logger.warning(f"Hook error (non-fatal): {e}")
 
     async def _compensate(self) -> None:
         """Execute compensations in dependency order."""
@@ -435,12 +487,19 @@ class Saga:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _execute_compensation(self, step_id: str) -> None:
-        """Execute a single compensation."""
+        """Execute a single compensation with lifecycle hook."""
         node = self._compensation_graph.get_compensation_info(step_id)
         if not node:
             return
+        
+        # Get the on_compensate hook from the step definition
+        step = self._step_registry.get(step_id)
+        on_compensate = step.on_compensate if step else None
 
         try:
+            # Call on_compensate hook before compensation
+            await self._call_hook(on_compensate, self._context, step_id)
+            
             await asyncio.wait_for(
                 node.compensation_fn(self._context),
                 timeout=node.timeout_seconds
