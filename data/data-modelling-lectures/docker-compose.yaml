@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: curso_modelagem_postgres
+    environment:
+      POSTGRES_USER: aluno
+      POSTGRES_PASSWORD: modelagem_password
+      POSTGRES_DB: curso_modelagem
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Executa o script de setup automaticamente na primeira vez
+      - ./setup_database.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:
