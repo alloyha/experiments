@@ -5,9 +5,11 @@
 -- ==============================================
 -- RESPOSTA 1: Entidades (Normalização)
 -- ==============================================
--- a) **Itens_Do_Pedido:** É um array ou lista, viola a 1NF (atomicidade). Deve ser separado em tabela 'Pedido_Itens'.
---    **Cidade_Entrega:** Redundância. Se cliente muda de cidade, histórico pode estar associado a Endereço de Entrega.
---                  Idealmente: Cliente -> Endereço. Pedido -> FK Endereço_ID.
+-- a) **Itens_Do_Pedido:** É um array ou lista, viola a 1NF (atomicidade).
+--    Deve ser separado em tabela 'Pedido_Itens'.
+-- b) **Cidade_Entrega:** Redundância. Se cliente muda de cidade, histórico pode estar
+--    associado a Endereço de Entrega.
+--    Idealmente: Cliente -> Endereço. Pedido -> FK Endereço_ID.
 
 -- b) **Repetição de Dados:** Ocupa espaço e gera inconsistência (update anomaly).
 --    Se 'São Paulo' for escrito 'S. Paulo' em um pedido e 'SP' em outro, a análise quebra.

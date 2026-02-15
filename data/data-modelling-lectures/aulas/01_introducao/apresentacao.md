@@ -50,6 +50,19 @@ Modelagem de dados é o processo de criar uma representação visual ou um esque
 
 ---
 
+## 🛠️ O Vocabulário do SQL
+Para o modelador, o SQL se divide em dois grandes papéis:
+
+1. **DDL (Data Definition Language):** É a **"Planta"**. Define a estrutura e as regras.
+   - *Ex:* `CREATE`, `ALTER`, `DROP`.
+   - Foco da Modelagem Física.
+
+2. **DML (Data Manipulation Language):** É o **"Fluxo"**. Move e transforma os dados.
+   - *Ex:* `INSERT`, `SELECT`, `UPDATE`, `DELETE`.
+   - Foco da Engenharia/Uso no dia a dia.
+
+---
+
 ## 🏁 Fechamento
 - Modelagem é a fundação de qualquer sistema de dados.
 - Escolher entre OLTP e OLAP depende do seu caso de uso.

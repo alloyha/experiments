@@ -39,6 +39,20 @@ Para encontrar conexões indiretas (ex: Amigos de Amigos), usamos `WITH RECURSIV
 
 ---
 
+## 🎨 Visualizando: A Força do Grafo
+Encontrando conexões indiretas (Amigo do Amigo) em O(1).
+
+```mermaid
+graph LR
+    A((Alice)) -- Conhece --> B((Bob))
+    B -- Conhece --> C((Carol))
+    C -- Conhece --> D((Dave))
+    
+    A -. Indireto .-> D
+```
+
+---
+
 ## 🏁 Fechamento e Fim do Curso!
 - Grafos são a ferramenta certa para problemas de conectividade.
 - O PostgreSQL lidando com JSONB e CTEs recursivos é extremamente poderoso para grafos híbridos.

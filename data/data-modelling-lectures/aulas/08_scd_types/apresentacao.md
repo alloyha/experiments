@@ -43,6 +43,24 @@ Trabalhamos com campos de controle:
 
 ---
 
+## 🎨 Visualizando: Linha do Tempo (Type 2)
+Como o usuário "João" muda de segmento ao longo do tempo.
+
+```mermaid
+gantt
+    title Historico do Cliente: Joao (SCD Type 2)
+    dateFormat YYYY-MM-DD
+    axisFormat %Y-%m
+    
+    section Versao 1 (Bronze)
+    Ativo 2023-01 a 2023-06 :done, v1, 2023-01-01, 2023-06-01
+    
+    section Versao 2 (Prata)
+    Ativo 2023-06 a Hoje    :active, v2, 2023-06-01, 2024-01-01
+```
+
+---
+
 ## 🏁 Fechamento
 - SCD Type 2 é a base de qualquer Data Warehouse de qualidade.
 - Escolha o tipo de SCD baseado na importância do histórico para aquela coluna específica.

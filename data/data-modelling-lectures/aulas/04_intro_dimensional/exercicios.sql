@@ -19,4 +19,5 @@
 
 -- EXERCÍCIO 3: Star Schema vs. Snowflake
 -- a) Em um Snowflake Schema, a tabela de 'Categoria' estaria ligada diretamente à Fato?
--- b) Qual a principal vantagem do Star Schema sobre o Snowflake para ferramentas de BI (PowerBI/Tableau)?
+-- b) Qual a principal vantagem do Star Schema sobre o Snowflake para ferramentas de BI
+--    (PowerBI/Tableau)?

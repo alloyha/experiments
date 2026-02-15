@@ -8,15 +8,15 @@
 
 /*
 a) Abordagem Clássica:
-   SELECT count(distinct user_id) 
-   FROM logs 
+   SELECT count(distinct user_id)
+   FROM logs
    WHERE data IN ('2024-06-01', '2024-06-02');
    -- Custo: Scan na tabela de logs para esses dois dias (se não particionada, scan total).
    -- Problema: Alta complexidade de Leitura em tempo de query.
 
 b) Tabela Acumulada:
-   SELECT count(*) 
-   FROM usuarios_atividade_acumulada 
+   SELECT count(*)
+   FROM usuarios_atividade_acumulada
    WHERE data_snapshot = '2024-06-02'
      AND ARRAY['2024-06-01', '2024-06-02'] <@ datas_atividade; -- Operador array contains
    -- Custo: Scan apenas na partição do dia atual (State Table).
@@ -32,22 +32,27 @@ b) Tabela Acumulada:
 DROP TABLE IF EXISTS usuarios_atividade_acumulada;
 CREATE TABLE usuarios_atividade_acumulada (
     usuario_id INTEGER PRIMARY KEY, -- Simplificado sem snapshot date para exemplo
-    datas_atividade DATE[]
+    datas_atividade DATE []
 );
 
 -- b) Inserção Inicial
-INSERT INTO usuarios_atividade_acumulada VALUES (1, ARRAY['2024-01-01', '2024-01-10']::DATE[])
+INSERT INTO usuarios_atividade_acumulada VALUES (1, ARRAY['2024-01-01', '2024-01-10']::DATE [])
 ON CONFLICT (usuario_id) DO NOTHING;
 
 -- c) Simulação de Novo Dia ('2024-06-02')
 -- Usando UPSERT (INSERT ON CONFLICT) para simplificar merge
 INSERT INTO usuarios_atividade_acumulada (usuario_id, datas_atividade)
-VALUES (1, ARRAY['2024-06-02']::DATE[])
-ON CONFLICT (usuario_id) 
-DO UPDATE SET datas_atividade = usuarios_atividade_acumulada.datas_atividade || EXCLUDED.datas_atividade;
+VALUES (1, ARRAY['2024-06-02']::DATE [])
+ON CONFLICT (usuario_id)
+DO UPDATE
+    SET datas_atividade = usuarios_atividade_acumulada.datas_atividade || excluded.datas_atividade;
 
 -- d) Verificação
-SELECT * FROM usuarios_atividade_acumulada WHERE usuario_id = 1;
+SELECT
+    usuario_id,
+    datas_atividade
+FROM usuarios_atividade_acumulada
+WHERE usuario_id = 1;
 -- Retorno esperado: {2024-01-01, 2024-01-10, 2024-06-02}
 
 -- ==============================================

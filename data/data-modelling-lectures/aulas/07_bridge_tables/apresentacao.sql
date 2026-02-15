@@ -29,15 +29,15 @@ CREATE TABLE dim_categoria_demo (
 CREATE TABLE bridge_produto_categoria_demo (
     produto_id INTEGER,
     categoria_id INTEGER,
-    peso_alocacao DECIMAL(5,4),  -- soma = 1.0 por produto
+    peso_alocacao DECIMAL(5, 4),  -- soma = 1.0 por produto
     PRIMARY KEY (produto_id, categoria_id),
-    FOREIGN KEY (produto_id) REFERENCES dim_produto_simples(produto_id),
-    FOREIGN KEY (categoria_id) REFERENCES dim_categoria_demo(categoria_id)
+    FOREIGN KEY (produto_id) REFERENCES dim_produto_simples (produto_id),
+    FOREIGN KEY (categoria_id) REFERENCES dim_categoria_demo (categoria_id)
 );
 
 -- 3. Query Clássica (3 JOINS)
 /*
-SELECT 
+SELECT
     dc.nome_categoria,
     SUM(fv.valor * bpc.peso_alocacao) as valor_alocado
 FROM fato_vendas fv
@@ -58,20 +58,20 @@ CREATE TABLE dim_produto_bigdata (
     produto_id SERIAL PRIMARY KEY,
     nome_produto VARCHAR(200),
     -- Array de categorias (Elimina a Bridge)
-    categorias TEXT[], 
+    categorias TEXT [],
     -- Array de relevância/peso (Elimina coluna de peso da Bridge)
-    pesos_relevancia DECIMAL[] 
+    pesos_relevancia DECIMAL []
 );
 
 -- 2. Inserindo dados (Exemplo: Notebook é Informática E Eletrônicos)
 INSERT INTO dim_produto_bigdata (nome_produto, categorias, pesos_relevancia)
-VALUES 
-    ('Notebook Dell i5', ARRAY['Informática', 'Eletrônicos'], ARRAY[0.7, 0.3]),
-    ('Mouse Logitech', ARRAY['Informática'], ARRAY[1.0]);
+VALUES
+('Notebook Dell i5', ARRAY['Informática', 'Eletrônicos'], ARRAY[0.7, 0.3]),
+('Mouse Logitech', ARRAY['Informática'], ARRAY[1.0]);
 
 -- 3. Query Big Data (EXPLODE/UNNEST - Zero Joins na Dimensão)
 /*
-SELECT 
+SELECT
     categoria,
     SUM(peso) as relevancia_total
 FROM dim_produto_bigdata,
@@ -88,15 +88,15 @@ DROP TABLE IF EXISTS bridge_conta_titular;
 CREATE TABLE bridge_conta_titular (
     conta_id INTEGER,
     cliente_id INTEGER,
-    peso_alocacao DECIMAL(5,4),
+    peso_alocacao DECIMAL(5, 4),
     PRIMARY KEY (conta_id, cliente_id)
 );
 
 -- Big Data (Array de Structs)
 DROP TABLE IF EXISTS conta_bigdata;
-DROP TYPE IF EXISTS titular_struct;
+DROP TYPE IF EXISTS TITULAR_STRUCT;
 
-CREATE TYPE titular_struct AS (
+CREATE TYPE TITULAR_STRUCT AS (
     cliente_id INTEGER,
     tipo VARCHAR,
     peso DECIMAL
@@ -104,5 +104,5 @@ CREATE TYPE titular_struct AS (
 
 CREATE TABLE conta_bigdata (
     conta_id INTEGER PRIMARY KEY,
-    titulares titular_struct[] -- Array complexo aninhado
+    titulares TITULAR_STRUCT [] -- Array complexo aninhado
 );

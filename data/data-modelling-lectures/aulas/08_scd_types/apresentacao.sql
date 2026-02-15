@@ -14,7 +14,7 @@ CREATE TABLE dim_cliente_type0 (
 
 -- SCD Type 1: Sobrescreve (Sem histórico)
 /*
-UPDATE dim_cliente 
+UPDATE dim_cliente
 SET cidade = 'Rio de Janeiro',
     estado = 'RJ'
 WHERE cliente_id = 123;
@@ -32,7 +32,7 @@ CREATE TABLE dim_cliente_type2 (
     data_fim DATE,                        -- Fim validade
     versao INTEGER,                       -- Número da versão
     ativo BOOLEAN,                        -- Flag atual
-    UNIQUE(cliente_id, versao)
+    UNIQUE (cliente_id, versao)
 );
 
 /*
@@ -53,7 +53,7 @@ CREATE TABLE dim_produto_type3 (
 
 /*
 -- Update Type 3:
-UPDATE dim_produto 
+UPDATE dim_produto
 SET categoria_anterior = categoria_atual,
     categoria_atual = 'Eletrônicos Premium',
     data_mudanca_categoria = CURRENT_DATE

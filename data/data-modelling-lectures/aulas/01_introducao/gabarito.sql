@@ -21,6 +21,12 @@
 -- ==============================================
 -- a) Conceitual:
 --    [Usuário] --- <Curte> --- [Post]
+--
+--    ```mermaid
+--    erDiagram
+--        USUARIO ||--o{ POST : "publica"
+--        USUARIO }o--o{ POST : "curte"
+--    ```
 --    (Relação Muitos-para-Muitos: 1 usuário curte N posts, 1 post tem N curtidas).
 
 -- b) Físico:
@@ -30,6 +36,30 @@
 -- ==============================================
 -- RESPOSTA 3: DDL Básico
 -- ==============================================
+--
+--  ERD (Físico):
+--  ```mermaid
+--  erDiagram
+--      USUARIO ||--o{ POST : "publica"
+--      USUARIO ||--o{ CURTIDA : "realiza"
+--      POST ||--o{ CURTIDA : "recebe"
+--
+--      USUARIO {
+--          int id PK
+--          string nome
+--          string email UK
+--      }
+--      POST {
+--          int id PK
+--          string texto
+--          int usuario_id FK
+--      }
+--      CURTIDA {
+--          int usuario_id PK, FK
+--          int post_id PK, FK
+--          timestamp data_curtida
+--      }
+--  ```
 
 -- a) SQL:
 CREATE TABLE IF NOT EXISTS usuario (
@@ -41,12 +71,12 @@ CREATE TABLE IF NOT EXISTS usuario (
 CREATE TABLE IF NOT EXISTS post (
     id SERIAL PRIMARY KEY,
     texto TEXT,
-    usuario_id INTEGER REFERENCES usuario(id)
+    usuario_id INTEGER REFERENCES usuario (id)
 );
 
 CREATE TABLE IF NOT EXISTS curtida (
-    usuario_id INTEGER REFERENCES usuario(id),
-    post_id INTEGER REFERENCES post(id),
+    usuario_id INTEGER REFERENCES usuario (id),
+    post_id INTEGER REFERENCES post (id),
     data_curtida TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (usuario_id, post_id)
 );

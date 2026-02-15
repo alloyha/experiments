@@ -26,6 +26,25 @@ Modelos operacionais são ótimos para inserir dados, mas péssimos para relató
 
 ---
 
+## 🎨 Visualizando: Star Schema
+O fato (Vendas) está no centro, conectado diretamente às dimensões.
+
+```mermaid
+graph TD
+    VENDAS[Fato Vendas]
+    TEMPO[Dim Tempo]
+    PRODUTO[Dim Produto]
+    CLIENTE[Dim Cliente]
+    LOJA[Dim Loja]
+
+    VENDAS --> TEMPO
+    VENDAS --> PRODUTO
+    VENDAS --> CLIENTE
+    VENDAS --> LOJA
+```
+
+---
+
 ## ❄️ Snowflake Schema (Esquema Floco de Neve)
 Uma variação do Star Schema onde as dimensões são normalizadas.
 

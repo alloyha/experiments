@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS pedido (
     pedido_id SERIAL PRIMARY KEY,
     cliente_id INTEGER NOT NULL,
     data_pedido TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (cliente_id) REFERENCES cliente(cliente_id)
+    FOREIGN KEY (cliente_id) REFERENCES cliente (cliente_id)
 );
 
 -- Exemplo: Tabela Associativa (Relacionamento N:N)
@@ -28,6 +28,6 @@ CREATE TABLE IF NOT EXISTS produto_categoria (
     produto_id INTEGER,
     categoria_id INTEGER,
     PRIMARY KEY (produto_id, categoria_id),
-    FOREIGN KEY (produto_id) REFERENCES produto(produto_id),
-    FOREIGN KEY (categoria_id) REFERENCES categoria(categoria_id)
+    FOREIGN KEY (produto_id) REFERENCES produto (produto_id),
+    FOREIGN KEY (categoria_id) REFERENCES categoria (categoria_id)
 );

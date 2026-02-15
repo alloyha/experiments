@@ -10,7 +10,8 @@
 
 -- EXERCÍCIO 2: Implementação de Histórico
 -- a) Crie a tabela 'dim_cliente_historico_array' com um campo 'historico' TYPE array de structs.
--- b) Adicione manualmente um cliente com um "histórico de 2 anos" (2 eventos diferentes: Bronze -> Prata).
+-- b) Adicione manualmente um cliente com um "histórico de 2 anos" (2 eventos diferentes:
+--    Bronze -> Prata).
 
 -- EXERCÍCIO 3: Query "Point-in-Time"
 -- a) Extraia as versões de segmento do cliente 1.

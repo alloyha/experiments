@@ -8,7 +8,7 @@
 
 -- a) Criar procedure para automatizar mudança de segmento
 CREATE OR REPLACE PROCEDURE sp_atualiza_segmento_cliente(
-    p_cliente_id INTEGER, 
+    p_cliente_id INTEGER,
     p_novo_segmento VARCHAR
 )
 LANGUAGE plpgsql
@@ -23,31 +23,40 @@ BEGIN
     WHERE cliente_id = p_cliente_id AND registro_ativo = TRUE;
 
     IF v_sk_antigo IS NOT NULL THEN
-        -- 1. Fechar registro anterior
+        -- 1. Fechar registro anterior (ToDate = Today - 1)
         UPDATE dim_cliente 
         SET data_fim = CURRENT_DATE - 1, registro_ativo = FALSE
         WHERE cliente_sk = v_sk_antigo;
 
-        -- 2. Inserir novo
-        INSERT INTO dim_cliente (cliente_id, nome, email, telefone, cidade, estado, segmento, data_inicio, versao, registro_ativo)
-        SELECT cliente_id, nome, email, telefone, cidade, estado, p_novo_segmento, CURRENT_DATE, v_versao_antiga + 1, TRUE
+        -- 2. Inserir novo (FromDate = Today)
+        INSERT INTO dim_cliente (cliente_id, nome, email, cidade, estado, segmento, data_inicio, versao, registro_ativo)
+        SELECT cliente_id, nome, email, cidade, estado, p_novo_segmento, CURRENT_DATE, v_versao_antiga + 1, TRUE
         FROM dim_cliente WHERE cliente_sk = v_sk_antigo;
     END IF;
 END;
 $$;
 
 -- b) Consultar histórico completo de mudanças de um cliente
-SELECT * FROM dim_cliente 
-WHERE cliente_id = 101 
+SELECT
+    cliente_sk,
+    cliente_id,
+    nome,
+    segmento,
+    data_inicio,
+    data_fim,
+    versao,
+    registro_ativo
+FROM dim_cliente
+WHERE cliente_id = 101
 ORDER BY versao;
 
 -- c) Análise: vendas antes vs depois da mudança de segmento
-SELECT 
+SELECT
     dc.segmento,
-    COUNT(fv.venda_id) as num_vendas,
-    SUM(fv.valor_total) as total_gasto
-FROM fato_vendas fv
-JOIN dim_cliente dc ON fv.cliente_sk = dc.cliente_sk
+    count(fv.venda_id) AS num_vendas,
+    sum(fv.valor_total) AS total_gasto
+FROM fato_vendas AS fv
+INNER JOIN dim_cliente AS dc ON fv.cliente_sk = dc.cliente_sk
 WHERE dc.cliente_id = 101
 GROUP BY dc.segmento;
 

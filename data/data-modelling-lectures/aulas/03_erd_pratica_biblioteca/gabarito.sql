@@ -7,14 +7,14 @@
 -- ==============================================
 
 -- a) Inserir 3 autores brasileiros
-INSERT INTO autor (nome, nacionalidade, data_nascimento) VALUES 
+INSERT INTO autor (nome, nacionalidade, data_nascimento) VALUES
 ('Machado de Assis', 'Brasileira', '1839-06-21'),
 ('Clarice Lispector', 'Brasileira', '1920-12-10'),
 ('Jorge Amado', 'Brasileira', '1912-08-10')
 ON CONFLICT DO NOTHING;
 
 -- b) Inserir 5 livros de diferentes gêneros
-INSERT INTO livro (titulo, isbn, ano_publicacao, quantidade_disponivel) VALUES 
+INSERT INTO livro (titulo, isbn, ano_publicacao, quantidade_disponivel) VALUES
 ('Dom Casmurro', '9788525044648', 1899, 3),
 ('A Hora da Estrela', '9788532508126', 1977, 5),
 ('Capitães da Areia', '9788535914064', 1937, 4),
@@ -24,14 +24,14 @@ ON CONFLICT (isbn) DO NOTHING;
 
 -- c) Criar associação livro-autor (alguns livros com múltiplos autores)
 -- Assumindo IDs sequenciais a partir do insert anterior
-INSERT INTO livro_autor (livro_id, autor_id) VALUES 
+INSERT INTO livro_autor (livro_id, autor_id) VALUES
 (1, 1), -- Dom Casmurro - Machado
 (2, 2), -- Hora da Estrela - Clarice
 (3, 3) -- Capitães - Jorge Amado
 ON CONFLICT DO NOTHING;
 
 -- d) Inserir 10 usuários (mix de alunos e professores)
-INSERT INTO usuario (nome, tipo, email) VALUES 
+INSERT INTO usuario (nome, tipo, email) VALUES
 ('Ana Souza', 'aluno', 'ana@uni.edu'),
 ('Bruno Lima', 'aluno', 'bruno@uni.edu'),
 ('Carlos Rocha', 'professor', 'carlos@uni.edu'),
@@ -45,7 +45,9 @@ INSERT INTO usuario (nome, tipo, email) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- e) Criar 15 empréstimos com datas variadas
-INSERT INTO emprestimo (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real) VALUES 
+INSERT INTO emprestimo (
+    usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real
+) VALUES
 (1, 1, '2024-05-01', '2024-05-15', '2024-05-10'),
 (2, 2, '2024-05-02', '2024-05-16', '2024-05-16'),
 (3, 3, '2024-05-03', '2024-05-20', '2024-05-18'), -- Professor tem mais prazo
@@ -61,11 +63,12 @@ INSERT INTO emprestimo (usuario_id, livro_id, data_emprestimo, data_devolucao_pr
 (3, 5, '2024-07-05', '2024-07-20', NULL),
 (4, 1, '2024-07-06', '2024-07-20', '2024-07-15'),
 (5, 2, '2024-07-07', '2024-07-21', NULL)
-ON CONFLICT (emprestimo_id) DO NOTHING; -- Assuming standard serial behavior, might conflict if IDs manually inserted or implicit
+-- Assuming standard serial behavior, might conflict if IDs manually inserted or implicit
+ON CONFLICT (emprestimo_id) DO NOTHING;
 
 -- f) Criar multas para empréstimos atrasados
 -- Assumindo IDs 4 e 7 como atrasados
-INSERT INTO multa (emprestimo_id, valor_multa, pago) VALUES 
+INSERT INTO multa (emprestimo_id, valor_multa, pago) VALUES
 (4, 5.50, FALSE),
 (7, 12.00, TRUE)
 ON CONFLICT (emprestimo_id) DO NOTHING;
@@ -75,29 +78,37 @@ ON CONFLICT (emprestimo_id) DO NOTHING;
 -- ==============================================
 
 -- a) Listar todos os livros com seus autores
-SELECT l.titulo, a.nome as autor 
-FROM livro l
-JOIN livro_autor la ON l.livro_id = la.livro_id
-JOIN autor a ON la.autor_id = a.autor_id;
+SELECT
+    l.titulo,
+    a.nome AS autor
+FROM livro AS l
+INNER JOIN livro_autor AS la ON l.livro_id = la.livro_id
+INNER JOIN autor AS a ON la.autor_id = a.autor_id;
 
 -- b) Encontrar livros mais emprestados
-SELECT l.titulo, COUNT(e.emprestimo_id) as qtd_emprestimos
-FROM livro l
-JOIN emprestimo e ON l.livro_id = e.livro_id
+SELECT
+    l.titulo,
+    COUNT(e.emprestimo_id) AS qtd_emprestimos
+FROM livro AS l
+INNER JOIN emprestimo AS e ON l.livro_id = e.livro_id
 GROUP BY l.titulo
 ORDER BY qtd_emprestimos DESC;
 
 -- c) Listar usuários com empréstimos em atraso
-SELECT u.nome, l.titulo, e.data_devolucao_prevista
-FROM emprestimo e
-JOIN usuario u ON e.usuario_id = u.usuario_id
-JOIN livro l ON e.livro_id = l.livro_id
-WHERE e.data_devolucao_real IS NULL 
-  AND e.data_devolucao_prevista < CURRENT_DATE;
+SELECT
+    u.nome,
+    l.titulo,
+    e.data_devolucao_prevista
+FROM emprestimo AS e
+INNER JOIN usuario AS u ON e.usuario_id = u.usuario_id
+INNER JOIN livro AS l ON e.livro_id = l.livro_id
+WHERE
+    e.data_devolucao_real IS NULL
+    AND e.data_devolucao_prevista < CURRENT_DATE;
 
 -- d) Calcular total de multas não pagas
-SELECT SUM(valor_multa) as total_pendente 
-FROM multa 
+SELECT SUM(valor_multa) AS total_pendente
+FROM multa
 WHERE pago = FALSE;
 
 -- ==============================================

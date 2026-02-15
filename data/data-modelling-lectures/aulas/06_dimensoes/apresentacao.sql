@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS dim_produto (
     categoria VARCHAR(50),
     subcategoria VARCHAR(50),
     marca VARCHAR(50),
-    preco_sugerido DECIMAL(10,2),
+    preco_sugerido DECIMAL(10, 2),
     data_cadastro DATE,
     ativo BOOLEAN DEFAULT TRUE
 );
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS dim_tempo (
 -- Script para popular (gerar dias)
 /*
 INSERT INTO dim_tempo (data_completa, ano, mes, dia_mes, dia_semana_nome)
-SELECT 
+SELECT
     d::date,
     EXTRACT(YEAR FROM d),
     EXTRACT(MONTH FROM d),
@@ -74,11 +74,11 @@ FROM generate_series('2024-01-01'::date, '2025-12-31'::date, '1 day') d;
 -- 4. Role-Playing Dimension (Exemplo de uso)
 CREATE TABLE IF NOT EXISTS fato_pedido (
     pedido_id SERIAL PRIMARY KEY,
-    data_pedido_id INTEGER REFERENCES dim_tempo(tempo_id), -- Role 1
-    data_envio_id INTEGER REFERENCES dim_tempo(tempo_id),  -- Role 2
-    data_entrega_id INTEGER REFERENCES dim_tempo(tempo_id),-- Role 3
+    data_pedido_id INTEGER REFERENCES dim_tempo (tempo_id), -- Role 1
+    data_envio_id INTEGER REFERENCES dim_tempo (tempo_id),  -- Role 2
+    data_entrega_id INTEGER REFERENCES dim_tempo (tempo_id),-- Role 3
     cliente_id INTEGER,
-    valor DECIMAL(10,2)
+    valor DECIMAL(10, 2)
 );
 
 -- 5. Junk Dimension (Indicadores de baixa cardinalidade)

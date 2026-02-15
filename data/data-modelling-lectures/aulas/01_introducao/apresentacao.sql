@@ -23,7 +23,11 @@ CONCEITOS CHAVE:
 3. TIPOS DE MODELAGEM
    - Conceitual: Visão de alto nível (Entidades e Relações) - "O Que"
    - Lógica: Atributos, Chaves, Tipos de dados (independente de banco) - "Como"
-   - Física: SQL, DDL, Índices (PostgreSQL, Oracle, etc) - "Implementação"
+   - Física: Implementação real (DDL, Índices, Constraints) - "Onde"
+
+4. O VOCABULÁRIO DO MODELADOR:
+   - DDL (Definition): CREATE, ALTER (Define a estrutura/planta)
+   - DML (Manipulation): INSERT, UPDATE, DELETE (Gera o fluxo de dados)
 */
 
 -- ==============================================================================

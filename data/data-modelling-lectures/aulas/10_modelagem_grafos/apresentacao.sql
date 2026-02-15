@@ -13,7 +13,8 @@ SET search_path TO curso_modelagem;
 -- 1. CONCEITOS FUNDAMENTAIS
 -- ==============================================================================
 -- VÉRTICE (VERTEX): A entidade (Ex: Pessoa, Local, Filme).
--- ARESTA (EDGE): O relacionamento e suas propriedades (Ex: "Amigo de", "Assistiu", "Localizado em").
+-- ARESTA (EDGE): O relacionamento e suas propriedades (Ex: "Amigo de", "Assistiu",
+--               "Localizado em").
 -- PROPRIEDADES: Atributos tanto nos vértices quanto nas arestas.
 
 -- Exemplo Prático: Rede de Co-autoria (Quem escreveu com quem?)
@@ -36,18 +37,18 @@ CREATE TABLE grafo_vertices_demo (
 -- Tabela de Arestas (Relacionamentos)
 CREATE TABLE grafo_arestas_demo (
     aresta_id SERIAL PRIMARY KEY,
-    origem_id INTEGER REFERENCES grafo_vertices_demo(vertice_id),
-    destino_id INTEGER REFERENCES grafo_vertices_demo(vertice_id),
+    origem_id INTEGER REFERENCES grafo_vertices_demo (vertice_id),
+    destino_id INTEGER REFERENCES grafo_vertices_demo (vertice_id),
     tipo_relacao VARCHAR(50), -- 'ESCREVEU', 'PUBLICADO_POR', 'AMIGO_DE'
-    peso DECIMAL(5,2), -- Ex: Força da conexão
+    peso DECIMAL(5, 2), -- Ex: Força da conexão
     propriedades JSONB,
     data_criacao DATE DEFAULT CURRENT_DATE
 );
 
 -- Índices para navegação rápida (Traversal)
-CREATE INDEX idx_grafo_origem ON grafo_arestas_demo(origem_id);
-CREATE INDEX idx_grafo_destino ON grafo_arestas_demo(destino_id);
-CREATE INDEX idx_grafo_tipo ON grafo_arestas_demo(tipo_relacao);
+CREATE INDEX idx_grafo_origem ON grafo_arestas_demo (origem_id);
+CREATE INDEX idx_grafo_destino ON grafo_arestas_demo (destino_id);
+CREATE INDEX idx_grafo_tipo ON grafo_arestas_demo (tipo_relacao);
 
 -- ==============================================================================
 -- 3. POPULANDO O GRAFO (Exemplo)
@@ -75,48 +76,51 @@ INSERT INTO grafo_arestas_demo (origem_id, destino_id, tipo_relacao, peso) VALUE
 
 -- P1: "Quem são os co-autores de um livro?" (1 Grau de Separação)
 -- Autor A -> Livro <- Autor B
-SELECT 
-    v_autor_a.propriedades->>'nome' as autor_a,
-    v_livro.propriedades->>'titulo' as livro,
-    v_autor_b.propriedades->>'nome' as autor_b
-FROM grafo_arestas_demo a1
-JOIN grafo_vertices_demo v_autor_a ON a1.origem_id = v_autor_a.vertice_id
-JOIN grafo_vertices_demo v_livro   ON a1.destino_id = v_livro.vertice_id
-JOIN grafo_arestas_demo a2         ON a2.destino_id = v_livro.vertice_id
-JOIN grafo_vertices_demo v_autor_b ON a2.origem_id = v_autor_b.vertice_id
-WHERE a1.tipo_relacao = 'ESCREVEU' 
-  AND a2.tipo_relacao = 'ESCREVEU'
-  AND a1.origem_id != a2.origem_id;
+SELECT
+    v_autor_a.propriedades ->> 'nome' AS autor_a,
+    v_livro.propriedades ->> 'titulo' AS livro,
+    v_autor_b.propriedades ->> 'nome' AS autor_b
+FROM grafo_arestas_demo AS a1
+INNER JOIN grafo_vertices_demo AS v_autor_a ON a1.origem_id = v_autor_a.vertice_id
+INNER JOIN grafo_vertices_demo AS v_livro ON a1.destino_id = v_livro.vertice_id
+INNER JOIN grafo_arestas_demo AS a2 ON v_livro.vertice_id = a2.destino_id
+INNER JOIN grafo_vertices_demo AS v_autor_b ON a2.origem_id = v_autor_b.vertice_id
+WHERE
+    a1.tipo_relacao = 'ESCREVEU'
+    AND a2.tipo_relacao = 'ESCREVEU'
+    AND a1.origem_id != a2.origem_id;
 
 -- P2: Busca Recursiva (Recursive CTE) - "Amigos de Amigos" ou "Influência"
 -- Quem foi influenciado direta ou indiretamente por Machado?
 WITH RECURSIVE influencia_net AS (
     -- Caso Base: Influência direta
-    SELECT 
-        destino_id, 
-        1 as nivel,
-        ARRAY[origem_id, destino_id] as caminho
+    SELECT
+        destino_id,
+        1 AS nivel,
+        ARRAY[origem_id, destino_id] AS caminho
     FROM grafo_arestas_demo
     WHERE origem_id = 1 AND tipo_relacao = 'INFLUENCIOU'
-    
+
     UNION ALL
-    
+
     -- Parte Recursiva: Quem esses influenciaram?
-    SELECT 
+    SELECT
         a.destino_id,
-        i.nivel + 1,
-        i.caminho || a.destino_id
-    FROM grafo_arestas_demo a
-    JOIN influencia_net i ON a.origem_id = i.destino_id
-    WHERE a.tipo_relacao = 'INFLUENCIOU' 
-      AND NOT (a.destino_id = ANY(i.caminho)) -- Evita ciclos
+        i.nivel + 1 AS nivel,
+        i.caminho || a.destino_id AS caminho
+    FROM grafo_arestas_demo AS a
+    INNER JOIN influencia_net AS i ON a.origem_id = i.destino_id
+    WHERE
+        a.tipo_relacao = 'INFLUENCIOU'
+        AND NOT (a.destino_id = ANY(i.caminho)) -- Evita ciclos
 )
-SELECT 
-    v.propriedades->>'nome' as influenciado,
-    nivel,
-    caminho
-FROM influencia_net i
-JOIN grafo_vertices_demo v ON i.destino_id = v.vertice_id;
+
+SELECT
+    i.nivel,
+    i.caminho,
+    v.propriedades ->> 'nome' AS influenciado
+FROM influencia_net AS i
+INNER JOIN grafo_vertices_demo AS v ON i.destino_id = v.vertice_id;
 
 -- ==============================================================================
 -- 5. QUANDO USAR?

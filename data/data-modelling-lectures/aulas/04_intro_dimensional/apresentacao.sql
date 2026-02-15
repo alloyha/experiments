@@ -12,14 +12,14 @@ Estrutura assumida:
 - dim_produto (dimensão)
 */
 
-SELECT 
+SELECT
     dt.ano,
     dt.mes,
     dp.categoria,
-    SUM(fv.valor_total) as total_vendas,
-    SUM(fv.quantidade) as qtd_vendida
-FROM fato_vendas fv
-JOIN dim_tempo dt ON fv.tempo_id = dt.tempo_id
-JOIN dim_produto dp ON fv.produto_id = dp.produto_id
+    SUM(fv.valor_total) AS total_vendas,
+    SUM(fv.quantidade) AS qtd_vendida
+FROM fato_vendas AS fv
+INNER JOIN dim_tempo AS dt ON fv.tempo_id = dt.tempo_id
+INNER JOIN dim_produto AS dp ON fv.produto_sk = dp.produto_sk
 WHERE dt.ano = 2024
 GROUP BY dt.ano, dt.mes, dp.categoria;

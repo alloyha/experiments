@@ -13,29 +13,33 @@ CREATE TABLE IF NOT EXISTS fato_vendas (
     venda_id SERIAL PRIMARY KEY,
     tempo_id INTEGER NOT NULL,
     cliente_id INTEGER NOT NULL,
-    valor_total DECIMAL(10,2)
+    valor_total DECIMAL(10, 2)
 );
 
 -- Problema em Escala: "Quantos dias o usuário X comprou no último ano?"
 -- Exige SCAN na tabela inteira de fatos (potencialmente bilhões de linhas)
 /*
-SELECT count(distinct data_venda) 
-FROM fato_vendas 
+SELECT count(distinct data_venda)
+FROM fato_vendas
 WHERE cliente_id = 123 AND data_venda > '2023-01-01';
 */
 
 -- ------------------------------------------------------------------------------
--- ABORDAGEM BIG DATA - CUMULATIVE TABLE
+-- ESTRATÉGIAS DE CARGA (MOVIMENTAÇÃO DE DADOS)
 -- ------------------------------------------------------------------------------
--- Padrão "Yesterday + Today = Tomorrow"
--- Usado para evitar scans históricos. O estado é carregado dia a dia.
+-- Em Big Data, como o dado "entra" na tabela define a performance e idempotência.
+--
+-- 1. APPEND (Incremental): Apenas adiciona novos eventos. Padrão de Tabelas Fato.
+-- 2. OVERWRITE (Full Refresh): DELETE + INSERT. Limpa e recarrega. Simples, mas caro.
+-- 3. UPSERT (Update or Insert): INSERT ON CONFLICT. O coração das Cumulative Tables.
+-- ------------------------------------------------------------------------------
 
 -- 1. Tabela Acumulada (State Table)
 CREATE TABLE IF NOT EXISTS usuarios_atividade_acumulada (
     usuario_id INTEGER,
     data_snapshot DATE,
     -- Array com TODAS as datas de atividade (State)
-    datas_atividade DATE[],
+    datas_atividade DATE [],
     PRIMARY KEY (usuario_id, data_snapshot)
 );
 
@@ -48,20 +52,20 @@ today AS (
     SELECT usuario_id, data_evento FROM staging_events WHERE data_evento = '2024-06-02'
 )
 INSERT INTO usuarios_atividade_acumulada
-SELECT 
+SELECT
     COALESCE(y.usuario_id, t.usuario_id),
     '2024-06-02',
     -- Merge do Array Antigo com o Novo Dado
-    COALESCE(y.datas_atividade, ARRAY[]) || 
+    COALESCE(y.datas_atividade, ARRAY[]) ||
     CASE WHEN t.usuario_id IS NOT NULL THEN ARRAY[t.data_evento] ELSE ARRAY[] END
-FROM yesterday y 
+FROM yesterday y
 FULL OUTER JOIN today t ON y.usuario_id = t.usuario_id;
 */
 
 -- 3. Query Big Data (Zero Scan em Histórico)
 -- "Quantos dias o usuário X comprou?" -> Lê apenas a LATEST partition
 /*
-SELECT CARDINALITY(datas_atividade) 
+SELECT CARDINALITY(datas_atividade)
 FROM usuarios_atividade_acumulada
 WHERE data_snapshot = '2024-06-02' AND usuario_id = 123;
 */

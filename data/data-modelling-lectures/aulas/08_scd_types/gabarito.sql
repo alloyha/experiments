@@ -24,7 +24,8 @@
 -- b) Performance Massiva (Big Data)
 --    **Vencedor:** Append-Only.
 --    **Motivo:** UPDATES são muito custosos em Data Lakes (Parquet/Delta).
---              É melhor apenas INSERIR novas versões e resolver a validade na leitura (LEAD/LAG window function).
+--              É melhor apenas INSERIR novas versões e resolver a validade na leitura
+--              (LEAD/LAG window function).
 
 -- ==============================================
 -- RESPOSTA 3: Implementação
@@ -44,12 +45,12 @@ CREATE TABLE dim_cliente_scd2 (
 
 -- b) Simulação Type 2 Clássica
 -- Passo 1: Fechar registro antigo
-UPDATE dim_cliente_scd2 
-SET data_validade_fim = CURRENT_DATE, ativo = FALSE 
+UPDATE dim_cliente_scd2
+SET data_validade_fim = CURRENT_DATE, ativo = FALSE
 WHERE cliente_id = 101 AND ativo = TRUE;
 
 -- Passo 2: Inserir novo
-INSERT INTO dim_cliente_scd2 (cliente_id, nome, cidade, data_validade_inicio) 
+INSERT INTO dim_cliente_scd2 (cliente_id, nome, cidade, data_validade_inicio)
 VALUES (101, 'João Silva', 'Nova Cidade', CURRENT_DATE)
 ON CONFLICT DO NOTHING;
 

@@ -36,17 +36,9 @@ CREATE TABLE IF NOT EXISTS usuario (
 -- Garantir compatibilidade com Aula 01 (adicionar colunas se faltar)
 DO $$
 BEGIN
-    -- Se existir 'id' mas não 'usuario_id', renomear ou criar alias?
-    -- Melhor assumir que se 'usuario' existe de aula 01, ele tem 'id'.
-    -- Aula 03 usa 'usuario_id'.
-    -- Vamos alterar para adicionar 'tipo' se não existir.
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='usuario' AND column_name='tipo') THEN
         ALTER TABLE usuario ADD COLUMN tipo VARCHAR(20) CHECK (tipo IN ('aluno', 'professor'));
     END IF;
-    
-    -- Opcional: Se 'usuario_id' não existe (porque aula 01 usou 'id'), podemos gerenciar isso?
-    -- Aula 03 fk references usuario(id) (I changed this in Step 523).
-    -- So we just need 'tipo'.
 END $$;
 
 -- 2. Tabela Associativa (Livro N:N Autor)
@@ -54,8 +46,8 @@ CREATE TABLE IF NOT EXISTS livro_autor (
     livro_id INTEGER,
     autor_id INTEGER,
     PRIMARY KEY (livro_id, autor_id),
-    FOREIGN KEY (livro_id) REFERENCES livro(livro_id),
-    FOREIGN KEY (autor_id) REFERENCES autor(autor_id)
+    FOREIGN KEY (livro_id) REFERENCES livro (livro_id),
+    FOREIGN KEY (autor_id) REFERENCES autor (autor_id)
 );
 
 -- 3. Tabela Transacional (Empréstimo 1:N)
@@ -66,15 +58,15 @@ CREATE TABLE IF NOT EXISTS emprestimo (
     data_emprestimo DATE DEFAULT CURRENT_DATE,
     data_devolucao_prevista DATE NOT NULL,
     data_devolucao_real DATE,
-    FOREIGN KEY (usuario_id) REFERENCES usuario(id),
-    FOREIGN KEY (livro_id) REFERENCES livro(livro_id)
+    FOREIGN KEY (usuario_id) REFERENCES usuario (usuario_id),
+    FOREIGN KEY (livro_id) REFERENCES livro (livro_id)
 );
 
 -- 4. Tabela Dependente (Multa 1:1 Opcional)
 CREATE TABLE IF NOT EXISTS multa (
     multa_id SERIAL PRIMARY KEY,
     emprestimo_id INTEGER UNIQUE NOT NULL,
-    valor_multa DECIMAL(10,2),
+    valor_multa DECIMAL(10, 2),
     pago BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (emprestimo_id) REFERENCES emprestimo(emprestimo_id)
+    FOREIGN KEY (emprestimo_id) REFERENCES emprestimo (emprestimo_id)
 );
