@@ -3,6 +3,7 @@
 ## 🎯 Objetivos
 - Entender os componentes fundamentais de um ERD.
 - Compreender relacionamentos e cardinalidade.
+- Aplicar as **Formas Normais (1NF, 2NF, 3NF)** para evitar redundância.
 - Saber ler e interpretar diagramas de banco de dados.
 
 ---
@@ -37,6 +38,29 @@ CREATE TABLE cliente (
 3. **Natural vs Surrogate:**
     - *Natural:* Um dado real (ex: CPF).
     - *Surrogate:* Um ID gerado pelo sistema (ex: SERIAL ID).
+
+---
+
+## 🧩 Formas Normais (Normalização na Prática)
+
+Para garantir que o nosso ERD seja eficiente, seguimos as **Formas Normais**. Elas são um "checklist" para evitar redundância.
+
+1.  **1ª Forma Normal (1NF) - Atomicidade:**
+    - Cada coluna deve conter apenas um valor (valores atômicos).
+    - Não pode haver grupos repetidos (ex: "Telefone1", "Telefone2").
+    - *Ação:* Se um usuário tem 3 telefones, crie uma tabela de Telefone ligada ao Usuário.
+
+2.  **2ª Forma Normal (2NF) - Dependência Total:**
+    - Deve estar na 1NF.
+    - Todos os atributos que não são chave devem depender da **chave primária completa** (importante em chaves compostas).
+    - *Ação:* Se você tem uma tabela `Venda_Itens` e o "Nome do Fornecedor" está lá, ele depende do Fornecedor, não da Venda. Mova para a tabela de Fornecedor.
+
+3.  **3ª Forma Normal (3NF) - Dependência Transitiva:**
+    - Deve estar na 2NF.
+    - Atributos não-chave não devem depender de outros atributos não-chave.
+    - *Ação:* Se na tabela `Cliente` você tem "Cidade" e "CEP", e o CEP determina a Cidade, a Cidade não deve estar lá diretamente.
+
+> **Resumo Didático:** O dado deve depender da Chave (1NF), de toda a Chave (2NF) e de nada além da Chave (3NF).
 
 ---
 

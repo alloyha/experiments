@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Executa o script de setup automaticamente na primeira vez
-      - ./setup_database.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/setup_database.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   postgres_data:

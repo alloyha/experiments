@@ -1,8 +1,19 @@
 # Aula 1: Introdução a Data Modelling
 
+## 🗺️ Mapa da Jornada
+Este curso foi estruturado para levar você do design relacional básico às arquiteturas de Big Data de alta escala.
+
+1.  **Fundamentos (Aulas 1-3):** Conceitos OLTP vs OLAP, Normalização e Tabelas Reais.
+2.  **Modelagem Dimensional (Aulas 4-7):** Star Schema, Fatos, Dimensões e otimizações com Arrays/Structs.
+3.  **Estado e Histórico (Aulas 8-9):** Mudanças dimensionais (SCD) e Tabelas Cumulativas.
+4.  **Grafos (Aula 10):** Relações complexas e caminhos não lineares.
+
+---
+
 ## 🎯 Objetivos
 - Compreender o que é modelagem de dados e sua importância.
 - Diferenciar modelagem operacional (OLTP) vs analítica (OLAP).
+- Entender o papel da **Normalização** na integridade dos dados.
 - Conhecer os tipos de modelagem: Conceitual, Lógica e Física.
 
 ---
@@ -31,6 +42,19 @@ Modelagem de dados é o processo de criar uma representação visual ou um esque
 
 ---
 
+## 🧩 O Pilar da Integridade: Normalização
+
+A **Normalização** é a técnica central da modelagem relacional (OLTP). Seu objetivo principal é organizar os dados para reduzir a redundância e dependência contraditória.
+
+### Por que normalizar?
+1.  **Economia de Espaço:** Evita salvar a mesma informação (ex: nome de um estado) em milhares de linhas.
+2.  **Integridade (Anomalias de Escrita):** Se o CPF de um cliente mudar, você altera em **um só lugar** (Tabela Cliente), e não em cada linha de pedido.
+3.  **Flexibilidade:** Facilita a expansão do banco de dados sem quebrar o que já existe.
+
+> **Regra de Ouro:** No OLTP, cada pedaço de dado deve ter "uma única fonte da verdade".
+
+---
+
 ## 📊 Modelagem Analítica (OLAP)
 **OLAP** stands for *Online Analytical Processing*.
 
@@ -44,7 +68,7 @@ Modelagem de dados é o processo de criar uma representação visual ou um esque
 ---
 
 ## 📐 Tipos de Modelagem
-1. **Conceitual:** Nível mais alto. Foca no negócio. (Entidades e Relacionamentos).
+1. **Conceitual:** Nível mais alto (Linguagem ubíqua). Foca no negócio. (Entidades e Relacionamentos).
 2. **Lógica:** Nível intermediário. Define tabelas e colunas, mas é independente de tecnologia.
 3. **Física:** Implementação real no banco de dados (ex: PostgreSQL), definindo tipos de dados, índices e constraints.
 

@@ -23,9 +23,9 @@ Este material é destinado a:
 ## 📚 Estrutura do Curso
 
 O curso é dividido em 10 aulas práticas, cada uma contendo:
-*   `apresentacao.sql`: Conceitos e exemplos explicados.
-*   `exercicios.sql`: Desafios para fixação.
-*   `gabarito.sql`: Solução comentada.
+*   `apresentacao.sql`: Conceitos e exemplos explicados (SQL).
+*   `exercicios.md`: Desafios para fixação (Markdown).
+*   `gabarito.md`: Solução comentada com código SQL embutido (Markdown).
 
 ### Módulos
 
@@ -56,15 +56,23 @@ Este projeto utiliza **Docker** para subir um ambiente PostgreSQL pronto para us
     ```
     Isso iniciará um container PostgreSQL e executará automaticamente o script `setup_database.sql`, criando as tabelas base e inserindo dados de exemplo.
 
-2.  **Conectar ao Banco:**
+2.  **Validar Scripts:**
+    O projeto inclui um validador automatizado para garantir que todos os scripts e gabaritos estejam corretos.
+    ```bash
+    ./validate_all.sh
+    ```
+    Isso executará todos os arquivos `.sql` e extrairá/executará os blocos de código SQL dos arquivos `.md`.
+    *   **Logs Detalhados:** Verifique `validation_log.txt` para ver saídas completas e erros.
+
+3.  **Conectar ao Banco (Manual):**
     *   **Host:** `localhost`
     *   **Port:** `5432`
     *   **Database:** `curso_modelagem`
     *   **User:** `aluno`
     *   **Password:** `modelagem_password`
 
-3.  **Explorar as Aulas:**
-    Navegue pelas pastas `aula_XX` e execute os scripts SQL no seu cliente favorito.
+4.  **Explorar as Aulas:**
+    Navegue pelas pastas `aula_XX`. Leia os `apresentacao.sql` e tente resolver os `exercicios.md` antes de consultar o `gabarito.md`.
 
 ## 🌟 Destaques "Big Data"
 

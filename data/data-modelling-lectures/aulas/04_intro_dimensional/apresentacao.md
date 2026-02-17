@@ -31,16 +31,10 @@ O fato (Vendas) está no centro, conectado diretamente às dimensões.
 
 ```mermaid
 graph TD
-    VENDAS[Fato Vendas]
-    TEMPO[Dim Tempo]
-    PRODUTO[Dim Produto]
-    CLIENTE[Dim Cliente]
-    LOJA[Dim Loja]
-
-    VENDAS --> TEMPO
-    VENDAS --> PRODUTO
-    VENDAS --> CLIENTE
-    VENDAS --> LOJA
+F[Fato_Vendas] --> P[Dim_Produto]
+F --> C[Dim_Cliente]
+F --> L[Dim_Loja]
+F --> D[Dim_Data]
 ```
 
 ---
@@ -50,7 +44,19 @@ Uma variação do Star Schema onde as dimensões são normalizadas.
 
 - **Diferença:** As dimensões têm suas próprias sub-dimensões.
 - **Quando usar:** Dimensões extremamente grandes onde a economia de espaço compensa a perda de performance.
-- **Trade-off:** Mais JOINs e maior complexidade de query.
+- **Trade-off:** Mais JOINs e maior complexity de query.
+
+### 🎨 Visualizando: Snowflake Schema
+Note como as dimensões "se ramificam" em outras tabelas normalizadas.
+
+```mermaid
+graph TD
+F[Fato_Vendas] --> P[Dim_Produto]
+P --> Cat[Dim_Categoria]
+F --> L[Dim_Loja]
+L --> Cid[Dim_Cidade]
+Cid --> Est[Dim_Estado]
+```
 
 ---
 

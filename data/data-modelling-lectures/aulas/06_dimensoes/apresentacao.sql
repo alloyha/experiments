@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS dim_produto (
 
 -- 2. Hierarquias
 -- Abordagem Desnormalizada (Star Schema - Recomendado)
-CREATE TABLE IF NOT EXISTS dim_localização (
+CREATE TABLE IF NOT EXISTS dim_localizacao (
     localizacao_id SERIAL PRIMARY KEY,
     cidade VARCHAR(100),
     estado VARCHAR(50),
@@ -42,41 +42,26 @@ CREATE TABLE IF NOT EXISTS dim_estado (
 );
 
 -- 3. Dimensão Tempo (Date Dimension)
+-- NOTA DIDÁTICA: Embora clássica no modelo Kimball, em Big Data moderno
+-- prefere-se usar colunas de DATE e funções nativas (EXTRACT, TO_CHAR)
+-- para evitar JOINS massivos e facilitar o particionamento.
+
+/*
+-- Exemplo de Tabela de Tempo legada:
 CREATE TABLE IF NOT EXISTS dim_tempo (
     tempo_id SERIAL PRIMARY KEY,
     data_completa DATE UNIQUE NOT NULL,
     ano INTEGER,
-    trimestre INTEGER,
-    mes INTEGER,
-    mes_nome VARCHAR(20),
-    semana_ano INTEGER,
-    dia_mes INTEGER,
-    dia_semana INTEGER,
-    dia_semana_nome VARCHAR(20),
-    dia_ano INTEGER,
-    fim_de_semana BOOLEAN,
-    feriado BOOLEAN,
-    nome_feriado VARCHAR(50)
+    mes_nome VARCHAR(20)
 );
-
--- Script para popular (gerar dias)
-/*
-INSERT INTO dim_tempo (data_completa, ano, mes, dia_mes, dia_semana_nome)
-SELECT
-    d::date,
-    EXTRACT(YEAR FROM d),
-    EXTRACT(MONTH FROM d),
-    EXTRACT(DAY FROM d),
-    TO_CHAR(d, 'Day')
-FROM generate_series('2024-01-01'::date, '2025-12-31'::date, '1 day') d;
 */
 
--- 4. Role-Playing Dimension (Exemplo de uso)
+-- 4. Quando usar data nativa (Abordagem Recomendada)
 CREATE TABLE IF NOT EXISTS fato_pedido (
     pedido_id SERIAL PRIMARY KEY,
-    data_pedido_id INTEGER REFERENCES dim_tempo (tempo_id), -- Role 1
-    data_envio_id INTEGER REFERENCES dim_tempo (tempo_id),  -- Role 2
-    data_entrega_id INTEGER REFERENCES dim_tempo (tempo_id),-- Role 3
+    data_pedido DATE NOT NULL,     -- Role 1 (Fácil de particionar)
+    data_envio DATE,               -- Role 2
+    data_entrega DATE,             -- Role 3
     cliente_id INTEGER,
     valor DECIMAL(10, 2)
 );

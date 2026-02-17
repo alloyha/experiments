@@ -38,37 +38,11 @@ Visualizando as entidades e seus relacionamentos:
 
 ```mermaid
 erDiagram
-    AUTOR ||--|{ LIVRO_AUTOR : escreve
-    LIVRO ||--|{ LIVRO_AUTOR : tem
-    LIVRO ||--|{ EMPRESTIMO : emprestado
-    USUARIO ||--|{ EMPRESTIMO : realiza
-    EMPRESTIMO ||--|| MULTA : gera
-
-    AUTOR {
-        int autor_id PK
-        string nome
-        string nacionalidade
-    }
-    LIVRO {
-        int livro_id PK
-        string titulo
-        string isbn
-    }
-    USUARIO {
-        int usuario_id PK
-        string nome
-        string tipo
-    }
-    EMPRESTIMO {
-        int emprestimo_id PK
-        date data_emprestimo
-        date data_prevista
-    }
-    MULTA {
-        int multa_id PK
-        decimal valor
-        boolean pago
-    }
+AUTOR ||--o{ LIVRO_AUTOR : escreve
+LIVRO ||--o{ LIVRO_AUTOR : tem
+LIVRO ||--o{ EMPRESTIMO : emprestado
+USUARIO ||--o{ EMPRESTIMO : realiza
+EMPRESTIMO ||--|o MULTA : gera
 ```
 
 ---

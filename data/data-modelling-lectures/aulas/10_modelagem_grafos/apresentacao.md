@@ -44,11 +44,10 @@ Encontrando conexões indiretas (Amigo do Amigo) em O(1).
 
 ```mermaid
 graph LR
-    A((Alice)) -- Conhece --> B((Bob))
-    B -- Conhece --> C((Carol))
-    C -- Conhece --> D((Dave))
-    
-    A -. Indireto .-> D
+A[Alice] --> B[Bob]
+B --> C[Carol]
+C --> D[Dave]
+A -.-> D
 ```
 
 ---

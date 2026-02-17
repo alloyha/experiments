@@ -48,15 +48,12 @@ Como o usuário "João" muda de segmento ao longo do tempo.
 
 ```mermaid
 gantt
-    title Historico do Cliente: Joao (SCD Type 2)
-    dateFormat YYYY-MM-DD
-    axisFormat %Y-%m
-    
-    section Versao 1 (Bronze)
-    Ativo 2023-01 a 2023-06 :done, v1, 2023-01-01, 2023-06-01
-    
-    section Versao 2 (Prata)
-    Ativo 2023-06 a Hoje    :active, v2, 2023-06-01, 2024-01-01
+title Historico_SCD_Type_2
+dateFormat YYYY-MM-DD
+section Versao_1
+Ativo :done, v1, 2023-01-01, 2023-06-01
+section Versao_2
+Ativo :active, v2, 2023-06-01, 2024-01-01
 ```
 
 ---

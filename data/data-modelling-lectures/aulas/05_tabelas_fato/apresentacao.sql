@@ -11,7 +11,7 @@
 -- 1. Fato Transacional (Transaction Fact)
 CREATE TABLE IF NOT EXISTS fato_vendas (
     venda_id SERIAL PRIMARY KEY,
-    tempo_id INTEGER NOT NULL,
+    data_venda DATE NOT NULL,
     cliente_id INTEGER NOT NULL,
     valor_total DECIMAL(10, 2)
 );
