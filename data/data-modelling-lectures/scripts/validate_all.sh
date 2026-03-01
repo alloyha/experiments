@@ -40,8 +40,14 @@ process_aula() {
             cmd="cat \"$script\""
         fi
 
-        # Execução com isolamento de schema
-        if { echo "SET search_path TO $target_schema, public;"; eval "$cmd"; } | docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q >> "$LOG_FILE" 2>&1; then
+        # Execução com isolamento de schema e variáveis (data_ontem e data_hoje)
+        if { echo "SET search_path TO $target_schema, public;"; eval "$cmd"; } | \
+            docker exec -i "$CONTAINER_NAME" \
+            psql -U "$DB_USER" -d "$DB_NAME" \
+            -v ON_ERROR_STOP=1 \
+            -v data_ontem="'2024-05-05'" \
+            -v data_hoje="'2024-05-06'" \
+            -q >> "$LOG_FILE" 2>&1; then
             echo "    ✅ $(basename "$script")"
         else
             echo "    ❌ $(basename "$script") (Falhou)"
@@ -70,12 +76,13 @@ process_dominio() {
 }
 
 # 1. Reset Inicial
+echo ""
 echo ">> [1/2] Resetando Banco de Dados..."
 {
     grep -v '^\\i' "$SCRIPT_DIR/setup_database.sql"
-    cat "$SCRIPT_DIR/seed_biblioteca.sql"
-    cat "$SCRIPT_DIR/seed_varejo.sql"
-    cat "$SCRIPT_DIR/seed_rede_social.sql"
+    cat "$SCRIPT_DIR/setup_biblioteca.sql"
+    cat "$SCRIPT_DIR/setup_varejo.sql"
+    cat "$SCRIPT_DIR/setup_rede_social.sql"
 } | docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 >> "$LOG_FILE" 2>&1
 
 # 2. Execução Paralela
@@ -84,15 +91,18 @@ echo ">> [2/2] Disparando Background Workers por Domínio..."
 echo ""
 
 # Dispara os 3 domínios em background
-process_dominio "Biblioteca" "biblioteca" "01_introducao" "02_erd_conceitos" "03_erd_pratica_biblioteca" &
+process_dominio "Biblioteca" "biblioteca" \
+    "01_introducao" "02_erd_conceitos" "03_erd_pratica_biblioteca" &
 PID_BIB=$!
 sleep 1
 
-process_dominio "Varejo" "varejo" "04_intro_dimensional" "05_tabelas_fato" "06_dimensoes" "07_bridge_tables" "08_scd_types" "09_scd_type2_implementacao" &
+process_dominio "Varejo" "varejo" \
+    "04_intro_dimensional" "05_tabelas_fato" "06_dimensoes" "07_tabelas_ponte" "08_tipos_scd" "09_implementacao_scd2" &
 PID_VAR=$!
 sleep 1
 
-process_dominio "Grafos" "rede_social" "10_modelagem_grafos" &
+process_dominio "Grafos" "rede_social" \
+    "10_modelagem_grafos" &
 PID_GRA=$!
 
 # Aguarda todos terminarem

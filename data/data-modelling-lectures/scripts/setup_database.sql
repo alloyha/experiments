@@ -5,7 +5,6 @@
 -- 1. Resetar o Ambiente
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO public;
 
 -- Criar Schemas Organizacionais
 DROP SCHEMA IF EXISTS biblioteca CASCADE;
@@ -22,9 +21,9 @@ ALTER ROLE aluno SET search_path TO public, biblioteca, varejo, rede_social;
 SET search_path TO public, biblioteca, varejo, rede_social;
 
 -- ==============================================
--- SEEDS: Carregar dados iniciais de cada schema
+-- INICIALIZAÇÃO DE MÓDULOS (DDL + SEED)
 -- ==============================================
 
-\i seed_biblioteca.sql
-\i seed_varejo.sql
-\i seed_rede_social.sql
+\i /scripts/setup_biblioteca.sql
+\i /scripts/setup_varejo.sql
+\i /scripts/setup_rede_social.sql

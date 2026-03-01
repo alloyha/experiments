@@ -5,6 +5,17 @@
 Em um sistema de vendas, uma entidade 'Pedido' contém as seguintes informações:
 - `Cliente_ID`, `Data_Pedido`, `Valor_Total`, `Itens_Do_Pedido`, `Cidade_Entrega`.
 
+```mermaid
+erDiagram
+    PEDIDO {
+        int cliente_id
+        date data_pedido
+        float valor_total
+        list itens_do_pedido
+        string cidade_entrega
+    }
+```
+
 **a)** Quais atributos deveriam ser segregados para novas entidades em um modelo de banco bem projetado (1NF/2NF)?
 
 **b)** Por que a Cidade de Entrega não deve ficar repetindo em cada pedido?
@@ -13,7 +24,17 @@ Em um sistema de vendas, uma entidade 'Pedido' contém as seguintes informaçõe
 
 **a)** Um Autor pode escrever vários Livros, e um Livro pode ter vários Autores. Como modelar isso?
 
+```mermaid
+erDiagram
+    AUTOR }o--o{ LIVRO : escreve
+```
+
 **b)** Um Departamento tem vários Funcionários, mas um Funcionário pertence a apenas um Departamento. Como modelar isso?
+
+```mermaid
+erDiagram
+    DEPARTAMENTO ||--o{ FUNCIONARIO : possui
+```
 
 ## EXERCÍCIO 3: Cardinalidade e Chaves
 

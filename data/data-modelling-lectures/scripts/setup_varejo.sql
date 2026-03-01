@@ -1,8 +1,8 @@
 -- ==============================================
--- SEED: VAREJO
+-- SETUP: VAREJO (DDL + DML)
 -- ==============================================
--- Dataset completo para modelagem dimensional
 
+-- 1. ESTRUTURA (DDL)
 CREATE TABLE IF NOT EXISTS varejo.dim_cliente (
     cliente_sk SERIAL PRIMARY KEY,
     cliente_id INTEGER NOT NULL,
@@ -11,12 +11,6 @@ CREATE TABLE IF NOT EXISTS varejo.dim_cliente (
     segmento VARCHAR(50)
 );
 
-INSERT INTO varejo.dim_cliente (cliente_id, nome, estado, segmento) VALUES
-(101, 'João Silva', 'SP', 'Ouro'),
-(102, 'Maria Santos', 'RJ', 'Bronze'),
-(103, 'Pedro Costa', 'MG', 'Prata')
-ON CONFLICT DO NOTHING;
-
 CREATE TABLE IF NOT EXISTS varejo.dim_produto (
     produto_sk SERIAL PRIMARY KEY,
     produto_id VARCHAR(20) UNIQUE,
@@ -24,12 +18,6 @@ CREATE TABLE IF NOT EXISTS varejo.dim_produto (
     categoria VARCHAR(50),
     preco_sugerido DECIMAL(10, 2)
 );
-
-INSERT INTO varejo.dim_produto (produto_id, nome_produto, categoria, preco_sugerido) VALUES
-('PROD001', 'Notebook Dell i5', 'Informática', 3500.00),
-('PROD002', 'Mouse Logitech MX', 'Informática', 250.00),
-('PROD003', 'Teclado Mecânico RGB', 'Informática', 350.00)
-ON CONFLICT (produto_id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS varejo.fato_vendas (
     venda_id SERIAL PRIMARY KEY,
@@ -40,7 +28,19 @@ CREATE TABLE IF NOT EXISTS varejo.fato_vendas (
     valor_total DECIMAL(10, 2) NOT NULL
 );
 
--- Inserir vendas apenas se a tabela estiver vazia (evita duplicação)
+-- 2. DADOS (DML)
+INSERT INTO varejo.dim_cliente (cliente_id, nome, estado, segmento) VALUES
+(101, 'João Silva', 'SP', 'Ouro'),
+(102, 'Maria Santos', 'RJ', 'Bronze'),
+(103, 'Pedro Costa', 'MG', 'Prata')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO varejo.dim_produto (produto_id, nome_produto, categoria, preco_sugerido) VALUES
+('PROD001', 'Notebook Dell i5', 'Informática', 3500.00),
+('PROD002', 'Mouse Logitech MX', 'Informática', 250.00),
+('PROD003', 'Teclado Mecânico RGB', 'Informática', 350.00)
+ON CONFLICT (produto_id) DO NOTHING;
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM varejo.fato_vendas LIMIT 1) THEN

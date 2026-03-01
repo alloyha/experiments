@@ -1,97 +1,40 @@
-# GABARITO AULA 06: MODELAGEM DIMENSIONAL & BIG DATA
+# GABARITO AULA 06: MODELAGEM DIMENSIONAL & CONTEXTO
 
-## RESPOSTA 1: Estrutura
+## RESPOSTA 1: Star vs. Snowflake
 
-**a) Clássica (Snowflake)**
-
+**a) Snowflake (Normalizado):**
 ```sql
-DROP TABLE IF EXISTS dim_produto_snowflake;
-DROP TABLE IF EXISTS dim_categoria_snowflake;
-
-CREATE TABLE dim_categoria_snowflake (
+CREATE TABLE dim_estado (
     id SERIAL PRIMARY KEY,
-    nome VARCHAR(100)
+    nome_estado VARCHAR(50)
 );
 
-CREATE TABLE dim_produto_snowflake (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100),
-    categoria_id INTEGER REFERENCES dim_categoria_snowflake (id) -- Normalizado
+CREATE TABLE dim_localizacao_snowflake (
+    cidade_id SERIAL PRIMARY KEY,
+    nome_cidade VARCHAR(100),
+    estado_id   INTEGER REFERENCES dim_estado (id)
 );
 ```
 
-**b) Moderna (Big Data)**
-No PostgreSQL, usamos um TYPE composto para simular STRUCT.
-
+**b) Star Schema (Desnormalizado):**
 ```sql
-DROP TABLE IF EXISTS dim_produto_moderna;
-DROP TYPE IF EXISTS CATEGORIA_STRUCT;
-
-CREATE TYPE CATEGORIA_STRUCT AS (
-    id INTEGER,
-    nome VARCHAR (100)
+CREATE TABLE dim_localizacao_star (
+    localizacao_sk SERIAL PRIMARY KEY,
+    cidade         VARCHAR(100),
+    estado         VARCHAR(50),
+    regiao         VARCHAR(50)
 );
-
-CREATE TABLE dim_produto_moderna (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100),
-    -- Categoria: campo composto (1 struct por produto)
-    categoria CATEGORIA_STRUCT
-);
-
--- Inserindo dados na moderna:
-INSERT INTO dim_produto_moderna (nome, categoria)
-VALUES ('Notebook', (1, 'Informática')::CATEGORIA_STRUCT)
-ON CONFLICT (id) DO UPDATE
-    SET nome = excluded.nome; -- SCD Type 1: Sobrescreve se mudar o nome
 ```
 
 **c) Comparação:**
-Moderna é ideal para leituras (sem JOIN). Snowflake economiza espaço se categoria for muito descritiva.
+Star Schema é preferido em Big Data (Analítico) porque reduz o custo de JOINs durante a análise. Snowflake economiza pouco espaço frente ao alto custo de JOIN em tabelas massivas.
 
-## RESPOSTA 2: Consultas
+---
 
-**a) Query Big Data (Zero-Join)**
+## RESPOSTA 2: Junk & Degenerate Dimensions
 
-```sql
-SELECT
-    id,
-    nome,
-    categoria
-FROM dim_produto_moderna
-WHERE (categoria).nome = 'Informática';
--- Custo: Zero Join. Acessa estrutura interna diretamente.
-```
+**a) Junk Dimension:** `status_entrega`, `eh_primeira_tentativa`, `tipo_veiculo`.
 
-**b) Query Clássica**
+**b) Degenerate Dimension:** `codigo_rastreamento`. Por ser de alta cardinalidade (quase um ID único para cada fato) e não possuir atributos descritivos próprios.
 
-```sql
-SELECT
-    p.id,
-    p.nome,
-    p.categoria_id
-FROM dim_produto_snowflake AS p
-INNER JOIN dim_categoria_snowflake AS c ON p.categoria_id = c.id
-WHERE c.nome = 'Informática';
--- Custo: Requer buscar ID na tabela de categorias e fazer JOIN.
-```
-
-### ASSERTIONS (VALIDAÇÃO DE RESULTADOS)
-
-```sql
-DO $$
-BEGIN
-   -- Validação 1: Contagem de Produtos na estrutura moderna
-   IF (SELECT SUM(1) FROM dim_produto_moderna) != 1 THEN
-      RAISE EXCEPTION 'Erro: Esperado 1 produto em dim_produto_moderna, encontrado %',
-                      (SELECT COUNT(*) FROM dim_produto_moderna);
-   END IF;
-
-   -- Validação 2: Filtro por estrutura aninhada
-   IF (SELECT COUNT(*) FROM dim_produto_moderna WHERE (categoria).nome = 'Informática') != 1 THEN
-      RAISE EXCEPTION 'Erro: Falha no filtro por estrutura aninhada (categoria).nome';
-   END IF;
-
-   RAISE NOTICE 'VALIDAÇÃO AULA 06: SUCESSO! ✅';
-END $$;
-```
+**c) Benefício Técnico:** Reduzir o número de colunas (e chaves estrangeiras) na tabela fato, facilitando o gerenciamento e otimizando o armazenamento ao agrupar flags comuns em uma única "lixeira" (junk).

@@ -10,7 +10,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Executa o script de setup automaticamente na primeira vez
+      # Mapeia a pasta de scripts e o entrypoint
+      - ./scripts:/scripts
       - ./scripts/setup_database.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:

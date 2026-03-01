@@ -1,15 +1,21 @@
-# EXERCÍCIOS AULA 06: MODELAGEM DIMENSIONAL & BIG DATA
+# EXERCÍCIOS AULA 06: MODELAGEM DIMENSIONAL & CONTEXTO
 
-## EXERCÍCIO 1: Estrutura da Dimensão Produto (Clássica vs. Big Data)
+## EXERCÍCIO 1: Estrutura da Dimensão (Star Schema vs. Snowflake)
 
-**a)** Crie uma tabela `dim_produto_snowflake` com a categoria isolada numa tabela separada.
+**Cenário:** Precisamos mapear todos os atributos de uma `Localização` (Cidade, Estado, Região, País) para enriquecer o contexto de cada usuário.
 
-**b)** Crie uma tabela `dim_produto_moderna` usando o tipo STRUCT (TYPE composto em PostgreSQL) e ARRAY para representar a mesma categoria.
+**Tarefa:**
+a) Crie a tabela `dim_localizacao_snowflake` dividindo Cidade e Estado em tabelas diferentes (Normalizado).
+b) Crie a tabela `dim_localizacao_star` consolidando todos os atributos em uma única tabela (Desnormalizado).
+c) No contexto de Big Data e Engenharia Analítica, por que a abordagem **Star Schema** (Desnormalizada) é preferida em relação ao Snowflake (Normalizada)?
 
-**c)** Compare conceitualmente: qual das duas tabelas é mais eficiente para uma query simples?
+---
 
-## EXERCÍCIO 2: Junção e Desnormalização (Zero-Join)
+## EXERCÍCIO 2: Junk Dimension vs. Degenerate Dimension
 
-**a)** Tente selecionar todos os produtos da `dim_produto_moderna` que possuem a categoria 'Informática' (simulando filtro em array).
+**Cenário:** Uma Tabela Fato de Logística contém atributos como `status_entrega` (SIM/NÃO), `eh_primeira_tentativa` (SIM/NÃO), `codigo_rastreamento` (ex: TRACK12345) e `tipo_veiculo` (Caminhão, Van, Moto).
 
-**b)** Escreva a query equivalente na abordagem clássica, que exigiria JOIN.
+**Tarefa:**
+a) Quais desses atributos você colocaria em uma **Junk Dimension**? 
+b) Qual desses atributos seria uma **Degenerate Dimension** e por quê?
+c) Qual o benefício técnico de agrupar Flags (SIM/NÃO) em uma Junk Dimension em vez de deixá-los na tabela fato?

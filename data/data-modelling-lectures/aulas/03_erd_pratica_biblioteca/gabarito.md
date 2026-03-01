@@ -39,8 +39,6 @@ ON CONFLICT DO NOTHING;
 
 ```sql
 INSERT INTO usuario (nome, tipo, email) VALUES
-('Ana Souza', 'aluno', 'ana@uni.edu'),
-('Bruno Lima', 'aluno', 'bruno@uni.edu'),
 ('Carlos Rocha', 'professor', 'carlos@uni.edu'),
 ('Daniela Silva', 'aluno', 'daniela@uni.edu'),
 ('Eduardo Santos', 'aluno', 'eduardo@uni.edu'),
@@ -77,14 +75,38 @@ INSERT INTO emprestimo (
 ON CONFLICT (emprestimo_id) DO NOTHING;
 ```
 
-**f) Criar multas para empréstimos atrasados**
+**f) Criar multas para empréstimos atrasados (Cálculo Automático via CTE)**
 
 ```sql
--- Assumindo IDs 4 e 7 como atrasados
-INSERT INTO multa (emprestimo_id, valor_multa, pago) VALUES
-(4, 5.50, FALSE),
-(7, 12.00, TRUE)
+WITH params AS (
+    -- Simulamos que "hoje" é 20 de Julho de 2024 para o cálculo de multas
+    SELECT '2024-07-20'::DATE AS data_referencia
+),
+atrasos_identificados AS (
+    SELECT 
+        e.emprestimo_id,
+        e.data_devolucao_prevista,
+        -- Se não devolveu, calculamos até a data de referência. 
+        -- Se devolveu, calculamos até a data da devolução real.
+        COALESCE(e.data_devolucao_real, p.data_referencia) AS data_fim_calculo
+    FROM emprestimo e, params p
+    WHERE 
+        (e.data_devolucao_real > e.data_devolucao_prevista) 
+        OR (e.data_devolucao_real IS NULL AND e.data_devolucao_prevista < p.data_referencia)
+),
+calculo_multas AS (
+    SELECT 
+        emprestimo_id,
+        (data_fim_calculo - data_devolucao_prevista) * 0.50 AS valor_calculado
+    FROM atrasos_identificados
+)
+INSERT INTO multa (emprestimo_id, valor_multa, pago)
+SELECT emprestimo_id, valor_calculado, FALSE
+FROM calculo_multas
 ON CONFLICT (emprestimo_id) DO NOTHING;
+
+-- Simulação de pagamento para o ID 7 (para demonstrar fluxo de caixa)
+UPDATE multa SET pago = TRUE WHERE emprestimo_id = 7;
 ```
 
 ## EXERCÍCIO 2: Consultas ERD
@@ -112,20 +134,21 @@ GROUP BY l.titulo
 ORDER BY qtd_emprestimos DESC;
 ```
 
-**c) Listar usuários com empréstimos em atraso**
+**c) Listar usuários com empréstimos em atraso (via Tabela de Multas)**
 
 ```sql
+-- Abordagem simplificada: Se existe uma multa não paga, o usuário está inadimplente.
 SELECT
     u.nome,
     l.titulo,
-    e.data_devolucao_prevista
-FROM emprestimo AS e
+    m.valor_multa
+FROM multa AS m
+INNER JOIN emprestimo AS e ON m.emprestimo_id = e.emprestimo_id
 INNER JOIN usuario AS u ON e.usuario_id = u.usuario_id
 INNER JOIN livro AS l ON e.livro_id = l.livro_id
-WHERE
-    e.data_devolucao_real IS NULL
-    AND e.data_devolucao_prevista < CURRENT_DATE;
+WHERE m.pago = FALSE;
 ```
+
 
 **d) Calcular total de multas não pagas**
 
@@ -160,9 +183,9 @@ BEGIN
       RAISE EXCEPTION 'Erro: Esperado 15 empréstimos, encontrado %', (SELECT COUNT(*) FROM emprestimo);
    END IF;
 
-   -- Validação 5: Valor de Multas Pendentes
-   IF (SELECT SUM(valor_multa) FROM multa WHERE pago = FALSE) != 5.50 THEN
-      RAISE EXCEPTION 'Erro: Esperado 5.50 em multas pendentes, encontrado %', (SELECT SUM(valor_multa) FROM multa WHERE pago = FALSE);
+   -- Validação 5: Valor de Multas Pendentes (Soma de todos os atrasos até 20/07 exceto o ID 7 pago)
+   IF (SELECT SUM(valor_multa) FROM multa WHERE pago = FALSE) != 47.50 THEN
+      RAISE EXCEPTION 'Erro: Esperado 47.50 em multas pendentes, encontrado %', (SELECT SUM(valor_multa) FROM multa WHERE pago = FALSE);
    END IF;
 
    RAISE NOTICE 'VALIDAÇÃO AULA 03: SUCESSO! ✅';

@@ -10,14 +10,6 @@ CREATE TABLE IF NOT EXISTS autor (
     data_nascimento DATE
 );
 
--- Garantir que a coluna existe (caso a tabela já existisse sem ela)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='autor' AND column_name='data_nascimento') THEN
-        ALTER TABLE autor ADD COLUMN data_nascimento DATE;
-    END IF;
-END $$;
-
 CREATE TABLE IF NOT EXISTS livro (
     livro_id SERIAL PRIMARY KEY,
     titulo VARCHAR(200) NOT NULL,
@@ -33,48 +25,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     email VARCHAR(100) UNIQUE
 );
 
--- Garantir compatibilidade com Aula 01 (adicionar colunas se faltar)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='usuario' AND column_name='tipo') THEN
-        ALTER TABLE usuario ADD COLUMN tipo VARCHAR(20) CHECK (tipo IN ('aluno', 'professor'));
-    END IF;
-END $$;
-
--- 2. Tabela Associativa (Livro N:N Autor)
-CREATE TABLE IF NOT EXISTS livro_autor (
-    livro_id INTEGER,
-    autor_id INTEGER,
-    PRIMARY KEY (livro_id, autor_id),
-    FOREIGN KEY (livro_id) REFERENCES livro (livro_id),
-    FOREIGN KEY (autor_id) REFERENCES autor (autor_id)
-);
-
 -- 3. Tabela Transacional (Empréstimo 1:N)
--- Evolução: Na Aula 01 usamos PK Composta (usuario, livro, data). aqui vamos usar Surrogate Key (emprestimo_id).
-DO $$
-DECLARE
-    pk_name TEXT;
-BEGIN
-    -- Se a tabela já existe (da aula 01) mas não tem a coluna emprestimo_id
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA AND table_name='emprestimo') AND 
-       NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA AND table_name='emprestimo' AND column_name='emprestimo_id') THEN
-        
-        -- Descobrir o nome da constraint de PK atual
-        SELECT conname INTO pk_name
-        FROM pg_constraint
-        WHERE conrelid = 'emprestimo'::regclass AND contype = 'p';
-
-        -- Remove a PK antiga se existir
-        IF pk_name IS NOT NULL THEN
-            EXECUTE 'ALTER TABLE emprestimo DROP CONSTRAINT ' || pk_name;
-        END IF;
-        
-        -- Adiciona a nova Surrogate Key
-        ALTER TABLE emprestimo ADD COLUMN emprestimo_id SERIAL PRIMARY KEY;
-    END IF;
-END $$;
-
 CREATE TABLE IF NOT EXISTS emprestimo (
     emprestimo_id SERIAL PRIMARY KEY,
     usuario_id INTEGER NOT NULL,
