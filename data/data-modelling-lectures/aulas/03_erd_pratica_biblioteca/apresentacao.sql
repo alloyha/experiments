@@ -2,6 +2,11 @@
 -- Aula 3: ERD Parte 2 - Prática (Sistema de Biblioteca)
 -- ==============================================================================
 
+-- NOTA PEDAGÓGICA:
+-- Nesta aula inicial, o banco foi preparado apenas com as estruturas (DDL).
+-- O aluno é responsável por "dar vida" aos dados através dos INSERTs,
+-- consolidando a base de SQL e Integridade Referencial.
+
 -- 1. Tabelas Principais (Entidades Fortes)
 CREATE TABLE IF NOT EXISTS autor (
     autor_id SERIAL PRIMARY KEY,

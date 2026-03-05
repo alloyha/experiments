@@ -1,99 +1,84 @@
-# GABARITO AULA 07: MODELAGEM DIMENSIONAL PRÁTICA
+# GABARITO AULA 07: TABELAS PONTE (BRIDGE TABLES)
 
-## EXERCÍCIO 3: Modelagem Dimensional
+## EXERCÍCIO 1: Dimensão Multi-Valorada (Consultas e Diagnósticos)
 
-**a) Inserir 10 novos produtos em categorias diferentes**
-Usamos produto_id para a Natural Key (Idempotente).
+**a) Insira 2 novos diagnósticos na `dim_diagnostico`**
 
 ```sql
-INSERT INTO dim_produto (produto_id, nome_produto, categoria, preco_sugerido) VALUES
-('P001', 'Smartphone X', 'Eletrônicos', 2500.00),
-('P002', 'Smart TV 50', 'Eletrônicos', 3200.00),
-('P003', 'Fone Bluetooth', 'Acessórios', 150.00),
-('P004', 'Cadeira Gamer', 'Móveis', 1200.00),
-('P005', 'Mesa Escritório', 'Móveis', 800.00),
-('P006', 'Cafeteira', 'Eletroportáteis', 300.00),
-('P007', 'Liquidificador', 'Eletroportáteis', 200.00),
-('P008', 'Tênis Corrida', 'Esportes', 450.00),
-('P009', 'Bola Futebol', 'Esportes', 100.00),
-('P010', 'Mochila', 'Acessórios', 180.00);
+INSERT INTO dim_diagnostico (codigo_cid, descricao) VALUES
+('G43', 'Enxaqueca Crônica'),
+('I10', 'Hipertensão');
 ```
 
-**b) Configurar bridge table com pesos para produtos multi-categoria**
+**b) Mapeie um novo `grupo_diagnostico_key` na Bridge**
 
 ```sql
-INSERT INTO dim_categoria (nome_categoria, departamento) VALUES
-('Acessórios', 'Varejo'), ('Móveis', 'Casa'), ('Eletroportáteis', 'Casa'), ('Esportes', 'Lazer');
+-- Assumindo que os IDs gerados sequencialmente foram 4 e 5 para os novos diagnósticos
+INSERT INTO bridge_grupo_diagnostico (grupo_diagnostico_key, diagnostico_id, peso_alocacao) VALUES
+(200, 4, 0.5000),
+(200, 5, 0.5000);
 ```
 
-**c) Criar 50 vendas distribuídas em junho/2024**
-Note: Agora usamos produto_sk e cliente_sk para integridade referencial correta, e datas nativas.
+**c) Insira 1 nova consulta na Fato associada ao Grupo**
 
 ```sql
-INSERT INTO fato_vendas (
-    data_venda, produto_sk, cliente_sk, quantidade, valor_total
-)
-SELECT
-    '2024-06-01'::DATE + (n % 30) * INTERVAL '1 day',
-    p.produto_sk,
-    c.cliente_sk,
-    1 AS quantidade,
-    p.preco_sugerido AS valor_total
-FROM GENERATE_SERIES(1, 50) n
-CROSS JOIN (SELECT produto_sk, preco_sugerido FROM dim_produto LIMIT 1) p
-CROSS JOIN (SELECT cliente_sk FROM dim_cliente LIMIT 1) c
-LIMIT 50;
+INSERT INTO fato_consulta (data_consulta, medico_id, paciente_id, grupo_diagnostico_key, valor_consulta)
+VALUES ('2024-03-05', 2, 11, 200, 500.00);
 ```
 
-## EXERCÍCIO 4: Análises Dimensionais
-
-**a) Total de vendas por mês e categoria**
+**d) Query de Análise Alocada (Evitando Dupla Contagem)**
 
 ```sql
-SELECT
-    TO_CHAR(fv.data_venda, 'Month') AS mes_nome,
-    dc.nome_categoria,
-    SUM(fv.valor_total) AS total_vendas
-FROM fato_vendas AS fv
-INNER JOIN dim_produto AS dp ON fv.produto_sk = dp.produto_sk
-LEFT JOIN bridge_produto_categoria AS bpc ON dp.produto_sk = bpc.produto_sk
-LEFT JOIN dim_categoria AS dc ON bpc.categoria_id = dc.categoria_id
-GROUP BY 1, 2;
+SELECT 
+    d.descricao, 
+    SUM(f.valor_consulta * b.peso_alocacao) as valor_alocado
+FROM fato_consulta f
+JOIN bridge_grupo_diagnostico b ON f.grupo_diagnostico_key = b.grupo_diagnostico_key
+JOIN dim_diagnostico d ON b.diagnostico_id = d.diagnostico_id
+GROUP BY d.descricao;
 ```
 
-**b) Top 5 produtos mais vendidos**
+---
+
+## EXERCÍCIO 2: Bridge Entre Dimensões (Contas e Titulares)
+
+**a) Crie 2 novos clientes e 1 nova conta**
 
 ```sql
-SELECT
-    dp.nome_produto,
-    SUM(fv.quantidade) AS total_qtd
-FROM fato_vendas AS fv
-INNER JOIN dim_produto AS dp ON fv.produto_sk = dp.produto_sk
-GROUP BY dp.nome_produto
-ORDER BY total_qtd DESC
-LIMIT 5;
+INSERT INTO dim_cliente (nome_cliente) VALUES
+('João Silva'),
+('Maria Oliveira');
+
+INSERT INTO dim_conta (agencia, numero_conta) VALUES
+('0001', '99999');
 ```
 
-**c) Análise de vendas por segmento de cliente**
+**b) Crie o vínculo bridge com 50% de peso para cada titular**
 
 ```sql
-SELECT
-    dc.segmento,
-    SUM(fv.valor_total) AS total_vendas
-FROM fato_vendas AS fv
-INNER JOIN dim_cliente AS dc ON fv.cliente_sk = dc.cliente_sk
-GROUP BY dc.segmento;
+-- Assumindo cliente_id 1 e 2, conta_id 1 baseados nas novas inserções (ou uso de sequence/CURRVAL logado)
+INSERT INTO bridge_conta_titular (conta_id, cliente_id, peso_alocacao) VALUES
+(1, 1, 0.5000),
+(1, 2, 0.5000);
 ```
 
-**d) Comparar vendas por região**
+**c) Registre 1 transação (Fato) associada à conta conjunta**
 
 ```sql
-SELECT
-    dl.regiao,
-    SUM(fv.valor_total) AS total_vendas
-FROM fato_vendas AS fv
-INNER JOIN dim_loja AS dl ON fv.loja_id = dl.loja_id
-GROUP BY dl.regiao;
+INSERT INTO fato_transacao (conta_id, valor_transacao, data_transacao)
+VALUES (1, 1200.00, '2024-03-05 10:00:00');
+```
+
+**d) Query calculando o volume financeiro por cliente**
+
+```sql
+SELECT 
+    c.nome_cliente, 
+    SUM(ft.valor_transacao * bct.peso_alocacao) AS volume_financeiro_alocado
+FROM fato_transacao ft
+JOIN bridge_conta_titular bct ON ft.conta_id = bct.conta_id
+JOIN dim_cliente c ON bct.cliente_id = c.cliente_id
+GROUP BY c.nome_cliente;
 ```
 
 ### ASSERTIONS (VALIDAÇÃO DE RESULTADOS)
@@ -101,14 +86,14 @@ GROUP BY dl.regiao;
 ```sql
 DO $$
 BEGIN
-   -- Validação 1: Volume de Vendas
-   IF (SELECT COUNT(*) FROM fato_vendas) < 50 THEN
-      RAISE EXCEPTION 'Erro: Esperado ao menos 50 vendas, encontrado %', (SELECT COUNT(*) FROM fato_vendas);
+   -- Validação 1: Verificar integridade do peso da bridge de diagnóstico grupo 200
+   IF (SELECT SUM(peso_alocacao) FROM bridge_grupo_diagnostico WHERE grupo_diagnostico_key = 200) <> 1.0000 THEN
+      RAISE EXCEPTION 'Erro: A soma dos pesos do grupo 200 na bridge de diagnósticos não é 1.0';
    END IF;
 
-   -- Validação 3: Consistência do Join Fato-Cliente (Usando SK)
-   IF (SELECT SUM(fv.valor_total) FROM fato_vendas fv JOIN dim_cliente dc ON fv.cliente_sk = dc.cliente_sk) IS NULL THEN
-      RAISE EXCEPTION 'Erro: Falha na integridade referencial entre fato e dim_cliente';
+   -- Validação 2: Verificar se a soma das transações na bridge é igual a 100% da conta (id genérico 1)
+   IF (SELECT SUM(peso_alocacao) FROM bridge_conta_titular WHERE conta_id = 1) <> 1.0000 THEN
+      RAISE EXCEPTION 'Erro: A soma dos pesos para a conta 1 não é 1.0 na bridge de titulares';
    END IF;
 
    RAISE NOTICE 'VALIDAÇÃO AULA 07: SUCESSO! ✅';

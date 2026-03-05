@@ -47,20 +47,5 @@ CREATE TABLE IF NOT EXISTS biblioteca.multa (
     pago BOOLEAN DEFAULT FALSE
 );
 
--- 2. DADOS (DML)
-INSERT INTO biblioteca.autor (nome, nacionalidade) VALUES
-('Machado de Assis', 'Brasileira'),
-('Clarice Lispector', 'Brasileira'),
-('Jorge Amado', 'Brasileira')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO biblioteca.livro (titulo, isbn, ano_publicacao) VALUES
-('Dom Casmurro', '9788525044648', 1899),
-('A Hora da Estrela', '9788532508126', 1977),
-('Capitães da Areia', '9788535914064', 1937)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO biblioteca.usuario (nome, email) VALUES
-('Ana Silva', 'ana@email.com'),
-('Bruno Costa', 'bruno@email.com')
-ON CONFLICT DO NOTHING;
+-- 2. DADOS (DML) - REMOVIDO PARA SER CONSTRUÍDO EM AULA
+-- O aluno deve realizar as inserções conforme o gabarito da Aula 03.

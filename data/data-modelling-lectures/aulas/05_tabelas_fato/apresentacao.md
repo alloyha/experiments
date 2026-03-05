@@ -25,7 +25,7 @@ Define o que exatamente uma linha da tabela fato representa.
 ## 📁 Tipos de Tabelas Fato
 1. **Fato Transacional:** Registra um evento no exato momento em que ocorre (ex: Venda, Clique). Nunca para de crescer.
 2. **Snapshot Periódico:** Registra o estado das coisas em intervalos regulares (ex: Saldo de estoque no fim de cada dia). Tamanho previsível.
-3. **Accumulating Snapshot:** Registra o progresso de um processo com início, meio e fim (ex: Pipeline de um pedido desde a compra até a entrega). A linha é atualizada.
+3. **Snapshot acumulativo:** Registra o progresso de um processo com início, meio e fim (ex: Pipeline de um pedido desde a compra até a entrega). A linha é atualizada.
 
 ---
 

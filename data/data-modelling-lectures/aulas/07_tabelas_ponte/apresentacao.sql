@@ -3,106 +3,124 @@
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- ABORDAGEM CLÁSSICA (KIMBALL) - BRIDGE TABLE
+-- MODELO 1: DIMENSÃO MULTI-VALORADA (FATO ↔ BRIDGE ↔ DIMENSÃO)
 -- ------------------------------------------------------------------------------
--- Cenário: Produtos com Múltiplas Categorias (Many-to-Many)
--- Solução: Tabela intermediária de relacionamento
+-- Cenário: Uma Consulta Médica (Fato) pode envolver múltiplos Diagnósticos (Dim).
+-- Solução: Tabela Fato ganha uma 'Chave de Grupo'. A Bridge mapeia essa chave.
 
--- 1. Dimensões Normalizadas
--- 1. Dimensões Normalizadas
-DROP TABLE IF EXISTS bridge_produto_categoria_demo;
-DROP TABLE IF EXISTS dim_produto_simples CASCADE;
-DROP TABLE IF EXISTS dim_categoria_demo CASCADE;
+DROP TABLE IF EXISTS bridge_grupo_diagnostico CASCADE;
+DROP TABLE IF EXISTS fato_consulta CASCADE;
+DROP TABLE IF EXISTS dim_diagnostico CASCADE;
 
-CREATE TABLE dim_produto_simples (
-    produto_id SERIAL PRIMARY KEY,
-    nome_produto VARCHAR(200),
-    marca VARCHAR(50)
+-- 1. Dimensão
+CREATE TABLE dim_diagnostico (
+    diagnostico_id SERIAL PRIMARY KEY,
+    codigo_cid VARCHAR(10),
+    descricao VARCHAR(200)
 );
 
-CREATE TABLE dim_categoria_demo (
-    categoria_id SERIAL PRIMARY KEY,
-    nome_categoria VARCHAR(100)
+INSERT INTO dim_diagnostico (codigo_cid, descricao) VALUES
+('J00', 'Resfriado comum'),
+('J01', 'Sinusite aguda'),
+('J02', 'Faringite aguda');
+
+-- 2. Tabela Bridge (Mapeia a Group Key para as FKs da Dimensão)
+CREATE TABLE bridge_grupo_diagnostico (
+    grupo_diagnostico_key INTEGER,
+    diagnostico_id INTEGER REFERENCES dim_diagnostico(diagnostico_id),
+    peso_alocacao DECIMAL(5, 4),  -- Essencial para não inflar as métricas!
+    PRIMARY KEY (grupo_diagnostico_key, diagnostico_id)
 );
 
--- 2. A Bridge Table (Gargalo de Join em Big Data)
-CREATE TABLE bridge_produto_categoria_demo (
-    produto_id INTEGER,
-    categoria_id INTEGER,
-    peso_alocacao DECIMAL(5, 4),  -- soma = 1.0 por produto
-    PRIMARY KEY (produto_id, categoria_id),
-    FOREIGN KEY (produto_id) REFERENCES dim_produto_simples (produto_id),
-    FOREIGN KEY (categoria_id) REFERENCES dim_categoria_demo (categoria_id)
+-- Criar um grupo (Ex: Grupo 100 refere-se a Resfriado + Faringite, 50% cada)
+INSERT INTO bridge_grupo_diagnostico (grupo_diagnostico_key, diagnostico_id, peso_alocacao) VALUES
+(100, 1, 0.5000), 
+(100, 3, 0.5000);
+
+-- 3. Tabela Fato (Contém a Group Key no lugar da chave de dimensão direta)
+CREATE TABLE fato_consulta (
+    consulta_id SERIAL PRIMARY KEY,
+    data_consulta DATE,
+    medico_id INTEGER,
+    paciente_id INTEGER,
+    grupo_diagnostico_key INTEGER, -- Ligação com o Grupo (Bridge)
+    valor_consulta DECIMAL(10, 2)
 );
 
--- 3. Query Clássica (3 JOINS)
+INSERT INTO fato_consulta (data_consulta, medico_id, paciente_id, grupo_diagnostico_key, valor_consulta)
+VALUES ('2024-03-01', 1, 10, 100, 200.00);
+
+-- QUERY CORRETA (Sem o bridge com pesos, o valor passaria para R$ 400 em análises por diagnóstico)
 /*
-SELECT
-    dc.nome_categoria,
-    SUM(fv.valor * bpc.peso_alocacao) as valor_alocado
-FROM fato_vendas fv
-JOIN bridge_produto_categoria_demo bpc ON fv.produto_id = bpc.produto_id -- JOIN 1
-JOIN dim_categoria_demo dc ON bpc.categoria_id = dc.categoria_id         -- JOIN 2
-GROUP BY dc.nome_categoria;
+SELECT 
+    d.descricao, 
+    SUM(f.valor_consulta * b.peso_alocacao) as valor_alocado
+FROM fato_consulta f
+JOIN bridge_grupo_diagnostico b ON f.grupo_diagnostico_key = b.grupo_diagnostico_key
+JOIN dim_diagnostico d ON b.diagnostico_id = d.diagnostico_id
+GROUP BY d.descricao;
 */
 
 -- ------------------------------------------------------------------------------
--- ABORDAGEM BIG DATA - ARRAY METRICS
+-- ABORDAGEM BIG DATA - ARRAY METRICS (No-Shuffle)
 -- ------------------------------------------------------------------------------
--- Cenário: Mesmo problema de N:N
--- Solução: Arrays desnormalizados na própria dimensão (No-Shuffle)
+-- Cenário: Mesmo problema Multi-valorado (Diagnósticos), mas sem Join e com Estruturas Aninhadas.
 
--- 1. Tabela Desnormalizada
-DROP TABLE IF EXISTS dim_produto_bigdata;
-CREATE TABLE dim_produto_bigdata (
-    produto_id SERIAL PRIMARY KEY,
-    nome_produto VARCHAR(200),
-    -- Array de categorias (Elimina a Bridge)
-    categorias TEXT [],
-    -- Array de relevância/peso (Elimina coluna de peso da Bridge)
-    pesos_relevancia DECIMAL []
+DROP TABLE IF EXISTS fato_consulta_bigdata CASCADE;
+
+CREATE TABLE fato_consulta_bigdata (
+    consulta_id SERIAL PRIMARY KEY,
+    valor_consulta DECIMAL(10, 2),
+    diagnosticos_cid TEXT[],  -- Array de códigos na própria Fato
+    pesos_relevancia DECIMAL[] -- Array de pesos equivalentes
 );
 
--- 2. Inserindo dados (Exemplo: Notebook é Informática E Eletrônicos)
-INSERT INTO dim_produto_bigdata (nome_produto, categorias, pesos_relevancia)
-VALUES
-('Notebook Dell i5', ARRAY['Informática', 'Eletrônicos'], ARRAY[0.7, 0.3]),
-('Mouse Logitech', ARRAY['Informática'], ARRAY[1.0]);
+INSERT INTO fato_consulta_bigdata (valor_consulta, diagnosticos_cid, pesos_relevancia)
+VALUES (200.00, ARRAY['J00', 'J02'], ARRAY[0.5, 0.5]);
 
--- 3. Query Big Data (EXPLODE/UNNEST - Zero Joins na Dimensão)
+-- QUERY BIG DATA (EXPLODE/UNNEST)
 /*
-SELECT
-    categoria,
-    SUM(peso) as relevancia_total
-FROM dim_produto_bigdata,
-     UNNEST(categorias, pesos_relevancia) AS t(categoria, peso)
-GROUP BY categoria;
+SELECT 
+    cid_diagnostico,
+    SUM(valor_consulta * peso) as valor_alocado
+FROM fato_consulta_bigdata, 
+     UNNEST(diagnosticos_cid, pesos_relevancia) AS t(cid_diagnostico, peso)
+GROUP BY cid_diagnostico;
 */
 
 -- ------------------------------------------------------------------------------
--- OUTRO EXEMPLO: CONTA BANCÁRIA
+-- MODELO 2: BRIDGE ENTRE DIMENSÕES (FATO ↔ DIM PRINCIPAL ↔ BRIDGE ↔ DIM SECUNDÁRIA)
 -- ------------------------------------------------------------------------------
+-- Cenário: Conta Bancária com múltiplos Titulares.
+-- Solução: Fato aponta para Conta. Bridge conecta FK_Conta a FK_Cliente.
 
--- Clássico (Bridge)
-DROP TABLE IF EXISTS bridge_conta_titular;
+DROP TABLE IF EXISTS bridge_conta_titular CASCADE;
+DROP TABLE IF EXISTS fato_transacao CASCADE;
+DROP TABLE IF EXISTS dim_conta CASCADE;
+DROP TABLE IF EXISTS dim_cliente CASCADE;
+
+CREATE TABLE dim_cliente (
+    cliente_id SERIAL PRIMARY KEY,
+    nome_cliente VARCHAR(100)
+);
+
+CREATE TABLE dim_conta (
+    conta_id SERIAL PRIMARY KEY,
+    agencia VARCHAR(10),
+    numero_conta VARCHAR(20)
+);
+
 CREATE TABLE bridge_conta_titular (
-    conta_id INTEGER,
-    cliente_id INTEGER,
-    peso_alocacao DECIMAL(5, 4),
+    conta_id INTEGER REFERENCES dim_conta(conta_id),
+    cliente_id INTEGER REFERENCES dim_cliente(cliente_id),
+    peso_alocacao DECIMAL(5, 4), 
     PRIMARY KEY (conta_id, cliente_id)
 );
 
--- Big Data (Array de Structs)
-DROP TABLE IF EXISTS conta_bigdata;
-DROP TYPE IF EXISTS TITULAR_STRUCT;
-
-CREATE TYPE TITULAR_STRUCT AS (
-    cliente_id INTEGER,
-    tipo VARCHAR,
-    peso DECIMAL
+CREATE TABLE fato_transacao (
+    transacao_id SERIAL PRIMARY KEY,
+    conta_id INTEGER REFERENCES dim_conta(conta_id),
+    valor_transacao DECIMAL(10, 2),
+    data_transacao TIMESTAMP
 );
 
-CREATE TABLE conta_bigdata (
-    conta_id INTEGER PRIMARY KEY,
-    titulares TITULAR_STRUCT [] -- Array complexo aninhado
-);
