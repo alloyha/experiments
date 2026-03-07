@@ -19,18 +19,18 @@ O diagrama abaixo mostra o fluxo completo de dependências do pipeline, organiza
 
 ```mermaid
 graph LR
-    subgraph BRONZE["🥉 Bronze Layer"]
+    subgraph BRONZE["🥉 Bronze Layer · OLTP"]
         B_anchor(( ))
-        OC["origem_cliente"]
-        OP["origem_produto"]
-        OV["origem_venda"]
+        OC[("origem_cliente")]
+        OP[("origem_produto")]
+        OV[("origem_venda")]
     end
 
     subgraph SILVER["🥈 Silver Layer"]
         S_anchor(( ))
-        CSD["cliente_snapshot_diario"]
         DC1["dim_cliente_scd1"]
         DC2["dim_cliente_scd2"]
+        CSD["cliente_snapshot_diario"]
         DP3["dim_produto_scd3"]
         FV["fato_vendas"]
         VAM["vendas_array_mensal"]
@@ -46,7 +46,6 @@ graph LR
         GMD["gold_metricas_diarias"]
         gold_entry -->|"Gap-And-Island · on-demand"| RSCD
         gold_entry -->|"daily metrics · incremental"| GMD
-
     end
 
     subgraph MARTS["📊 Semantic Layer"]
@@ -60,19 +59,17 @@ graph LR
 
     B_anchor ~~~ S_anchor ~~~ G_anchor ~~~ M_anchor
 
-    OC --> CSD
     OC --> DC1
     OC --> DC2
+    OC --> CSD
     OP --> DP3
     OV --> FV
 
-    FV -->|"atividade derivada"| CAA
-    CSD -->|"VIEW Gap-And-Island"| RSCD
-
     DC2 -->|Point-In-Time| FV
     DC2 --> VAM
+    CSD -->|"VIEW Gap-And-Island"| RSCD
     FV --> VAM
-
+    FV -->|"atividade derivada"| CAA
     FV --> metrics_fanin
     CAA --> metrics_fanin
     DC2 --> metrics_fanin
@@ -85,10 +82,10 @@ graph LR
     semantic_fanout -->|"retencao d7 · on-demand"| RD7
     JC -->|"formatted · on-demand"| JCF
 
-    classDef bronze fill:#cd7f32,stroke:#a0622a,color:#fff
-    classDef silver fill:#a8a9ad,stroke:#7a7b7f,color:#fff
-    classDef gold fill:#d4af37,stroke:#b8960e,color:#fff
-    classDef mart fill:#3c7be0,stroke:#2f5fb3,color:#fff
+    classDef bronze fill:#cd7f32,stroke:#a0622a,color:#000
+    classDef silver fill:#a8a9ad,stroke:#7a7b7f,color:#000
+    classDef gold fill:#d4af37,stroke:#b8960e,color:#000
+    classDef mart fill:#3c7be0,stroke:#2f5fb3,color:#000
     classDef router fill:#444,stroke:#222,color:#fff
     classDef invis fill:none,stroke:none,color:transparent,stroke-width:0px
 
@@ -97,7 +94,7 @@ graph LR
     class GMD,RSCD gold
     class MA,JC,JCF,RD7 mart
     class metrics_fanin,gold_entry,semantic_fanout router
-    class B_anchor,S_anchor,G_anchor,M_anchor,GP1,GP2 invis
+    class B_anchor,S_anchor,G_anchor,M_anchor invis
 ```
 
 ### Legenda do Grafo
@@ -161,7 +158,11 @@ O script está mapeado passo a passo para simular o fluxo de Data Engineering:
 
 ### 6. Relatório de Desempenho (Profiling)
 - O pipeline orquestrado implementa instrumentação (Telemetry) para apurar os tempos exatos do ambiente (via variável `varejo.dur_backfill` e blocos de profiling `clock_timestamp()`).
-- O Fast-Forward de 60 dias roda de ponta a ponta com +2.000 clientes gerando vendas e recálculos incrementais de dezenas de tabelas de agregação na casa de **~40 segundos**. A consulta da J-Curve formatada para o Dataviz demora cerca de **~0.09s** — um avanço abismal perante Table Scans tradicionais.
+- O Fast-Forward de 60 dias com +2.000 clientes gerando vendas diárias incrementais recálcula dezenas de tabelas de agregação na casa de **~40 segundos**. A consulta da J-Curve formatada para o Dataviz demora cerca de **~0.09s** — um avanço abismal perante Table Scans tradicionais.
+
+### 7. Bônus Avançado: O Motor DAG Nativo (`pg_cron`)
+- Criamos um script dedicado (`bonus_pg_dag_engine.sql`) contendo um motor topológico de orquestração construído *Full-SQL*!
+- Ele modela o pipeline anterior registrando os metadados baseados em Array e Grafos, absorvendo dependências em formato de árvore, aplicando controle de falhas em cascata, tolerância de erros, telemetria explícita com logs dedicados, e usa nativamente o `pg_cron` para substituir ferramentas externas gigantes (como Apache Airflow) inteiramente dentro do Postgres.
 
 ---
 
