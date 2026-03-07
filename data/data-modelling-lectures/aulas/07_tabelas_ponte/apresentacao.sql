@@ -113,7 +113,7 @@ CREATE TABLE dim_conta (
 CREATE TABLE bridge_conta_titular (
     conta_id INTEGER REFERENCES dim_conta(conta_id),
     cliente_id INTEGER REFERENCES dim_cliente(cliente_id),
-    peso_alocacao DECIMAL(5, 4), 
+    peso_alocacao DECIMAL(5, 4),
     PRIMARY KEY (conta_id, cliente_id)
 );
 

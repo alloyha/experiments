@@ -1,4 +1,4 @@
-# Aula 10: Modelagem de Grafos (Graph Data Modeling)
+# Aula 9: Modelagem de Grafos (Graph Data Modeling)
 
 ## 🎯 Objetivos
 - Entender quando os modelos relacionais (tabelas) falham em performance.

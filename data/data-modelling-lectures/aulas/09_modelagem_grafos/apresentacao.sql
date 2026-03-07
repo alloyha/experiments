@@ -1,5 +1,9 @@
 -- ==============================================================================
--- Aula 10: Modelagem de Grafos (Graph Data Modeling)
+-- Aula 9: Modelagem de Grafos (Graph Data Modeling)
+-- ==============================================================================
+-- IMPORTANTE: Para executar este script sem erros de sintaxe e tabelas ausentes,
+-- você precisa rodar o painel interativo de ambiente relacional gerando os dados antes:
+-- Execute: \i scripts/setup_rede_social.sql
 -- ==============================================================================
 -- Tópico Avançado: Quando o Relacional não é suficiente.
 -- Cenário: Rede Social de Leitores - Quem segue quem? Quem recomenda o quê?

@@ -1,99 +1,89 @@
 -- ==============================================
--- SETUP: VAREJO (DDL + DML) - BIG DATA VOLUME
+-- SETUP: VAREJO (MOCK DO SISTEMA OLTP ORIGEM)
 -- ==============================================
+-- Este script simula um banco transacional (OLTP) que serve como
+-- fonte de dados para o pipeline analítico (DW) da Aula 08.
 
--- 1. ESTRUTURA BÁSICA (INTRODUÇÃO)
-CREATE TABLE IF NOT EXISTS varejo.dim_cliente (
-    cliente_sk SERIAL PRIMARY KEY,
-    cliente_id INTEGER NOT NULL,
-    nome VARCHAR(100) NOT NULL,
-    estado VARCHAR(2),
-    segmento VARCHAR(50)
+DROP SCHEMA IF EXISTS varejo CASCADE;
+CREATE SCHEMA varejo;
+
+-- ==============================================================================
+-- 1. ESTRUTURA OLTP SOURCE (Tabelas que simulam o sistema transacional)
+-- ==============================================================================
+CREATE TABLE varejo.origem_cliente (
+    cliente_id    INTEGER PRIMARY KEY,
+    nome          VARCHAR(100) NOT NULL,
+    estado        VARCHAR(2),
+    segmento      VARCHAR(50),
+    data_cadastro DATE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS varejo.dim_produto (
-    produto_sk SERIAL PRIMARY KEY,
-    produto_id VARCHAR(20) UNIQUE,
-    nome_produto VARCHAR(200),
-    categoria VARCHAR(50),
+CREATE TABLE varejo.origem_produto (
+    produto_id     VARCHAR(20) PRIMARY KEY,
+    nome_produto   VARCHAR(200),
+    categoria      VARCHAR(50),
     preco_sugerido DECIMAL(10, 2)
 );
 
-CREATE TABLE IF NOT EXISTS varejo.fato_vendas (
-    venda_id SERIAL PRIMARY KEY,
+CREATE TABLE varejo.origem_venda (
+    venda_id   SERIAL PRIMARY KEY,
     data_venda DATE NOT NULL,
-    produto_sk INTEGER REFERENCES varejo.dim_produto (produto_sk),
-    cliente_sk INTEGER REFERENCES varejo.dim_cliente (cliente_sk),
+    produto_id VARCHAR(20) NOT NULL REFERENCES varejo.origem_produto (produto_id),
+    cliente_id INTEGER NOT NULL REFERENCES varejo.origem_cliente (cliente_id),
     quantidade INTEGER NOT NULL,
     valor_total DECIMAL(10, 2) NOT NULL
 );
 
--- 2. ESTRUTURA PARA EXERCÍCIOS DE BIG DATA (DE PARA AULAS 05 e 06)
-CREATE TABLE IF NOT EXISTS varejo.usuarios_dim (
-    usuario_id   INTEGER      PRIMARY KEY,
-    nome         TEXT         NOT NULL,
-    segmento     TEXT         NOT NULL,   -- 'premium' | 'standard' | 'trial'
-    data_cadastro DATE        NOT NULL
-);
+-- ==============================================================================
+-- 2. DADOS INICIAIS (Casos de Estudo Claros: João, Maria, Pedro)
+-- ==============================================================================
+INSERT INTO varejo.origem_cliente (cliente_id, nome, estado, segmento, data_cadastro) VALUES
+(101, 'João Silva',    'SP', 'Ouro',   '2023-01-15'),
+(102, 'Maria Santos',  'RJ', 'Bronze', '2023-05-20'),
+(103, 'Pedro Costa',   'MG', 'Prata',  '2024-02-10');
 
-CREATE TABLE IF NOT EXISTS varejo.usuarios_atividade_fato (
-    usuario_id   INTEGER  NOT NULL,
-    data_evento  DATE     NOT NULL,
-    PRIMARY KEY (usuario_id, data_evento)
-);
+INSERT INTO varejo.origem_produto (produto_id, nome_produto, categoria, preco_sugerido) VALUES
+('PROD001', 'Notebook Dell i5',      'Informática', 3500.00),
+('PROD002', 'Mouse Logitech MX',     'Informática',  250.00),
+('PROD003', 'Teclado Mecânico RGB',  'Informática',  350.00);
 
--- 3. DADOS DIMENSIONAIS (POPULAÇÃO INICIAL)
-INSERT INTO varejo.dim_cliente (cliente_id, nome, estado, segmento) VALUES
-(101, 'João Silva', 'SP', 'Ouro'),
-(102, 'Maria Santos', 'RJ', 'Bronze'),
-(103, 'Pedro Costa', 'MG', 'Prata')
-ON CONFLICT DO NOTHING;
+-- Vendas determinísticas do João para demonstrar Point-In-Time na aula:
+INSERT INTO varejo.origem_venda (data_venda, produto_id, cliente_id, quantidade, valor_total) VALUES
+('2024-05-04', 'PROD001', 101, 1, 3500.00),
+('2024-05-05', 'PROD001', 101, 2, 7000.00),
+('2024-06-15', 'PROD003', 101, 1,  350.00),
+('2024-06-28', 'PROD002', 101, 1,  250.00),
+('2024-07-01', 'PROD002', 101, 1,  250.00),
+('2024-07-03', 'PROD001', 101, 1, 3500.00);
 
-INSERT INTO varejo.dim_produto (produto_id, nome_produto, categoria, preco_sugerido) VALUES
-('PROD001', 'Notebook Dell i5', 'Informática', 3500.00),
-('PROD002', 'Mouse Logitech MX', 'Informática', 250.00),
-('PROD003', 'Teclado Mecânico RGB', 'Informática', 350.00)
-ON CONFLICT (produto_id) DO NOTHING;
-
--- 4. SÍNTESE MASSIVA DE USUÁRIOS (10.000 usuários)
+-- ==============================================================================
+-- 3. SÍNTESE DE CLIENTES (2.000 clientes simulando volume suficiente para análises)
+-- ==============================================================================
 SELECT setseed(0.42);
-INSERT INTO varejo.usuarios_dim (usuario_id, nome, segmento, data_cadastro)
+INSERT INTO varejo.origem_cliente (cliente_id, nome, estado, segmento, data_cadastro)
 SELECT
-    gs                                                          AS usuario_id,
-    'Usuario_' || LPAD(gs::TEXT, 6, '0')                       AS nome,
+    gs AS cliente_id,
+    'Cliente_' || LPAD(gs::TEXT, 6, '0') AS nome,
+    (ARRAY['SP','RJ','MG','PR','SC','RS','BA','PE'])[floor(random()*8+1)] AS estado,
     CASE
-        WHEN random() < 0.15 THEN 'premium'
-        WHEN random() < 0.55 THEN 'standard'
-        ELSE 'trial'
-    END                                                         AS segmento,
-    CURRENT_DATE - (random() * 730)::INT                        AS data_cadastro
-FROM generate_series(1, 10000) AS gs
-ON CONFLICT DO NOTHING;
+        WHEN random() < 0.15 THEN 'Ouro'
+        WHEN random() < 0.55 THEN 'Prata'
+        ELSE 'Bronze'
+    END AS segmento,
+    CURRENT_DATE - (random() * 730)::INT AS data_cadastro
+FROM generate_series(200, 2000) AS gs;
 
--- 5. SÍNTESE MASSIVA DE ATIVIDADE (120.000 eventos)
-INSERT INTO varejo.usuarios_atividade_fato (usuario_id, data_evento)
-SELECT DISTINCT
-    (random() * 9999 + 1)::INT   AS usuario_id,
-    (DATE '2024-05-05' + (gs % 30))::DATE  AS data_evento
-FROM generate_series(1, 120000) AS gs
-ON CONFLICT DO NOTHING;
+-- ==============================================================================
+-- 4. SÍNTESE DE VENDAS (30.000 transações mapeando o período de 2 meses)
+-- ==============================================================================
+-- Vendas espalhadas num intervalo de 60 dias para clientes sintéticos (>= 200)
+INSERT INTO varejo.origem_venda (data_venda, produto_id, cliente_id, quantidade, valor_total)
+SELECT
+    (DATE '2024-05-04' + FLOOR(random() * 62)::INT),
+    'PROD00' || (floor(random() * 3 + 1))::TEXT,
+    (random() * 1800 + 200)::INT,
+    (floor(random() * 5 + 1))::INT,
+    0
+FROM generate_series(1, 30000) AS id;
 
--- Injeções Determinísticas para Testes de Churn/Retention
-INSERT INTO varejo.usuarios_atividade_fato (usuario_id, data_evento)
-SELECT 1, DATE '2024-05-05' + i FROM generate_series(0, 29) AS i ON CONFLICT DO NOTHING; -- Power User
-INSERT INTO varejo.usuarios_atividade_fato (usuario_id, data_evento)
-SELECT 2, DATE '2024-05-05' + i FROM generate_series(0, 22) AS i ON CONFLICT DO NOTHING; -- Churn
-INSERT INTO varejo.usuarios_atividade_fato (usuario_id, data_evento)
-VALUES (3, '2024-06-03') ON CONFLICT DO NOTHING; -- New User
-
--- 6. SÍNTESE MASSIVA DE VENDAS (100.000 records)
-INSERT INTO varejo.fato_vendas (data_venda, produto_sk, cliente_sk, quantidade, valor_total)
-SELECT 
-    (CURRENT_DATE - (random() * 30)::INT * INTERVAL '1 day')::DATE as data_venda,
-    (random() * 2 + 1)::INT as produto_sk,
-    (random() * 2 + 1)::INT as cliente_sk,
-    (random() * 5 + 1)::INT as quantidade,
-    0 as valor_total
-FROM generate_series(1, 100000) AS id;
-
-UPDATE varejo.fato_vendas SET valor_total = quantidade * 100 WHERE valor_total = 0;
+UPDATE varejo.origem_venda SET valor_total = quantidade * 100 WHERE valor_total = 0;

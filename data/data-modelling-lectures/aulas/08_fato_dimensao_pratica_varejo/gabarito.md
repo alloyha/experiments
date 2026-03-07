@@ -156,13 +156,15 @@ BEGIN
     INSERT INTO varejo.fato_vendas (data_venda, produto_sk, cliente_sk, quantidade, valor_total)
     SELECT 
         src.data_venda,
-        src.produto_sk,
+        p.produto_sk,
         c.cliente_sk,
         src.quantidade,
         src.valor_total
     FROM varejo.fato_vendas_staging src
+    JOIN varejo.dim_produto p
+        ON p.produto_id = src.produto_id
     JOIN varejo.dim_cliente_type2 c
-        ON c.cliente_id = src.cliente_sk
+        ON c.cliente_id = src.cliente_id
        AND c.data_inicio <= src.data_venda
        AND (c.data_fim >= src.data_venda OR c.data_fim IS NULL)
     WHERE src.data_venda = p_data_processamento;
