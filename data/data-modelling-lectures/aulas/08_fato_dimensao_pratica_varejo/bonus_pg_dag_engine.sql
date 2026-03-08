@@ -207,6 +207,21 @@ AFTER INSERT OR UPDATE OF status ON dag_engine.dag_runs
 FOR EACH ROW EXECUTE PROCEDURE dag_engine.log_dag_state_transition();
 
 -- 4. O MOTOR RESOLVEDOR DE DEPENDÊNCIAS (DAG RUNNER)
+-- Utilitário de Cadência: Retorna a data de execução agendada imediatamente anterior
+CREATE OR REPLACE FUNCTION dag_engine.fn_prev_scheduled_date(
+    p_schedule TEXT,
+    p_date     DATE
+) RETURNS DATE LANGUAGE sql AS $$
+    SELECT CASE
+        WHEN p_schedule LIKE '% * * 1-5' THEN
+            CASE EXTRACT(DOW FROM p_date)
+                WHEN 1 THEN p_date - 3
+                ELSE p_date - 1
+            END
+        ELSE p_date - 1
+    END;
+$$;
+
 DROP PROCEDURE IF EXISTS dag_engine.proc_run_dag(DATE);
 CREATE OR REPLACE PROCEDURE dag_engine.proc_run_dag(
     p_dag_name TEXT, 
@@ -342,6 +357,7 @@ BEGIN
                     UPDATE dag_engine.dag_runs SET status = 'DEADLOCK', end_ts = clock_timestamp() WHERE run_id = v_run_id;
                     COMMIT;
                     IF p_verbose THEN RAISE WARNING '💀 Deadlock Topológico Encontrado: Tarefas pendentes irresolvíveis!'; END IF;
+                    CALL dag_medallion.proc_run_medallion(v_run_id);  -- DEADLOCK também alimenta o medallion
                     EXIT;
                 END IF;
             ELSE
@@ -368,44 +384,11 @@ $$;
 -- ==============================================================================
 -- 4.1. PROCEDURES DE UTILIDADE (CATCH-UP)
 -- ==============================================================================
--- Se o servidor cair por 3 dias, o Cron só chamaria uma vez. Isso preenche o Gap:
-DROP PROCEDURE IF EXISTS dag_engine.proc_catchup(DATE, DATE);
-CREATE OR REPLACE PROCEDURE dag_engine.proc_catchup(
-    p_dag_name TEXT, 
-    p_from DATE, 
-    p_to DATE, 
-    p_verbose BOOLEAN DEFAULT TRUE,
-    p_version INT DEFAULT NULL
-)
-LANGUAGE plpgsql AS $$
-DECLARE
-    v_date DATE := p_from;
-    v_status VARCHAR(20);
-BEGIN
-    WHILE v_date <= p_to LOOP
-        v_status := NULL;
-        SELECT status INTO v_status FROM dag_engine.dag_runs
-        WHERE dag_name = p_dag_name AND run_date = v_date;
-
-        IF v_status = 'SUCCESS' THEN
-            IF p_verbose THEN RAISE NOTICE '⏭️ Pulando % — já processado com sucesso.', v_date; END IF;
-        ELSIF v_status = 'RUNNING' THEN
-            -- Run fantasma: banco reiniciou sem finalizar
-            IF p_verbose THEN RAISE WARNING '⚠️ Run de % está como RUNNING (fantasma). Catchup interrompido — resolva manualmente antes de continuar.', v_date; END IF;
-            EXIT; -- paralisa o loop de recovery até que o ghost RUNNING seja limpo
-        ELSE
-            -- NULL (nunca rodou), FAILED, DEADLOCK — tenta/retenta
-            IF v_status IS NOT NULL THEN
-                CALL dag_engine.proc_clear_run(p_dag_name, v_date, p_verbose);
-            END IF;
-            IF p_verbose THEN RAISE NOTICE '📅 Catch-up: rodando %', v_date; END IF;
-            CALL dag_engine.proc_run_dag(p_dag_name, v_date, p_verbose);
-        END IF;
-
-        v_date := v_date + 1;
-    END LOOP;
-END;
-$$;
+-- Se o servidor cair por 3 dias, o Cron só chamaria uma vez. Isso preenche o Gap.
+-- NOTA: a definição completa e correta (com run_type='BACKFILL') está na seção 8.6
+-- que substitui esta ao longo do script. A pré-definição abaixo existe apenas para
+-- garantir que DROP PROCEDURE na 8.6 encontre a assinatura certa mesmo num banco limpo.
+DROP PROCEDURE IF EXISTS dag_engine.proc_catchup(TEXT, DATE, DATE, BOOLEAN, INT);
 
 -- ==============================================================================
 -- NOVO: 4.2. VIEW DE ANOMALIAS E CRITICAL PATH (Health & Performance Z-Score)
@@ -457,7 +440,7 @@ GROUP BY dr.dag_name, ROLLUP(ti.task_name)
 ORDER BY pipeline_name, step_name;
 
 -- ==============================================================================
--- 4.4 PROCEDURES DE MANUTENÇÃO (CLEAR RUN)
+-- 4.2 PROCEDURES DE MANUTENÇÃO (CLEAR RUN)
 -- ==============================================================================
 -- Limpa completamente o rastro de uma RUN passada, permitindo reexecução do marco zero.
 DROP PROCEDURE IF EXISTS dag_engine.proc_clear_run(DATE);
@@ -490,7 +473,7 @@ END;
 $$;
 
 -- ==============================================================================
--- 4.5 PROCEDURES DE DEPLOYMENT (DAG SPEC AS JSON)
+-- 4.3 PROCEDURES DE DEPLOYMENT (DAG SPEC AS JSON)
 -- ==============================================================================
 -- Permite carregar a topologia do DAG via um payload JSON (estilo dbt/Airflow configs).
 CREATE OR REPLACE PROCEDURE dag_engine.proc_load_dag_spec(p_spec JSONB)
@@ -581,6 +564,26 @@ $$;
 -- para criar um DW próprio de observabilidade topológica, utilizando dimensões e score!
 
 CREATE SCHEMA IF NOT EXISTS dag_medallion;
+
+-- Funções Bitmap Escalares para monitoramento de saúde histórica compacta
+CREATE OR REPLACE FUNCTION dag_medallion.shift_health_bitmap(
+    p_bitmap  BIGINT,
+    p_healthy BOOLEAN
+) RETURNS BIGINT LANGUAGE sql IMMUTABLE AS $$
+    SELECT (COALESCE(p_bitmap, 0::BIGINT) >> 1)
+         | CASE WHEN p_healthy THEN (1::BIGINT << 31) ELSE 0::BIGINT END;
+$$;
+
+CREATE OR REPLACE FUNCTION dag_medallion.was_healthy_on_day(
+    p_bitmap   BIGINT,
+    p_days_ago INT
+) RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+    SELECT (p_bitmap & (1::BIGINT << (31 - p_days_ago))) > 0;
+$$;
+
+-- As tabelas de saúde cumulativa são criadas após dag_versions (dependência de FK)
+-- Veja: seção 8 BACKLOG: DAG VERSIONING
+
 
 -- ============================================================
 -- BRONZE: Snapshots point-in-time raw preservados para auditoria
@@ -774,6 +777,12 @@ BEGIN
 END;
 $$;
 
+
+-- BITMAP & ARRAY HEALTH TRACKING (DATINT)
+-- As tabelas de saúde (task_health_cumulative, task_health_array_mensal) e as
+-- procedures que as alimentam (proc_upsert_health_cumulative, proc_upsert_health_array)
+-- são criadas na seção 8.2, após dag_runs.version_id existir, respeitando a FK.
+
 -- ============================================================
 -- GOLD 1: Pipeline Health Score Z-Score Composto
 -- ============================================================
@@ -826,6 +835,7 @@ ORDER BY topological_layer ASC;
 -- ============================================================
 -- GOLD 2: SLA Breach Detection (Contrato de P95)
 -- ============================================================
+DROP VIEW IF EXISTS dag_medallion.gold_sla_breach CASCADE;
 CREATE OR REPLACE VIEW dag_medallion.gold_sla_breach AS
 WITH sla_calc AS (
     SELECT
@@ -957,7 +967,7 @@ GROUP BY source_task, f.total_failures
 ORDER BY risk_score DESC;
 
 -- ============================================================
--- GOLD 6: Step Duration Timelapse (Trend Analítico Preditivo)
+-- GOLD 8: Step Duration Timelapse (Trend Analítico Preditivo)
 -- ============================================================
 CREATE OR REPLACE VIEW dag_medallion.gold_performance_timelapse AS
 SELECT 
@@ -986,6 +996,8 @@ BEGIN
     CALL dag_medallion.proc_ingest_bronze(p_run_id);
     CALL dag_medallion.proc_upsert_dim_task();
     CALL dag_medallion.proc_upsert_fato_task_exec(p_run_id);
+    CALL dag_medallion.proc_upsert_health_cumulative(p_run_id);  -- NOVO (DATINT)
+    CALL dag_medallion.proc_upsert_health_array(p_run_id);       -- NOVO (DATINT)
 END;
 $$;
 
@@ -997,6 +1009,218 @@ $$;
 --   • Como comparar DAGs de épocas diferentes? (fn_diff_versions)
 --   • Como fazer catchup fiel à topologia original? (snapshot replay)
 -- ==============================================================================
+
+-- ==============================================================================
+-- 8.0 SEMANTIC VERSIONING ENFORCEMENT
+-- ==============================================================================
+-- Garante que nenhum deploy aceite tags livres como 'hotfix' ou 'final_v3'.
+-- Três guardas embutidas em proc_deploy_dag:
+--   S1 — Formato    → vMAJOR.MINOR.PATCH obrigatório
+--   S2 — Monotonia  → novo tag deve ser estritamente maior que o ativo
+--   S3 — Adequação  → under-bump BLOQUEADO | over-bump permitido com aviso
+-- ==============================================================================
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- fn_parse_semver: valida e decompõe um tag no formato vMAJOR.MINOR.PATCH
+-- Retorna (major, minor, patch) como INTs ou levanta exceção se inválido.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION dag_engine.fn_parse_semver(
+    p_tag TEXT
+) RETURNS TABLE (major INT, minor INT, patch INT)
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+    v_parts TEXT[];
+BEGIN
+    -- Aceita tanto 'v1.2.3' quanto '1.2.3'
+    v_parts := regexp_match(
+        lower(trim(p_tag)),
+        '^v?(\d+)\.(\d+)\.(\d+)$'
+    );
+
+    IF v_parts IS NULL THEN
+        RAISE EXCEPTION
+            'Semver Error: tag "%" inválido. Formato esperado: vMAJOR.MINOR.PATCH (ex: v1.2.3)',
+            p_tag;
+    END IF;
+
+    major := v_parts[1]::INT;
+    minor := v_parts[2]::INT;
+    patch := v_parts[3]::INT;
+    RETURN NEXT;
+END;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- fn_compare_semver: comparação total entre dois tags semver
+-- Retorna -1 (v1 < v2), 0 (iguais), 1 (v1 > v2)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION dag_engine.fn_compare_semver(
+    p_v1 TEXT,
+    p_v2 TEXT
+) RETURNS INT
+LANGUAGE sql IMMUTABLE AS $$
+    SELECT CASE
+        WHEN ROW(v1.major, v1.minor, v1.patch) < ROW(v2.major, v2.minor, v2.patch) THEN -1
+        WHEN ROW(v1.major, v1.minor, v1.patch) > ROW(v2.major, v2.minor, v2.patch) THEN  1
+        ELSE 0
+    END
+    FROM dag_engine.fn_parse_semver(p_v1) v1,
+         dag_engine.fn_parse_semver(p_v2) v2;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- fn_next_semver: dado o tag atual e o tipo de bump, retorna o próximo tag
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION dag_engine.fn_next_semver(
+    p_current_tag TEXT,
+    p_bump        TEXT   -- 'MAJOR' | 'MINOR' | 'PATCH'
+) RETURNS TEXT
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+    v RECORD;
+BEGIN
+    IF p_bump NOT IN ('MAJOR', 'MINOR', 'PATCH') THEN
+        RAISE EXCEPTION 'Bump inválido: %. Use MAJOR, MINOR ou PATCH.', p_bump;
+    END IF;
+    SELECT * INTO v FROM dag_engine.fn_parse_semver(p_current_tag);
+    RETURN 'v' || CASE p_bump
+        WHEN 'MAJOR' THEN (v.major + 1)::TEXT || '.0.0'
+        WHEN 'MINOR' THEN  v.major::TEXT || '.' || (v.minor + 1)::TEXT || '.0'
+        WHEN 'PATCH' THEN  v.major::TEXT || '.' || v.minor::TEXT || '.' || (v.patch + 1)::TEXT
+    END;
+END;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- fn_suggest_semver_bump: analisa o diff entre o spec ativo e o novo spec
+-- e retorna o bump recomendado + o próximo tag sugerido + detalhes do diff.
+-- Pode ser chamado como dry-run antes de qualquer deploy (útil em CI/CD).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION dag_engine.fn_suggest_semver_bump(
+    p_dag_name TEXT,
+    p_new_spec JSONB
+) RETURNS TABLE (
+    recommended_bump TEXT,
+    suggested_tag    TEXT,
+    current_tag      TEXT,
+    diff_summary     TEXT
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_active_version_id INT;
+    v_current_tag       TEXT;
+    v_has_removed       BOOLEAN := FALSE;
+    v_has_added         BOOLEAN := FALSE;
+    v_has_deps_changed  BOOLEAN := FALSE;
+    v_has_proc_changed  BOOLEAN := FALSE;
+    v_has_config_changed BOOLEAN := FALSE;
+    v_bump              TEXT;
+    v_diff_lines        TEXT[];
+    v_rec               RECORD;
+BEGIN
+    -- Busca versão ativa para este DAG
+    SELECT version_id, version_tag
+    INTO v_active_version_id, v_current_tag
+    FROM dag_engine.dag_versions
+    WHERE dag_name = p_dag_name AND is_active = TRUE;
+
+    -- Sem versão ativa = primeiro deploy, qualquer tag é válido
+    IF NOT FOUND THEN
+        recommended_bump := 'INITIAL';
+        suggested_tag    := 'v1.0.0';
+        current_tag      := NULL;
+        diff_summary     := 'Primeiro deploy — nenhum diff aplicável.';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+
+    -- Diff inline via CTEs (evita persistir dados temporários)
+    FOR v_rec IN
+        WITH
+        v1_tasks AS (
+            SELECT elem->>'task_name'      AS task_name,
+                   elem->>'procedure_call' AS proc,
+                   elem->'dependencies'    AS deps,
+                   elem                   AS config
+            FROM dag_engine.dag_versions,
+                 jsonb_array_elements(COALESCE(spec->'tasks', spec)) AS elem
+            WHERE version_id = v_active_version_id
+        ),
+        v2_tasks AS (
+            SELECT elem->>'task_name'      AS task_name,
+                   elem->>'procedure_call' AS proc,
+                   elem->'dependencies'    AS deps,
+                   elem                   AS config
+            FROM jsonb_array_elements(
+                COALESCE(p_new_spec->'tasks', p_new_spec)
+            ) AS elem
+        )
+        SELECT 'REMOVED'::TEXT AS change_type, v1.task_name, v1.proc AS detail
+        FROM v1_tasks v1 WHERE NOT EXISTS (SELECT 1 FROM v2_tasks v2 WHERE v2.task_name = v1.task_name)
+        UNION ALL
+        SELECT 'ADDED', v2.task_name, v2.proc
+        FROM v2_tasks v2 WHERE NOT EXISTS (SELECT 1 FROM v1_tasks v1 WHERE v1.task_name = v2.task_name)
+        UNION ALL
+        SELECT 'PROC_CHANGED', v1.task_name,
+               'era: ' || v1.proc || ' → agora: ' || v2.proc
+        FROM v1_tasks v1 JOIN v2_tasks v2 ON v1.task_name = v2.task_name
+        WHERE v1.proc != v2.proc
+        UNION ALL
+        SELECT 'DEPS_CHANGED', v1.task_name,
+               'era: ' || v1.deps::text || ' → agora: ' || v2.deps::text
+        FROM v1_tasks v1 JOIN v2_tasks v2 ON v1.task_name = v2.task_name
+        WHERE v1.deps::text != v2.deps::text
+        UNION ALL
+        SELECT 'CONFIG_CHANGED', v1.task_name,
+               'max_retries: '          || COALESCE(v1.config->>'max_retries', '0')
+               || ' → '               || COALESCE(v2.config->>'max_retries', '0')
+               || ' | retry_delay_s: '  || COALESCE(v1.config->>'retry_delay_seconds', '5')
+               || ' → '               || COALESCE(v2.config->>'retry_delay_seconds', '5')
+               || ' | sla_ms: '         || COALESCE(v1.config->>'sla_ms_override', 'null')
+               || ' → '               || COALESCE(v2.config->>'sla_ms_override', 'null')
+        FROM v1_tasks v1 JOIN v2_tasks v2 ON v1.task_name = v2.task_name
+        WHERE (v1.config->>'max_retries')         IS DISTINCT FROM (v2.config->>'max_retries')
+           OR (v1.config->>'retry_delay_seconds') IS DISTINCT FROM (v2.config->>'retry_delay_seconds')
+           OR (v1.config->>'sla_ms_override')     IS DISTINCT FROM (v2.config->>'sla_ms_override')
+    LOOP
+        CASE v_rec.change_type
+            WHEN 'REMOVED'        THEN v_has_removed       := TRUE;
+            WHEN 'ADDED'          THEN v_has_added         := TRUE;
+            WHEN 'DEPS_CHANGED'   THEN v_has_deps_changed  := TRUE;
+            WHEN 'PROC_CHANGED'   THEN v_has_proc_changed  := TRUE;
+            WHEN 'CONFIG_CHANGED' THEN v_has_config_changed := TRUE;
+        END CASE;
+
+        v_diff_lines := array_append(
+            v_diff_lines,
+            '  [' || v_rec.change_type || '] ' || v_rec.task_name || ': ' || v_rec.detail
+        );
+    END LOOP;
+
+    -- Sem diff algum = spec idêntico
+    IF v_diff_lines IS NULL THEN
+        recommended_bump := 'NONE';
+        suggested_tag    := v_current_tag;
+        current_tag      := v_current_tag;
+        diff_summary     := 'Spec idêntico ao ativo — nenhum bump necessário.';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+
+    -- Hierarquia de bump: MAJOR > MINOR > PATCH
+    v_bump := CASE
+        WHEN v_has_removed                                    THEN 'MAJOR'
+        WHEN v_has_added OR v_has_deps_changed                THEN 'MINOR'
+        WHEN v_has_proc_changed OR v_has_config_changed       THEN 'PATCH'
+    END;
+
+    recommended_bump := v_bump;
+    suggested_tag    := dag_engine.fn_next_semver(v_current_tag, v_bump);
+    current_tag      := v_current_tag;
+    diff_summary     := array_to_string(v_diff_lines, E'\n');
+    RETURN NEXT;
+END;
+$$;
 
 -- 8.1 Tabela de versões do spec (snapshot imutável de cada deploy)
 CREATE TABLE IF NOT EXISTS dag_engine.dag_versions (
@@ -1028,10 +1252,276 @@ WHERE is_active = TRUE;
 ALTER TABLE dag_engine.dag_runs
     ADD COLUMN IF NOT EXISTS version_id INT REFERENCES dag_engine.dag_versions(version_id);
 
--- 8.3 proc_deploy_dag: ponto de entrada versionado que substitui proc_load_dag_spec
--- Detecta redeploys silenciosos via hash e mantém a cadeia de versões pai → filho
--- p_spec agora aceita o manifest envelope completo:
---   { "name": "...", "description": "...", "schedule": "...", "tasks": [...] }
+-- 8.2.1 Tabelas de Saúde Cumulativa (requerem dag_versions como FK)
+-- DROP necessário apenas se a PK mudou (migração de schema):
+-- a PK agora é tripla (task_name, version_id, data_snapshot)
+CREATE TABLE IF NOT EXISTS dag_medallion.task_health_cumulative (
+    task_name           VARCHAR(100) NOT NULL,
+    version_id          INT          NOT NULL REFERENCES dag_engine.dag_versions(version_id),
+    data_snapshot       DATE         NOT NULL,
+    run_type            VARCHAR(20)  NOT NULL DEFAULT 'INCREMENTAL',
+    health_bitmap_32d   BIGINT       NOT NULL DEFAULT 0,
+    datas_saudavel      DATE[]       NOT NULL DEFAULT '{}',
+    total_dias_saudavel INT GENERATED ALWAYS AS (CARDINALITY(datas_saudavel)) STORED,
+    PRIMARY KEY (task_name, version_id, data_snapshot)
+);
+
+CREATE INDEX IF NOT EXISTS idx_health_cumul_version_snapshot
+    ON dag_medallion.task_health_cumulative (version_id, data_snapshot);
+
+CREATE TABLE IF NOT EXISTS dag_medallion.task_health_array_mensal (
+    task_name        VARCHAR(100) NOT NULL,
+    version_id       INT          NOT NULL REFERENCES dag_engine.dag_versions(version_id),
+    mes_referencia   DATE         NOT NULL,
+    scores_diarios   NUMERIC[]    NOT NULL DEFAULT '{}',
+    score_minimo_mes NUMERIC      NOT NULL DEFAULT 100,
+    score_medio_mes  NUMERIC      NOT NULL DEFAULT 0,
+    PRIMARY KEY (task_name, version_id, mes_referencia)
+);
+
+-- 8.2.2 Views Gold de Saúde Cumulativa (dependem das tabelas acima)
+-- Criadas aqui para garantir que task_health_cumulative já existe.
+CREATE OR REPLACE VIEW dag_medallion.gold_health_streak AS
+SELECT
+    task_name,
+    version_id,
+    data_snapshot,
+    total_dias_saudavel,
+    dag_medallion.was_healthy_on_day(health_bitmap_32d, 0)  AS healthy_d0,
+    dag_medallion.was_healthy_on_day(health_bitmap_32d, 1)  AS healthy_d1,
+    dag_medallion.was_healthy_on_day(health_bitmap_32d, 7)  AS healthy_d7,
+    dag_medallion.was_healthy_on_day(health_bitmap_32d, 14) AS healthy_d14,
+    dag_medallion.was_healthy_on_day(health_bitmap_32d, 30) AS healthy_d30,
+    health_bitmap_32d::BIT(32)                              AS bitmap_visual
+FROM dag_medallion.task_health_cumulative
+WHERE run_type = 'INCREMENTAL'
+ORDER BY task_name, version_id, data_snapshot DESC;
+
+CREATE OR REPLACE VIEW dag_medallion.gold_degradation_streaks AS
+WITH daily_health AS (
+    SELECT
+        task_name,
+        version_id,
+        data_snapshot,
+        CASE WHEN dag_medallion.was_healthy_on_day(health_bitmap_32d, 0)
+             THEN 'SAUDAVEL' ELSE 'DEGRADADO'
+        END AS health_state
+    FROM dag_medallion.task_health_cumulative
+    WHERE run_type = 'INCREMENTAL'
+),
+streak_started AS (
+    SELECT
+        task_name,
+        version_id,
+        data_snapshot,
+        health_state,
+        LAG(health_state) OVER w IS DISTINCT FROM health_state AS did_change
+    FROM daily_health
+    WINDOW w AS (PARTITION BY task_name, version_id ORDER BY data_snapshot)
+),
+streak_identified AS (
+    SELECT *,
+        SUM(CASE WHEN did_change THEN 1 ELSE 0 END)
+            OVER (PARTITION BY task_name, version_id ORDER BY data_snapshot) AS streak_id
+    FROM streak_started
+)
+SELECT
+    task_name,
+    version_id,
+    health_state,
+    MIN(data_snapshot) AS streak_start,
+    MAX(data_snapshot) AS streak_end,
+    COUNT(*)           AS streak_days,
+    MAX(data_snapshot) = (
+        SELECT MAX(data_snapshot)
+        FROM dag_medallion.task_health_cumulative t
+        WHERE t.task_name  = si.task_name
+          AND t.version_id = si.version_id
+          AND t.run_type   = 'INCREMENTAL'
+    )                  AS is_current
+FROM streak_identified si
+GROUP BY task_name, version_id, health_state, streak_id
+ORDER BY task_name, version_id, streak_start DESC;
+
+-- 8.2.3 Procedures de Saúde Cumulativa (dependem de dag_runs.version_id e dag_versions)
+-- Movidas para cá (após 8.2) para garantir que dag_runs.version_id já existe quando
+-- a procedure tenta ler essa coluna em runtime — seguro mesmo em execução do zero.
+
+-- Etapa 3: Upsert de Saúde Cumulativa (Bitmap)
+-- Duas guardas de integridade — não existe GUARDA 3:
+--   o reset de versão é emergente: yesterday filtra por version_id,
+--   então a primeira run de uma versão nova começa com bitmap zero.
+CREATE OR REPLACE PROCEDURE dag_medallion.proc_upsert_health_cumulative(p_run_id INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_run_date   DATE;
+    v_run_type   VARCHAR(20);
+    v_version_id INT;
+    v_schedule   TEXT;
+BEGIN
+    SELECT dr.run_date, dr.run_type, dr.version_id, dv.schedule
+    INTO v_run_date, v_run_type, v_version_id, v_schedule
+    FROM dag_engine.dag_runs dr
+    LEFT JOIN dag_engine.dag_versions dv ON dv.version_id = dr.version_id
+    WHERE dr.run_id = p_run_id;
+
+    -- ── GUARDA 1: Backfill nunca alimenta o bitmap operacional ──────────────
+    -- Runs de backfill representam dados históricos, não o comportamento atual
+    -- do pipeline em produção. Misturar os dois regimes corromperia o streak.
+    IF v_run_type = 'BACKFILL' THEN
+        RAISE NOTICE '⏭️ [health_cumulative] Ignorado: run BACKFILL (%).', v_run_date;
+        RETURN;
+    END IF;
+
+    -- ── GUARDA 2: Mesmo (version_id, data_snapshot) = sobrescreve sem shift ──
+    -- Garante idempotência: reprocessar o mesmo dia não desloca o bitmap.
+    -- Apenas corrige o bit 31 (hoje) para refletir o score atual.
+    IF EXISTS (
+        SELECT 1 FROM dag_medallion.task_health_cumulative
+        WHERE version_id    = v_version_id
+          AND data_snapshot = v_run_date
+    ) THEN
+        RAISE NOTICE '⏭️ [health_cumulative] Reprocessamento de % (v%). Sobrescrevendo sem shift.',
+            v_run_date, v_version_id;
+        UPDATE dag_medallion.task_health_cumulative thc
+        SET health_bitmap_32d = CASE
+                WHEN g.health_label != '🔵 CALIBRANDO' AND g.health_score >= 95
+                THEN (thc.health_bitmap_32d |  (1::BIGINT << 31))
+                ELSE (thc.health_bitmap_32d & ~(1::BIGINT << 31))
+            END
+        FROM dag_medallion.gold_pipeline_health g
+        WHERE thc.task_name     = g.task_name
+          AND thc.version_id    = v_version_id
+          AND thc.data_snapshot = v_run_date;
+        RETURN;
+    END IF;
+
+    -- ── Acumulação principal ─────────────────────────────────────────────────
+    -- yesterday é scoped por version_id: se esta é a primeira run da versão,
+    -- o CTE retorna zero linhas e o FULL OUTER JOIN preenche tudo com zero.
+    -- O reset de versão é emergente — não há lógica especial necessária.
+    WITH yesterday AS (
+        SELECT task_name, health_bitmap_32d, datas_saudavel
+        FROM dag_medallion.task_health_cumulative
+        WHERE version_id    = v_version_id
+          AND data_snapshot = dag_engine.fn_prev_scheduled_date(
+                                  COALESCE(v_schedule, '0 0 * * *'),
+                                  v_run_date
+                              )
+    ),
+    today AS (
+        SELECT task_name,
+               health_score >= 95
+               AND health_label != '🔵 CALIBRANDO' AS is_healthy
+        FROM dag_medallion.gold_pipeline_health
+    ),
+    merged AS (
+        SELECT
+            COALESCE(y.task_name, t.task_name)   AS task_name,
+            v_version_id                          AS version_id,
+            v_run_date                            AS data_snapshot,
+            'INCREMENTAL'::VARCHAR(20)            AS run_type,
+            dag_medallion.shift_health_bitmap(
+                y.health_bitmap_32d,
+                COALESCE(t.is_healthy, FALSE)
+            )                                     AS health_bitmap_32d,
+            COALESCE(y.datas_saudavel, ARRAY[]::DATE[])
+            || CASE WHEN COALESCE(t.is_healthy, FALSE)
+                    THEN ARRAY[v_run_date]
+                    ELSE ARRAY[]::DATE[]
+               END                                AS datas_saudavel
+        FROM yesterday y
+        FULL OUTER JOIN today t ON y.task_name = t.task_name
+    )
+    INSERT INTO dag_medallion.task_health_cumulative
+        (task_name, version_id, data_snapshot, run_type, health_bitmap_32d, datas_saudavel)
+    SELECT task_name, version_id, data_snapshot, run_type, health_bitmap_32d, datas_saudavel
+    FROM merged
+    ON CONFLICT (task_name, version_id, data_snapshot) DO UPDATE SET
+        health_bitmap_32d = EXCLUDED.health_bitmap_32d,
+        datas_saudavel    = EXCLUDED.datas_saudavel;
+END;
+$$;
+
+-- Etapa 5: Upsert de Saúde Mensal (Array)
+CREATE OR REPLACE PROCEDURE dag_medallion.proc_upsert_health_array(p_run_id INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_run_date     DATE;
+    v_run_type     VARCHAR(20);
+    v_version_id   INT;
+    v_primeiro_dia DATE;
+    v_dia_do_mes   INT;
+BEGIN
+    SELECT run_date, run_type, version_id
+    INTO v_run_date, v_run_type, v_version_id
+    FROM dag_engine.dag_runs WHERE run_id = p_run_id;
+
+    -- Espelha GUARDA 1: arrays mensais também ignoram BACKFILL
+    IF v_run_type = 'BACKFILL' THEN
+        RAISE NOTICE '⏭️ [health_array] Ignorado: run BACKFILL (%).', v_run_date;
+        RETURN;
+    END IF;
+
+    v_primeiro_dia := DATE_TRUNC('month', v_run_date)::DATE;
+    v_dia_do_mes   := EXTRACT(DAY FROM v_run_date)::INT;
+
+    WITH yesterday AS (
+        SELECT task_name, scores_diarios
+        FROM dag_medallion.task_health_array_mensal
+        WHERE version_id     = v_version_id
+          AND mes_referencia = v_primeiro_dia
+    ),
+    today AS (
+        SELECT task_name, health_score
+        FROM dag_medallion.gold_pipeline_health
+    ),
+    merged AS (
+        SELECT
+            COALESCE(y.task_name, t.task_name) AS task_name,
+            v_version_id                        AS version_id,
+            v_primeiro_dia                      AS mes_referencia,
+            -- Padding de dias sem execução + append do score de hoje
+            -- Posição no array = dia do mês (espelho do varejo)
+            COALESCE(y.scores_diarios, '{}'::NUMERIC[])
+            || CASE
+                 WHEN v_dia_do_mes - 1
+                      - COALESCE(array_length(y.scores_diarios, 1), 0) > 0
+                 THEN array_fill(
+                        NULL::NUMERIC,
+                        ARRAY[v_dia_do_mes - 1
+                              - COALESCE(array_length(y.scores_diarios, 1), 0)]
+                      )
+                 ELSE '{}'::NUMERIC[]
+               END
+            || ARRAY[t.health_score]           AS scores_diarios
+        FROM yesterday y
+        FULL OUTER JOIN today t ON y.task_name = t.task_name
+    )
+    INSERT INTO dag_medallion.task_health_array_mensal
+        (task_name, version_id, mes_referencia, scores_diarios, score_minimo_mes, score_medio_mes)
+    SELECT
+        task_name,
+        version_id,
+        mes_referencia,
+        scores_diarios,
+        (SELECT MIN(v)   FROM unnest(scores_diarios) AS v WHERE v IS NOT NULL),
+        ROUND((SELECT AVG(v) FROM unnest(scores_diarios) AS v WHERE v IS NOT NULL)::NUMERIC, 2)
+    FROM merged
+    ON CONFLICT (task_name, version_id, mes_referencia) DO UPDATE SET
+        scores_diarios   = EXCLUDED.scores_diarios,
+        score_minimo_mes = EXCLUDED.score_minimo_mes,
+        score_medio_mes  = EXCLUDED.score_medio_mes;
+END;
+$$;
+
+-- 8.3 proc_deploy_dag: ponto de entrada versionado com semver enforcement
+-- Detecta redeploys silenciosos via hash e mantém a cadeia de versões pai → filho.
+-- p_spec aceita o manifest envelope: { "name": ..., "description": ..., "schedule": ..., "tasks": [...] }
+-- Guardas semver (seção 8.0):
+--   S1 — Formato    → vMAJOR.MINOR.PATCH obrigatório
+--   S2 — Monotonia  → novo tag deve ser estritamente maior que o ativo
+--   S3 — Adequação  → under-bump BLOQUEADO | over-bump permitido com aviso
 CREATE OR REPLACE PROCEDURE dag_engine.proc_deploy_dag(
     p_spec    JSONB,
     p_tag     VARCHAR(50),
@@ -1041,29 +1531,91 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_new_version_id  INT;
     v_current_hash    TEXT;
+    v_current_tag     TEXT;
     v_new_hash        TEXT := md5(p_spec::text);
     v_parent_id       INT;
     v_dag_name        TEXT := COALESCE(p_spec->>'name', 'default');
     v_description     TEXT := p_spec->>'description';
     v_schedule        TEXT := p_spec->>'schedule';
+    v_suggestion      RECORD;
+    v_required_bump   TEXT;
+    v_actual_bump     TEXT;
 BEGIN
-    -- Valida que o manifest tem o campo "name" — obrigatório para suporte multi-DAG
+    -- Pré-requisito: campo "name" obrigatório
     IF p_spec->>'name' IS NULL THEN
-        RAISE EXCEPTION 'Manifest Error: campo "name" é obrigatório no manifest. Ex: {"name": "daily_varejo_dw", "tasks": [...]}';
+        RAISE EXCEPTION 'Manifest Error: campo "name" é obrigatório no manifest.';
     END IF;
 
-    -- Verifica se já existe uma versão ativa para ESTE dag_name (não global)
-    SELECT spec_hash, version_id
-    INTO v_current_hash, v_parent_id
+    -- ── GUARDA S1: Formato semver ──────────────────────────────────────────
+    -- fn_parse_semver levanta exceção automaticamente se o formato for inválido
+    PERFORM dag_engine.fn_parse_semver(p_tag);
+
+    -- Busca estado atual deste DAG
+    SELECT spec_hash, version_tag, version_id
+    INTO v_current_hash, v_current_tag, v_parent_id
     FROM dag_engine.dag_versions
     WHERE dag_name = v_dag_name AND is_active = TRUE;
 
+    -- Hash idêntico = sem mudança real
     IF v_current_hash = v_new_hash THEN
-        RAISE WARNING '⚠️ Spec idêntico ao ativo para "%" (hash: %). Nenhuma versão criada.', v_dag_name, v_new_hash;
+        RAISE WARNING '⚠️  Spec idêntico ao ativo para "%" (hash: %). Nenhuma versão criada.',
+            v_dag_name, v_new_hash;
         RETURN;
     END IF;
 
-    -- Desativa apenas a versão ativa deste DAG (não afeta outros DAGs)
+    -- ── GUARDA S2: Monotonia — novo tag deve ser estritamente > atual ──────
+    IF v_current_tag IS NOT NULL THEN
+        IF dag_engine.fn_compare_semver(p_tag, v_current_tag) <= 0 THEN
+            RAISE EXCEPTION
+                'Semver Error: tag "%" não é maior que a versão ativa "%" para o DAG "%". '
+                'A versão deve avançar monotonicamente.',
+                p_tag, v_current_tag, v_dag_name;
+        END IF;
+    END IF;
+
+    -- ── GUARDA S3: Bump adequado ao diff ──────────────────────────────────
+    SELECT * INTO v_suggestion
+    FROM dag_engine.fn_suggest_semver_bump(v_dag_name, p_spec);
+
+    v_required_bump := v_suggestion.recommended_bump;
+
+    IF v_required_bump NOT IN ('NONE', 'INITIAL') AND v_current_tag IS NOT NULL THEN
+        DECLARE
+            v_old RECORD;
+            v_new RECORD;
+        BEGIN
+            SELECT * INTO v_old FROM dag_engine.fn_parse_semver(v_current_tag);
+            SELECT * INTO v_new FROM dag_engine.fn_parse_semver(p_tag);
+            v_actual_bump := CASE
+                WHEN v_new.major > v_old.major THEN 'MAJOR'
+                WHEN v_new.minor > v_old.minor THEN 'MINOR'
+                WHEN v_new.patch > v_old.patch THEN 'PATCH'
+            END;
+        END;
+
+        -- Under-bump: bloqueia (ex: PATCH quando o diff exige MINOR ou MAJOR)
+        IF  (v_required_bump = 'MAJOR' AND v_actual_bump IN ('MINOR', 'PATCH'))
+         OR (v_required_bump = 'MINOR' AND v_actual_bump = 'PATCH')
+        THEN
+            RAISE EXCEPTION
+                E'Semver Error: diff exige bump "%" mas tag "%" aplica apenas "%".\n'
+                'Sugestão automática: %\nDiff detectado:\n%',
+                v_required_bump, p_tag, v_actual_bump,
+                v_suggestion.suggested_tag,
+                v_suggestion.diff_summary;
+        END IF;
+
+        -- Over-bump: permitido, apenas avisa
+        IF  (v_required_bump = 'PATCH' AND v_actual_bump IN ('MINOR', 'MAJOR'))
+         OR (v_required_bump = 'MINOR' AND v_actual_bump = 'MAJOR')
+        THEN
+            RAISE NOTICE
+                '⚠️  Over-bump intencional: diff exigiria "%" mas "%" foi aplicado. Permitido.',
+                v_required_bump, v_actual_bump;
+        END IF;
+    END IF;
+
+    -- ── Deploy efetivo ─────────────────────────────────────────────────────
     UPDATE dag_engine.dag_versions SET is_active = FALSE
     WHERE dag_name = v_dag_name AND is_active = TRUE;
 
@@ -1077,10 +1629,14 @@ BEGIN
     )
     RETURNING version_id INTO v_new_version_id;
 
-    -- Carrega a topologia no motor de tarefas (proc_load_dag_spec já sabe lidar com manifest)
     CALL dag_engine.proc_load_dag_spec(p_spec);
 
-    RAISE NOTICE '✅ DAG "%" deployada como "%" — Version ID: % (parent: %)', v_dag_name, p_tag, v_new_version_id, v_parent_id;
+    RAISE NOTICE '✅ DAG "%" deployada como "%" — Version ID: % (parent: %)',
+        v_dag_name, p_tag, v_new_version_id, v_parent_id;
+    RAISE NOTICE '   Bump aplicado: % | Diff:%\n%',
+        COALESCE(v_actual_bump, 'INITIAL'),
+        E'\n',
+        COALESCE(v_suggestion.diff_summary, '(primeiro deploy)');
 END;
 $$;
 
@@ -1156,6 +1712,197 @@ SELECT
     (SELECT COUNT(*) FROM dag_engine.dag_runs WHERE version_id = lineage.version_id) AS total_runs
 FROM lineage
 ORDER BY dag_name, deployed_at;
+
+-- 8.5.1 fn_dag_to_mermaid: gera representação Mermaid da topologia de um DAG
+-- Permite visualizar qualquer DAG como diagrama interativo.
+-- Copie a saída e cole em https://mermaid.live para renderizar instantaneamente.
+--
+-- p_dag_name    — nome do DAG a renderizar (obrigatório)
+-- p_version_id  — NULL = topologia live (dag_engine.tasks);
+--                 INT  = snapshot histórico frozen em dag_versions.spec
+-- p_show_health — TRUE (padrão) = sobrepõe cores de saúde do gold_pipeline_health
+--                 quando dados disponíveis (execução ≥ 1 run completa)
+--
+-- Estrutura do diagrama:
+--   • Cada "Wave" é uma subgraph Mermaid = conjunto de tasks que podem rodar em paralelo
+--   • Arestas representam dependências diretas entre tasks
+--   • Cores de base por layer (Wave 0-5+)
+--   • Health overlay sobrescreve a cor base com verde/amarelo/vermelho/azul
+CREATE OR REPLACE FUNCTION dag_engine.fn_dag_to_mermaid(
+    p_dag_name    TEXT,
+    p_version_id  INT     DEFAULT NULL,
+    p_show_health BOOLEAN DEFAULT TRUE
+) RETURNS TEXT
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_lines       TEXT[] := '{}';
+    v_layer       INT;
+    v_max_layer   INT;
+    v_dep         TEXT;
+    v_node_id     TEXT;
+    v_dep_id      TEXT;
+    v_class_list  TEXT;
+    v_version_tag TEXT;
+    v_title       TEXT;
+    v_rec         RECORD;
+    -- Paleta de cores por wave (cicla no índice 6 para layers > 5)
+    v_colors TEXT[] := ARRAY[
+        'fill:#4a90d9,stroke:#2c6ea5,color:#fff',   -- Wave 0 · azul  (roots)
+        'fill:#7db87d,stroke:#4a8c4a,color:#fff',   -- Wave 1 · verde
+        'fill:#d4af37,stroke:#b8960e,color:#000',   -- Wave 2 · ouro
+        'fill:#e07b54,stroke:#b85a34,color:#fff',   -- Wave 3 · laranja
+        'fill:#9b59b6,stroke:#7d3c98,color:#fff',   -- Wave 4 · roxo
+        'fill:#a8a9ad,stroke:#7a7b7f,color:#000'    -- Wave 5+ · prata
+    ];
+BEGIN
+    -- ── Resolve título ─────────────────────────────────────────────────────────
+IF p_version_id IS NOT NULL THEN
+        SELECT version_tag INTO v_version_tag
+        FROM dag_engine.dag_versions WHERE version_id = p_version_id;
+        v_title := p_dag_name || ' · ' || COALESCE(v_version_tag, 'v?') || ' (snapshot)';
+    ELSE
+        SELECT version_tag INTO v_version_tag
+        FROM dag_engine.dag_versions WHERE dag_name = p_dag_name AND is_active = TRUE;
+        v_title := p_dag_name || ' · ' || COALESCE(v_version_tag, 'live');
+    END IF;
+
+    -- ── Header Mermaid ───────────────────────────────────────────────────
+    v_lines := array_append(v_lines, '%%{init: {"theme": "base"}}%%');
+    v_lines := array_append(v_lines, 'graph LR');
+    v_lines := array_append(v_lines, '    %% ' || v_title);
+    v_lines := array_append(v_lines, '');
+
+    -- ── Materializa topologia em temp table (evita recomputar recursão por layer) ──
+    CREATE TEMP TABLE IF NOT EXISTS _dag_mermaid_topo (
+        task_name TEXT,
+        layer     INT,
+        proc_call TEXT,
+        deps      TEXT[]
+    ) ON COMMIT DROP;
+    DELETE FROM _dag_mermaid_topo;
+
+    IF p_version_id IS NULL THEN
+        -- Topologia live: usa a view já computada
+        INSERT INTO _dag_mermaid_topo (task_name, layer, proc_call, deps)
+        SELECT task_name, topological_layer, procedure_call, dependencies
+        FROM dag_engine.vw_topological_sort
+        WHERE dag_name = p_dag_name;
+    ELSE
+        -- Topologia histórica: reconstrói a partir do JSONB frozen no spec
+        INSERT INTO _dag_mermaid_topo (task_name, layer, proc_call, deps)
+        WITH RECURSIVE spec_tasks AS (
+            SELECT elem->>'task_name'      AS task_name,
+                   elem->>'procedure_call' AS proc_call,
+                   ARRAY(SELECT jsonb_array_elements_text(elem->'dependencies')) AS deps
+            FROM dag_engine.dag_versions,
+                 jsonb_array_elements(COALESCE(spec->'tasks', spec)) AS elem
+            WHERE version_id = p_version_id
+        ),
+        topo AS (
+            SELECT task_name, proc_call, deps, 0 AS lvl
+            FROM spec_tasks
+            WHERE array_length(deps, 1) IS NULL OR array_length(deps, 1) = 0
+            UNION ALL
+            SELECT t.task_name, t.proc_call, t.deps, ts.lvl + 1
+            FROM spec_tasks t
+            JOIN topo ts ON ts.task_name = ANY(t.deps)
+            WHERE ts.lvl < 100
+        )
+        SELECT task_name, MAX(lvl) AS layer, proc_call, deps
+        FROM topo
+        GROUP BY task_name, proc_call, deps;
+    END IF;
+
+    SELECT MAX(layer) INTO v_max_layer FROM _dag_mermaid_topo;
+    IF v_max_layer IS NULL THEN
+        RETURN '-- Nenhuma tarefa encontrada para o DAG "' || p_dag_name || '"';
+    END IF;
+
+    -- ── Subgraphs: uma por onda de paralelismo ────────────────────────────────────
+    FOR v_layer IN 0..v_max_layer LOOP
+        v_lines := array_append(v_lines,
+            '    subgraph WAVE_' || v_layer || '["⚡ Wave ' || v_layer ||
+            CASE WHEN v_layer = 0 THEN ' · Roots"' ELSE '"' END || ']');
+        FOR v_rec IN
+            SELECT task_name FROM _dag_mermaid_topo
+            WHERE layer = v_layer ORDER BY task_name
+        LOOP
+            v_node_id := replace(replace(v_rec.task_name, '-', '_'), '.', '_');
+            v_lines := array_append(v_lines,
+                '        ' || v_node_id || '["' || v_rec.task_name || '"]');
+        END LOOP;
+        v_lines := array_append(v_lines, '    end');
+        v_lines := array_append(v_lines, '');
+    END LOOP;
+
+    -- ── Edges: uma aresta por dependência direta ──────────────────────────────
+    v_lines := array_append(v_lines, '    %% Dependências');
+    FOR v_rec IN
+        SELECT task_name, deps FROM _dag_mermaid_topo
+        WHERE array_length(deps, 1) > 0
+        ORDER BY task_name
+    LOOP
+        v_node_id := replace(replace(v_rec.task_name, '-', '_'), '.', '_');
+        FOREACH v_dep IN ARRAY v_rec.deps LOOP
+            v_dep_id := replace(replace(v_dep, '-', '_'), '.', '_');
+            v_lines := array_append(v_lines,
+                '    ' || v_dep_id || ' --> ' || v_node_id);
+        END LOOP;
+    END LOOP;
+    v_lines := array_append(v_lines, '');
+
+    -- ── classDef: paleta por wave ─────────────────────────────────────────────────
+    v_lines := array_append(v_lines, '    %% Estilos (ondas de paralelismo)');
+    FOR v_layer IN 0..v_max_layer LOOP
+        v_lines := array_append(v_lines,
+            '    classDef wave' || v_layer || ' ' ||
+            v_colors[LEAST(v_layer + 1, array_length(v_colors, 1))]);
+    END LOOP;
+    -- Health overlay styles: declarados sempre, usados condicionalmente abaixo
+    v_lines := array_append(v_lines,
+        '    classDef health_ok       fill:#2ecc71,stroke:#27ae60,color:#000');
+    v_lines := array_append(v_lines,
+        '    classDef health_warn     fill:#f39c12,stroke:#d68910,color:#000');
+    v_lines := array_append(v_lines,
+        '    classDef health_critical fill:#e74c3c,stroke:#cb4335,color:#fff');
+    v_lines := array_append(v_lines,
+        '    classDef health_calib    fill:#5dade2,stroke:#2e86c1,color:#fff');
+    v_lines := array_append(v_lines, '');
+
+    -- ── class assignments: layer baseline ──────────────────────────────────────
+    FOR v_layer IN 0..v_max_layer LOOP
+        SELECT string_agg(replace(replace(task_name, '-', '_'), '.', '_'), ',')
+        INTO v_class_list
+        FROM _dag_mermaid_topo WHERE layer = v_layer;
+        IF v_class_list IS NOT NULL THEN
+            v_lines := array_append(v_lines,
+                '    class ' || v_class_list || ' wave' || v_layer);
+        END IF;
+    END LOOP;
+
+    -- ── Health overlay: sobrescreve layer color quando dados disponíveis ──────
+    IF p_show_health THEN
+        v_lines := array_append(v_lines, '    %% Health overlay (gold_pipeline_health)');
+        FOR v_rec IN
+            SELECT t.task_name, g.health_label
+            FROM _dag_mermaid_topo t
+            JOIN dag_medallion.gold_pipeline_health g ON g.task_name = t.task_name
+        LOOP
+            v_node_id := replace(replace(v_rec.task_name, '-', '_'), '.', '_');
+            v_lines := array_append(v_lines,
+                '    class ' || v_node_id || ' ' ||
+                CASE
+                    WHEN v_rec.health_label LIKE '%ANOMALIA%'   THEN 'health_critical'
+                    WHEN v_rec.health_label LIKE '%MODERADO%'   THEN 'health_warn'
+                    WHEN v_rec.health_label LIKE '%CALIBRANDO%' THEN 'health_calib'
+                    ELSE                                             'health_ok'
+                END);
+        END LOOP;
+    END IF;
+
+    RETURN array_to_string(v_lines, E'\n');
+END;
+$$;
 
 -- 8.6 proc_run_dag: versão intermediária que carimba version_id no dag_run
 -- (será sobrescrita novamente na seção 9 com dispatch assíncrono completo)
@@ -1270,6 +2017,7 @@ BEGIN
                     UPDATE dag_engine.dag_runs SET status = 'DEADLOCK', end_ts = clock_timestamp() WHERE run_id = v_run_id;
                     COMMIT;
                     IF p_verbose THEN RAISE WARNING '💀 Deadlock Topológico!'; END IF;
+                    CALL dag_medallion.proc_run_medallion(v_run_id);  -- DEADLOCK também alimenta o medallion
                     EXIT;
                 END IF;
             ELSE
@@ -2224,6 +2972,52 @@ BEGIN
         v_count := v_count + 1;
     END LOOP;
 
+    -- ──────────────────────────────────────────────────────────────────────────────
+    -- CONDIÇÃO 3: Degradação contínua por N dias (não detectável por cooldown)
+    -- ──────────────────────────────────────────────────────────────────────────────
+    FOR v_rec IN
+        SELECT task_name, version_id, streak_days, streak_start
+        FROM dag_medallion.gold_degradation_streaks
+        WHERE health_state = 'DEGRADADO'
+          AND is_current   = TRUE
+          AND streak_days  >= 3
+          -- Correlaciona version_id com a versão mais recente que rodou esta task
+          -- (correto em ambientes multi-DAG: cada task aponta para o seu próprio DAG)
+          AND version_id = (
+              SELECT dr.version_id
+              FROM dag_engine.dag_runs dr
+              JOIN dag_engine.task_instances ti ON ti.run_id = dr.run_id
+              WHERE ti.task_name  = gold_degradation_streaks.task_name
+                AND dr.version_id IS NOT NULL
+              ORDER BY dr.run_date DESC
+              LIMIT 1
+          )
+    LOOP
+        CONTINUE WHEN EXISTS (
+            SELECT 1 FROM dag_engine.alert_log
+            WHERE alert_type = 'DEGRADATION_STREAK'
+              AND task_name  = v_rec.task_name
+              AND fired_at   > v_cutoff
+        );
+
+        v_payload := jsonb_build_object(
+            'alert_type',   'DEGRADATION_STREAK',
+            'task',         v_rec.task_name,
+            'version_id',   v_rec.version_id,
+            'streak_days',  v_rec.streak_days,
+            'streak_start', v_rec.streak_start,
+            'ts',           clock_timestamp()
+        );
+
+        PERFORM pg_notify('dag_alerts', v_payload::TEXT);
+
+        INSERT INTO dag_engine.alert_log (alert_type, task_name, payload)
+        VALUES ('DEGRADATION_STREAK', v_rec.task_name, v_payload);
+
+        v_count := v_count + 1;
+    END LOOP;
+
+
     RETURN v_count;
 END;
 $$;
@@ -2341,7 +3135,7 @@ CALL dag_engine.proc_deploy_dag('{
     }
     ]
 }'::JSONB,
-'v1.0',
+'v1.0.0',
 'Spec inicial — 8 tasks do pipeline varejo');
 
 -- ==============================================================================
@@ -2391,7 +3185,7 @@ UPDATE varejo.origem_produto SET categoria = 'Gamer' WHERE produto_id = 'PROD001
 DO $$ BEGIN RAISE NOTICE '📥 2. Executando Carga Incremental via DAG (D-1, 2024-05-05)...'; END $$;
 CALL dag_engine.proc_run_dag('daily_varejo_dw', '2024-05-05');
 
--- 7.4. Fast-Forward Temporário Robusto (Cat-Chup MLOps nativo!)
+-- 7.4. Fast-Forward Temporário Robusto
 -- Com 2 meses de backfill rodando massivamente com tolerância a deadlock na arquitetura
 DO $$ 
 DECLARE
@@ -2453,12 +3247,18 @@ CALL dag_engine.proc_deploy_dag('{
     {"task_name": "9_envio_relatorio", "procedure_call": "SELECT 1", "dependencies": ["8_ingestao_gold_diaria"]}
     ]
 }'::JSONB,
-'v1.1',
+'v1.1.0',
 'Adicionada task 9_envio_relatorio no downstream do gold'
 );
 
--- Inspeciona o diff entre v1.0 (version_id=1) e v1.1 (version_id=2)
-SELECT * FROM dag_engine.fn_diff_versions(1, 2);
+-- Inspeciona o diff entre a penúltima e a última versão ativa do DAG
+-- (subquery dinâmica: funciona em qualquer ambiente, sem hardcode de IDs)
+SELECT * FROM dag_engine.fn_diff_versions(
+    (SELECT version_id FROM dag_engine.dag_versions
+     WHERE dag_name = 'daily_varejo_dw' ORDER BY deployed_at DESC LIMIT 1 OFFSET 1),
+    (SELECT version_id FROM dag_engine.dag_versions
+     WHERE dag_name = 'daily_varejo_dw' ORDER BY deployed_at DESC LIMIT 1)
+);
 
 -- Confirma que runs estão carimbadas com version_id
 SELECT dr.run_date, dr.status, dv.version_tag, dv.change_summary
@@ -2474,6 +3274,20 @@ JOIN dag_engine.dag_runs dr ON dr.run_id = f.run_id
 LEFT JOIN dag_engine.dag_versions dv ON dv.version_id = dr.version_id
 GROUP BY dv.version_tag, f.task_name
 ORDER BY f.task_name, dv.version_tag;
+
+-- Diagrama Mermaid da topologia ativa (com health overlay)
+-- Copie a saída e cole em https://mermaid.live para visualizar interativamente
+SELECT dag_engine.fn_dag_to_mermaid('daily_varejo_dw');
+
+-- Diagrama da topologia pura (sem health overlay — só estrutura e waves)
+SELECT dag_engine.fn_dag_to_mermaid('daily_varejo_dw', NULL, FALSE);
+
+-- Diagrama da v1.0.0 a partir do snapshot histórico frozen (antes da task 9_envio_relatorio)
+SELECT dag_engine.fn_dag_to_mermaid(
+    'daily_varejo_dw',
+    (SELECT version_id FROM dag_engine.dag_versions
+     WHERE dag_name = 'daily_varejo_dw' ORDER BY deployed_at ASC LIMIT 1)
+);
 
 -- ==============================================================================
 -- 7.7. BACKLOG DEMO: EXECUÇÃO ASSÍNCRONA
@@ -2579,6 +3393,25 @@ BEGIN
 END $$;
 
 -- Para ouvir alertas em tempo real em outro cliente:
--- LISTEN dag_alerts;
 -- (Execute dag_engine.fn_check_alerts() numa sessão e o LISTEN recebe o JSON)
+
+-- ==============================================================================
+-- QUERIES DE VALIDAÇÃO FINAL (DATINT HEALTH BOOST)
+-- ==============================================================================
+-- 1. Confirma que BACKFILL não contaminou as tabelas novas
+-- SELECT COUNT(*) AS deve_ser_zero FROM dag_medallion.task_health_cumulative WHERE run_type = 'BACKFILL';
+
+-- 2. Bitmap visual por task no snapshot mais recente
+-- SELECT task_name, data_snapshot, total_dias_saudavel, bitmap_visual, healthy_d0, healthy_d1
+-- FROM dag_medallion.gold_health_streak
+-- WHERE data_snapshot = (SELECT MAX(data_snapshot) FROM dag_medallion.task_health_cumulative);
+
+-- 3. Array posicional do mês corrente
+-- SELECT task_name, mes_referencia, scores_diarios, score_minimo_mes, score_medio_mes
+-- FROM dag_medallion.task_health_array_mensal ORDER BY task_name;
+
+-- 4. Streaks correntes (Gap-and-Island)
+-- SELECT task_name, health_state, streak_days, streak_start, version_id
+-- FROM dag_medallion.gold_degradation_streaks WHERE is_current = TRUE ORDER BY task_name;
+
 -- ==============================================================================
