@@ -26,7 +26,7 @@
   - Mostre a `dim_cliente_type2` no `apresentacao.sql`.
   - Explique os elementos essenciais: "A `Surrogate Key` (cliente_sk), a janela de tempo (`data_inicio` / `data_fim`) e a nossa inovação geométrica: o `JSONB Diff` que audita o que mudou na hora".
   - *Dica:* Não explique o código do JSONB função a função, foque no conceito mercadológico — "Saber *quando* ele mudou e *para o que* ele mudou".
-  - **Bridge para Gap and Island:** Imediatamente após, mostre a tabela `cliente_snapshot_diario` e a procedure `proc_snapshot_clientes`. Explique: "Antes de rodar o SCD2, tiramos uma 'foto' do OLTP todo dia. Com semanas de fotos acumuladas, a view `mart_reconstrucao_scd2` usa LAG e SUM cumulativo para reconstruir o histórico Type 2 do zero — sem depender da `dim_cliente_type2`. É assim que se audita ou reconstrói um SCD2 a partir de um log CDC real".
+  - **Bridge para Gap and Island:** Imediatamente após, mostre a tabela `cliente_snapshot_diario` e a procedure `proc_snapshot_clientes`. Explique: "Antes de rodar o SCD2, tiramos uma 'foto' do OLTP todo dia. Com semanas de fotos acumuladas, a view `view_reconstrucao_scd2` usa LAG e SUM cumulativo para reconstruir o histórico Type 2 do zero — sem depender da `dim_cliente_type2`. É assim que se audita ou reconstrói um SCD2 a partir de um log CDC real".
 
 ---
 

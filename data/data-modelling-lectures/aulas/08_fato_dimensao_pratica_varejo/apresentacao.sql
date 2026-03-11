@@ -29,11 +29,11 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO varejo.dim_cliente_type1 AS tgt (cliente_id, nome, estado, segmento)
-    SELECT src.cliente_id, src.nome, src.estado, src.segmento
-    FROM varejo.origem_cliente src
-    LEFT JOIN varejo.dim_cliente_type1 cur ON cur.cliente_id = src.cliente_id
-    WHERE ROW(cur.nome, cur.estado, cur.segmento)
-          IS DISTINCT FROM ROW(src.nome, src.estado, src.segmento)
+        SELECT src.cliente_id, src.nome, src.estado, src.segmento
+        FROM varejo.origem_cliente src
+        LEFT JOIN varejo.dim_cliente_type1 cur ON cur.cliente_id = src.cliente_id
+        WHERE ROW(cur.nome, cur.estado, cur.segmento)
+            IS DISTINCT FROM ROW(src.nome, src.estado, src.segmento)
     ON CONFLICT (cliente_id) 
     DO UPDATE SET 
         nome = EXCLUDED.nome,
@@ -110,16 +110,16 @@ BEGIN
         RETURNING tgt.cliente_id
     )
     INSERT INTO varejo.dim_cliente_type2 (cliente_id, nome, properties, properties_diff, data_inicio, data_fim, versao, ativo)
-    SELECT 
-        d.cliente_id,
-        d.nome,
-        d.new_props,
-        varejo.get_jsonb_diff(d.old_props, d.new_props),
-        p_data_processamento,
-        NULL::DATE,
-        COALESCE((SELECT MAX(versao) FROM varejo.dim_cliente_type2 WHERE cliente_id = d.cliente_id), 0) + 1,
-        TRUE
-    FROM deltas d
+        SELECT 
+            d.cliente_id,
+            d.nome,
+            d.new_props,
+            varejo.get_jsonb_diff(d.old_props, d.new_props),
+            p_data_processamento,
+            NULL::DATE,
+            COALESCE((SELECT MAX(versao) FROM varejo.dim_cliente_type2 WHERE cliente_id = d.cliente_id), 0) + 1,
+            TRUE
+        FROM deltas d
     ON CONFLICT (cliente_id, versao) 
     DO UPDATE SET 
         nome = EXCLUDED.nome,
@@ -147,23 +147,32 @@ CREATE TABLE varejo.cliente_snapshot_diario (
 
 -- Procedure Incremental: Captura o estado atual do OLTP como uma "foto" do dia.
 -- Idempotente via ON CONFLICT (reprocessar o dia = sobrescrever a foto).
-CREATE OR REPLACE PROCEDURE varejo.proc_snapshot_clientes(p_data DATE)
+-- O overload de 1 argumento é removido para evitar ambiguidade com a versão
+-- que aceita p_filter (usada pelo motor de DAG para hash chunking).
+DROP PROCEDURE IF EXISTS varejo.proc_snapshot_clientes(DATE);
+CREATE OR REPLACE PROCEDURE varejo.proc_snapshot_clientes(p_data DATE, p_filter TEXT DEFAULT '')
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    INSERT INTO varejo.cliente_snapshot_diario (cliente_id, data_snapshot, nome, estado, segmento)
-    SELECT cliente_id, p_data, nome, estado, segmento
-    FROM varejo.origem_cliente
-    ON CONFLICT (cliente_id, data_snapshot) DO UPDATE
-        SET nome     = EXCLUDED.nome,
-            estado   = EXCLUDED.estado,
-            segmento = EXCLUDED.segmento;
+    EXECUTE format(
+        'INSERT INTO varejo.cliente_snapshot_diario
+             (cliente_id, data_snapshot, nome, estado, segmento)
+         SELECT cliente_id, %L, nome, estado, segmento
+         FROM varejo.origem_cliente
+         %s
+         ON CONFLICT (cliente_id, data_snapshot) DO UPDATE SET
+             nome     = EXCLUDED.nome,
+             estado   = EXCLUDED.estado,
+             segmento = EXCLUDED.segmento',
+        p_data,
+        CASE WHEN p_filter <> '' THEN 'WHERE ' || p_filter ELSE '' END
+    );
 END;
 $$;
 
 -- View Gap-And-Island: Reconstrói o SCD2 a partir dos snapshots brutos acumulados.
 -- Nenhuma dependência da dim_cliente_type2 — prova que o padrão funciona do zero.
-CREATE OR REPLACE VIEW varejo.mart_reconstrucao_scd2 AS
+CREATE OR REPLACE VIEW varejo.view_reconstrucao_scd2 AS
 WITH streak_started AS (
     -- 1. Detecta a "quebra" (Gap) comparando o estado de hoje com o de ontem
     SELECT 
@@ -306,8 +315,8 @@ RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
     SELECT (activity_bitmap_32d & (1::BIGINT << (31 - days_ago))) > 0;
 $$;
 
-DROP TABLE IF EXISTS varejo.cliente_atividade_acumulada CASCADE;
-CREATE TABLE varejo.cliente_atividade_acumulada (
+DROP TABLE IF EXISTS varejo.fct_atividade_acum CASCADE;
+CREATE TABLE varejo.fct_atividade_acum (
     cliente_id        INTEGER  NOT NULL,
     data_snapshot     DATE     NOT NULL,
     datas_atividade   DATE[]   NOT NULL DEFAULT '{}',
@@ -317,49 +326,56 @@ CREATE TABLE varejo.cliente_atividade_acumulada (
     PRIMARY KEY (cliente_id, data_snapshot)
 );
 
-CREATE OR REPLACE PROCEDURE varejo.proc_acumular_atividade(p_data_ontem DATE, p_data_hoje DATE)
+DROP PROCEDURE IF EXISTS varejo.proc_acumular_atividade(DATE, DATE);
+CREATE OR REPLACE PROCEDURE varejo.proc_acumular_atividade(p_data_ontem DATE, p_data_hoje DATE, p_filter TEXT DEFAULT '')
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_where TEXT := CASE WHEN p_filter <> '' THEN ' AND (' || p_filter || ')' ELSE '' END;
 BEGIN
-    WITH yesterday AS (
-        SELECT cliente_id, datas_atividade, activity_bitmap_32d, activity_bitmap_32m
-        FROM varejo.cliente_atividade_acumulada
-        WHERE data_snapshot = p_data_ontem
-    ),
-    today AS (
-        -- Atividade = cliente realizou compra neste dia (derivado da fato_vendas)
-        SELECT DISTINCT c.cliente_id, f.data_venda AS data_evento
-        FROM varejo.fato_vendas f
-        JOIN varejo.dim_cliente_type2 c ON c.cliente_sk = f.cliente_sk
-        WHERE f.data_venda = p_data_hoje
-    ),
-    merged AS (
-        SELECT
-            COALESCE(y.cliente_id, t.cliente_id) AS cliente_id,
-            p_data_hoje                          AS data_snapshot,
-            COALESCE(y.datas_atividade, ARRAY[]::DATE[])
-                || CASE
-                     WHEN t.cliente_id IS NOT NULL
-                     THEN ARRAY[t.data_evento]
-                     ELSE ARRAY[]::DATE[]
-                   END                           AS datas_atividade,
-            -- Máscara Diária (Desliza e atualiza todo dia)
-            varejo.shift_activity_bitmap(y.activity_bitmap_32d, t.cliente_id IS NOT NULL) AS activity_bitmap_32d,
-            -- Máscara Mensal (Desliza SOMENTE na virada do mês, mas absorve vendas diárias do mês atual nela)
-            (CASE WHEN EXTRACT(month FROM p_data_hoje) != EXTRACT(month FROM p_data_ontem) 
-                  THEN COALESCE(y.activity_bitmap_32m, 0::BIGINT) >> 1 
-                  ELSE COALESCE(y.activity_bitmap_32m, 0::BIGINT) 
-             END) | CASE WHEN t.cliente_id IS NOT NULL THEN (1::BIGINT << 31) ELSE 0::BIGINT END AS activity_bitmap_32m
-        FROM yesterday y
-        FULL OUTER JOIN today t ON y.cliente_id = t.cliente_id
-    )
-    INSERT INTO varejo.cliente_atividade_acumulada (cliente_id, data_snapshot, datas_atividade, activity_bitmap_32d, activity_bitmap_32m)
-    SELECT cliente_id, data_snapshot, datas_atividade, activity_bitmap_32d, activity_bitmap_32m
-    FROM merged
-    ON CONFLICT (cliente_id, data_snapshot) DO UPDATE
-        SET datas_atividade = EXCLUDED.datas_atividade,
+    EXECUTE format($sql$
+        WITH yesterday AS (
+            SELECT cliente_id, datas_atividade, activity_bitmap_32d, activity_bitmap_32m
+            FROM varejo.fct_atividade_acum
+            WHERE data_snapshot = %L::DATE %s
+        ),
+        today AS (
+            SELECT DISTINCT c.cliente_id, f.data_venda AS data_evento
+            FROM varejo.fato_vendas f
+            JOIN varejo.dim_cliente_type2 c ON c.cliente_sk = f.cliente_sk
+            WHERE f.data_venda = %L::DATE %s
+        ),
+        merged AS (
+            SELECT
+                COALESCE(y.cliente_id, t.cliente_id) AS cliente_id,
+                %L::DATE                             AS data_snapshot,
+                CASE
+                    WHEN t.cliente_id IS NOT NULL
+                    THEN array_append(COALESCE(y.datas_atividade, ARRAY[]::DATE[]), t.data_evento)
+                    ELSE COALESCE(y.datas_atividade, ARRAY[]::DATE[])
+                END AS datas_atividade,
+                varejo.shift_activity_bitmap(y.activity_bitmap_32d, t.cliente_id IS NOT NULL) AS activity_bitmap_32d,
+                (CASE WHEN EXTRACT(month FROM %L::DATE) != EXTRACT(month FROM %L::DATE)
+                      THEN COALESCE(y.activity_bitmap_32m, 0::BIGINT) >> 1
+                      ELSE COALESCE(y.activity_bitmap_32m, 0::BIGINT)
+                 END) | CASE WHEN t.cliente_id IS NOT NULL THEN (1::BIGINT << 31) ELSE 0::BIGINT END AS activity_bitmap_32m
+            FROM yesterday y
+            FULL OUTER JOIN today t ON y.cliente_id = t.cliente_id
+        )
+        INSERT INTO varejo.fct_atividade_acum
+            (cliente_id, data_snapshot, datas_atividade, activity_bitmap_32d, activity_bitmap_32m)
+        SELECT cliente_id, data_snapshot, datas_atividade, activity_bitmap_32d, activity_bitmap_32m
+        FROM merged
+        ON CONFLICT (cliente_id, data_snapshot) DO UPDATE SET
+            datas_atividade     = EXCLUDED.datas_atividade,
             activity_bitmap_32d = EXCLUDED.activity_bitmap_32d,
-            activity_bitmap_32m = EXCLUDED.activity_bitmap_32m;
+            activity_bitmap_32m = EXCLUDED.activity_bitmap_32m
+    $sql$,
+        p_data_ontem, v_where,
+        p_data_hoje,  v_where,
+        p_data_hoje,
+        p_data_hoje, p_data_ontem
+    );
 END;
 $$;
 
@@ -369,8 +385,8 @@ $$;
 -- 1. Positional Array Form (Monthly Array Metrics)
 -- Arrays index-aligned to the day of the month for fast aggregation:
 
-DROP TABLE IF EXISTS varejo.cliente_vendas_array_mensal;
-CREATE TABLE varejo.cliente_vendas_array_mensal (
+DROP TABLE IF EXISTS varejo.fct_vendas_mensal_array;
+CREATE TABLE varejo.fct_vendas_mensal_array (
     cliente_id INTEGER,
     mes_referencia DATE,
     valores_diarios DECIMAL(10,2)[],
@@ -390,45 +406,42 @@ BEGIN
     v_primeiro_dia := DATE_TRUNC('month', p_data_hoje)::DATE;
     v_dia_do_mes := CAST(EXTRACT(DAY FROM p_data_hoje) AS INTEGER);
 
-    WITH yesterday AS (
-        SELECT cliente_id, valores_diarios, valor_acumulado_mes
-        FROM varejo.cliente_vendas_array_mensal
-        WHERE mes_referencia = v_primeiro_dia
-    ),
-    today AS (
+    WITH today AS (
+        -- Aggregates sales for the specific day
         SELECT c.cliente_id, SUM(f.valor_total) as valor_dia
         FROM varejo.fato_vendas f
         JOIN varejo.dim_cliente_type2 c ON c.cliente_sk = f.cliente_sk
         WHERE f.data_venda = p_data_hoje
         GROUP BY c.cliente_id
-    ),
-    activity AS (
-        SELECT cliente_id, activity_bitmap_32m
-        FROM varejo.cliente_atividade_acumulada
-        WHERE data_snapshot = p_data_hoje
     )
-    INSERT INTO varejo.cliente_vendas_array_mensal (cliente_id, mes_referencia, valores_diarios, valor_acumulado_mes, atividade_bitmap)
+    INSERT INTO varejo.fct_vendas_mensal_array (cliente_id, mes_referencia, valores_diarios, valor_acumulado_mes, atividade_bitmap)
     SELECT
-        COALESCE(y.cliente_id, t.cliente_id) AS cliente_id,
-        v_primeiro_dia AS mes_referencia,
-        -- Extend array up to yesterday, then append today's value
-        -- We pad missing days with 0.00 to guarantee position = day
-        COALESCE(y.valores_diarios, '{}'::DECIMAL(10,2)[]) 
-        || 
-        CASE WHEN v_dia_do_mes - 1 - COALESCE(array_length(y.valores_diarios, 1), 0) > 0
-             THEN array_fill(0.00::DECIMAL(10,2), ARRAY[v_dia_do_mes - 1 - COALESCE(array_length(y.valores_diarios, 1), 0)])
-             ELSE '{}'::DECIMAL(10,2)[]
-        END
-        || ARRAY[COALESCE(t.valor_dia, 0.00)] AS valores_diarios,
-        COALESCE(y.valor_acumulado_mes, 0.00) + COALESCE(t.valor_dia, 0.00) AS valor_acumulado_mes,
-        COALESCE(a.activity_bitmap_32m, 0::BIGINT) AS atividade_bitmap
-    FROM yesterday y
-    FULL OUTER JOIN today t ON y.cliente_id = t.cliente_id
-    LEFT JOIN activity a ON a.cliente_id = COALESCE(y.cliente_id, t.cliente_id)
-    ON CONFLICT (cliente_id, mes_referencia) DO UPDATE
-        SET valores_diarios = EXCLUDED.valores_diarios,
-            valor_acumulado_mes = EXCLUDED.valor_acumulado_mes,
-            atividade_bitmap = EXCLUDED.atividade_bitmap;
+        t.cliente_id,
+        v_primeiro_dia,
+        -- Inicializa o array com zeros até o dia atual
+        array_fill(0.00::DECIMAL(10,2), ARRAY[v_dia_do_mes-1]) || ARRAY[COALESCE(t.valor_dia, 0.00)],
+        COALESCE(t.valor_dia, 0.00),
+        -- Monthly Bitmap: Bit 31 = Dia 1, Bit 30 = Dia 2... (Visualização Esquerda -> Direita)
+        (1::BIGINT << (31 - (v_dia_do_mes - 1)))
+    FROM today t
+    ON CONFLICT (cliente_id, mes_referencia) DO UPDATE SET
+        -- Garante preenchimento com 0.00 em vez de NULL ao estender o array para novos dias
+        valores_diarios = CASE 
+            WHEN array_length(fct_vendas_mensal_array.valores_diarios, 1) < v_dia_do_mes 
+            THEN fct_vendas_mensal_array.valores_diarios 
+                 || array_fill(0.00::DECIMAL(10,2), ARRAY[v_dia_do_mes - 1 - COALESCE(array_length(fct_vendas_mensal_array.valores_diarios, 1), 0)])
+                 || ARRAY[EXCLUDED.valores_diarios[v_dia_do_mes]]
+            ELSE 
+                fct_vendas_mensal_array.valores_diarios[1 : v_dia_do_mes-1] 
+                || EXCLUDED.valores_diarios[v_dia_do_mes] 
+                || COALESCE(fct_vendas_mensal_array.valores_diarios[v_dia_do_mes+1 : 31], '{}'::DECIMAL(10,2)[])
+        END,
+        -- Atualiza acumulado de forma idempotente
+        valor_acumulado_mes = fct_vendas_mensal_array.valor_acumulado_mes 
+                            - COALESCE(fct_vendas_mensal_array.valores_diarios[v_dia_do_mes], 0.00) 
+                            + EXCLUDED.valores_diarios[v_dia_do_mes],
+        -- Bitwise OR para marcar presença no dia sem perder o histórico do mês
+        atividade_bitmap = fct_vendas_mensal_array.atividade_bitmap | EXCLUDED.atividade_bitmap;
 END;
 $$;
 
@@ -441,7 +454,7 @@ SELECT
     datas_atividade,
     activity_bitmap_32d,
     activity_bitmap_32m
-FROM varejo.cliente_atividade_acumulada;
+FROM varejo.fct_atividade_acum;
 
 -- ==============================================================================
 -- CAMADA GOLD: TABELA OBT INCREMENTAL PARA DATAVIZ
@@ -450,8 +463,8 @@ FROM varejo.cliente_atividade_acumulada;
 -- Materializamos métricas diárias de forma idempotente, consumindo os passos
 -- anteriores do pipeline como um DAG (fato_vendas + cliente_atividade_acumulada).
 
-DROP TABLE IF EXISTS varejo.gold_metricas_diarias CASCADE;
-CREATE TABLE varejo.gold_metricas_diarias (
+DROP TABLE IF EXISTS varejo.fct_metricas_diarias CASCADE;
+CREATE TABLE varejo.fct_metricas_diarias (
     data_ref DATE,
     segmento VARCHAR(50),
     daily_active_users INTEGER DEFAULT 0,
@@ -465,7 +478,7 @@ CREATE OR REPLACE PROCEDURE varejo.proc_ingestao_gold_diaria(p_data_processament
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    DELETE FROM varejo.gold_metricas_diarias WHERE data_ref = p_data_processamento;
+    DELETE FROM varejo.fct_metricas_diarias WHERE data_ref = p_data_processamento;
 
     WITH vendas AS (
         SELECT 
@@ -475,14 +488,17 @@ BEGIN
                 WHEN 'Bronze' THEN 'trial'
                 ELSE 'trial'
             END as segmento,
-            SUM(f.valor_total) as day_revenue
-        FROM varejo.fato_vendas f
-        JOIN varejo.dim_cliente_type2 c ON c.cliente_sk = f.cliente_sk
-        WHERE f.data_venda = p_data_processamento
+            -- Captura o valor exato do dia no array posicional (Performance O(1) por cliente)
+            SUM(v.valores_diarios[EXTRACT(DAY FROM p_data_processamento)]) as day_revenue
+        FROM varejo.fct_vendas_mensal_array v
+        JOIN varejo.dim_cliente_type2 c ON c.cliente_id = v.cliente_id 
+             AND c.data_inicio <= p_data_processamento 
+             AND (c.data_fim >= p_data_processamento OR c.data_fim IS NULL)
+        WHERE v.mes_referencia = DATE_TRUNC('month', p_data_processamento)::DATE
         GROUP BY 1
     ),
     atividade_acumulada AS (
-        -- Consome o Pipeline Acumulado (DAG Dependency)
+        -- PERFORMANCE BOOST: Uso do Bitmap em vez de scan no array de datas
         SELECT 
             CASE c.properties->>'segmento'
                 WHEN 'Ouro' THEN 'premium'
@@ -490,24 +506,27 @@ BEGIN
                 WHEN 'Bronze' THEN 'trial'
                 ELSE 'trial'
             END as segmento,
-            COUNT(*) FILTER (WHERE p_data_processamento = ANY(a.datas_atividade)) as daily_active_users,
+            -- D0 Check via Bitmap (Bit 31)
+            COUNT(*) FILTER (WHERE varejo.is_active_on_day(a.activity_bitmap_32d, 0)) as daily_active_users,
             COUNT(*) as total_active_users_to_date
-        FROM varejo.cliente_atividade_acumulada a
+        FROM varejo.fct_atividade_acum a
         JOIN varejo.dim_cliente_type2 c ON c.cliente_id = a.cliente_id 
              AND c.data_inicio <= p_data_processamento 
              AND (c.data_fim >= p_data_processamento OR c.data_fim IS NULL)
         WHERE a.data_snapshot = p_data_processamento
         GROUP BY 1
     )
-    INSERT INTO varejo.gold_metricas_diarias (data_ref, segmento, daily_active_users, cumulative_active_users, day_revenue)
-    SELECT 
-        p_data_processamento,
-        COALESCE(v.segmento, a.segmento),
-        COALESCE(a.daily_active_users, 0),
-        COALESCE(a.total_active_users_to_date, 0),
-        COALESCE(v.day_revenue, 0)
-    FROM vendas v
-    FULL OUTER JOIN atividade_acumulada a ON v.segmento = a.segmento;
+    INSERT INTO varejo.fct_metricas_diarias (
+        data_ref, segmento, daily_active_users, cumulative_active_users, day_revenue
+    )
+        SELECT
+            p_data_processamento,
+            COALESCE(v.segmento, a.segmento),
+            COALESCE(a.daily_active_users, 0),
+            COALESCE(a.total_active_users_to_date, 0),
+            COALESCE(v.day_revenue, 0)
+        FROM vendas v
+        FULL OUTER JOIN atividade_acumulada a ON v.segmento = a.segmento;
 END;
 $$;
 
@@ -520,7 +539,7 @@ SELECT
     cumulative_active_users,
     day_revenue,
     SUM(day_revenue) OVER (PARTITION BY segmento ORDER BY data_ref) as cumulative_revenue
-FROM varejo.gold_metricas_diarias
+FROM varejo.fct_metricas_diarias
 ORDER BY data_ref, segmento;
 
 -- View Avançada para Dashboard: Curva de Retenção (J-Curve)
@@ -564,13 +583,15 @@ DO $$ BEGIN RAISE NOTICE '🔄 Resetando o estado do OLTP e limpando o DW...'; E
 -- CRITICAL PERFORMANCE FIX: Índices B-Tree para os Joins e Filtros Temporais.
 -- Sem isso, o laço temporal causa Table Scans massivos O(N^2) escalando para +10 minutos!
 CREATE INDEX IF NOT EXISTS idx_fato_data ON varejo.fato_vendas(data_venda);
-CREATE INDEX IF NOT EXISTS idx_ativ_acum_data ON varejo.cliente_atividade_acumulada(data_snapshot);
-CREATE INDEX IF NOT EXISTS idx_vendas_arr_mes ON varejo.cliente_vendas_array_mensal(mes_referencia);
+CREATE INDEX IF NOT EXISTS idx_ativ_acum_data ON varejo.fct_atividade_acum(data_snapshot);
+CREATE INDEX IF NOT EXISTS idx_vendas_arr_mes ON varejo.fct_vendas_mensal_array(mes_referencia);
 CREATE INDEX IF NOT EXISTS idx_snap_diario_data ON varejo.cliente_snapshot_diario(data_snapshot);
 -- Hot-path: a fato_vendas filtra origem_venda por data 150k+ linhas sem índice = Seq Scan!
 CREATE INDEX IF NOT EXISTS idx_origem_venda_data ON varejo.origem_venda(data_venda);
--- Hot-path: o JOIN Point-In-Time filtra dim_cliente_type2 pelo cliente ativo
-CREATE INDEX IF NOT EXISTS idx_dim_cli2_ativo ON varejo.dim_cliente_type2(cliente_id) WHERE ativo = TRUE;
+-- Hot-path: O JOIN Point-In-Time necessita de busca rápida por cliente + janela temporal (SCD2)
+CREATE INDEX IF NOT EXISTS idx_dim_cli2_pit ON varejo.dim_cliente_type2(cliente_id, data_inicio, data_fim);
+-- Hot-path: Agregações (Steps 6 e 7) buscam cliente_id via cliente_sk na fato_vendas
+CREATE INDEX IF NOT EXISTS idx_fato_vendas_sk ON varejo.fato_vendas(cliente_sk);
 
 -- Tabela de metadados para armazenar os tempos de execução do pipeline em milisegundos
 CREATE TABLE IF NOT EXISTS varejo.pipeline_telemetry (
@@ -588,10 +609,10 @@ TRUNCATE varejo.dim_cliente_type1 CASCADE;
 TRUNCATE varejo.dim_cliente_type2 RESTART IDENTITY CASCADE;
 TRUNCATE varejo.dim_produto_type3 CASCADE;
 TRUNCATE varejo.fato_vendas RESTART IDENTITY CASCADE;
-TRUNCATE varejo.cliente_atividade_acumulada CASCADE;
-TRUNCATE varejo.cliente_vendas_array_mensal CASCADE;
+TRUNCATE varejo.fct_atividade_acum CASCADE;
+TRUNCATE varejo.fct_vendas_mensal_array CASCADE;
 TRUNCATE varejo.cliente_snapshot_diario CASCADE;
-TRUNCATE varejo.gold_metricas_diarias CASCADE;
+TRUNCATE varejo.fct_metricas_diarias CASCADE;
 TRUNCATE varejo.pipeline_telemetry CASCADE;
 
 -- ==============================================================================
@@ -674,10 +695,15 @@ DECLARE
     ts_dia TIMESTAMP;
     dur_backfill INTERVAL;
     dur_dia INTERVAL;
+    from_date DATE;
+    to_date DATE;
 BEGIN
     RAISE NOTICE '🚀 4. Iniciando Fast-Forward de 2 meses (Simulação contínua rodando dia a dia)...';
     ts_start := clock_timestamp();
-    FOR dt IN SELECT generate_series('2024-05-06'::DATE, '2024-07-04'::DATE, '1 day'::INTERVAL)::DATE LOOP
+    from_date := '2024-05-06'::DATE;
+    to_date := '2024-07-04'::DATE;
+    
+    FOR dt IN SELECT generate_series(from_date, to_date, '1 day'::INTERVAL)::DATE LOOP
         ts_dia := clock_timestamp();
         CALL varejo.proc_executar_pipeline_diario(dt);
         COMMIT; -- Libera I/O e a transação log (WAL) para cada dia individualmente!
@@ -685,6 +711,7 @@ BEGIN
         RAISE NOTICE '   📅 Dia % completado em %', dt, dur_dia;
     END LOOP;
     dur_backfill := clock_timestamp() - ts_start;
+    
     RAISE NOTICE '✅ Fast-Forward concluído com sucesso em %!', dur_backfill;
     PERFORM set_config('varejo.dur_backfill', dur_backfill::text, false);
 END;
@@ -737,7 +764,7 @@ SELECT
     data_snapshot, 
     total_dias_ativos, 
     datas_atividade[1:5] as primeiros_5_dias
-FROM varejo.cliente_atividade_acumulada 
+FROM varejo.fct_atividade_acum 
 WHERE cliente_id = :p_cliente_id
 ORDER BY data_snapshot DESC ;
 
@@ -748,7 +775,7 @@ SELECT
     valores_diarios, 
     atividade_bitmap::BIT(32) as mes_bitmap_visual,
     valor_acumulado_mes
-FROM varejo.cliente_vendas_array_mensal 
+FROM varejo.fct_vendas_mensal_array 
 WHERE cliente_id = :p_cliente_id
 ORDER BY mes_referencia DESC;
 
@@ -876,7 +903,7 @@ BEGIN
 
     -- 1. Gap-And-Island Batch Regeneration (SCD2 do ZERO)
     ts_start := clock_timestamp();
-    PERFORM * FROM varejo.mart_reconstrucao_scd2;
+    PERFORM * FROM varejo.view_reconstrucao_scd2;
     dur_gap_island := clock_timestamp() - ts_start;
 
     -- 2. Bitwise D7 Retention Filter
