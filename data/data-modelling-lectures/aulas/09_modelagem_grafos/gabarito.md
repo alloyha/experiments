@@ -1,4 +1,4 @@
-# GABARITO AULA 10: MODELAGEM DE GRAFOS
+# GABARITO AULA 9: MODELAGEM DE GRAFOS
 
 ## EXERCÍCIO 1: Grafo de Rede Social
 
@@ -84,6 +84,27 @@ SELECT path_string
 FROM caminho
 WHERE destino = 5;
 -- Resultado esperado: 1->2->3->4->5
+```
+
+**d) Conexão Ponte (Interesse em Comum)**
+
+Assumindo que adicionamos vértices de "Interesse" e relações:
+
+```sql
+SELECT 
+    v1.nome AS pessoa_1, 
+    v_ponte.nome AS interesse_comum, 
+    v2.nome AS pessoa_2
+FROM rede_vertices v1
+JOIN rede_arestas a1 ON v1.vertice_id = a1.origem_id AND a1.tipo_relacao = 'INTERESSE'
+JOIN rede_vertices v_ponte ON a1.destino_id = v_ponte.vertice_id
+JOIN rede_arestas a2 ON v_ponte.vertice_id = a2.destino_id AND a2.tipo_relacao = 'INTERESSE'
+JOIN rede_vertices v2 ON a2.origem_id = v2.vertice_id
+WHERE v1.vertice_id < v2.vertice_id -- Evita duplicatas (A-B e B-A)
+  AND NOT EXISTS ( -- Garante que não se seguem
+      SELECT 1 FROM rede_arestas a3 
+      WHERE a3.origem_id = v1.vertice_id AND a3.destino_id = v2.vertice_id
+  );
 ```
 
 ### ASSERTIONS (VALIDAÇÃO DE RESULTADOS)

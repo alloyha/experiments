@@ -1796,6 +1796,7 @@ BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY dag_medallion.mgold_sla_breach;
     REFRESH MATERIALIZED VIEW CONCURRENTLY dag_medallion.mgold_version_regression;
     REFRESH MATERIALIZED VIEW CONCURRENTLY dag_medallion.mgold_cross_run_correlation;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY dag_medallion.mgold_anomaly_feed;   -- Block 5.2
 END;
 $$;
 
@@ -1870,6 +1871,7 @@ BEGIN
     CALL dag_medallion.proc_upsert_dim_run(p_run_id);             -- dim_run Silver
     CALL dag_medallion.proc_populate_dim_dependency_edge();       -- dim_dependency_edge Silver
     CALL dag_medallion.proc_refresh_gold_views();                -- Melhoria 6: refresh mat views
+    CALL dag_semantic.proc_refresh_dashboard_config();           -- Semantic: atualiza config do dashboard
     CALL dag_semantic.proc_emit_reports(p_run_id);               -- Semantic: emite relatório oncall
 END;
 $$;
@@ -1933,10 +1935,21 @@ sla_violations AS (
             sb.task_name || ' (' || sb.sla_status || ')',
             ', ' ORDER BY sb.breach_pct DESC
         ) FILTER (WHERE sb.sla_status != '🟢 DENTRO DO SLA')           AS sla_breach_detail
-    FROM dag_medallion.gold_sla_breach sb
+    FROM dag_medallion.mgold_sla_breach sb
     JOIN dag_medallion.fato_task_exec f2
         ON f2.task_name = sb.task_name AND f2.run_date = sb.run_date
     GROUP BY f2.run_id
+),
+anomalies AS (
+    SELECT
+        vh.run_id,
+        STRING_AGG(
+            vh.task_name || ' [z=' || vh.z_score::TEXT || '] ' || vh.health_flag,
+            ', ' ORDER BY vh.z_score DESC
+        ) AS anomaly_detail
+    FROM dag_engine.v_task_health vh
+    WHERE vh.health_flag != '🟢 OK / DENTRO DO NORMAL'
+    GROUP BY vh.run_id
 )
 SELECT
     lr.dag_name,
@@ -1961,12 +1974,14 @@ SELECT
     COALESCE(sv.sla_breach_count, 0)                             AS sla_breach_count,
     sv.sla_breach_detail,
     cf.failure_detail,
+    an.anomaly_detail,
     lr.start_ts                                                  AS run_start_ts,
     lr.end_ts                                                    AS run_end_ts
 FROM last_run lr
 LEFT JOIN task_summary ts       ON ts.run_id = lr.run_id
 LEFT JOIN critical_failures cf  ON cf.run_id = lr.run_id
 LEFT JOIN sla_violations sv     ON sv.run_id = lr.run_id
+LEFT JOIN anomalies an          ON an.run_id = lr.run_id
 ORDER BY lr.dag_name;
 
 -- ============================================================
@@ -1988,11 +2003,11 @@ WITH weekly AS (
         ROUND(AVG(EXTRACT(EPOCH FROM (end_ts - start_ts)) * 1000), 2)  AS avg_wall_clock_ms
     FROM dag_engine.dag_runs
     WHERE run_type = 'INCREMENTAL'
-      AND run_date >= (
-          (SELECT MAX(run_date) FROM dag_engine.dag_runs WHERE run_type = 'INCREMENTAL')
-          - INTERVAL '56 days'
-      )
+      AND run_date >= DATE_TRUNC('week',
+              (SELECT MAX(run_date) FROM dag_engine.dag_runs) - INTERVAL '55 days'
+          )::DATE
     GROUP BY dag_name, DATE_TRUNC('week', run_date)::DATE
+    HAVING COUNT(*) > 0
 ),
 trended AS (
     SELECT *,
@@ -2048,31 +2063,52 @@ WITH monthly_runs AS (
     WHERE run_type = 'INCREMENTAL'
     GROUP BY dag_name, DATE_TRUNC('month', run_date)::DATE
 ),
+-- Contagem histórica total de runs por task — guarda min_runs_for_sla (10)
+task_run_count AS (
+    SELECT task_name, COUNT(*) AS total_historical_runs
+    FROM dag_medallion.fato_task_exec
+    WHERE run_type = 'INCREMENTAL'
+    GROUP BY task_name
+),
 monthly_sla AS (
     SELECT
-        DATE_TRUNC('month', run_date)::DATE                             AS mes_referencia,
-        task_name,
-        COUNT(*) FILTER (WHERE sla_status != '🟢 DENTRO DO SLA')       AS breach_count,
+        DATE_TRUNC('month', sb.run_date)::DATE                          AS mes_referencia,
+        sb.task_name,
+        COUNT(*) FILTER (WHERE sb.sla_status != '🟢 DENTRO DO SLA')    AS breach_count,
         COUNT(*)                                                        AS total_checked,
         ROUND(
-            100.0 * COUNT(*) FILTER (WHERE sla_status != '🟢 DENTRO DO SLA') / COUNT(*), 2
+            100.0 * COUNT(*) FILTER (WHERE sb.sla_status != '🟢 DENTRO DO SLA') / COUNT(*), 2
         )                                                               AS breach_rate_pct
-    FROM dag_medallion.gold_sla_breach
-    GROUP BY DATE_TRUNC('month', run_date)::DATE, task_name
+    FROM dag_medallion.mgold_sla_breach sb
+    GROUP BY DATE_TRUNC('month', sb.run_date)::DATE, sb.task_name
 ),
 agg_sla AS (
     SELECT
-        mes_referencia,
-        COUNT(DISTINCT task_name) FILTER (WHERE breach_count > 0)       AS tasks_com_breach,
-        ROUND(AVG(breach_rate_pct), 2)                                  AS avg_breach_rate_pct,
+        m.mes_referencia,
+        -- Apenas tasks com baseline estável (≥ 10 runs históricas em fato_task_exec)
+        COUNT(DISTINCT m.task_name) FILTER (
+            WHERE m.breach_count > 0
+              AND COALESCE(trc.total_historical_runs, 0) >= 10
+        )                                                               AS tasks_com_breach,
+        COUNT(DISTINCT m.task_name) FILTER (
+            WHERE COALESCE(trc.total_historical_runs, 0) < 10
+        )                                                               AS tasks_calibrating,
+        ROUND(AVG(m.breach_rate_pct) FILTER (
+            WHERE COALESCE(trc.total_historical_runs, 0) >= 10
+        ), 2)                                                           AS avg_breach_rate_pct,
         ROUND(
-            100.0 * COUNT(DISTINCT task_name) FILTER (WHERE breach_count = 0)
-            / NULLIF(COUNT(DISTINCT task_name), 0), 2
+            100.0
+            * COUNT(DISTINCT m.task_name) FILTER (
+                WHERE m.breach_count = 0
+                  AND COALESCE(trc.total_historical_runs, 0) >= 10
+              )
+            / NULLIF(COUNT(DISTINCT m.task_name) FILTER (
+                WHERE COALESCE(trc.total_historical_runs, 0) >= 10
+              ), 0), 2
         )                                                               AS tasks_dentro_sla_pct
-    FROM monthly_sla
-    -- Guarda: ignora tasks com baseline SLA ainda não estabilizado (< 3 runs)
-    WHERE total_checked >= 3
-    GROUP BY mes_referencia
+    FROM monthly_sla m
+    LEFT JOIN task_run_count trc ON trc.task_name = m.task_name
+    GROUP BY m.mes_referencia
 ),
 agg_health AS (
     SELECT
@@ -2081,8 +2117,8 @@ agg_health AS (
         ROUND(MIN(h.score_minimo_mes), 2)                               AS min_health_score,
         COUNT(DISTINCT h.task_name)                                     AS tasks_monitoradas
     FROM dag_medallion.task_health_array_mensal h
-    -- Exclui tasks ainda em período de calibração (histórico insuficiente)
-    JOIN dag_medallion.gold_pipeline_health gph ON gph.task_name = h.task_name
+    -- Exclui tasks em calibração; usa mview para performance
+    JOIN dag_medallion.mgold_pipeline_health gph ON gph.task_name = h.task_name
     WHERE gph.health_label != '🔵 CALIBRANDO'
     GROUP BY h.mes_referencia
 )
@@ -2094,6 +2130,7 @@ SELECT
     mr.success_rate_mes,
     COALESCE(asl.tasks_dentro_sla_pct, 100)                            AS pct_tasks_dentro_sla,
     COALESCE(asl.tasks_com_breach, 0)                                  AS tasks_com_breach_sla,
+    COALESCE(asl.tasks_calibrating, 0)                                 AS tasks_calibrating,
     COALESCE(asl.avg_breach_rate_pct, 0)                               AS avg_breach_rate_pct,
     COALESCE(ah.avg_health_score, 0)                                   AS avg_health_score,
     COALESCE(ah.min_health_score, 0)                                   AS min_health_score,
@@ -2110,18 +2147,19 @@ LEFT JOIN agg_health ah ON ah.mes_referencia = mr.mes_referencia
 ORDER BY mr.dag_name, mr.mes_referencia DESC;
 
 -- ============================================================
--- SEMANTIC 4: Version Impact — impacto de cada deploy por task
+-- SEMANTIC 4: Version Impact — impacto de cada deploy (rollup por logical task)
 -- ============================================================
--- Grain: 1 linha por (task_name, version_id).
--- Uso: post-mortem de deploy / validação de otimização / rollback candidato.
+-- Grain: 1 linha por (logical_task_name, version_tag).
+-- Chunks são colapsados para a task pai: wall time = chunk mais lento (MAX).
+-- avg_exec_ms = AVG(duration_ms) puro — sem envolvimento de queue_wait_ms.
 DROP VIEW IF EXISTS dag_semantic.rpt_version_impact;
 CREATE OR REPLACE VIEW dag_semantic.rpt_version_impact AS
 WITH version_stats AS (
+    -- Grain: task_name física × version
     SELECT
         f.task_name,
-        -- Rollup: chunks colapsam de volta para a task pai (fix: chunks como nova task)
-        regexp_replace(f.task_name, '_chunk_\d+$', '')                  AS parent_task_name,
-        dv.version_id,
+        regexp_replace(f.task_name, '_chunk_\d+$', '')                  AS logical_task_name,
+        f.task_name ~ '_chunk_\d+$'                                     AS is_chunk,
         dv.version_tag,
         dv.deployed_at,
         dv.change_summary,
@@ -2130,37 +2168,66 @@ WITH version_stats AS (
         ROUND(
             100.0 * COUNT(*) FILTER (WHERE f.final_status = 'SUCCESS') / COUNT(*), 2
         )                                                               AS success_rate,
-        -- avg_ms inclui queue_wait; avg_exec_ms isola só o tempo de execução real
+        -- avg_exec_ms: pure execution time; duration_ms IS the task exec time
         ROUND(AVG(f.duration_ms) FILTER (WHERE f.final_status = 'SUCCESS'), 2)
-                                                                        AS avg_ms,
+                                                                        AS avg_exec_ms,
         ROUND(AVG(f.queue_wait_ms) FILTER (WHERE f.final_status = 'SUCCESS'), 2)
                                                                         AS avg_queue_wait_ms,
-        ROUND(AVG(f.duration_ms - COALESCE(f.queue_wait_ms, 0)) FILTER (WHERE f.final_status = 'SUCCESS'), 2)
-                                                                        AS avg_exec_ms,
         ROUND((PERCENTILE_CONT(0.95) WITHIN GROUP (
             ORDER BY f.duration_ms
-        ) FILTER (WHERE f.final_status = 'SUCCESS'))::NUMERIC, 2)      AS p95_ms,
-        ROUND(STDDEV(f.duration_ms) FILTER (WHERE f.final_status = 'SUCCESS')::NUMERIC, 2)
-                                                                        AS std_ms
+        ) FILTER (WHERE f.final_status = 'SUCCESS'))::NUMERIC, 2)      AS p95_ms
     FROM dag_medallion.fato_task_exec f
-    JOIN dag_engine.dag_runs dr ON dr.run_id = f.run_id
+    JOIN dag_engine.dag_runs dr     ON dr.run_id    = f.run_id
     JOIN dag_engine.dag_versions dv ON dv.version_id = dr.version_id
     WHERE f.run_type = 'INCREMENTAL'
-    GROUP BY f.task_name, dv.version_id, dv.version_tag, dv.deployed_at, dv.change_summary
+    GROUP BY f.task_name, dv.version_tag, dv.deployed_at, dv.change_summary
+),
+rolled_up AS (
+    -- Grain: logical_task_name × version — chunks colapsados para a task pai
+    -- Wall time do grupo = MAX(avg_exec_ms) = chunk mais lento (gargalo real)
+    -- effective_exec_ms = wall time ÷ chunk_count (latência percebida em paralelo)
+    SELECT
+        logical_task_name,
+        version_tag,
+        MAX(deployed_at)                                               AS deployed_at,
+        MAX(change_summary)                                            AS change_summary,
+        BOOL_OR(is_chunk)                                              AS is_chunk,
+        COUNT(DISTINCT task_name)                                      AS chunk_count,
+        SUM(total_execs)                                               AS total_execs,
+        SUM(ok_execs)                                                  AS ok_execs,
+        ROUND(100.0 * SUM(ok_execs) / NULLIF(SUM(total_execs), 0), 2) AS success_rate,
+        MAX(avg_exec_ms)                                               AS avg_exec_ms,
+        -- effective_exec_ms: wall time ajustado por paralelismo (÷ número de chunks)
+        CASE
+            WHEN BOOL_OR(is_chunk)
+            THEN ROUND(MAX(avg_exec_ms) / NULLIF(COUNT(DISTINCT task_name), 1), 2)
+            ELSE MAX(avg_exec_ms)
+        END                                                            AS effective_exec_ms,
+        ROUND(AVG(avg_queue_wait_ms), 2)                               AS avg_queue_wait_ms,
+        MAX(p95_ms)                                                    AS p95_ms
+    FROM version_stats
+    GROUP BY logical_task_name, version_tag
 ),
 compared AS (
     SELECT *,
-        LAG(avg_ms)           OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_avg_ms,
-        LAG(avg_queue_wait_ms) OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_avg_queue_wait_ms,
-        LAG(avg_exec_ms)      OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_avg_exec_ms,
-        LAG(success_rate)     OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_success_rate,
-        LAG(p95_ms)           OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_p95_ms,
-        LAG(version_tag)      OVER (PARTITION BY task_name ORDER BY deployed_at) AS prev_version_tag
-    FROM version_stats
+        LAG(avg_exec_ms)       OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_avg_exec_ms,
+        LAG(effective_exec_ms) OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_effective_exec_ms,
+        LAG(avg_queue_wait_ms) OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_avg_queue_wait_ms,
+        LAG(success_rate)      OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_success_rate,
+        LAG(p95_ms)            OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_p95_ms,
+        LAG(version_tag)       OVER (PARTITION BY logical_task_name ORDER BY deployed_at)
+                                                                        AS prev_version_tag
+    FROM rolled_up
 )
 SELECT
-    task_name,
-    parent_task_name,
+    logical_task_name                                                   AS task_name,
+    is_chunk,
+    chunk_count,
     version_tag,
     prev_version_tag,
     deployed_at,
@@ -2169,35 +2236,37 @@ SELECT
     ok_execs,
     success_rate,
     prev_success_rate,
-    ROUND(success_rate - COALESCE(prev_success_rate, success_rate), 2)         AS success_rate_delta,
-    avg_ms,
-    prev_avg_ms,
-    ROUND(avg_ms - COALESCE(prev_avg_ms, avg_ms), 2)                           AS avg_ms_delta,
-    -- Deltas separados: execução pura vs tempo de fila
+    ROUND(success_rate - COALESCE(prev_success_rate, success_rate), 2) AS success_rate_delta,
+    -- avg_exec_ms = wall time do chunk mais lento (gargalo real); execução pura sem fila
     avg_exec_ms,
     prev_avg_exec_ms,
-    ROUND(avg_exec_ms - COALESCE(prev_avg_exec_ms, avg_exec_ms), 2)            AS avg_exec_ms_delta,
+    ROUND(avg_exec_ms - COALESCE(prev_avg_exec_ms, avg_exec_ms), 2)    AS avg_exec_ms_delta,
+    -- effective_exec_ms = latência percebida ajustada por paralelismo (÷ chunk_count)
+    effective_exec_ms,
+    prev_effective_exec_ms,
+    ROUND(effective_exec_ms - COALESCE(prev_effective_exec_ms, effective_exec_ms), 2)
+                                                                        AS effective_exec_ms_delta,
     avg_queue_wait_ms,
-    prev_avg_queue_wait_ms,
-    ROUND(avg_queue_wait_ms - COALESCE(prev_avg_queue_wait_ms, avg_queue_wait_ms), 2)
-                                                                                AS avg_queue_wait_delta,
+    -- queue_improvement_ms: positivo = fila diminuiu (melhoria de scheduling)
+    ROUND(COALESCE(prev_avg_queue_wait_ms, avg_queue_wait_ms)
+          - avg_queue_wait_ms, 2)                                       AS queue_improvement_ms,
     p95_ms,
     prev_p95_ms,
-    ROUND(p95_ms - COALESCE(prev_p95_ms, p95_ms), 2)                           AS p95_ms_delta,
-    -- Veredicto usa avg_exec_ms para não penalizar tasks que melhoram no scheduler
+    ROUND(p95_ms - COALESCE(prev_p95_ms, p95_ms), 2)                   AS p95_ms_delta,
+    -- Veredicto baseado em effective_exec_ms (latência percebida, ajustada por paralelismo)
     CASE
-        WHEN prev_avg_exec_ms IS NULL
-                                                                                THEN '🆕 Primeira Versão'
+        WHEN prev_effective_exec_ms IS NULL
+                                                                        THEN '🆕 Primeira Versão'
         WHEN success_rate < COALESCE(prev_success_rate, success_rate) - 5
-                                                                                THEN '🟠 Queda de Confiabilidade'
-        WHEN avg_exec_ms > COALESCE(prev_avg_exec_ms, avg_exec_ms) * 1.2
-                                                                                THEN '🔴 Regressão de Performance'
-        WHEN avg_exec_ms < COALESCE(prev_avg_exec_ms, avg_exec_ms) * 0.8
-                                                                                THEN '🟢 Melhoria Significativa'
-        ELSE                                                                         '✅ Estável'
-    END                                                                         AS impact_signal
+                                                                        THEN '🟠 Queda de Confiabilidade'
+        WHEN effective_exec_ms > COALESCE(prev_effective_exec_ms, effective_exec_ms) * 1.2
+                                                                        THEN '🔴 Regressão de Performance'
+        WHEN effective_exec_ms < COALESCE(prev_effective_exec_ms, effective_exec_ms) * 0.8
+                                                                        THEN '🟢 Melhoria Significativa'
+        ELSE                                                                 '✅ Estável'
+    END                                                                 AS impact_signal
 FROM compared
-ORDER BY task_name, deployed_at DESC;
+ORDER BY logical_task_name, deployed_at DESC;
 
 -- ============================================================
 -- SEMANTIC PROC: Emite relatório oncall via pg_notify
@@ -2233,6 +2302,304 @@ BEGIN
             'payload',  COALESCE(v_payload, '[]'::JSONB)
         )::TEXT
     );
+END;
+$$;
+
+-- ==============================================================================
+-- 7c. CAMADA SEMÂNTICA — Views Complementares (Blocos 2-5)
+-- ==============================================================================
+
+-- ============================================================
+-- SEMANTIC 5: vw_health_calendar — Bitmap de Saúde Descompactado
+-- ============================================================
+-- Grain: 1 linha por (logical_task_name, data_snapshot) — chunks colapsados via BOOL_AND.
+-- Uso: heat-map de calendário, detecção de padrão sazonal por dia-da-semana.
+DROP VIEW IF EXISTS dag_semantic.vw_health_calendar;
+CREATE OR REPLACE VIEW dag_semantic.vw_health_calendar AS
+WITH expanded AS (
+    SELECT
+        regexp_replace(task_name, '_chunk_\d+$', '')                   AS logical_task_name,
+        data_snapshot,
+        TO_CHAR(data_snapshot, 'YYYY-MM-DD')                           AS date_label,
+        EXTRACT(WEEK FROM data_snapshot)::INT                          AS week_num,
+        EXTRACT(DOW  FROM data_snapshot)::INT                          AS day_of_week,
+        total_dias_saudavel,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 0)         AS d0_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 1)         AS d1_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 2)         AS d2_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 3)         AS d3_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 4)         AS d4_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 5)         AS d5_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 6)         AS d6_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 7)         AS d7_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 14)        AS d14_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 21)        AS d21_raw,
+        dag_medallion.was_healthy_on_day(health_bitmap_32d, 30)        AS d30_raw
+    FROM dag_medallion.task_health_cumulative
+    WHERE run_type = 'INCREMENTAL'
+)
+SELECT
+    logical_task_name,
+    data_snapshot,
+    date_label,
+    week_num,
+    day_of_week,
+    SUM(total_dias_saudavel)                                           AS total_dias_saudavel,
+    BOOL_AND(d0_raw)                                                   AS d0,
+    BOOL_AND(d1_raw)                                                   AS d1,
+    BOOL_AND(d2_raw)                                                   AS d2,
+    BOOL_AND(d3_raw)                                                   AS d3,
+    BOOL_AND(d4_raw)                                                   AS d4,
+    BOOL_AND(d5_raw)                                                   AS d5,
+    BOOL_AND(d6_raw)                                                   AS d6,
+    BOOL_AND(d7_raw)                                                   AS d7,
+    BOOL_AND(d14_raw)                                                  AS d14,
+    BOOL_AND(d21_raw)                                                  AS d21,
+    BOOL_AND(d30_raw)                                                  AS d30
+FROM expanded
+GROUP BY logical_task_name, data_snapshot, date_label, week_num, day_of_week
+ORDER BY logical_task_name, data_snapshot DESC;
+
+-- ============================================================
+-- SEMANTIC 6: vw_audit_trail — Trilha de Auditoria Bronze
+-- ============================================================
+-- Grain: 1 linha por transição de estado (state_transitions).
+-- Uso: debug de falhas, auditoria de conformidade, root cause analysis.
+CREATE OR REPLACE VIEW dag_semantic.vw_audit_trail AS
+SELECT
+    dr.run_date,
+    dr.dag_name,
+    dv.version_tag,
+    st.task_name,
+    st.old_state,
+    st.new_state,
+    st.transition_ts,
+    ti.status          AS final_status,
+    ti.attempt,
+    ti.duration_ms,
+    ti.error_text
+FROM dag_medallion.brnz_state_transitions_snap st
+JOIN  dag_engine.dag_runs      dr ON dr.run_id    = st.run_id
+LEFT JOIN dag_engine.dag_versions  dv ON dv.version_id = dr.version_id
+LEFT JOIN dag_medallion.brnz_task_instances_snap ti
+    ON ti.run_id = st.run_id AND ti.task_name = st.task_name
+ORDER BY st.transition_ts;
+
+-- ============================================================
+-- SEMANTIC 7: vw_anomaly_feed — Feed de Anomalias Z-Score
+-- ============================================================
+-- Grain: 1 linha por (run_id, task_name) fora do normal.
+-- Uso: alertas proativos antes do oncall; alimenta mgold_anomaly_feed.
+CREATE OR REPLACE VIEW dag_semantic.vw_anomaly_feed AS
+SELECT
+    dr.run_date,
+    dr.dag_name,
+    dv.version_tag,
+    vh.task_name,
+    vh.run_id,
+    vh.duration_ms,
+    vh.media_ms,
+    vh.stddev_ms,
+    vh.z_score,
+    vh.health_flag
+FROM dag_engine.v_task_health vh
+JOIN  dag_engine.dag_runs     dr ON dr.run_id    = vh.run_id
+LEFT JOIN dag_engine.dag_versions dv ON dv.version_id = dr.version_id
+WHERE vh.health_flag != '🟢 OK / DENTRO DO NORMAL'
+ORDER BY dr.run_date DESC, vh.z_score DESC;
+
+-- Materialized version: índice único em (run_id, task_name) para JOIN rápido
+DROP MATERIALIZED VIEW IF EXISTS dag_medallion.mgold_anomaly_feed CASCADE;
+CREATE MATERIALIZED VIEW dag_medallion.mgold_anomaly_feed AS
+    SELECT * FROM dag_semantic.vw_anomaly_feed;
+CREATE UNIQUE INDEX ON dag_medallion.mgold_anomaly_feed (run_id, task_name);
+
+-- ============================================================
+-- SEMANTIC 8: vw_blast_radius_historical — Blast Radius c/ Evidência Histórica
+-- ============================================================
+-- Grain: 1 linha por source_task.
+-- Enriquece gold_blast_radius (topologia) com dados reais de vitimização.
+CREATE OR REPLACE VIEW dag_semantic.vw_blast_radius_historical AS
+WITH historical_victims AS (
+    SELECT
+        f.task_name,
+        COUNT(*) FILTER (WHERE f.is_upstream_victim = TRUE)            AS historical_victim_count,
+        MAX(f.run_date) FILTER (WHERE f.is_upstream_victim = TRUE)     AS latest_victim_date,
+        COUNT(*) FILTER (WHERE f.final_status = 'FAILED')              AS historical_failures
+    FROM dag_medallion.fato_task_exec f
+    GROUP BY f.task_name
+)
+SELECT
+    gbr.source_task,
+    gbr.downstream_count,
+    gbr.downstream_chain,
+    gbr.max_cascade_depth,
+    gbr.historical_failures,
+    gbr.risk_score,
+    COALESCE(hv.historical_victim_count, 0)                            AS historical_victim_count,
+    hv.latest_victim_date,
+    ROUND(
+        COALESCE(hv.historical_victim_count, 0)::NUMERIC
+        / NULLIF(gbr.historical_failures, 0), 2
+    )                                                                  AS avg_victims_per_failure
+FROM dag_medallion.gold_blast_radius gbr
+LEFT JOIN historical_victims hv ON hv.task_name = gbr.source_task;
+
+-- ============================================================
+-- SEMANTIC 9: vw_rows_throughput — Volume e Throughput por Task
+-- ============================================================
+-- Grain: 1 linha por (task_name, run_date) onde rows_processed IS NOT NULL.
+-- Uso: detecção de anomalias de volume de dados (isolada de performance).
+CREATE OR REPLACE VIEW dag_semantic.vw_rows_throughput AS
+WITH base AS (
+    SELECT
+        f.run_date,
+        f.task_name,
+        dr.dag_name,
+        dv.version_tag,
+        f.rows_processed,
+        f.duration_ms,
+        ROUND(f.rows_processed::NUMERIC / NULLIF(f.duration_ms, 0), 4) AS rows_per_ms
+    FROM dag_medallion.fato_task_exec f
+    JOIN  dag_engine.dag_runs     dr ON dr.run_id    = f.run_id
+    LEFT JOIN dag_engine.dag_versions dv ON dv.version_id = dr.version_id
+    WHERE f.rows_processed IS NOT NULL
+      AND f.final_status = 'SUCCESS'
+),
+with_stats AS (
+    SELECT *,
+        ROUND(AVG(rows_per_ms) OVER (
+            PARTITION BY task_name
+            ORDER BY run_date
+            RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW
+        ), 4)                                                          AS rows_7d_avg,
+        AVG(rows_processed)  OVER (PARTITION BY task_name)            AS vol_avg,
+        STDDEV(rows_processed) OVER (PARTITION BY task_name)          AS vol_stddev
+    FROM base
+)
+SELECT
+    run_date,
+    task_name,
+    dag_name,
+    version_tag,
+    rows_processed,
+    duration_ms,
+    rows_per_ms,
+    rows_7d_avg,
+    ROUND((rows_processed - vol_avg) / NULLIF(vol_stddev, 0), 2)      AS volume_z_score,
+    CASE
+        WHEN (rows_processed - vol_avg) / NULLIF(vol_stddev, 0) >  2.0 THEN '🔴 VOLUME ANOMALIA (Alto)'
+        WHEN (rows_processed - vol_avg) / NULLIF(vol_stddev, 0) < -2.0 THEN '🔴 VOLUME ANOMALIA (Baixo)'
+        WHEN (rows_processed - vol_avg) / NULLIF(vol_stddev, 0) >  1.0 THEN '🟡 VOLUME ELEVADO'
+        ELSE                                                                 '🟢 VOLUME OK'
+    END                                                                AS volume_flag
+FROM with_stats
+ORDER BY task_name, run_date DESC;
+
+-- ============================================================
+-- SEMANTIC 10: vw_master — Visão Denormalizada Completa
+-- ============================================================
+-- Grain: 1 linha por (run_id, task_name).
+-- Base universal para BI, notebooks, dashboards ad-hoc.
+-- Lê mgold_* para evitar recomputação de Gold em cada dashboard load.
+DROP VIEW IF EXISTS dag_semantic.vw_master;
+CREATE OR REPLACE VIEW dag_semantic.vw_master AS
+WITH latest_run_per_dag AS (
+    SELECT dag_name, MAX(run_date) AS latest_run_date
+    FROM dag_engine.dag_runs
+    GROUP BY dag_name
+)
+SELECT
+    -- Run context
+    f.run_id,
+    dr.run_date,
+    dr.dag_name,
+    dr.run_type,
+    dr.status                                                    AS run_status,
+    -- Version context
+    dv.version_tag,
+    dv.schedule,
+    -- Task context
+    f.task_name,
+    dt.topological_layer,
+    dt.is_root,
+    dt.is_leaf,
+    dt.dependency_count,
+    -- Status & error
+    f.final_status,
+    f.attempt,
+    f.had_retry,
+    f.is_upstream_victim,
+    ec.error_class_name,
+    -- Performance
+    f.duration_ms,
+    f.queue_wait_ms,
+    f.rows_processed,
+    gph.health_score,
+    gph.health_label,
+    gph.success_rate,
+    gph.retry_rate,
+    -- SLA (from pre-computed mview)
+    msb.sla_status,
+    msb.breach_pct,
+    msb.sla_target_ms,
+    -- Timestamps
+    f.start_ts,
+    f.end_ts,
+    -- Derived columns
+    regexp_replace(f.task_name, '_chunk_\d+$', '')               AS logical_task_name,
+    (f.task_name ~ '_chunk_\d+$')                                AS is_chunk,
+    (regexp_match(f.task_name, '_chunk_(\d+)$'))[1]::INT         AS chunk_index,
+    f.duration_ms + COALESCE(f.queue_wait_ms, 0)                 AS total_elapsed_ms,
+    TO_CHAR(dr.run_date, 'YYYY-MM')                              AS year_month,
+    TO_CHAR(dr.run_date, 'IYYY-IW')                              AS year_week,
+    TO_CHAR(dr.run_date, 'Day')                                  AS day_of_week,
+    EXTRACT(DOW FROM dr.run_date) IN (0, 6)                      AS is_weekend,
+    dr.run_date = (DATE_TRUNC('month', dr.run_date + 1))::DATE - 1 AS is_month_end,
+    (SELECT MAX(run_date) FROM dag_engine.dag_runs) - dr.run_date AS run_age_days,
+    dr.run_date = lrd.latest_run_date                            AS is_latest_run
+FROM dag_medallion.fato_task_exec f
+JOIN  dag_engine.dag_runs              dr  ON dr.run_id         = f.run_id
+JOIN  dag_engine.dag_versions          dv  ON dv.version_id     = dr.version_id
+LEFT JOIN dag_medallion.dim_task        dt  ON dt.task_sk        = f.task_sk
+LEFT JOIN dag_medallion.dim_error_class ec  ON ec.error_class_sk = f.error_class_sk
+LEFT JOIN dag_medallion.mgold_pipeline_health gph ON gph.task_name = f.task_name
+LEFT JOIN dag_medallion.mgold_sla_breach      msb ON msb.task_name = f.task_name
+                                                  AND msb.run_date  = f.run_date
+LEFT JOIN latest_run_per_dag lrd ON lrd.dag_name = dr.dag_name;
+
+-- ============================================================
+-- SEMANTIC 11: dashboard_config — Parâmetros do Dashboard
+-- ============================================================
+CREATE TABLE IF NOT EXISTS dag_semantic.dashboard_config (
+    key        TEXT PRIMARY KEY,
+    value      TEXT,
+    updated_at TIMESTAMP DEFAULT clock_timestamp()
+);
+
+INSERT INTO dag_semantic.dashboard_config (key, value) VALUES
+    ('latest_run_date',  (SELECT MAX(run_date)::TEXT FROM dag_engine.dag_runs)),
+    ('oldest_run_date',  (SELECT MIN(run_date)::TEXT FROM dag_engine.dag_runs)),
+    ('default_dag_name', 'daily_varejo_dw'),
+    ('sla_min_runs',     '10'),
+    ('health_threshold', '70'),
+    ('calibration_runs', '10')
+ON CONFLICT (key) DO UPDATE SET
+    value      = EXCLUDED.value,
+    updated_at = clock_timestamp();
+
+CREATE OR REPLACE PROCEDURE dag_semantic.proc_refresh_dashboard_config()
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE dag_semantic.dashboard_config
+    SET value = (SELECT MAX(run_date)::TEXT FROM dag_engine.dag_runs),
+        updated_at = clock_timestamp()
+    WHERE key = 'latest_run_date';
+
+    UPDATE dag_semantic.dashboard_config
+    SET value = (SELECT MIN(run_date)::TEXT FROM dag_engine.dag_runs),
+        updated_at = clock_timestamp()
+    WHERE key = 'oldest_run_date';
 END;
 $$;
 
@@ -3099,6 +3466,89 @@ SELECT
 FROM topo_sort
 GROUP BY task_name, dag_name, call_fn, call_args, procedure_call, dependencies, layer
 ORDER BY dag_name, topological_layer, task_name;
+
+-- ============================================================
+-- SEMANTIC 7b: rpt_historical_incidents — Classificação de Incidentes Históricos
+-- ============================================================
+-- Grain: 1 linha por (run_date, dag_name) onde ≥2 tasks ultrapassaram z_score > 2.
+-- Classifica o tipo de incidente com base na topologia de dependências:
+--   CASCADE       → tasks afetadas compartilham uma cadeia de dependência
+--   INFRASTRUCTURE → tasks afetadas são paralelas (sem dependência entre si)
+--   MIXED         → combinação de ambos os padrões
+-- Uso: post-mortem, análise de padrão de incidentes, planejamento de capacidade.
+DROP VIEW IF EXISTS dag_semantic.rpt_historical_incidents;
+CREATE OR REPLACE VIEW dag_semantic.rpt_historical_incidents AS
+WITH incident_days AS (
+    SELECT
+        run_date,
+        dag_name,
+        ARRAY_AGG(DISTINCT task_name ORDER BY task_name)               AS affected_task_arr,
+        STRING_AGG(DISTINCT task_name, ', ' ORDER BY task_name)        AS affected_tasks,
+        COUNT(DISTINCT task_name)                                      AS task_count,
+        ROUND(MAX(z_score)::NUMERIC, 2)                                AS max_z_score,
+        MAX(version_tag)                                               AS version_tag
+    FROM dag_semantic.vw_anomaly_feed
+    WHERE z_score > 2
+    GROUP BY run_date, dag_name
+    HAVING COUNT(DISTINCT task_name) >= 2
+),
+topo_data AS (
+    SELECT dag_name, task_name, topological_layer, dependencies
+    FROM dag_engine.vw_topological_sort
+),
+incident_enriched AS (
+    SELECT
+        id.run_date,
+        id.dag_name,
+        id.affected_task_arr,
+        id.affected_tasks,
+        id.task_count,
+        id.max_z_score,
+        id.version_tag,
+        -- CASCADE: pelo menos uma task afetada depende de outra task afetada na mesma cadeia
+        EXISTS (
+            SELECT 1
+            FROM topo_data t1
+            WHERE t1.dag_name = id.dag_name
+              AND t1.task_name = ANY(id.affected_task_arr)
+              AND EXISTS (
+                  SELECT 1 FROM topo_data t2
+                  WHERE t2.dag_name = t1.dag_name
+                    AND t2.task_name = ANY(id.affected_task_arr)
+                    AND t2.task_name != t1.task_name
+                    AND t2.task_name = ANY(t1.dependencies)
+              )
+        )                                                              AS has_chain,
+        (
+            SELECT COUNT(DISTINCT t.topological_layer)
+            FROM topo_data t
+            WHERE t.dag_name = id.dag_name
+              AND t.task_name = ANY(id.affected_task_arr)
+        )                                                              AS distinct_levels
+    FROM incident_days id
+)
+SELECT
+    run_date,
+    dag_name,
+    version_tag,
+    task_count,
+    max_z_score,
+    affected_tasks,
+    CASE
+        WHEN has_chain AND distinct_levels > 1 THEN 'CASCADE'
+        WHEN distinct_levels <= 1              THEN 'INFRASTRUCTURE'
+        ELSE                                        'MIXED'
+    END                                                                AS incident_type,
+    CASE
+        WHEN has_chain AND distinct_levels > 1
+            THEN 'Identificar task raiz; bloquear propagação; checar dependências upstream'
+        WHEN distinct_levels <= 1
+            THEN 'Verificar recursos compartilhados: memória, I/O, conexões de banco'
+        ELSE
+            'Investigar task mais lenta; revisar fila de execução e resource contention'
+    END                                                                AS recommended_action
+FROM incident_enriched
+ORDER BY run_date DESC, max_z_score DESC;
 
 -- 8.5.1 fn_dag_to_mermaid: gera representação Mermaid da topologia de um DAG
 DROP FUNCTION IF EXISTS dag_engine.fn_dag_to_mermaid(TEXT);
@@ -5279,7 +5729,8 @@ SELECT
     retried_tasks,
     sla_breach_count,
     wall_clock_ms,
-    COALESCE(failure_detail, '—') AS failure_detail
+    COALESCE(failure_detail, '—')  AS failure_detail,
+    COALESCE(anomaly_detail, '—')  AS anomaly_detail
 FROM dag_semantic.rpt_oncall_handoff
 ORDER BY dag_name;
 
@@ -5306,16 +5757,18 @@ SELECT
     success_rate_mes      AS "success%",
     pct_tasks_dentro_sla  AS "tasks_ok_sla%",
     tasks_com_breach_sla,
+    tasks_calibrating,
     avg_health_score,
     min_health_score,
     commitment_status
 FROM dag_semantic.rpt_monthly_sla_delivery
 ORDER BY dag_name, mes_referencia DESC;
 
-\echo '► 4. rpt_version_impact — Impacto por versão deployada'
+\echo '► 4. rpt_version_impact — Impacto por versão deployada (rollup por logical task)'
 SELECT
     task_name,
-    parent_task_name,
+    is_chunk,
+    chunk_count,
     version_tag,
     prev_version_tag,
     total_execs,
@@ -5323,8 +5776,10 @@ SELECT
     success_rate_delta    AS "sr_delta%",
     avg_exec_ms,
     avg_exec_ms_delta,
+    effective_exec_ms,
+    effective_exec_ms_delta,
     avg_queue_wait_ms,
-    avg_queue_wait_delta,
+    queue_improvement_ms,
     p95_ms,
     p95_ms_delta,
     impact_signal
@@ -5332,3 +5787,51 @@ FROM dag_semantic.rpt_version_impact
 ORDER BY task_name, deployed_at DESC;
 
 -- ==============================================================================
+-- SEMANTIC LAYER — Validação de Infra (Block 6)
+-- ==============================================================================
+
+\echo '► 5. vw_master — amostra + colunas derivadas'
+SELECT
+    task_name,
+    logical_task_name,
+    is_chunk,
+    chunk_index,
+    year_week,
+    day_of_week,
+    is_weekend,
+    is_month_end,
+    total_elapsed_ms,
+    run_age_days,
+    is_latest_run,
+    health_label,
+    sla_status
+FROM dag_semantic.vw_master
+LIMIT 5;
+
+\echo '► 6. vw_audit_trail — contagem de transições Bronze'
+SELECT COUNT(*) AS transicoes, MIN(transition_ts) AS primeira, MAX(transition_ts) AS ultima
+FROM dag_semantic.vw_audit_trail;
+
+\echo '► 7. vw_anomaly_feed — anomalias Z-score detectadas'
+SELECT run_date, dag_name, task_name, z_score, health_flag
+FROM dag_semantic.vw_anomaly_feed
+LIMIT 10;
+
+\echo '► 8. vw_health_calendar — bitmap descompactado (agrupado por logical_task_name)'
+SELECT logical_task_name, date_label, d0, d1, d7, week_num, day_of_week
+FROM dag_semantic.vw_health_calendar
+ORDER BY logical_task_name, date_label DESC
+LIMIT 10;
+
+\echo '► 9. dashboard_config — parâmetros atuais'
+SELECT key, value, updated_at FROM dag_semantic.dashboard_config ORDER BY key;
+
+\echo '► 9b. rpt_historical_incidents — incidentes classificados por topologia'
+SELECT run_date, dag_name, version_tag, task_count, max_z_score, incident_type, recommended_action
+FROM dag_semantic.rpt_historical_incidents
+LIMIT 10;
+
+\echo '► 10. Plano de execução — vw_master usa mgold_sla_breach (não gold_sla_breach)'
+EXPLAIN SELECT sla_status FROM dag_semantic.vw_master LIMIT 1;
+
+-- ============================================================

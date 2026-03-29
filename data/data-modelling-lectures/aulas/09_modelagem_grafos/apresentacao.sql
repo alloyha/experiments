@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Aula 9: Modelagem de Grafos (Graph Data Modeling)
+-- Aula 10: Modelagem de Grafos (Graph Data Modeling)
 -- ==============================================================================
 -- IMPORTANTE: Para executar este script sem erros de sintaxe e tabelas ausentes,
 -- você precisa rodar o painel interativo de ambiente relacional gerando os dados antes:
@@ -9,7 +9,7 @@
 -- Cenário: Rede Social de Leitores - Quem segue quem? Quem recomenda o quê?
 -- Problema do Relacional: Queries de múltiplos níveis (amigos de amigos, influenciadores)
 --                         explodem em complexidade com JOINs recursivos.
--- Solução: Modelar como Vértices (Pessoas, Livros) e Arestas (Relacionamentos).
+-- Solução: Modelar como Vértices (Pessoas, Livros, Gêneros) e Arestas (Relacionamentos).
 
 -- Setup do Ambiente (será controlado via search_path pelo validador)
 -- SET search_path TO rede_social, public;
@@ -27,6 +27,19 @@
 -- ==============================================================================
 -- 2. EXPLORANDO O GRAFO: Estrutura de Tabelas
 -- ==============================================================================
+
+-- Dimensões
+select * from rede_social.pessoa;
+select * from rede_social.livro;
+select * from rede_social.genero;
+
+-- Fatos
+select * from rede_social.leitura;
+
+-- Pontes
+select * from rede_social.conexao_social;
+select * from rede_social.livro_genero;
+select * from rede_social.pessoa_preferencia;
 
 -- Criando a infraestrutura de tabelas para o Modelo de Grafo
 DROP TABLE IF EXISTS grafo_arestas;
@@ -72,8 +85,7 @@ SELECT
     'Leitor' AS tipo,
     JSONB_BUILD_OBJECT(
         'nome', nome,
-        'idade', idade,
-        'genero_favorito', genero_favorito
+        'idade', idade
     ) AS propriedades
 FROM rede_social.pessoa;
 
@@ -88,6 +100,14 @@ SELECT
         'ano', ano_publicacao
     ) AS propriedades
 FROM rede_social.livro;
+
+-- 2.1 Transformar GÊNEROS em VÉRTICES (offset +2000)
+INSERT INTO grafo_vertices (vertice_id, tipo, propriedades)
+SELECT
+    2000 + genero_id AS vertice_id,
+    'Genero' AS tipo,
+    JSONB_BUILD_OBJECT('nome', nome) AS propriedades
+FROM rede_social.genero;
 
 -- 3. Transformar CONEXAO_SOCIAL em ARESTAS (pessoa → pessoa)
 INSERT INTO grafo_arestas (origem_id, destino_id, tipo_relacao, peso, propriedades)
@@ -131,6 +151,24 @@ SELECT
     ) AS propriedades
 FROM rede_social.leitura;
 
+-- 6. Transformar LIVRO_GENERO em ARESTAS (livro → gênero)
+INSERT INTO grafo_arestas (origem_id, destino_id, tipo_relacao, peso)
+SELECT
+    1000 + livro_id AS origem_id,
+    2000 + genero_id AS destino_id,
+    'PERTENCE_AO_GENERO' AS tipo_relacao,
+    1.0 AS peso
+FROM rede_social.livro_genero;
+
+-- 7. Derivar INTERESSE: Pessoas que têm preferências por gêneros
+INSERT INTO grafo_arestas (origem_id, destino_id, tipo_relacao, peso)
+SELECT
+    pessoa_id AS origem_id,
+    2000 + genero_id AS destino_id,
+    'INTERESSE_EM' AS tipo_relacao,
+    1.0 AS peso
+FROM rede_social.pessoa_preferencia;
+
 -- ==============================================================================
 -- 3. EXPLORANDO OS DADOS: O que temos?
 -- ==============================================================================
@@ -152,8 +190,7 @@ FROM rede_social.leitura;
 SELECT
     vertice_id,
     propriedades ->> 'nome' AS nome,
-    propriedades ->> 'idade' AS idade,
-    propriedades ->> 'genero_favorito' AS genero_favorito
+    propriedades ->> 'idade' AS idade
 FROM grafo_vertices
 WHERE tipo = 'Leitor'
 ORDER BY vertice_id;
@@ -190,14 +227,10 @@ SELECT DISTINCT
     v_livro.propriedades ->> 'autor' AS autor,
     v_recomendador.propriedades ->> 'nome' AS recomendado_por
 FROM grafo_arestas AS a_segue
-INNER JOIN grafo_vertices AS v_seguido
-    ON a_segue.destino_id = v_seguido.vertice_id
-INNER JOIN grafo_arestas AS a_recomenda
-    ON v_seguido.vertice_id = a_recomenda.origem_id
-INNER JOIN grafo_vertices AS v_livro
-    ON a_recomenda.destino_id = v_livro.vertice_id
-INNER JOIN grafo_vertices AS v_recomendador
-    ON a_recomenda.origem_id = v_recomendador.vertice_id
+INNER JOIN grafo_vertices AS v_seguido ON a_segue.destino_id = v_seguido.vertice_id
+INNER JOIN grafo_arestas AS a_recomenda ON v_seguido.vertice_id = a_recomenda.origem_id
+INNER JOIN grafo_vertices AS v_livro ON a_recomenda.destino_id = v_livro.vertice_id
+INNER JOIN grafo_vertices AS v_recomendador ON a_recomenda.origem_id = v_recomendador.vertice_id
 WHERE
     a_segue.origem_id = 1  -- Ana
     AND a_segue.tipo_relacao = 'SEGUE'
@@ -236,16 +269,65 @@ WITH RECURSIVE rede_estendida AS (
     WHERE
         a.tipo_relacao = 'SEGUE'
         AND NOT (a.destino_id = ANY(r.caminho)) -- Evita ciclos
-        AND r.grau_separacao < 3 -- Limite de profundidade
 )
 
 SELECT
     r.grau_separacao,
-    v.propriedades ->> 'nome' AS nome,
-    v.propriedades ->> 'genero_favorito' AS genero_favorito
+    v.propriedades ->> 'nome' AS nome
 FROM rede_estendida AS r
 INNER JOIN grafo_vertices AS v ON r.pessoa_id = v.vertice_id
 ORDER BY r.grau_separacao, nome;
+
+-- Q5: Recomendação de 2º Grau (Amigos de Amigos)
+-- "Quais livros pessoas que meus amigos seguem estão recomendando?"
+select *
+FROM grafo_vertices
+where vertice_id = 1;
+
+WITH amigos_de_amigos AS (
+    SELECT distinct a2.destino_id AS pessoa_id
+    FROM grafo_arestas a1
+    JOIN grafo_arestas a2 ON a1.destino_id = a2.origem_id
+    WHERE a1.origem_id = 1 -- Ana
+      AND a1.tipo_relacao = 'SEGUE'
+      AND a2.tipo_relacao = 'SEGUE'
+      AND a2.destino_id != 1  -- Não recomendar para si mesma
+)
+
+SELECT
+    v_amigo.propriedades ->> 'nome' AS lido_por,
+    json_agg(distinct v_livro.propriedades ->> 'titulo') AS titulo
+FROM amigos_de_amigos aa
+JOIN grafo_arestas a_rec ON aa.pessoa_id = a_rec.origem_id
+JOIN grafo_vertices v_livro ON a_rec.destino_id = v_livro.vertice_id
+JOIN grafo_vertices v_amigo ON aa.pessoa_id = v_amigo.vertice_id
+WHERE a_rec.tipo_relacao = 'RECOMENDOU'
+group by 1;
+
+-- Q6: "Conexão Ponte" - Afinidade por Gênero
+-- "Encontrar pessoas que não sigo, mas que se interessam pelos mesmos gêneros que eu"
+-- Aqui o Gênero atua como o 'Bridge' ou 'Ponte' entre dois Leitores.
+SELECT 
+    v_eu.propriedades ->> 'nome' AS meu_nome,
+    v_genero.propriedades ->> 'nome' AS genero_em_comum,
+    v_outro.propriedades ->> 'nome' AS pessoa_com_mesmo_interesse
+FROM grafo_vertices v_eu
+-- Eu -> Gênero
+JOIN grafo_arestas a1 ON v_eu.vertice_id = a1.origem_id AND a1.tipo_relacao = 'INTERESSE_EM'
+JOIN grafo_vertices v_genero ON a1.destino_id = v_genero.vertice_id
+-- Gênero -> Outra Pessoa
+JOIN grafo_arestas a2 ON v_genero.vertice_id = a2.destino_id AND a2.tipo_relacao = 'INTERESSE_EM'
+JOIN grafo_vertices v_outro ON a2.origem_id = v_outro.vertice_id
+-- Filtros
+WHERE v_eu.vertice_id = 1 -- Ana
+  AND v_outro.vertice_id != 1
+  -- Opcional: Filtra quem eu JÁ sigo para focar em NOVAS conexões
+  AND NOT EXISTS (
+      SELECT 1 FROM grafo_arestas a_segue 
+      WHERE a_segue.origem_id = v_eu.vertice_id 
+        AND a_segue.destino_id = v_outro.vertice_id 
+        AND a_segue.tipo_relacao = 'SEGUE'
+  );
 
 -- ==============================================================================
 -- 5. QUANDO USAR GRAFOS?
@@ -264,14 +346,14 @@ ORDER BY r.grau_separacao, nome;
 -- ==============================================
 DO $$
 BEGIN
-   -- Validação 1: Contagem de Vértices (4 leitores + 3 livros)
-   IF (SELECT COUNT(*) FROM grafo_vertices) != 7 THEN
-      RAISE EXCEPTION 'Erro: Esperado 7 vértices, encontrado %', (SELECT COUNT(*) FROM grafo_vertices);
+   -- Validação 1: Contagem de Vértices (10 leitores + 8 livros + 7 gêneros)
+   IF (SELECT COUNT(*) FROM grafo_vertices) != 25 THEN
+      RAISE EXCEPTION 'Erro: Esperado 25 vértices, encontrado %', (SELECT COUNT(*) FROM grafo_vertices);
    END IF;
 
-   -- Validação 2: Contagem de Arestas (6 SEGUE + 5 RECOMENDOU + 7 LEU = 18)
-   IF (SELECT COUNT(*) FROM grafo_arestas) != 18 THEN
-      RAISE EXCEPTION 'Erro: Esperado 18 arestas, encontrado %', (SELECT COUNT(*) FROM grafo_arestas);
+   -- Validação 2: Contagem de Arestas (16 SEGUE + 13 RECOMENDOU + 15 LEU + 13 PERTENCE + 14 INTERESSE = 71)
+   IF (SELECT COUNT(*) FROM grafo_arestas) != 71 THEN
+      RAISE EXCEPTION 'Erro: Esperado 71 arestas, encontrado %', (SELECT COUNT(*) FROM grafo_arestas);
    END IF;
 
    -- Validação 3: Teste de Traversal (Ana segue Bruno)

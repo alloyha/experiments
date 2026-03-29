@@ -20,3 +20,5 @@
 **b)** Encontrar amigos de amigos de Alice (2 graus de separação)
 
 **c)** Detectar se existe um caminho entre Alice e Eve
+
+**d) [DESAFIO]** Encontrar pessoas com interesses em comum (mesmo Gênero) que ainda não se seguem (Conexão Ponte).
