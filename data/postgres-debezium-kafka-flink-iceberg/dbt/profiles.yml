@@ -1,0 +1,31 @@
+cdc_analytics:
+  outputs:
+    flink:
+      type: flink
+      host: dbt-flink
+      port: 8081
+      
+      # Iceberg catalog configuration
+      catalog_type: iceberg
+      s3_endpoint: http://minio:9000
+      s3_access_key: minioadmin
+      s3_secret_key: minioadmin
+      s3_path_style_access: true
+      
+      # Kafka consumer configuration
+      kafka_broker: kafka:29092
+      kafka_group_id: dbt-flink-consumer
+      
+      # Iceberg warehouse
+      warehouse: s3://iceberg-warehouse
+      
+      # Default schema for models
+      schema: analytics
+      database: iceberg
+      
+      # Flink-specific
+      parallelism: 4
+      
+      threads: 4
+  
+  target: flink

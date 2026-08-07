@@ -1,0 +1,43 @@
+# Flink Configuration for dbt-flink
+
+# JobManager Configuration
+jobmanager.rpc.address: localhost
+jobmanager.rpc.port: 6123
+jobmanager.memory.process.size: 1600m
+
+# TaskManager Configuration
+taskmanager.memory.process.size: 1728m
+taskmanager.numberOfTaskSlots: 4
+
+# REST API
+rest.port: 8081
+
+# Parallelism
+parallelism.default: 4
+
+# Checkpointing
+state.backend: rocksdb
+state.checkpoints.dir: file:///data/checkpoints
+
+# Kafka Configuration
+# Consumer group for Flink to track offsets
+connector.kafka.consumer.group: dbt-flink-consumer
+
+# Flink State
+state.savepoints.dir: file:///data/savepoints
+
+# Memory Configuration
+jobmanager.memory.jvm-overhead.fraction: 0.1
+taskmanager.memory.jvm-overhead.fraction: 0.1
+
+# Network Timeouts
+akka.ask.timeout: 60 s
+
+# Garbage Collection
+env.java.opts: -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:+UnlockDiagnosticVMOptions -XX:G1SummarizeRSetStatsPeriod=1 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/data/logs/gc.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=50M
+
+# Historical Server (for web UI)
+historyserver.web.address: 0.0.0.0
+historyserver.web.port: 8082
+historyserver.archive.fs.dir: file:///data/history
+historyserver.archive.upload.dir: file:///data/upload

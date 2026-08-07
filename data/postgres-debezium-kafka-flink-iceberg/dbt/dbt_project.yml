@@ -1,0 +1,44 @@
+
+
+# Name your project! Project names should be lowercase and use underscores as spaces.
+name: 'cdc_analytics'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'cdc_analytics'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+data-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Flink-specific configurations
+vars:
+  kafka_broker: "kafka:29092"
+  iceberg_warehouse: "s3://iceberg-warehouse"
+  minio_endpoint: "http://minio:9000"
+  minio_access_key: "minioadmin"
+  minio_secret_key: "minioadmin"
+  s3_path_style_access: true
+
+seeds:
+  cdc_analytics:
+    +database: "iceberg"
+    +schema: "raw"
+
+models:
+  cdc_analytics:
+    materialized: table
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

@@ -1,0 +1,10 @@
+dbt-flink==1.7.0
+dbt-core==1.7.0
+pyiceberg==0.4.0
+pyspark==3.4.0
+kafka-python==2.0.2
+psycopg2-binary==2.9.9
+pandas==2.0.0
+pydantic==2.0.0
+python-dotenv==1.0.0
+requests==2.31.0
