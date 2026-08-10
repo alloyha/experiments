@@ -1,0 +1,49 @@
+version: 2
+
+sources:
+  - name: gold_layer
+    description: "Gold layer tables (fact and dimension tables) as sources for Diamond layer"
+    database: analytics_db
+    schema: gold
+    tables:
+      - name: fct_orders
+        description: "Fact table containing order transactions"
+        columns:
+          - name: order_id
+            description: "Unique order identifier"
+          - name: customer_id
+            description: "Customer foreign key"
+          - name: product_id
+            description: "Product foreign key"
+          - name: order_amount
+            description: "Order amount in base currency"
+          - name: order_date
+            description: "Order placement date"
+      
+      - name: dim_customers
+        description: "Dimension table containing customer attributes"
+        columns:
+          - name: customer_id
+            description: "Unique customer identifier (Primary Key)"
+          - name: customer_name
+            description: "Customer full name"
+          - name: customer_email
+            description: "Customer email address"
+          - name: customer_segment
+            description: "Customer segment (VIP, Premium, Standard, etc.)"
+          - name: customer_lifetime_value
+            description: "Total customer revenue to date"
+          - name: customer_region
+            description: "Geographic region"
+      
+      - name: dim_products
+        description: "Dimension table containing product attributes"
+        columns:
+          - name: product_id
+            description: "Unique product identifier (Primary Key)"
+          - name: product_name
+            description: "Product name"
+          - name: product_category
+            description: "Product category"
+          - name: product_unit_price
+            description: "Unit price"

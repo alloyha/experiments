@@ -1,0 +1,35 @@
+# dbt-flink: Streaming Ingestão (Bronze → Silver)
+# Uses dbt-flink-adapter for Kafka CDC transformations to Iceberg
+
+FROM python:3.10-slim
+
+WORKDIR /dbt
+
+# Copy pyproject.toml (single source of truth)
+COPY pyproject.toml .
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git curl postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (fast dependency resolver)
+RUN pip install --no-cache-dir uv
+
+# Install dbt-flink dependencies
+RUN uv pip install --system '.[dbt-flink]'
+
+# Copy dbt project
+COPY dbt/ .
+COPY dbt/profiles.yml /root/.dbt/
+
+# Copy health check script for faster container health validation
+COPY healthcheck-dbt.sh /usr/local/bin/healthcheck-dbt.sh
+RUN chmod +x /usr/local/bin/healthcheck-dbt.sh
+
+ENV DBT_PROFILES_DIR=/root/.dbt
+
+# Use bash as entrypoint for flexibility with shell commands
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["dbt --version"]
+

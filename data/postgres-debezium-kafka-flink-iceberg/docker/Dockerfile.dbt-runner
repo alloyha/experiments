@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    postgresql-client \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (fast dependency resolver)
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml (single source of truth)
+COPY pyproject.toml .
+
+# Install dbt-runner dependencies (includes dbt-core and PostgreSQL adapter)
+RUN uv pip install --system '.[dbt-runner]'
+
+# Copiar script de execução única
+COPY scripts/dbt_runner_once.py .
+COPY scripts/entrypoint-dbt-runner.sh .
+
+# Copiar dbt project (modelos e configuração)
+COPY dbt /app/dbt
+
+# Criar logs directory
+RUN mkdir -p /app/logs && chmod +x /app/entrypoint-dbt-runner.sh
+
+# Definir working directory para o dbt
+ENV DBT_DIR=/app/dbt
+
+# Usar script de entrada com tratamento de erros
+ENTRYPOINT ["/app/entrypoint-dbt-runner.sh"]

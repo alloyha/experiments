@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Orquestrador central - compõe todos os serviços
   
@@ -33,19 +31,25 @@ services:
       - "2181:2181"
     networks:
       - cdc_network
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep -q 'Zookeeper version'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     container_name: cdc-kafka
     image: confluentinc/cp-kafka:7.5.0
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
       - "9093:9093"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -107,17 +111,49 @@ services:
       timeout: 5s
       retries: 5
 
-  dbt-flink:
-    container_name: cdc-dbt-flink
-    image: flink:1.17-scala_2.12-java11
+  minio-sidecar:
+    container_name: cdc-minio-sidecar
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    environment:
+      BUCKET_CHECK_INTERVAL: "60"
+    entrypoint:
+      - sh
+      - -c
+      - 'while true; do mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null 2>&1 && mc mb --ignore-existing local/iceberg-warehouse >/dev/null 2>&1 && mc mb --ignore-existing local/iceberg-metadata >/dev/null 2>&1 && mc mb --ignore-existing local/kafka-data >/dev/null 2>&1 && date +%s > /tmp/healthy && echo "[$(date "+%Y-%m-%d %H:%M:%S")] Buckets garantidos (iceberg-warehouse, iceberg-metadata, kafka-data)" || echo "[$(date "+%Y-%m-%d %H:%M:%S")] Falha ao garantir buckets, tentando novamente no proximo ciclo"; sleep "$${BUCKET_CHECK_INTERVAL}"; done'
+    restart: unless-stopped
+    healthcheck:
+      # minio/mc is a minimal image with no find/grep/stat -- compare epoch
+      # seconds written into the file's CONTENT (not mtime) using pure shell
+      # arithmetic instead.
+      test: ["CMD-SHELL", "now=$(date +%s); last=$(cat /tmp/healthy 2>/dev/null || echo 0); [ $((now - last)) -lt 120 ]"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  flink-cluster:
+    container_name: cdc-flink-cluster
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.flink
+    command: jobmanager
     ports:
       - "8081:8081"
       - "6123:6123"
     environment:
       FLINK_PROPERTIES: |
-        jobmanager.rpc.address: dbt-flink
+        jobmanager.rpc.address: flink-cluster
         taskmanager.numberOfTaskSlots: 4
         rest.port: 8081
+        security.module.factory.classes: org.apache.flink.runtime.security.modules.JaasModuleFactory
+        security.delegation.token.provider.hadoopfs.enabled: false
+        execution.checkpointing.interval: 30000
+        state.checkpoints.dir: file:///data/checkpoints
     depends_on:
       kafka:
         condition: service_healthy
@@ -126,14 +162,194 @@ services:
     networks:
       - cdc_network
     volumes:
-      - ./dbt:/dbt
-      - ./config/dbt-flink:/config
+      - ./flink:/flink
+      - ./config/flink:/config
       - flink_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  flink-taskmanager:
+    container_name: cdc-flink-taskmanager
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.flink
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-cluster
+        taskmanager.numberOfTaskSlots: 4
+        security.module.factory.classes: org.apache.flink.runtime.security.modules.JaasModuleFactory
+        security.delegation.token.provider.hadoopfs.enabled: false
+        execution.checkpointing.interval: 30000
+        state.checkpoints.dir: file:///data/checkpoints
+    depends_on:
+      flink-cluster:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    volumes:
+      - ./flink:/flink
+      - flink_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://flink-cluster:8081/taskmanagers | grep -q '\"id\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  flink-sql-gateway:
+    container_name: cdc-flink-sql-gateway
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.flink
+    command: ["bin/sql-gateway.sh", "start-foreground"]
+    ports:
+      - "8084:8084"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-cluster
+        rest.address: flink-cluster
+        rest.port: 8081
+        sql-gateway.endpoint.rest.address: 0.0.0.0
+        sql-gateway.endpoint.rest.port: 8084
+        security.module.factory.classes: org.apache.flink.runtime.security.modules.JaasModuleFactory
+        security.delegation.token.provider.hadoopfs.enabled: false
+        execution.checkpointing.interval: 30000
+        state.checkpoints.dir: file:///data/checkpoints
+    depends_on:
+      flink-cluster:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    volumes:
+      - ./flink:/flink
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  data-generator:
+    container_name: cdc-data-generator
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.data-generator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: cdc_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DATA_GENERATOR_INTERVAL: "10"
+    volumes:
+      - ./scripts:/app/scripts
+      - ./logs:/app/logs
+    # unless-stopped (not "always"): the container now loops internally
+    # (entrypoint-data-generator.sh) instead of relying on docker restarting
+    # it every cycle -- this only kicks in if the process actually crashes.
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "find /app/logs/heartbeat -mmin -1 | grep -q heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  dbt-flink-ingestao:
+    container_name: cdc-dbt-flink-ingestao
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbt-flink
+    depends_on:
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_USE_SSL: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: cdc_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DBT_PROFILES_DIR: /root/.dbt
+      DBT_RUN_INTERVAL: "60"
+    volumes:
+      - ./dbt:/dbt
+      - ./config/dbt:/root/.dbt
+      - ./healthcheck-dbt.sh:/opt/healthcheck-dbt.sh
+    command:
+      - 'cd /dbt && echo "[$(date "+%Y-%m-%d %H:%M:%S")] Submetendo job de streaming bronze (roda continuamente, uma vez so)..."; dbt run -t flink -s bronze; while true; do echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t flink -s silver (batch)..."; dbt run -t flink -s silver; dbt test -t flink -s silver || true; echo "Proximo ciclo em $${DBT_RUN_INTERVAL}s..."; sleep "$${DBT_RUN_INTERVAL}"; done'
+    healthcheck:
+      test: ["CMD-SHELL", "bash /opt/healthcheck-dbt.sh"]
+      interval: 60s
+      timeout: 20s
+      start_period: 60s
+      retries: 2
+    restart: unless-stopped
+
+  dbt-duckdb-medallhao:
+    container_name: cdc-dbt-duckdb-medallhao
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbt-duckdb
+    depends_on:
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_USE_SSL: "false"
+      AWS_REGION: us-east-1
+      AWS_S3_USE_PATH_STYLE: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: cdc_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DBT_PROFILES_DIR: /root/.dbt
+      DBT_DIR: /app/dbt
+      DBT_RUN_INTERVAL: "60"
+    volumes:
+      - ./dbt:/app/dbt
+      - ./config/dbt:/root/.dbt
+      - ./scripts/healthcheck-dbt.sh:/usr/local/bin/healthcheck-dbt.sh
+    entrypoint:
+      - /bin/bash
+      - -c
+    command:
+      - 'cd /app/dbt && while true; do echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t duckdb (historico + metricas + fct, le Iceberg Bronze/Silver)..."; dbt run -t duckdb -s dim_customers_attributes_history dim_products_history customer_metrics_current fct_orders; echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t postgres (SCD2 dims + diamond)..."; dbt run -t postgres -s dim_customers dim_products diamond; dbt test -t postgres -s gold diamond || true; echo "Proximo ciclo em $${DBT_RUN_INTERVAL}s..."; sleep "$${DBT_RUN_INTERVAL}"; done'
+    healthcheck:
+      test: ["CMD-SHELL", "bash /usr/local/bin/healthcheck-dbt.sh"]
+      interval: 60s
+      timeout: 20s
+      start_period: 150s
+      retries: 2
+    restart: unless-stopped
 
 networks:
   cdc_network:

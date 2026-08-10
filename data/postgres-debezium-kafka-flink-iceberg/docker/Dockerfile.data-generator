@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar uv (rápido resolvedor de dependências)
+RUN pip install --no-cache-dir uv
+
+# Copiar pyproject.toml (single source of truth)
+COPY pyproject.toml .
+
+# Instalar packages Python (específicos para data-generator)
+RUN uv pip install --system '.[data-generator]'
+
+# Copiar script de execução única
+COPY scripts/data_generator_once.py .
+COPY scripts/entrypoint-data-generator.sh .
+
+# Criar logs directory
+RUN mkdir -p /app/logs && chmod +x /app/entrypoint-data-generator.sh
+
+# Usar script de entrada com tratamento de erros
+ENTRYPOINT ["/app/entrypoint-data-generator.sh"]

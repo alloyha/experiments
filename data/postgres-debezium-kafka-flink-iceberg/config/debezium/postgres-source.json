@@ -8,6 +8,7 @@
     "database.password": "postgres",
     "database.dbname": "cdc_db",
     "database.server.name": "postgres-cdc-server",
+    "topic.prefix": "cdc",
     "plugin.name": "pgoutput",
     "publication.name": "dbz_publication",
     "slot.name": "dbz_slot",

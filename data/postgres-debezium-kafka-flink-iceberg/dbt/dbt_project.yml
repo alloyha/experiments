@@ -12,7 +12,7 @@ profile: 'cdc_analytics'
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
-data-paths: ["data"]
+seed-paths: ["data"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
@@ -20,6 +20,9 @@ target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
+
+on-run-start:
+  - "{{ setup_flink_bronze_sources() }}"
 
 # Flink-specific configurations
 vars:
@@ -35,10 +38,51 @@ seeds:
     +database: "iceberg"
     +schema: "raw"
 
+# ============================================================================
+# MODEL CONFIGURATION BY LAYER
+#
+# Medalhão Pattern (Lakehouse):
+#   🔵 Bronze:  Raw CDC data          → Flink/Iceberg (Streaming)
+#   🟡 Silver:  Cleaned & enriched    → Flink/Iceberg (Streaming)  
+#   📊 Gold:    Business-ready tables → PostgreSQL (OLAP)
+#   💎 Diamond: Semantic OLAP cubes   → PostgreSQL (BI tools)
+# ============================================================================
+
 models:
   cdc_analytics:
     materialized: table
-    staging:
-      +materialized: view
-    marts:
+    
+    # 🔵 BRONZE: Raw CDC data (streaming via Flink)
+    bronze:
       +materialized: table
+      +target: flink
+      +schema: bronze
+      
+    # 🟡 SILVER: Cleaned & deduplicated (streaming via Flink)
+    silver:
+      +materialized: table
+      +target: flink
+      +schema: silver
+      
+    # 📊 GOLD: Business-ready analytics tables, read from Iceberg (Silver) via
+    # DuckDB, materialized into the attached PostgreSQL. Run with: dbt run -t duckdb -s gold
+    gold:
+      +materialized: table
+      +target: duckdb
+      +schema: gold
+
+
+    # 💎 DIAMOND: Semantic layer (OBT OLAP cubes)
+    diamond:
+      +materialized: table
+      +target: postgres
+      +schema: diamond
+      +post_hook: >
+        {%- if execute -%}
+          {% set index_cols = config.get('indexes', []) %}
+          {% for idx in index_cols %}
+            CREATE INDEX IF NOT EXISTS idx_{{ this.name }}_{{ idx.columns[0] }}
+            ON {{ this.schema }}.{{ this.name }}({{ idx.columns|join(',') }});
+          {% endfor %}
+        {%- endif -%}
+

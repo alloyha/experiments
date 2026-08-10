@@ -1,0 +1,26 @@
+# dbt-duckdb: Analytics on Iceberg (Silver -> Gold/Diamond)
+# DuckDB reads Iceberg tables (bronze/silver) straight from MinIO as the
+# reliable source of truth, and writes the resulting Gold/Diamond tables into
+# the attached PostgreSQL database via DuckDB's postgres extension.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml .
+RUN uv pip install --system '.[dbt-duckdb]'
+
+COPY dbt /app/dbt
+
+ENV DBT_DIR=/app/dbt
+
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["dbt --version"]

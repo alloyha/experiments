@@ -1,0 +1,223 @@
+version: 2
+
+models:
+  - name: obt_customer_orders
+    description: |
+      💎 DIAMOND LAYER - Semantic OBT (One Big Table) for OLAP Analysis
+      
+      Consolidated denormalized table combining fct_orders with customer and product dimensions.
+      Optimized for BI tools, dashboards, and ad-hoc analytics without JOINs.
+      
+      **Grain**: One row per order
+      **Volume**: ~50-100K rows per month (depending on transaction volume)
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Tableau, Power BI, Looker, Metabase dashboards
+    
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'olap', 'semantic', 'obt']
+    
+    columns:
+      # Order Keys
+      - name: order_id
+        description: Unique order identifier (Primary Key)
+        data_type: bigint
+        tests:
+          - unique
+          - not_null
+      
+      - name: customer_id
+        description: Foreign key to customer dimension
+        data_type: bigint
+        tests:
+          - not_null
+      
+      - name: product_id
+        description: Foreign key to product dimension
+        data_type: bigint
+      
+      # Customer Dimension (Flattened)
+      - name: customer_name
+        description: Customer full name
+        data_type: varchar
+      
+      - name: customer_email
+        description: Customer email address (PII - restricted access)
+        data_type: varchar
+        meta:
+          pii: true
+      
+      - name: customer_segment
+        description: Customer segment (e.g., VIP, Premium, Standard, Churned)
+        data_type: varchar
+        tests:
+          - accepted_values:
+              values: ['VIP', 'Premium', 'Standard', 'Churned', 'New']
+      
+      - name: customer_lifetime_value
+        description: Cumulative customer revenue (LTV)
+        data_type: numeric(12,2)
+      
+      - name: customer_created_at
+        description: Customer account creation timestamp
+        data_type: timestamp
+      
+      - name: customer_region
+        description: Geographic region (North, South, East, West)
+        data_type: varchar
+      
+      # Date Dimensions (Multiple Grains)
+      - name: order_date
+        description: Order placement date
+        data_type: timestamp
+        tests:
+          - not_null
+      
+      - name: order_date_day
+        description: Order date at day grain (YYYY-MM-DD)
+        data_type: date
+      
+      - name: order_date_month
+        description: First day of month for order
+        data_type: date
+      
+      - name: order_year
+        description: Order year (YYYY)
+        data_type: integer
+      
+      - name: order_month
+        description: Order month number (1-12)
+        data_type: integer
+      
+      # Metrics & Amounts
+      - name: order_amount
+        description: Total order amount in base currency
+        data_type: numeric(12,2)
+        tests:
+          - not_null
+      
+      - name: gross_sales
+        description: Same as order_amount (alias for clarity)
+        data_type: numeric(12,2)
+      
+      - name: net_sales
+        description: Order amount after 10% discount (example)
+        data_type: numeric(12,2)
+      
+      - name: order_size_category
+        description: Categorization of order size (Small, Medium, Large, Enterprise)
+        data_type: varchar
+        tests:
+          - accepted_values:
+              values: ['Small', 'Medium', 'Large', 'Enterprise']
+      
+      - name: order_count
+        description: Always 1 (for easy SUM aggregations)
+        data_type: integer
+      
+      # Metadata
+      - name: record_created_at
+        description: When the order record was created
+        data_type: timestamp
+      
+      - name: record_updated_at
+        description: When the OBT row was last updated
+        data_type: timestamp
+
+  - name: agg_daily_sales_by_segment
+    description: |
+      💎 DIAMOND LAYER - Pre-aggregated Daily Sales Metrics
+      
+      Pre-calculated aggregations of daily sales by customer segment.
+      Optimized for extreme query performance on dashboards.
+      
+      **Grain**: One row per day + customer_segment
+      **Volume**: ~7K-10K rows per year (365 days × 10-20 segments)
+      **Update Frequency**: 60 minutes (batch aggregation)
+      **Use Cases**: Executive dashboards, trend charts, KPI monitoring
+      **Performance**: Sub-second queries guaranteed
+    
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'aggregation', 'metrics', 'dashboard']
+    
+    columns:
+      # Grain Dimensions (Aggregation Keys)
+      - name: month_date
+        description: Day of aggregation (YYYY-MM-DD)
+        data_type: date
+        tests:
+          - not_null
+      
+      - name: year_num
+        description: Year number (YYYY)
+        data_type: integer
+      
+      - name: quarter_num
+        description: Quarter number (1-4)
+        data_type: integer
+      
+      - name: month_num
+        description: Month number (1-12)
+        data_type: integer
+      
+      - name: customer_segment
+        description: Customer segment (e.g., VIP, Premium, Standard)
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['VIP', 'Premium', 'Standard', 'Churned', 'New']
+      
+      # OLAP Measures (Pre-calculated)
+      - name: total_orders
+        description: Count of distinct orders for the day and segment
+        data_type: bigint
+        meta:
+          metric_type: 'count'
+      
+      - name: unique_customers
+        description: Count of distinct customers placing orders
+        data_type: bigint
+        meta:
+          metric_type: 'count_distinct'
+      
+      - name: total_sales
+        description: Sum of order amounts (revenue)
+        data_type: numeric(12,2)
+        meta:
+          metric_type: 'sum'
+      
+      - name: avg_order_value
+        description: Average order amount (total_sales / total_orders)
+        data_type: numeric(12,2)
+        meta:
+          metric_type: 'average'
+      
+      - name: min_order_amount
+        description: Smallest order amount for the day
+        data_type: numeric(12,2)
+        meta:
+          metric_type: 'min'
+      
+      - name: max_order_amount
+        description: Largest order amount for the day
+        data_type: numeric(12,2)
+        meta:
+          metric_type: 'max'
+      
+      - name: sales_per_customer
+        description: Total sales divided by unique customers (LTV proxy)
+        data_type: numeric(12,2)
+        meta:
+          metric_type: 'ratio'
+      
+      - name: segment_pct_of_daily_sales
+        description: Percentage of total daily sales from this segment
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'

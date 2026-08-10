@@ -1,0 +1,31 @@
+# Example: Data Generator Dockerfile with uv
+# Build: docker build -f Dockerfile.data-generator.example -t cdc-data-generator .
+# This is an example showing the recommended pattern
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git curl postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy pyproject.toml (the new way - single source of truth)
+COPY pyproject.toml .
+
+# Install with uv (fast dependency resolution)
+# uv is included in Python 3.12+ or can be installed separately
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system '.[data-generator]'
+
+# Copy application code
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+
+# Set environment for dbt (if needed)
+ENV PYTHONUNBUFFERED=1
+
+# Run the data generator
+ENTRYPOINT ["python", "-m", "src.data_generator"]
+CMD []

@@ -1,0 +1,48 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.tox
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs (will be created at runtime)
+logs/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Tests
+tests/
+test_*.py
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node (if any frontend)
+node_modules/
+
+# dbt artifacts (generated at runtime)
+dbt/target/
+dbt/dbt_packages/

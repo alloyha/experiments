@@ -1,0 +1,111 @@
+version: 2
+
+# ============================================================================
+# dbt Source Definitions
+# Central place for all external data sources
+# ============================================================================
+
+sources:
+  # CDC Source - PostgreSQL via Debezium
+  - name: cdc_source
+    description: CDC data from PostgreSQL via Debezium
+    database: cdc_db
+    schema: cdc_source
+    tables:
+      - name: customers
+        description: Customer master data
+        columns:
+          - name: id
+            description: Primary key
+          - name: name
+            description: Customer name
+          - name: email
+            description: Customer email
+          - name: country
+            description: Customer country
+          - name: phone
+            description: Customer phone
+          - name: created_at
+            description: Record creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: orders
+        description: Customer orders
+        columns:
+          - name: id
+            description: Primary key
+          - name: customer_id
+            description: Foreign key to customers
+          - name: total_amount
+            description: Total order amount
+          - name: status
+            description: Current order status
+          - name: order_date
+            description: Order date
+
+      - name: products
+        description: Product catalog
+        columns:
+          - name: id
+            description: Primary key
+          - name: name
+            description: Product name
+          - name: category
+            description: Product category
+          - name: price
+            description: Current unit price
+
+  # Kafka CDC Topics
+  - name: kafka
+    description: Kafka topics from Debezium CDC connector
+    tables:
+      - name: cdc_source_customers
+        description: Customer change events from Kafka
+        meta:
+          kafka_topic: customers
+
+      - name: cdc_source_orders
+        description: Order change events from Kafka
+        meta:
+          kafka_topic: orders
+
+      - name: cdc_source_products
+        description: Product change events from Kafka
+        meta:
+          kafka_topic: products
+
+  # Iceberg Bronze Layer -- read directly (full append-only history, not just
+  # "latest") by the dim_*_history reconstruction models, via the same
+  # dbt-duckdb "iceberg" plugin as iceberg_silver below.
+  - name: iceberg_bronze
+    description: Raw data in Iceberg (Bronze layer)
+    schema: bronze
+    meta:
+      storage: s3://minio:9000/iceberg-warehouse
+      plugin: iceberg
+    tables:
+      - name: brz_customers_cdc
+        description: Raw customer events
+      - name: brz_orders_cdc
+        description: Raw order events
+      - name: brz_products_cdc
+        description: Raw product events
+
+  # Iceberg Silver Layer -- read by Gold (duckdb target) via the "iceberg"
+  # dbt-duckdb plugin (pyiceberg SqlCatalog against the same JDBC catalog
+  # Flink writes to). `meta.plugin` is only interpreted by dbt-duckdb; other
+  # adapters ignore it harmlessly.
+  - name: iceberg_silver
+    description: Cleaned data in Iceberg (Silver layer)
+    schema: silver
+    meta:
+      storage: s3://minio:9000/iceberg-warehouse
+      plugin: iceberg
+    tables:
+      - name: slv_customers
+        description: Cleaned customer data
+      - name: slv_orders
+        description: Cleaned order data
+      - name: slv_products
+        description: Cleaned product data

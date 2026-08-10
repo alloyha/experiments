@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  # ========================================================================
+  # BRONZE LAYER - Raw CDC data from Kafka
+  # Target: Iceberg (S3/MinIO) via Flink Streaming
+  # ========================================================================
+  - name: brz_customers_cdc
+    description: Raw customer events from Debezium CDC
+    meta:
+      owner: data-eng
+      layer: bronze
+      source: kafka_cdc
+      materialization: stream
+      freshness: real-time
+    columns:
+      - name: customer_id
+        description: Customer identifier from PostgreSQL
+        tests:
+          - not_null
+          - unique
+      - name: name
+        description: Customer name
+      - name: email
+        description: Customer email address
+      - name: event_timestamp
+        description: CDC event timestamp
+
+  # ========================================================================
+  # SILVER LAYER - Cleaned & deduplicated data
+  # Target: Iceberg (S3/MinIO) via Flink Streaming
+  # ========================================================================
+  - name: slv_customers
+    description: Cleaned customer data (latest version per customer)
+    meta:
+      owner: data-eng
+      layer: silver
+      materialization: table
+      freshness: real-time
+      keys:
+        - customer_id
+    columns:
+      - name: customer_id
+        description: Primary key
+        tests:
+          - not_null
+          - unique
+      - name: name
+        description: Customer name
+      - name: email
+        description: Customer email
+      - name: created_at
+        description: Record creation timestamp
+
+  - name: brz_orders_cdc
+    description: Raw order events from Debezium CDC
+    meta:
+      owner: data-eng
+      layer: bronze
+      source: kafka_cdc
+      materialization: stream
+      freshness: real-time
+    columns:
+      - name: order_id
+        description: Order identifier from PostgreSQL
+      - name: customer_id
+        description: Foreign key to customers
+      - name: total_amount
+        description: Order total amount
+      - name: event_timestamp
+        description: CDC event timestamp
+
+  - name: slv_orders
+    description: Cleaned order data (latest version per order)
+    meta:
+      owner: data-eng
+      layer: silver
+      materialization: table
+      freshness: real-time
+      keys:
+        - order_id
+    columns:
+      - name: order_id
+        description: Primary key
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: Foreign key to customers
+      - name: total_amount
+        description: Order total amount
+      - name: status
+        description: Order status
