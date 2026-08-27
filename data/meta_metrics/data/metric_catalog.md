@@ -7,6 +7,18 @@ erDiagram
         VARCHAR pk_column
         VARCHAR[] grain_aliases
     }
+    entity_relation {
+        VARCHAR relation_id PK
+        VARCHAR from_entity_id
+        VARCHAR to_entity_id
+        VARCHAR relation_type
+        VARCHAR cardinality
+        VARCHAR join_expression
+        BOOLEAN rollup_safe
+        BOOLEAN temporal
+        VARCHAR origin
+        FLOAT confidence
+    }
     dimension {
         VARCHAR dimension_id PK
         VARCHAR name
@@ -31,9 +43,11 @@ erDiagram
         VARCHAR name
         VARCHAR department
         VARCHAR description
-        VARCHAR metric_kind
+        VARCHAR derivation_type
+        VARCHAR metric_type
         VARCHAR aggregation
         VARCHAR entity_id
+        VARCHAR display_grain
         VARCHAR unit
         VARCHAR status
         VARCHAR additivity
@@ -161,6 +175,30 @@ erDiagram
         VARCHAR metric_id
         VARCHAR permission
     }
+    analytical_cube {
+        VARCHAR cube_id PK
+        VARCHAR name
+        VARCHAR analytical_entity_id
+        VARCHAR cube_type
+        BOOLEAN generated
+        VARCHAR explanation
+    }
+    cube_metric {
+        VARCHAR cube_id
+        VARCHAR metric_id
+        VARCHAR role
+        VARCHAR rollup_entity_id
+        VARCHAR reason
+    }
+    cube_dimension {
+        VARCHAR cube_id
+        VARCHAR dimension_id
+    }
+    cube_dataset {
+        VARCHAR cube_id
+        VARCHAR dataset_id
+        VARCHAR rollup_entity_id
+    }
 
     entity ||--o{ metric_definition : "defines entity for"
     entity ||--o{ dimension : "context for"
@@ -184,4 +222,11 @@ erDiagram
     dataset ||--o{ impl_column : "sourced from"
     dataset ||--o{ impl_join : "joined in"
     quality_contract ||--o{ quality_run : "executed as"
+    entity ||--o{ entity_relation : "relates to"
+    analytical_cube ||--o{ cube_metric : "contains"
+    analytical_cube ||--o{ cube_dimension : "sliced by"
+    analytical_cube ||--o{ cube_dataset : "reads from"
+    metric_definition ||--o{ cube_metric : "member of"
+    dimension ||--o{ cube_dimension : "used in cube"
+    dataset ||--o{ cube_dataset : "in cube"
 ```

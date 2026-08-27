@@ -27,6 +27,11 @@ def _slug(text: str) -> str:
 
 
 DDL = """
+DROP TABLE IF EXISTS cube_dataset;
+DROP TABLE IF EXISTS cube_dimension;
+DROP TABLE IF EXISTS cube_metric;
+DROP TABLE IF EXISTS analytical_cube;
+DROP TABLE IF EXISTS entity_relation;
 DROP TABLE IF EXISTS quality_run;
 DROP TABLE IF EXISTS quality_contract;
 DROP TABLE IF EXISTS impl_join;
@@ -58,6 +63,21 @@ CREATE TABLE entity (
     grain_aliases VARCHAR[]
 );
 
+-- Cardinality-aware, directional entity relationships
+CREATE TABLE entity_relation (
+    relation_id     VARCHAR PRIMARY KEY,
+    from_entity_id  VARCHAR NOT NULL REFERENCES entity(entity_id),
+    to_entity_id    VARCHAR NOT NULL REFERENCES entity(entity_id),
+    relation_type   VARCHAR NOT NULL DEFAULT 'structural',
+    cardinality     VARCHAR NOT NULL,  -- one_to_one|one_to_many|many_to_one|many_to_many
+    join_expression VARCHAR,
+    rollup_safe     BOOLEAN NOT NULL DEFAULT false,
+    temporal        BOOLEAN NOT NULL DEFAULT false,
+    origin          VARCHAR NOT NULL DEFAULT 'declared',
+    confidence      REAL,
+    CHECK (from_entity_id <> to_entity_id)
+);
+
 -- Global canonical dimensions with stable IDs
 CREATE TABLE dimension (
     dimension_id   VARCHAR PRIMARY KEY,
@@ -87,9 +107,11 @@ CREATE TABLE metric_definition (
     name                    VARCHAR NOT NULL,
     department              VARCHAR NOT NULL,
     description             VARCHAR NOT NULL,
-    metric_kind             VARCHAR NOT NULL DEFAULT 'base',
+    derivation_type         VARCHAR NOT NULL DEFAULT 'base',   -- base|derived
+    metric_type             VARCHAR NOT NULL DEFAULT 'scalar', -- scalar|ratio|cumulative|snapshot|conversion|retention|cohort
     aggregation             VARCHAR NOT NULL,
     entity_id               VARCHAR REFERENCES entity(entity_id),
+    display_grain           VARCHAR,       -- presentation label, e.g. "cliente"
     unit                    VARCHAR,
     status                  VARCHAR NOT NULL DEFAULT 'active',
     additivity              VARCHAR NOT NULL DEFAULT 'additive',
@@ -257,6 +279,38 @@ CREATE TABLE metric_permission (
     permission VARCHAR NOT NULL,
     PRIMARY KEY (metric_id, permission)
 );
+
+-- Generated analytical cubes (populated by src/cubes.py)
+CREATE TABLE analytical_cube (
+    cube_id              VARCHAR PRIMARY KEY,
+    name                 VARCHAR NOT NULL,
+    analytical_entity_id VARCHAR REFERENCES entity(entity_id),
+    cube_type            VARCHAR NOT NULL DEFAULT 'process',  -- process|conformed|virtual
+    generated            BOOLEAN NOT NULL DEFAULT true,
+    explanation          VARCHAR
+);
+
+CREATE TABLE cube_metric (
+    cube_id          VARCHAR NOT NULL REFERENCES analytical_cube(cube_id),
+    metric_id        VARCHAR NOT NULL REFERENCES metric_definition(metric_id),
+    role             VARCHAR NOT NULL DEFAULT 'native',  -- native|dependency|composite
+    rollup_entity_id VARCHAR,
+    reason           VARCHAR,
+    PRIMARY KEY (cube_id, metric_id)
+);
+
+CREATE TABLE cube_dimension (
+    cube_id      VARCHAR NOT NULL REFERENCES analytical_cube(cube_id),
+    dimension_id VARCHAR NOT NULL REFERENCES dimension(dimension_id),
+    PRIMARY KEY (cube_id, dimension_id)
+);
+
+CREATE TABLE cube_dataset (
+    cube_id          VARCHAR NOT NULL REFERENCES analytical_cube(cube_id),
+    dataset_id       VARCHAR NOT NULL REFERENCES dataset(dataset_id),
+    rollup_entity_id VARCHAR,
+    PRIMARY KEY (cube_id, dataset_id)
+);
 """
 
 def load_catalog(path: Path) -> dict:
@@ -321,11 +375,11 @@ def populate(con: duckdb.DuckDBPyConnection, catalog: dict) -> None:
         mid = m["id"]
         con.execute("""
             INSERT INTO metric_definition VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             mid, m["name"], m["department"], m["description"],
-            m.get("metric_kind", "base"), m["aggregation"],
-            m.get("entity_id"), m.get("unit"), m["status"],
+            m.get("derivation_type", "base"), m.get("metric_type", "scalar"), m["aggregation"],
+            m.get("entity_id"), m.get("display_grain"), m.get("unit"), m["status"],
             m.get("additivity", "additive"),
             m.get("non_additive_dimensions") or [],
             m.get("time_grain"), m.get("default_period"),
@@ -485,7 +539,7 @@ def create_views(con: duckdb.DuckDBPyConnection) -> None:
 
 def write_mermaid(con: duckdb.DuckDBPyConnection, path: Path) -> None:
     tables = [
-        "entity", "dimension", "dataset",
+        "entity", "entity_relation", "dimension", "dataset",
         "metric_definition", "metric_implementation",
         "impl_column", "impl_join",
         "metric_dependency", "metric_relation", "metric_dimension",
@@ -493,6 +547,7 @@ def write_mermaid(con: duckdb.DuckDBPyConnection, path: Path) -> None:
         "metric_alias", "metric_tag", "metric_period", "metric_owner",
         "metric_change", "metric_usage", "metric_benchmark",
         "metric_execution", "metric_permission",
+        "analytical_cube", "cube_metric", "cube_dimension", "cube_dataset",
     ]
 
     relationships = [
@@ -518,13 +573,22 @@ def write_mermaid(con: duckdb.DuckDBPyConnection, path: Path) -> None:
         ("dataset",            "impl_column",          "sourced from"),
         ("dataset",            "impl_join",            "joined in"),
         ("quality_contract",   "quality_run",          "executed as"),
+        ("entity",             "entity_relation",      "relates to"),
+        ("analytical_cube",    "cube_metric",          "contains"),
+        ("analytical_cube",    "cube_dimension",       "sliced by"),
+        ("analytical_cube",    "cube_dataset",         "reads from"),
+        ("metric_definition",  "cube_metric",          "member of"),
+        ("dimension",          "cube_dimension",       "used in cube"),
+        ("dataset",            "cube_dataset",         "in cube"),
     ]
 
     lines = ["```mermaid", "erDiagram"]
 
     pk_cols = {"metric_definition": "metric_id", "dataset": "dataset_id",
-               "entity": "entity_id", "dimension": "dimension_id",
-               "metric_implementation": "impl_id", "quality_contract": "contract_id"}
+               "entity": "entity_id", "entity_relation": "relation_id",
+               "dimension": "dimension_id",
+               "metric_implementation": "impl_id", "quality_contract": "contract_id",
+               "analytical_cube": "cube_id"}
     for table in tables:
         cols = con.execute(f"DESCRIBE {table}").fetchall()
         lines.append(f"    {table} {{")

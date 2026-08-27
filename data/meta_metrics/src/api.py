@@ -16,17 +16,34 @@ from typing import Any
 import duckdb
 from fastapi import FastAPI, HTTPException, Query
 
-_DB_PATH = "data/metric_catalog.duckdb"
-_con: duckdb.DuckDBPyConnection | None = None
+_CATALOG_PATH = "data/metric_catalog.duckdb"
+_RUNTIME_PATH = "data/runtime.duckdb"
+_con: duckdb.DuckDBPyConnection | None = None          # catalog — read-only
+_runtime_con: duckdb.DuckDBPyConnection | None = None  # runtime observations — writable
+
+_RUNTIME_DDL = """
+CREATE TABLE IF NOT EXISTS quality_run (
+    run_id             VARCHAR PRIMARY KEY,
+    contract_id        VARCHAR NOT NULL,   -- FK validated at application level
+    run_at             TIMESTAMP NOT NULL,
+    observed_value     VARCHAR,
+    expected_threshold VARCHAR,
+    status             VARCHAR NOT NULL,
+    execution_context  VARCHAR
+);
+"""
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _con
-    _con = duckdb.connect(_DB_PATH, read_only=True)
+    global _con, _runtime_con
+    _con         = duckdb.connect(_CATALOG_PATH, read_only=True)
+    _runtime_con = duckdb.connect(_RUNTIME_PATH)
+    _runtime_con.execute(_RUNTIME_DDL)
     yield
-    if _con:
-        _con.close()
+    for c in (_con, _runtime_con):
+        if c:
+            c.close()
 
 
 app = FastAPI(
@@ -53,7 +70,8 @@ def _q1(sql: str, params: list | None = None) -> dict | None:
 @app.get("/metrics", summary="List and filter metrics")
 def list_metrics(
     domain:     str | None = Query(None, description="Domain prefix, e.g. 'finance'"),
-    kind:       str | None = Query(None, description="metric_kind: base|derived|ratio"),
+    kind:       str | None = Query(None, description="derivation_type: base|derived"),
+    metric_type: str | None = Query(None, description="metric_type: scalar|ratio|cumulative|snapshot"),
     status:     str | None = Query(None, description="active|deprecated|under_review|experimental"),
     entity:     str | None = Query(None, description="Filter by entity_id"),
     additivity: str | None = Query(None, description="additive|semi_additive|non_additive"),
@@ -65,7 +83,9 @@ def list_metrics(
     if domain:
         where.append("metric_id LIKE ?"); params.append(f"{domain}.%")
     if kind:
-        where.append("metric_kind = ?"); params.append(kind)
+        where.append("derivation_type = ?"); params.append(kind)
+    if metric_type:
+        where.append("metric_type = ?"); params.append(metric_type)
     if status:
         where.append("status = ?"); params.append(status)
     if entity:
@@ -203,7 +223,7 @@ def get_entity_metrics(entity_id: str) -> list[dict]:
     if not _q1("SELECT 1 FROM entity WHERE entity_id = ?", [entity_id]):
         raise HTTPException(404, f"Entity '{entity_id}' not found")
     return _q("""
-        SELECT metric_id, name, metric_kind, aggregation, additivity, status
+        SELECT metric_id, name, derivation_type, metric_type, aggregation, additivity, status
         FROM metric_definition WHERE entity_id = ?
         ORDER BY metric_id
     """, [entity_id])
@@ -263,14 +283,142 @@ def record_quality_run(
 ) -> dict:
     if not _q1("SELECT 1 FROM quality_contract WHERE contract_id = ?", [contract_id]):
         raise HTTPException(404, f"Contract '{contract_id}' not found")
-    _con.execute("""
+    _runtime_con.execute("""
         INSERT INTO quality_run VALUES (?, ?, ?, ?, ?, ?, ?)
     """, [run_id, contract_id, run_at, observed_value, expected_threshold,
           status, execution_context])
     return {"run_id": run_id, "status": "recorded"}
 
 
-# ── Validation ────────────────────────────────────────────────────────────────
+# ── Cubes ─────────────────────────────────────────────────────────────────────
+
+@app.get("/cubes", summary="List all analytical cubes")
+def list_cubes(cube_type: str | None = Query(None)) -> list[dict]:
+    where = "WHERE cube_type = ?" if cube_type else ""
+    params = [cube_type] if cube_type else []
+    return _q(f"SELECT *, (SELECT COUNT(*) FROM cube_metric cm WHERE cm.cube_id = analytical_cube.cube_id) AS metric_count FROM analytical_cube {where} ORDER BY cube_id", params)
+
+
+@app.get("/cubes/{cube_id}", summary="Cube detail with metrics, dimensions and datasets")
+def get_cube(cube_id: str) -> dict:
+    cube = _q1("SELECT * FROM analytical_cube WHERE cube_id = ?", [cube_id])
+    if not cube:
+        raise HTTPException(404, f"Cube '{cube_id}' not found")
+    cube["metrics"] = _q("""
+        SELECT cm.metric_id, cm.role, cm.rollup_entity_id, cm.reason,
+               m.name, m.derivation_type, m.metric_type, m.additivity, m.entity_id
+        FROM cube_metric cm
+        JOIN metric_definition m ON m.metric_id = cm.metric_id
+        WHERE cm.cube_id = ?
+        ORDER BY cm.role, cm.metric_id
+    """, [cube_id])
+    cube["dimensions"] = _q("""
+        SELECT cd.dimension_id, d.name, d.dimension_type
+        FROM cube_dimension cd
+        JOIN dimension d ON d.dimension_id = cd.dimension_id
+        WHERE cd.cube_id = ?
+    """, [cube_id])
+    cube["datasets"] = _q("""
+        SELECT cds.dataset_id, cds.rollup_entity_id, ds.table_name, ds.layer
+        FROM cube_dataset cds
+        JOIN dataset ds ON ds.dataset_id = cds.dataset_id
+        WHERE cds.cube_id = ?
+    """, [cube_id])
+    cube["entity"] = (
+        _q1("SELECT * FROM entity WHERE entity_id = ?", [cube["analytical_entity_id"]])
+        if cube.get("analytical_entity_id") else None
+    )
+    return cube
+
+
+@app.get("/cubes/{cube_id}/metrics", summary="Metrics in a cube")
+def get_cube_metrics(cube_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM analytical_cube WHERE cube_id = ?", [cube_id]):
+        raise HTTPException(404, f"Cube '{cube_id}' not found")
+    return _q("""
+        SELECT cm.metric_id, cm.role, cm.rollup_entity_id, cm.reason,
+               m.name, m.derivation_type, m.metric_type, m.additivity,
+               m.entity_id, m.display_grain, m.unit
+        FROM cube_metric cm
+        JOIN metric_definition m ON m.metric_id = cm.metric_id
+        WHERE cm.cube_id = ?
+        ORDER BY cm.role, cm.metric_id
+    """, [cube_id])
+
+
+@app.get("/cubes/{cube_id}/dimensions", summary="Dimensions in a cube")
+def get_cube_dimensions(cube_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM analytical_cube WHERE cube_id = ?", [cube_id]):
+        raise HTTPException(404, f"Cube '{cube_id}' not found")
+    return _q("""
+        SELECT cd.dimension_id, d.name, d.dimension_type, d.entity_id, d.default_expr
+        FROM cube_dimension cd
+        JOIN dimension d ON d.dimension_id = cd.dimension_id
+        WHERE cd.cube_id = ?
+    """, [cube_id])
+
+
+@app.get("/cubes/{cube_id}/datasets", summary="Datasets in a cube")
+def get_cube_datasets(cube_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM analytical_cube WHERE cube_id = ?", [cube_id]):
+        raise HTTPException(404, f"Cube '{cube_id}' not found")
+    return _q("""
+        SELECT cds.dataset_id, cds.rollup_entity_id, ds.table_name, ds.layer, ds.full_ref
+        FROM cube_dataset cds
+        JOIN dataset ds ON ds.dataset_id = cds.dataset_id
+        WHERE cds.cube_id = ?
+    """, [cube_id])
+
+
+@app.get("/metrics/{metric_id}/cubes", summary="Cubes that contain this metric")
+def get_metric_cubes(metric_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM metric_definition WHERE metric_id = ?", [metric_id]):
+        raise HTTPException(404, f"Metric '{metric_id}' not found")
+    return _q("""
+        SELECT cm.cube_id, cm.role, cm.rollup_entity_id, cm.reason,
+               ac.name, ac.cube_type, ac.analytical_entity_id
+        FROM cube_metric cm
+        JOIN analytical_cube ac ON ac.cube_id = cm.cube_id
+        WHERE cm.metric_id = ?
+    """, [metric_id])
+
+
+@app.get("/entities/{entity_id}/cube", summary="The analytical cube anchored at this entity")
+def get_entity_cube(entity_id: str) -> dict | None:
+    if not _q1("SELECT 1 FROM entity WHERE entity_id = ?", [entity_id]):
+        raise HTTPException(404, f"Entity '{entity_id}' not found")
+    return _q1("SELECT * FROM analytical_cube WHERE analytical_entity_id = ?", [entity_id])
+
+
+@app.get("/cube-analysis", summary="Cube cover statistics and cross-cube dependency summary")
+def get_cube_analysis() -> dict:
+    cubes = _q("SELECT cube_id, cube_type, analytical_entity_id, (SELECT COUNT(*) FROM cube_metric cm WHERE cm.cube_id = analytical_cube.cube_id) AS metric_count FROM analytical_cube ORDER BY cube_id")
+    total_metrics = _q1("SELECT COUNT(*) AS n FROM metric_definition WHERE status != 'deprecated'")["n"]
+    covered = _q1("SELECT COUNT(DISTINCT metric_id) AS n FROM cube_metric")["n"]
+    cross_deps = _q1("""
+        SELECT COUNT(*) AS n
+        FROM cube_metric cm
+        JOIN metric_dependency md ON md.metric_id = cm.metric_id
+        JOIN cube_metric cm2 ON cm2.metric_id = md.depends_on_metric_id
+        WHERE cm.cube_id <> cm2.cube_id
+    """)["n"]
+    type_dist = _q("SELECT cube_type, COUNT(*) AS n FROM analytical_cube GROUP BY 1 ORDER BY 1")
+    entity_rels = _q1("SELECT COUNT(*) AS n FROM entity_relation")["n"]
+    rollup_safe = _q1("SELECT COUNT(*) AS n FROM entity_relation WHERE rollup_safe = true")["n"]
+    return {
+        "cube_count":             len(cubes),
+        "metrics_total":          total_metrics,
+        "metrics_covered":        covered,
+        "metrics_uncovered":      total_metrics - covered,
+        "cross_cube_dependencies":cross_deps,
+        "entity_relations":       entity_rels,
+        "rollup_safe_relations":  rollup_safe,
+        "cube_types":             type_dist,
+        "cubes":                  cubes,
+    }
+
+
+
 
 @app.get("/validate", summary="Run graph integrity checks")
 def run_validation() -> dict:
@@ -296,7 +444,7 @@ def get_stats() -> dict:
         "implementations":   _q1("SELECT COUNT(*) AS n FROM metric_implementation")["n"],
         "quality_contracts": _q1("SELECT COUNT(*) AS n FROM quality_contract")["n"],
         "dependency_edges":  _q1("SELECT COUNT(*) AS n FROM metric_dependency")["n"],
-        "by_kind":       _q("SELECT metric_kind, COUNT(*) AS n FROM metric_definition GROUP BY 1 ORDER BY 1"),
+        "by_kind":       _q("SELECT derivation_type, metric_type, COUNT(*) AS n FROM metric_definition GROUP BY 1, 2 ORDER BY 1, 2"),
         "by_additivity": _q("SELECT additivity, COUNT(*) AS n FROM metric_definition GROUP BY 1 ORDER BY 1"),
         "by_status":     _q("SELECT status, COUNT(*) AS n FROM metric_definition GROUP BY 1 ORDER BY 1"),
         "lineage_by_origin": _q("SELECT origin, COUNT(*) AS n FROM impl_column GROUP BY 1"),
@@ -307,12 +455,15 @@ def main() -> None:
     import argparse
     import uvicorn
     p = argparse.ArgumentParser(description="Run the Metric Catalog API.")
-    p.add_argument("--db",   default="data/metric_catalog.duckdb")
+    p.add_argument("--db",          default="data/metric_catalog.duckdb")
+    p.add_argument("--runtime-db",  default="data/runtime.duckdb",
+                   help="Writable DB for quality runs and observations")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     args = p.parse_args()
-    global _DB_PATH
-    _DB_PATH = args.db
+    global _CATALOG_PATH, _RUNTIME_PATH
+    _CATALOG_PATH = args.db
+    _RUNTIME_PATH = args.runtime_db
     uvicorn.run(app, host=args.host, port=args.port)
 
 

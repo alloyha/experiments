@@ -49,7 +49,7 @@ GRAIN_TO_ENTITY: dict[str, str] = {
     "feature":          "feature",
     "oferta":           "offer",
     "trial":            "trial",
-    "ção":              "action",
+    "ação":             "action",
     "acao":             "action",
     "item":             "item",
     "carrinho":         "cart",
@@ -124,7 +124,22 @@ def _infer_entity_id(grain: str) -> str | None:
     return GRAIN_TO_ENTITY.get(grain.lower().strip())
 
 
+def _infer_derivation_type(aggregation: str, deps: list) -> str:
+    """base = computable from one source; derived = depends on other metrics or complex expr."""
+    if deps or aggregation == "custom":
+        return "derived"
+    return "base"
+
+
+def _infer_metric_type(aggregation: str) -> str:
+    """Semantic category, orthogonal to derivation_type."""
+    if aggregation == "ratio":
+        return "ratio"
+    return "scalar"
+
+
 def _infer_metric_kind(aggregation: str, deps: list) -> str:
+    # kept for backward compatibility; prefer derivation_type + metric_type
     if deps or aggregation == "custom":
         return "derived"
     if aggregation == "ratio":
@@ -262,7 +277,10 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
         "quality": _make_quality(aggregation, unit, quality, refresh),
         "lineage": _extract_lineage(expression, source_table),
         "entity_id": _infer_entity_id(grain),
+        "display_grain": grain,
         "metric_kind": _infer_metric_kind(aggregation, DEPS.get(id, [])),
+        "derivation_type": _infer_derivation_type(aggregation, DEPS.get(id, [])),
+        "metric_type": _infer_metric_type(aggregation),
         "additivity": _infer_additivity(aggregation, unit),
         "time_grain": _infer_time_grain(supported_periods),
         "superseded_by": None,

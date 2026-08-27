@@ -169,6 +169,77 @@ def _check_inferred_lineage_coverage(con) -> list[str]:
     return []
 
 
+def _check_entity_relation_cycles(con) -> list[str]:
+    """Detect cycles in rollup-safe entity_relation edges (would cause infinite rollup loops)."""
+    from collections import defaultdict, deque
+    edges = [
+        (r[0], r[1])
+        for r in con.execute(
+            "SELECT from_entity_id, to_entity_id FROM entity_relation WHERE rollup_safe = true"
+        ).fetchall()
+    ]
+    adj: dict[str, list[str]] = defaultdict(list)
+    for a, b in edges:
+        adj[a].append(b)
+    in_path: set[str] = set()
+    visited: set[str] = set()
+    issues: list[str] = []
+
+    def dfs(node: str, path: list[str]) -> None:
+        if node in in_path:
+            cycle = path[path.index(node):] + [node]
+            issues.append("Rollup cycle: " + " -> ".join(cycle))
+            return
+        if node in visited:
+            return
+        in_path.add(node)
+        path.append(node)
+        for nxt in adj[node]:
+            dfs(nxt, path)
+        path.pop()
+        in_path.discard(node)
+        visited.add(node)
+
+    for node in list(adj):
+        if node not in visited:
+            dfs(node, [])
+    return issues
+
+
+def _check_cube_orphan_metrics(con) -> list[str]:
+    """Active metrics not assigned to any cube."""
+    rows = con.execute("""
+        SELECT m.metric_id FROM metric_definition m
+        WHERE m.status != 'deprecated'
+          AND NOT EXISTS (
+            SELECT 1 FROM cube_metric cm WHERE cm.metric_id = m.metric_id
+          )
+    """).fetchall()
+    if not rows:
+        return []
+    ids = ", ".join(r[0] for r in rows[:5])
+    suffix = f" (+ {len(rows) - 5} more)" if len(rows) > 5 else ""
+    return [f"{len(rows)} active metrics not in any cube: {ids}{suffix}"]
+
+
+def _check_cube_missing_dep_closure(con) -> list[str]:
+    """Cubes containing a derived metric but missing ≥1 dep that isn't in any cube at all."""
+    issues: list[str] = []
+    rows = con.execute("""
+        SELECT cm.cube_id, cm.metric_id, md.depends_on_metric_id
+        FROM cube_metric cm
+        JOIN metric_dependency md ON md.metric_id = cm.metric_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM cube_metric cm2 WHERE cm2.metric_id = md.depends_on_metric_id
+        )
+    """).fetchall()
+    for cube_id, metric_id, dep_id in rows:
+        issues.append(
+            f"Cube '{cube_id}' contains '{metric_id}' but dep '{dep_id}' is in no cube"
+        )
+    return issues
+
+
 CHECKS = [
     ("dependency_cycles",              _check_dependency_cycles),
     ("dangling_superseded_by",         _check_dangling_superseded_by),
@@ -179,6 +250,9 @@ CHECKS = [
     ("deprecated_without_supersession", _check_deprecated_without_supersession),
     ("entity_coverage",                _check_entity_coverage),
     ("inferred_lineage_coverage",      _check_inferred_lineage_coverage),
+    ("entity_relation_cycles",         _check_entity_relation_cycles),
+    ("cube_orphan_metrics",            _check_cube_orphan_metrics),
+    ("cube_missing_dep_closure",       _check_cube_missing_dep_closure),
 ]
 
 
