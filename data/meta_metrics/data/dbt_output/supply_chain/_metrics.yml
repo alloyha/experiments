@@ -1,0 +1,344 @@
+version: 2
+metrics:
+- name: supply_chain_days_inventory_outstanding
+  label: Dias de Estoque (DIO)
+  description: Número estimado de dias de estoque com base no consumo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: average_inventory / NULLIF(cogs,0) * days'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_fill_rate
+  label: Taxa de Atendimento de Pedido
+  description: Percentual da demanda atendida imediatamente pelo estoque disponível.
+  type: derived
+  type_params:
+    expr: '# TODO translate: fulfilled_demand / NULLIF(total_demand,0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_forecast_accuracy
+  label: Acurácia de Forecast de Demanda
+  description: Proximidade entre demanda prevista e realizada.
+  type: derived
+  type_params:
+    expr: '# TODO translate: 1 - ABS(forecast-actual)/NULLIF(ABS(actual),0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_forecast_bias
+  label: Viés de Forecast
+  description: Desvio sistemático entre demanda prevista e observada.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (forecast - actual) / NULLIF(actual,0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_inventory_turnover
+  label: Giro de Estoque
+  description: Custo das mercadorias vendidas dividido pelo estoque médio.
+  type: derived
+  type_params:
+    expr: '# TODO translate: cogs / NULLIF(average_inventory_value,0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: x
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_inventory_units
+  label: Unidades em Estoque
+  description: Quantidade física disponível ou registrada em estoque.
+  type: simple
+  type_params:
+    measure:
+      name: inventory_units
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_inventory_value
+  label: Valor de Estoque
+  description: Valor contábil ou gerencial do estoque na referência.
+  type: simple
+  type_params:
+    measure:
+      name: inventory_value
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_order_fulfillment_cycle_time
+  label: Tempo de Fulfillment
+  description: Tempo entre pedido confirmado e pedido entregue.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(order_confirmed_at,delivered_at))'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_procurement_savings
+  label: Economia de Compras
+  description: Economia obtida em relação ao baseline de preço definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: baseline_cost - actual_cost'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_purchase_order_cycle_time
+  label: Tempo de Ciclo de Compra
+  description: Tempo entre criação do pedido de compra e recebimento.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(po_created_at,received_at))'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_stockout_rate
+  label: Taxa de Ruptura
+  description: Proporção de demanda ou SKUs indisponíveis quando solicitados.
+  type: derived
+  type_params:
+    expr: '# TODO translate: stockout_events / NULLIF(demand_events,0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: supply_chain_supplier_on_time_rate
+  label: Entrega no Prazo do Fornecedor
+  description: Percentual de entregas de fornecedores recebidas no prazo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: on_time_deliveries / NULLIF(deliveries,0)'
+  tags:
+  - supply_chain
+  meta:
+    owners:
+    - type: business
+      team: Supply_Chain
+      contact: supply_chain@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

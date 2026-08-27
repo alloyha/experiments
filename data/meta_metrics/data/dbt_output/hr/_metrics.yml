@@ -1,0 +1,358 @@
+version: 2
+metrics:
+- name: hr_absenteeism_rate
+  label: Taxa de Absenteísmo
+  description: Percentual de horas planejadas perdidas por ausência.
+  type: derived
+  type_params:
+    expr: '# TODO translate: absence_hours / NULLIF(scheduled_hours,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_cost_per_hire
+  label: Custo por Contratação
+  description: Custo total de recrutamento dividido pelas contratações realizadas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: recruiting_cost / NULLIF(new_hires,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_employee_engagement_score
+  label: Índice de Engajamento
+  description: Pontuação agregada de engajamento obtida por pesquisa definida pela organização.
+  type: simple
+  type_params:
+    measure:
+      name: employee_engagement_score
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: score
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_headcount
+  label: Headcount
+  description: Número de colaboradores ativos na data de referência.
+  type: simple
+  type_params:
+    measure:
+      name: headcount
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: pessoas
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_headcount_growth_rate
+  label: Crescimento de Headcount
+  description: Variação percentual do headcount em relação ao período comparável.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (headcount - prior_headcount) / NULLIF(prior_headcount,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_involuntary_turnover_rate
+  label: Turnover Involuntário
+  description: Percentual médio de colaboradores desligados involuntariamente.
+  type: derived
+  type_params:
+    expr: '# TODO translate: involuntary_exits / AVG(headcount)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_offer_acceptance_rate
+  label: Taxa de Aceite de Oferta
+  description: Percentual de ofertas de emprego aceitas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: accepted_offers / NULLIF(offers,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_retention_rate
+  label: Taxa de Retenção de Pessoas
+  description: Percentual de colaboradores iniciais que permanecem ao fim do período.
+  type: derived
+  type_params:
+    expr: '# TODO translate: retained_employees / NULLIF(starting_headcount,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_revenue_per_employee
+  label: Receita por Colaborador
+  description: Receita atribuída dividida pelo headcount médio.
+  type: derived
+  type_params:
+    expr: '# TODO translate: revenue / NULLIF(average_headcount,0)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL/pessoa
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_time_to_fill
+  label: Tempo para Preenchimento
+  description: Tempo entre abertura da vaga e ocupação efetiva.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(job_opened_at,start_at))'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_time_to_hire
+  label: Tempo para Contratação
+  description: Tempo entre abertura da vaga e aceite da proposta.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(job_opened_at,offer_accepted_at))'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: hr_voluntary_turnover_rate
+  label: Turnover Voluntário
+  description: Percentual médio de colaboradores que saem voluntariamente no período.
+  type: derived
+  type_params:
+    expr: '# TODO translate: voluntary_exits / AVG(headcount)'
+  tags:
+  - hr
+  meta:
+    owners:
+    - type: business
+      team: Hr
+      contact: hr@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

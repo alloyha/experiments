@@ -1,0 +1,233 @@
+version: 2
+metrics:
+- name: security_critical_vulnerability_count
+  label: Vulnerabilidades Críticas
+  description: Número de vulnerabilidades críticas abertas na referência.
+  type: simple
+  type_params:
+    measure:
+      name: critical_vulnerability_count
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: vulnerabilidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_mean_time_to_contain
+  label: Tempo Médio de Contenção (MTTC)
+  description: Tempo entre detecção e contenção de um incidente.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(minutes_between(detected_at,contained_at))'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: minutos
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_mean_time_to_detect
+  label: Tempo Médio de Detecção (MTTD)
+  description: Tempo entre ocorrência de um incidente e sua detecção.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(minutes_between(occurred_at,detected_at))'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: minutos
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_mean_time_to_remediate
+  label: Tempo Médio de Remediação (MTTR)
+  description: Tempo entre detecção e remediação completa.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(hours_between(detected_at,remediated_at))'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: horas
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_phishing_failure_rate
+  label: Taxa de Falha em Simulação de Phishing
+  description: Percentual de participantes que executam uma ação considerada falha na simulação.
+  type: derived
+  type_params:
+    expr: '# TODO translate: failed_users / NULLIF(simulated_users,0)'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_security_control_compliance
+  label: Conformidade de Controles
+  description: Percentual de controles de segurança avaliados como conformes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: compliant_controls / NULLIF(assessed_controls,0)'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_security_incident_count
+  label: Incidentes de Segurança
+  description: Número de incidentes de segurança registrados.
+  type: simple
+  type_params:
+    measure:
+      name: security_incident_count
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: incidentes
+    data_quality: audited
+    refresh_frequency: daily
+- name: security_vulnerability_remediation_sla_rate
+  label: Atendimento de SLA de Vulnerabilidade
+  description: Percentual de vulnerabilidades remediadas dentro do prazo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: remediated_within_sla / NULLIF(sla_eligible,0)'
+  tags:
+  - security
+  meta:
+    owners:
+    - type: business
+      team: Security
+      contact: security@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

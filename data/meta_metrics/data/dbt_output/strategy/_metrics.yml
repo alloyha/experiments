@@ -1,0 +1,248 @@
+version: 2
+metrics:
+- name: strategy_customer_count
+  label: Clientes Ativos
+  description: Número de clientes ativos na referência.
+  type: simple
+  type_params:
+    measure:
+      name: customer_count
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: clientes
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_customer_growth_rate
+  label: Crescimento de Clientes
+  description: Variação percentual da base de clientes em relação ao período comparável.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (customers-prior_customers)/NULLIF(prior_customers,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_market_share
+  label: Participação de Mercado
+  description: Receita ou volume da empresa dividido pelo mercado relevante definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: company_value / NULLIF(total_market_value,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_new_customer_count
+  label: Novos Clientes
+  description: Número de clientes adquiridos no período.
+  type: simple
+  type_params:
+    measure:
+      name: new_customer_count
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: clientes
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_profitability_per_customer
+  label: Lucro por Cliente
+  description: Lucro ou margem atribuível dividido pela base de clientes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: contribution_profit / NULLIF(customers,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_revenue_per_customer
+  label: Receita por Cliente
+  description: Receita média por cliente ativo ou pagante.
+  type: derived
+  type_params:
+    expr: '# TODO translate: revenue / NULLIF(customers,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_share_of_wallet
+  label: Share of Wallet
+  description: Participação estimada da empresa no gasto total do cliente na categoria relevante.
+  type: derived
+  type_params:
+    expr: '# TODO translate: company_customer_spend / NULLIF(customer_category_spend,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: strategy_strategic_kpi_attainment
+  label: Atingimento de KPI Estratégico
+  description: Resultado realizado como percentual da meta estratégica.
+  type: derived
+  type_params:
+    expr: '# TODO translate: actual / NULLIF(target,0)'
+  tags:
+  - strategy
+  meta:
+    owners:
+    - type: business
+      team: Strategy
+      contact: strategy@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

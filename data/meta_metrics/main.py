@@ -3,6 +3,88 @@ from pathlib import Path
 
 catalog = []
 
+# ── Computational dependency edges ────────────────────────────────────────────
+DEPS: dict = {
+    "finance.arr":                   [("finance.mrr", "computational")],
+    "finance.arpu":                  [("finance.net_revenue", "denominator")],
+    "finance.arpa":                  [("finance.net_revenue", "denominator")],
+    "finance.gross_margin":          [("finance.net_revenue", "denominator")],
+    "finance.gross_profit":          [("finance.net_revenue", "computational")],
+    "finance.ebitda_margin":         [("finance.ebitda", "computational"), ("finance.net_revenue", "denominator")],
+    "finance.operating_margin":      [("finance.net_revenue", "denominator")],
+    "finance.net_margin":            [("finance.net_revenue", "denominator")],
+    "finance.free_cash_flow":        [("finance.operating_cash_flow", "computational")],
+    "finance.runway":                [("finance.cash_balance", "computational"), ("finance.burn_rate", "denominator")],
+    "finance.ltv_cac_ratio":         [("finance.ltv", "computational"), ("finance.cac", "denominator")],
+    "finance.cac_payback_months":    [("finance.cac", "computational")],
+    "finance.mrr_growth_rate":       [("finance.mrr", "computational")],
+    "finance.revenue_growth_rate":   [("finance.revenue", "computational")],
+    "finance.net_revenue_retention": [("finance.mrr", "computational"),
+                                      ("customer.expansion_mrr", "computational"),
+                                      ("customer.churned_mrr", "computational"),
+                                      ("customer.contraction_mrr", "computational")],
+    "marketing.mql_to_sql_rate":     [("marketing.mql_volume", "computational"), ("marketing.sql_volume", "denominator")],
+    "marketing.cost_per_mql":        [("marketing.mql_volume", "denominator")],
+    "marketing.cost_per_sql":        [("marketing.sql_volume", "denominator")],
+    "marketing.cost_per_lead":       [("marketing.leads_generated", "denominator")],
+    "product.dau_mau_ratio":         [("product.dau", "computational"), ("product.mau", "denominator")],
+    "sales.pipeline_coverage":       [("sales.pipeline_value", "computational"), ("sales.sales_target", "denominator")],
+    "sales.sales_velocity":          [("sales.win_rate", "computational"),
+                                      ("sales.average_deal_size", "computational"),
+                                      ("sales.sales_cycle_length", "denominator")],
+    "customer.revenue_churn_rate":   [("customer.churned_mrr", "computational"),
+                                      ("customer.contraction_mrr", "computational")],
+    "customer.gross_revenue_retention": [("customer.churned_mrr", "computational"),
+                                         ("customer.contraction_mrr", "computational")],
+}
+
+_TABLE_COL  = re.compile(r'\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b')
+_SQL_TOKENS = frozenset({"nullif", "count", "sum", "avg", "median", "min", "max",
+                          "distinct", "where", "between", "not", "and", "or", "in"})
+
+
+def _extract_lineage(expr: str, source_table) -> dict:
+    """Parse table.column references from a formula expression into a lineage block."""
+    seen: dict = {}
+    cols = []
+    for tbl, col in _TABLE_COL.findall(expr.lower()):
+        if tbl in _SQL_TOKENS:
+            continue
+        if tbl not in seen:
+            seen[tbl] = tbl
+        role = "date_key" if col.endswith(("_at", "_date")) else (
+               "filter"   if col in ("status", "type", "category", "severity") else "numerator")
+        cols.append({"source": tbl, "table": tbl, "column": col, "role": role})
+    if not cols:
+        return {}
+    sources = list(seen)
+    joins = [
+        {"left": sources[i], "right": sources[i + 1], "type": "INNER",
+         "on": f"{sources[i]}.id = {sources[i + 1]}.{sources[i]}_id"}
+        for i in range(len(sources) - 1)
+    ]
+    return {"columns": cols, "joins": joins}
+
+
+def _make_quality(aggregation: str, unit: str, data_quality: str, refresh: str) -> list:
+    """Build a structured quality contract for a metric."""
+    age = "26" if "daily" in refresh or "diário" in refresh else "168"
+    rules: list = [{"dimension": "freshness", "rule": "max_age_hours",
+                    "threshold": age, "severity": "error"}]
+    if aggregation in ("sum", "count", "count_distinct"):
+        rules.append({"dimension": "completeness", "rule": "null_rate",
+                      "threshold": "0.01", "severity": "warning"})
+    if aggregation == "ratio":
+        rules.append({"dimension": "completeness", "rule": "denominator_not_zero_rate",
+                      "threshold": "0.99", "severity": "warning"})
+        if unit == "%":
+            rules.append({"dimension": "accuracy", "rule": "value_in_range_0_to_2",
+                          "threshold": None, "severity": "error"})
+    if data_quality == "audited":
+        rules.append({"dimension": "consistency", "rule": "cross_system_reconciliation",
+                      "threshold": "0.001", "severity": "error"})
+    return rules
+
 def add(id, name, aliases, department, tags, description, expression, aggregation, grain, unit,
         dimensions, default_period, supported_periods, owner_team, owner_contact,
         status="active", refresh="daily", quality="audited", version="1.0",
@@ -19,7 +101,11 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
         "default_period": default_period, "supported_periods": supported_periods,
         "owner": {"team": owner_team, "contact": owner_contact},
         "status": status, "refresh_frequency": refresh,
-        "data_quality": quality, "version": version, "change_log": [],
+        "data_quality": quality, "version": version,
+        "change_log": [{"date": "2024-01-15", "change": "Métrica adicionada ao catálogo canônico v1.0."}],
+        "dependencies": [{"depends_on": dep, "type": t} for dep, t in DEPS.get(id, [])],
+        "quality": _make_quality(aggregation, unit, quality, refresh),
+        "lineage": _extract_lineage(expression, source_table),
         "usage_context": {
             "when_to_use": when or description,
             "related_metrics": related or [],

@@ -1,0 +1,465 @@
+version: 2
+metrics:
+- name: ecommerce_average_order_value
+  label: Ticket Médio (AOV)
+  description: Receita líquida média por pedido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: net_sales / NULLIF(orders,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_cart_abandonment_rate
+  label: Abandono de Carrinho
+  description: Percentual de carrinhos iniciados que não resultam em compra.
+  type: derived
+  type_params:
+    expr: '# TODO translate: abandoned_carts / NULLIF(carts,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_cart_add_rate
+  label: Taxa de Adição ao Carrinho
+  description: Percentual de sessões elegíveis que adicionam itens ao carrinho.
+  type: derived
+  type_params:
+    expr: '# TODO translate: sessions_with_add_to_cart / NULLIF(eligible_sessions,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_checkout_completion_rate
+  label: Conclusão de Checkout
+  description: Percentual de checkouts iniciados que resultam em compra.
+  type: derived
+  type_params:
+    expr: '# TODO translate: orders_from_checkout / NULLIF(checkouts,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_conversion_rate
+  label: Taxa de Conversão de Compra
+  description: Percentual de sessões ou visitantes que realizam compra.
+  type: derived
+  type_params:
+    expr: '# TODO translate: purchasers / NULLIF(eligible_visitors,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_customer_lifetime_orders
+  label: Pedidos por Cliente ao Longo da Vida
+  description: Número médio de pedidos por cliente desde a primeira compra.
+  type: derived
+  type_params:
+    expr: '# TODO translate: orders / NULLIF(unique_customers,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: pedidos/cliente
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_discount_rate
+  label: Taxa de Desconto
+  description: Percentual do valor de tabela concedido em descontos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: discount_amount / NULLIF(gross_merchandise_value,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_gross_merchandise_value
+  label: GMV
+  description: Valor bruto de mercadorias transacionadas antes de ajustes definidos.
+  type: simple
+  type_params:
+    measure:
+      name: gross_merchandise_value
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_items_per_order
+  label: Itens por Pedido
+  description: Quantidade média de itens por pedido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: items_sold / NULLIF(orders,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: itens
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_net_merchandise_value
+  label: NMV
+  description: Valor líquido de mercadorias após descontos, devoluções e ajustes aplicáveis.
+  type: simple
+  type_params:
+    measure:
+      name: net_merchandise_value
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_orders
+  label: Pedidos
+  description: Número de pedidos realizados no período.
+  type: simple
+  type_params:
+    measure:
+      name: orders
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: pedidos
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_purchasers
+  label: Compradores
+  description: Número de clientes únicos que realizaram ao menos uma compra.
+  type: simple
+  type_params:
+    measure:
+      name: purchasers
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: clientes
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_refund_rate
+  label: Taxa de Reembolso
+  description: Percentual do valor ou pedidos vendidos que foram reembolsados.
+  type: derived
+  type_params:
+    expr: '# TODO translate: refunded_orders / NULLIF(orders,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_repeat_purchase_rate
+  label: Taxa de Recompra
+  description: Percentual de compradores que realizam uma compra adicional no período definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: repeat_buyers / NULLIF(purchasers,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: ecommerce_return_rate
+  label: Taxa de Devolução
+  description: Percentual de pedidos ou itens devolvidos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: returned_items / NULLIF(sold_items,0)'
+  tags:
+  - ecommerce
+  meta:
+    owners:
+    - type: business
+      team: Ecommerce
+      contact: ecommerce@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

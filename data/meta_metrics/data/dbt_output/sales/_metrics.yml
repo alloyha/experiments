@@ -1,0 +1,595 @@
+version: 2
+metrics:
+- name: sales_average_days_to_close_won
+  label: Dias Médios até Ganho
+  description: Tempo médio entre criação e fechamento ganho.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(days_between(created_at,won_at))'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_average_deal_size
+  label: Ticket Médio de Venda
+  description: Valor médio das oportunidades ganhas.
+  type: simple
+  type_params:
+    measure:
+      name: average_deal_size
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_average_revenue_per_sales_rep
+  label: Receita Média por Vendedor
+  description: Receita ganha média atribuída por vendedor.
+  type: derived
+  type_params:
+    expr: '# TODO translate: closed_won_amount / NULLIF(active_sales_reps,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_bookings
+  label: Bookings
+  description: Valor contratado em novos negócios no período.
+  type: simple
+  type_params:
+    measure:
+      name: bookings
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_discount_rate
+  label: Taxa Média de Desconto
+  description: Desconto médio aplicado sobre o preço de tabela.
+  type: derived
+  type_params:
+    expr: '# TODO translate: SUM(list_price - sold_price) / NULLIF(SUM(list_price),0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_expansion_revenue
+  label: Receita de Expansão
+  description: Receita incremental de clientes existentes por upsell, cross-sell ou expansão.
+  type: simple
+  type_params:
+    measure:
+      name: expansion_revenue
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_forecast_accuracy
+  label: Acurácia de Forecast
+  description: Proximidade entre previsão comercial e resultado realizado.
+  type: derived
+  type_params:
+    expr: '# TODO translate: 1 - ABS(forecast - actual) / NULLIF(ABS(actual),0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_lead_to_opportunity_rate
+  label: Conversão Lead → Oportunidade
+  description: Percentual de leads que se tornam oportunidades qualificadas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: opportunities / NULLIF(leads,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_lost_rate
+  label: Taxa de Perda
+  description: Percentual de oportunidades encerradas que foram perdidas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: closed_lost / NULLIF(closed_won + closed_lost,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_new_logo_revenue
+  label: Receita de Novos Clientes
+  description: Receita contratada proveniente de novos clientes.
+  type: simple
+  type_params:
+    measure:
+      name: new_logo_revenue
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_opportunities_created
+  label: Oportunidades Criadas
+  description: Número de novas oportunidades criadas no período.
+  type: simple
+  type_params:
+    measure:
+      name: opportunities_created
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_opportunity_to_customer_rate
+  label: Conversão Oportunidade → Cliente
+  description: Percentual de oportunidades encerradas que viram clientes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: won_opportunities / NULLIF(closed_opportunities,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_pipeline_coverage
+  label: Cobertura de Pipeline
+  description: Pipeline necessário em relação ao restante da meta de vendas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: open_pipeline / NULLIF(target - closed_won,0)'
+    metrics:
+    - name: sales_pipeline_value
+    - name: sales_sales_target
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: x
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_pipeline_value
+  label: Valor do Pipeline
+  description: Valor total das oportunidades abertas elegíveis.
+  type: simple
+  type_params:
+    measure:
+      name: pipeline_value
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_quota_attainment
+  label: Atingimento de Quota
+  description: Vendas realizadas como percentual da quota atribuída.
+  type: derived
+  type_params:
+    expr: '# TODO translate: closed_won_amount / NULLIF(quota,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_sales_cycle_length
+  label: Duração do Ciclo de Vendas
+  description: Tempo médio entre criação e fechamento de uma oportunidade.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(days_between(created_at,closed_at))'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_sales_target
+  label: Meta de Vendas
+  description: Valor-alvo de vendas para o período e escopo definidos.
+  type: simple
+  type_params:
+    measure:
+      name: sales_target
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_sales_velocity
+  label: Velocidade de Vendas
+  description: Valor esperado gerado pelo funil por unidade de tempo.
+  type: derived
+  type_params:
+    expr: qualified_opportunities * avg_deal_size * sales_win_rate / sales_sales_cycle_length
+    metrics:
+    - name: sales_win_rate
+    - name: sales_average_deal_size
+    - name: sales_sales_cycle_length
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL/dia
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_weighted_pipeline
+  label: Pipeline Ponderado
+  description: Pipeline ponderado pelas probabilidades de fechamento.
+  type: simple
+  type_params:
+    measure:
+      name: weighted_pipeline
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: sales_win_rate
+  label: Taxa de Conversão de Vendas (Win Rate)
+  description: Percentual de oportunidades encerradas que foram ganhas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: closed_won / NULLIF(closed_won + closed_lost,0)'
+  tags:
+  - sales
+  meta:
+    owners:
+    - type: business
+      team: Sales
+      contact: sales@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

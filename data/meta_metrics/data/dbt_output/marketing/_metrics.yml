@@ -1,0 +1,563 @@
+version: 2
+metrics:
+- name: marketing_brand_search_share
+  label: Participação de Busca de Marca
+  description: Participação estimada da demanda de busca associada à marca.
+  type: derived
+  type_params:
+    expr: '# TODO translate: brand_search_volume / NULLIF(total_category_search_volume,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_campaign_roi
+  label: ROI de Campanha
+  description: Retorno incremental atribuído à campanha em relação ao custo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (attributed_margin - campaign_cost) / NULLIF(campaign_cost,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_cost_per_lead
+  label: Custo por Lead
+  description: Investimento de marketing dividido pelo volume de leads.
+  type: derived
+  type_params:
+    expr: '# TODO translate: marketing_spend / NULLIF(leads,0)'
+    metrics:
+    - name: marketing_leads_generated
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_cost_per_mql
+  label: Custo por MQL
+  description: Investimento de marketing dividido pelo número de MQLs.
+  type: derived
+  type_params:
+    expr: '# TODO translate: marketing_spend / NULLIF(mql,0)'
+    metrics:
+    - name: marketing_mql_volume
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_cost_per_sql
+  label: Custo por SQL
+  description: Investimento de marketing dividido pelo número de SQLs.
+  type: derived
+  type_params:
+    expr: '# TODO translate: marketing_spend / NULLIF(sql,0)'
+    metrics:
+    - name: marketing_sql_volume
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_customer_acquisition_growth
+  label: Crescimento de Aquisição
+  description: Variação do número de novos clientes adquiridos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (new_customers - prior_new_customers) / NULLIF(prior_new_customers,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_email_click_rate
+  label: Taxa de Clique de Email
+  description: Percentual de emails entregues que geraram clique.
+  type: derived
+  type_params:
+    expr: '# TODO translate: clicked / NULLIF(delivered,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_email_open_rate
+  label: Taxa de Abertura de Email
+  description: Percentual de emails entregues que foram abertos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: opened / NULLIF(delivered,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_leads_generated
+  label: Leads Gerados
+  description: Número de leads capturados no período.
+  type: simple
+  type_params:
+    measure:
+      name: leads_generated
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_marketing_influenced_revenue
+  label: Receita Influenciada por Marketing
+  description: Receita de negócios que tiveram interação atribuível com marketing.
+  type: simple
+  type_params:
+    measure:
+      name: marketing_influenced_revenue
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_marketing_sourced_revenue
+  label: Receita Sourced por Marketing
+  description: Receita de negócios atribuídos à origem de marketing.
+  type: simple
+  type_params:
+    measure:
+      name: marketing_sourced_revenue
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_mql_to_sql_rate
+  label: Taxa MQL → SQL
+  description: Percentual de MQLs que se tornam SQLs.
+  type: derived
+  type_params:
+    expr: '# TODO translate: sql / NULLIF(mql,0)'
+    metrics:
+    - name: marketing_mql_volume
+    - name: marketing_sql_volume
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_mql_volume
+  label: Volume de MQLs
+  description: Número de leads qualificados por marketing.
+  type: simple
+  type_params:
+    measure:
+      name: mql_volume
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_paid_media_roas
+  label: ROAS de Mídia Paga
+  description: Receita atribuída dividida pelo gasto em mídia.
+  type: derived
+  type_params:
+    expr: '# TODO translate: attributed_revenue / NULLIF(media_spend,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: x
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_sql_volume
+  label: Volume de SQLs
+  description: Número de leads aceitos e qualificados por vendas.
+  type: simple
+  type_params:
+    measure:
+      name: sql_volume
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_unsubscribe_rate
+  label: Taxa de Descadastro
+  description: Percentual de emails entregues que resultaram em descadastro.
+  type: derived
+  type_params:
+    expr: '# TODO translate: unsubscribed / NULLIF(delivered,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_website_conversion_rate
+  label: Conversão do Website
+  description: Percentual de sessões que atingem o evento de conversão definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: conversions / NULLIF(sessions,0)'
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: marketing_website_sessions
+  label: Sessões do Website
+  description: Número de sessões do website no período.
+  type: simple
+  type_params:
+    measure:
+      name: website_sessions
+  tags:
+  - marketing
+  meta:
+    owners:
+    - type: business
+      team: Marketing
+      contact: marketing@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily

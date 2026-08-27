@@ -1,0 +1,356 @@
+version: 2
+metrics:
+- name: support_agent_utilization
+  label: Utilização de Agente
+  description: Proporção do tempo disponível do agente dedicado a trabalho produtivo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: productive_minutes / NULLIF(available_minutes,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_backlog
+  label: Backlog de Suporte
+  description: Número de tickets abertos e não resolvidos na referência.
+  type: simple
+  type_params:
+    measure:
+      name: backlog
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: tickets
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_cost_per_ticket
+  label: Custo por Ticket
+  description: Custo operacional do suporte dividido pelo volume de tickets.
+  type: derived
+  type_params:
+    expr: '# TODO translate: support_cost / NULLIF(tickets,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_csat
+  label: CSAT de Suporte
+  description: Satisfação média ou percentual positivo após atendimento.
+  type: simple
+  type_params:
+    measure:
+      name: csat
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: score
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_escalation_rate
+  label: Taxa de Escalação
+  description: Percentual de tickets que exigem transferência para outro nível.
+  type: derived
+  type_params:
+    expr: '# TODO translate: escalated_tickets / NULLIF(tickets,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_first_contact_resolution_rate
+  label: Resolução no Primeiro Contato
+  description: Percentual de tickets resolvidos sem interação adicional significativa.
+  type: derived
+  type_params:
+    expr: '# TODO translate: fcr_tickets / NULLIF(resolved_tickets,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_first_response_time
+  label: Tempo até Primeira Resposta
+  description: Tempo médio ou mediano entre criação e primeira resposta humana.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(minutes_between(created_at,first_response_at))'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: minutos
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_resolution_time
+  label: Tempo de Resolução
+  description: Tempo entre criação e resolução do ticket.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(hours_between(created_at,resolved_at))'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: horas
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_sla_breach_rate
+  label: Taxa de Violação de SLA
+  description: Percentual de tickets que ultrapassam o SLA aplicável.
+  type: derived
+  type_params:
+    expr: '# TODO translate: sla_breached / NULLIF(sla_eligible,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_ticket_reopen_rate
+  label: Taxa de Reabertura
+  description: Percentual de tickets resolvidos que são reabertos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: reopened_tickets / NULLIF(resolved_tickets,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_ticket_volume
+  label: Volume de Tickets
+  description: Número de tickets criados no período.
+  type: simple
+  type_params:
+    measure:
+      name: ticket_volume
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: tickets
+    data_quality: audited
+    refresh_frequency: daily
+- name: support_tickets_per_customer
+  label: Tickets por Cliente
+  description: Número médio de tickets por cliente atendido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: tickets / NULLIF(customers,0)'
+  tags:
+  - support
+  meta:
+    owners:
+    - type: business
+      team: Support
+      contact: support@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: tickets/cliente
+    data_quality: audited
+    refresh_frequency: daily

@@ -1,0 +1,355 @@
+version: 2
+metrics:
+- name: engineering_change_fail_rate
+  label: Taxa de Falha de Mudança
+  description: Percentual de deployments que causam falha em produção e exigem intervenção.
+  type: derived
+  type_params:
+    expr: '# TODO translate: failed_deployments / NULLIF(deployments,0)'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_change_lead_time
+  label: Lead Time de Mudança
+  description: Tempo entre commit e implantação bem-sucedida em produção.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(hours_between(commit_at,production_at))'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: horas
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_change_volume
+  label: Volume de Mudanças
+  description: Número de mudanças de software implantadas no período.
+  type: simple
+  type_params:
+    measure:
+      name: change_volume
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: deployments
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_deployment_frequency
+  label: Frequência de Deploy
+  description: Número de deployments bem-sucedidos por unidade de tempo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: successful_deployments / period_duration'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: deploys/período
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_deployment_rework_rate
+  label: Taxa de Retrabalho de Deploy
+  description: Percentual de deployments que são trabalho não planejado para corrigir incidentes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: rework_deployments / NULLIF(deployments,0)'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_error_rate
+  label: Taxa de Erro
+  description: Proporção de requisições que resultam em erro segundo a definição operacional.
+  type: derived
+  type_params:
+    expr: '# TODO translate: error_requests / NULLIF(total_requests,0)'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_failed_deployment_recovery_time
+  label: Tempo de Recuperação de Deploy Falho
+  description: Tempo para recuperar de uma implantação que falha e exige intervenção.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(minutes_between(failure_at,recovery_at))'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: minutos
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_incident_count
+  label: Número de Incidentes
+  description: Quantidade de incidentes de produção no período.
+  type: simple
+  type_params:
+    measure:
+      name: incident_count
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: incidentes
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_incident_rate
+  label: Taxa de Incidentes
+  description: Incidentes normalizados por volume de releases, tráfego ou período definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: incidents / normalization_base'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: incidentes/unidade
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_mean_time_to_recover
+  label: MTTR Operacional
+  description: Tempo médio para restaurar o serviço após um incidente operacional.
+  type: derived
+  type_params:
+    expr: '# TODO translate: AVG(hours_between(incident_start,recovery_at))'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: horas
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_release_success_rate
+  label: Taxa de Sucesso de Release
+  description: Percentual de releases sem rollback, hotfix crítico ou falha definida.
+  type: derived
+  type_params:
+    expr: '# TODO translate: successful_releases / NULLIF(releases,0)'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: engineering_service_availability
+  label: Disponibilidade do Serviço
+  description: Percentual de tempo em que o serviço atende o critério de disponibilidade.
+  type: derived
+  type_params:
+    expr: '# TODO translate: available_time / NULLIF(total_time,0)'
+  tags:
+  - engineering
+  meta:
+    owners:
+    - type: business
+      team: Engineering
+      contact: engineering@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

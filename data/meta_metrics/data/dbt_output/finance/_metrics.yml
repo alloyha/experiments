@@ -1,0 +1,769 @@
+version: 2
+metrics:
+- name: finance_arpa
+  label: Receita Média por Conta (ARPA)
+  description: Receita média por conta pagante no período.
+  type: derived
+  type_params:
+    expr: finance_net_revenue / NULLIF(distinct_paying_accounts,0)
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_arpu
+  label: Receita Média por Usuário (ARPU)
+  description: Receita média atribuída por usuário ativo ou pagante no período.
+  type: derived
+  type_params:
+    expr: finance_net_revenue / NULLIF(distinct_paying_users,0)
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_arr
+  label: Receita Recorrente Anualizada (ARR)
+  description: MRR anualizado para representar receita recorrente em base anual.
+  type: derived
+  type_params:
+    expr: finance_mrr * 12
+    metrics:
+    - name: finance_mrr
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_burn_rate
+  label: Burn Rate
+  description: Velocidade média de consumo líquido de caixa.
+  type: derived
+  type_params:
+    expr: '# TODO translate: net_cash_outflow / months'
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL/mês
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_cac
+  label: Custo de Aquisição de Cliente (CAC)
+  description: Investimento de marketing e vendas dividido pelos novos clientes pagantes adquiridos.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (marketing_spend + sales_spend) / NULLIF(new_customers,0)'
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_cac_payback_months
+  label: Payback do CAC
+  description: Número de meses necessários para recuperar o CAC via margem bruta.
+  type: derived
+  type_params:
+    expr: finance_cac / NULLIF(monthly_gross_profit_per_customer,0)
+    metrics:
+    - name: finance_cac
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: meses
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_cash_balance
+  label: Saldo de Caixa
+  description: Saldo de caixa e equivalentes na data de referência.
+  type: simple
+  type_params:
+    measure:
+      name: cash_balance
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_ebitda
+  label: EBITDA
+  description: Resultado operacional antes de juros, impostos, depreciação e amortização.
+  type: derived
+  type_params:
+    expr: '# TODO translate: operating_profit + depreciation + amortization'
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_ebitda_margin
+  label: Margem EBITDA
+  description: EBITDA dividido pela receita líquida.
+  type: derived
+  type_params:
+    expr: finance_ebitda / NULLIF(finance_net_revenue,0)
+    metrics:
+    - name: finance_ebitda
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_free_cash_flow
+  label: Fluxo de Caixa Livre
+  description: Caixa operacional após investimentos de capital.
+  type: derived
+  type_params:
+    expr: finance_operating_cash_flow - capex
+    metrics:
+    - name: finance_operating_cash_flow
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_gross_margin
+  label: Margem Bruta
+  description: Percentual da receita líquida que permanece após custos diretamente atribuíveis.
+  type: derived
+  type_params:
+    expr: (finance_net_revenue - cogs) / NULLIF(finance_net_revenue,0)
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_gross_profit
+  label: Lucro Bruto
+  description: Receita líquida menos custo dos produtos ou serviços vendidos.
+  type: derived
+  type_params:
+    expr: finance_net_revenue - cogs
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_gross_revenue
+  label: Receita Bruta
+  description: Receita antes de descontos, devoluções e impostos dedutíveis.
+  type: simple
+  type_params:
+    measure:
+      name: gross_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_ltv
+  label: Lifetime Value (LTV)
+  description: Valor econômico esperado de um cliente ao longo de sua vida, segundo a metodologia definida.
+  type: derived
+  type_params:
+    expr: '# TODO translate: expected_gross_profit_per_period * expected_lifetime_periods'
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_ltv_cac_ratio
+  label: Razão LTV:CAC
+  description: Valor de vida do cliente dividido pelo custo de aquisição.
+  type: derived
+  type_params:
+    expr: finance_ltv / NULLIF(finance_cac,0)
+    metrics:
+    - name: finance_ltv
+    - name: finance_cac
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: x
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_mrr
+  label: Receita Recorrente Mensal (MRR)
+  description: Receita recorrente ativa normalizada para base mensal.
+  type: simple
+  type_params:
+    measure:
+      name: mrr
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_mrr_growth_rate
+  label: Crescimento de MRR
+  description: Variação percentual do MRR em relação ao período anterior.
+  type: derived
+  type_params:
+    expr: (finance_mrr - prior_MRR) / NULLIF(prior_MRR,0)
+    metrics:
+    - name: finance_mrr
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_net_margin
+  label: Margem Líquida
+  description: Lucro líquido dividido pela receita líquida.
+  type: derived
+  type_params:
+    expr: net_income / NULLIF(finance_net_revenue,0)
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_net_revenue
+  label: Receita Líquida
+  description: Receita após descontos, devoluções e abatimentos aplicáveis.
+  type: simple
+  type_params:
+    measure:
+      name: net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_net_revenue_retention
+  label: Net Revenue Retention (NRR)
+  description: Receita recorrente inicial retida após expansão, contração e churn, sem incluir novos clientes.
+  type: derived
+  type_params:
+    expr: (starting_MRR + customer_expansion_mrr - customer_contraction_mrr - customer_churned_mrr) / NULLIF(starting_MRR,0)
+    metrics:
+    - name: finance_mrr
+    - name: customer_expansion_mrr
+    - name: customer_churned_mrr
+    - name: customer_contraction_mrr
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_operating_cash_flow
+  label: Fluxo de Caixa Operacional
+  description: Caixa gerado ou consumido pelas operações.
+  type: derived
+  type_params:
+    expr: '# TODO translate: SUM(operating_cash_movements)'
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_operating_margin
+  label: Margem Operacional
+  description: Resultado operacional dividido pela receita líquida.
+  type: derived
+  type_params:
+    expr: operating_profit / NULLIF(finance_net_revenue,0)
+    metrics:
+    - name: finance_net_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_revenue
+  label: Receita Total
+  description: Soma da receita faturada no período.
+  type: simple
+  type_params:
+    measure:
+      name: revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_revenue_growth_rate
+  label: Crescimento de Receita
+  description: Variação percentual da receita em relação ao período comparável anterior.
+  type: derived
+  type_params:
+    expr: (finance_revenue - prior_revenue) / NULLIF(prior_revenue,0)
+    metrics:
+    - name: finance_revenue
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: finance_runway
+  label: Runway
+  description: Meses estimados até o caixa se esgotar sob o burn atual.
+  type: derived
+  type_params:
+    expr: finance_cash_balance / NULLIF(monthly_net_burn,0)
+    metrics:
+    - name: finance_cash_balance
+    - name: finance_burn_rate
+  tags:
+  - finance
+  meta:
+    owners:
+    - type: business
+      team: Finance
+      contact: finance@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: meses
+    data_quality: audited
+    refresh_frequency: daily

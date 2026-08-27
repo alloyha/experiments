@@ -1,0 +1,363 @@
+version: 2
+metrics:
+- name: operations_capacity_utilization
+  label: Utilização de Capacidade
+  description: Uso efetivo da capacidade disponível.
+  type: derived
+  type_params:
+    expr: '# TODO translate: used_capacity / NULLIF(available_capacity,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_cost_per_unit
+  label: Custo por Unidade
+  description: Custo operacional total dividido pelo output produzido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: operating_cost / NULLIF(output_units,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL/unidade
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_cycle_time
+  label: Tempo de Ciclo Operacional
+  description: Tempo entre início e conclusão de uma operação.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(hours_between(start_at,completed_at))'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: horas
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_defect_rate
+  label: Taxa de Defeito
+  description: Proporção de unidades que apresentam defeito segundo o critério definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: defective_units / NULLIF(produced_units,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_downtime_rate
+  label: Taxa de Indisponibilidade
+  description: Percentual de tempo em que o recurso operacional está indisponível.
+  type: derived
+  type_params:
+    expr: '# TODO translate: downtime / NULLIF(scheduled_time,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_first_pass_yield
+  label: First Pass Yield
+  description: Percentual de unidades aprovadas sem retrabalho na primeira passagem.
+  type: derived
+  type_params:
+    expr: '# TODO translate: first_pass_good / NULLIF(total_units,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_forecast_accuracy
+  label: Acurácia de Previsão Operacional
+  description: Acurácia entre previsão operacional e realização observada.
+  type: derived
+  type_params:
+    expr: '# TODO translate: 1 - ABS(forecast-actual)/NULLIF(ABS(actual),0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_on_time_rate
+  label: Taxa de Entrega no Prazo
+  description: Percentual de operações concluídas dentro do prazo acordado.
+  type: derived
+  type_params:
+    expr: '# TODO translate: on_time / NULLIF(completed,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_productivity
+  label: Produtividade
+  description: Output operacional por unidade de recurso consumido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: output / NULLIF(resource_input,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades/recurso
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_rework_rate
+  label: Taxa de Retrabalho
+  description: Percentual de unidades que exigem processamento adicional.
+  type: derived
+  type_params:
+    expr: '# TODO translate: reworked_units / NULLIF(processed_units,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_sla_attainment
+  label: Atingimento de SLA Operacional
+  description: Percentual de operações que atendem ao SLA definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: sla_met / NULLIF(sla_eligible,0)'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: operations_throughput
+  label: Throughput Operacional
+  description: Volume de unidades processadas por unidade de tempo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: processed_units / period_duration'
+  tags:
+  - operations
+  meta:
+    owners:
+    - type: business
+      team: Operations
+      contact: operations@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades/tempo
+    data_quality: audited
+    refresh_frequency: daily

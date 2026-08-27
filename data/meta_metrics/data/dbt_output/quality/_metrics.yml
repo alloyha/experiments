@@ -1,0 +1,242 @@
+version: 2
+metrics:
+- name: quality_audit_nonconformity_rate
+  label: Taxa de Não Conformidade em Auditoria
+  description: Não conformidades encontradas por item ou requisito auditado.
+  type: derived
+  type_params:
+    expr: '# TODO translate: nonconformities / NULLIF(audited_items,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_corrective_action_on_time_rate
+  label: Ações Corretivas no Prazo
+  description: Percentual de ações corretivas concluídas dentro do prazo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: on_time_actions / NULLIF(due_actions,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_cost_of_poor_quality
+  label: Custo da Má Qualidade
+  description: Custo associado a falhas internas, externas, retrabalho e refugo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: SUM(internal_failure_cost + external_failure_cost + rework_cost)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_customer_complaint_rate
+  label: Taxa de Reclamação de Cliente
+  description: Reclamações normalizadas por volume de clientes ou unidades vendidas.
+  type: derived
+  type_params:
+    expr: '# TODO translate: complaints / NULLIF(units_or_customers,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: reclamações/unidade
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_defect_density
+  label: Densidade de Defeitos
+  description: Número de defeitos normalizado por unidade produzida, código ou volume definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: defects / NULLIF(units,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: defeitos/unidade
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_first_time_quality_rate
+  label: Qualidade na Primeira Passagem
+  description: Percentual de unidades que atendem aos requisitos sem correção.
+  type: derived
+  type_params:
+    expr: '# TODO translate: first_pass_good / NULLIF(total_units,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_process_capability_index
+  label: Índice de Capacidade de Processo
+  description: Índice estatístico de capacidade do processo em relação aos limites de especificação.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MIN((USL-mean)/(3*stddev),(mean-LSL)/(3*stddev))'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: índice
+    data_quality: audited
+    refresh_frequency: daily
+- name: quality_scrap_rate
+  label: Taxa de Refugo
+  description: Percentual de produção descartada por não conformidade.
+  type: derived
+  type_params:
+    expr: '# TODO translate: scrap_units / NULLIF(produced_units,0)'
+  tags:
+  - quality
+  meta:
+    owners:
+    - type: business
+      team: Quality
+      contact: quality@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

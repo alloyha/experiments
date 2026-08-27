@@ -211,6 +211,8 @@ def load_catalog(path: Path) -> dict:
 def populate(con: duckdb.DuckDBPyConnection, catalog: dict) -> None:
     con.execute(DDL)
 
+    all_deps: list = []  # collected for second-pass insert after all metric rows exist
+
     for m in catalog["metrics"]:
         mid = m["id"]
 
@@ -304,7 +306,7 @@ def populate(con: duckdb.DuckDBPyConnection, catalog: dict) -> None:
             con.executemany("INSERT INTO metric_relation VALUES (?, ?, 'related')", relations)
 
         if deps := [(mid, d["depends_on"], d.get("type", "computational")) for d in m.get("dependencies", [])]:
-            con.executemany("INSERT INTO metric_dependency VALUES (?, ?, ?)", deps)
+            all_deps.extend(deps)
 
         if quality := [(mid, q["dimension"], q["rule"], q.get("threshold"), q.get("severity", "warning")) for q in m.get("quality", [])]:
             con.executemany("INSERT INTO metric_quality VALUES (?, ?, ?, ?, ?)", quality)
@@ -341,6 +343,9 @@ def populate(con: duckdb.DuckDBPyConnection, catalog: dict) -> None:
         ]:
             con.executemany("INSERT INTO metric_join VALUES (?, ?, ?, ?, ?)", joins)
 
+    if all_deps:
+        con.executemany("INSERT INTO metric_dependency VALUES (?, ?, ?)", all_deps)
+
 
 def create_views(con: duckdb.DuckDBPyConnection) -> None:
     con.execute("""
@@ -351,8 +356,8 @@ def create_views(con: duckdb.DuckDBPyConnection) -> None:
         v.expression AS formula_expression,
         v.language AS formula_language,
         v.source_table,
-        o.team AS owner_team,
-        o.contact AS owner_contact,
+        o.owner_team,
+        o.owner_contact,
         a.aliases,
         t.tags,
         p.supported_periods,
@@ -369,26 +374,26 @@ def create_views(con: duckdb.DuckDBPyConnection) -> None:
     LEFT JOIN (
         SELECT metric_id, team AS owner_team, contact AS owner_contact
         FROM metric_owner WHERE owner_type = 'business'
-    ) o USING (metric_id)
+    ) o ON o.metric_id = m.metric_id
     LEFT JOIN (
         SELECT metric_id, list(alias ORDER BY alias) AS aliases
         FROM metric_alias GROUP BY metric_id
-    ) a USING (metric_id)
+    ) a ON a.metric_id = m.metric_id
     LEFT JOIN (
         SELECT metric_id, list(tag ORDER BY tag) AS tags
         FROM metric_tag GROUP BY metric_id
-    ) t USING (metric_id)
+    ) t ON t.metric_id = m.metric_id
     LEFT JOIN (
         SELECT metric_id, list(period ORDER BY period) AS supported_periods
         FROM metric_period GROUP BY metric_id
-    ) p USING (metric_id)
-    LEFT JOIN metric_usage u USING (metric_id)
+    ) p ON p.metric_id = m.metric_id
+    LEFT JOIN metric_usage u ON u.metric_id = m.metric_id
     LEFT JOIN metric_benchmark b ON b.metric_id = m.metric_id AND b.benchmark_type = 'default'
-    LEFT JOIN metric_execution x USING (metric_id)
+    LEFT JOIN metric_execution x ON x.metric_id = m.metric_id
     """)
 
 
-def write_dot(con: duckdb.DuckDBPyConnection, path: Path) -> None:
+def write_mermaid(con: duckdb.DuckDBPyConnection, path: Path) -> None:
     tables = [
         "metric", "metric_alias", "metric_tag", "metric_version",
         "metric_dimension", "metric_period", "metric_owner",
@@ -398,43 +403,46 @@ def write_dot(con: duckdb.DuckDBPyConnection, path: Path) -> None:
         "data_source", "metric_column", "metric_join",
     ]
 
-    lines = [
-        "digraph MetricERD {",
-        '  graph [rankdir=LR, splines=ortho];',
-        '  node [shape=plain, fontname="Helvetica"];'
+    # (parent, child, label) — one-to-many FK edges
+    relationships = [
+        ("metric", "metric_alias",     "contains"),
+        ("metric", "metric_tag",       "contains"),
+        ("metric", "metric_version",   "versions"),
+        ("metric", "metric_dimension", "has"),
+        ("metric", "metric_period",    "has"),
+        ("metric", "metric_owner",     "owned by"),
+        ("metric", "metric_change",    "changelog"),
+        ("metric", "metric_usage",     "usage"),
+        ("metric", "metric_benchmark", "benchmark"),
+        ("metric", "metric_execution", "execution"),
+        ("metric", "metric_permission","requires"),
+        ("metric", "metric_relation",  "related to"),
+        ("metric", "metric_dependency","depends on"),
+        ("metric", "metric_quality",   "quality"),
+        ("metric", "metric_column",    "lineage"),
+        ("metric", "metric_join",      "lineage"),
+        ("data_source", "metric_column", "reads from"),
+        ("data_source", "metric_join",   "joins"),
     ]
 
+    lines = ["```mermaid", "erDiagram"]
+
+    pk_cols = {"metric": "metric_id", "data_source": "source_id"}
     for table in tables:
         cols = con.execute(f"DESCRIBE {table}").fetchall()
-        rows = []
+        lines.append(f"    {table} {{")
         for col in cols:
             name, dtype = col[0], col[1]
-            rows.append(f"<TR><TD ALIGN='LEFT'><B>{name}</B></TD><TD ALIGN='LEFT'>{dtype}</TD></TR>")
-        label = (
-            "<<TABLE BORDER='1' CELLBORDER='1' CELLSPACING='0'>"
-            f"<TR><TD COLSPAN='2'><B>{table}</B></TD></TR>"
-            + "".join(rows) +
-            "</TABLE>>"
-        )
-        safe = table.replace("-", "_")
-        lines.append(f'  {safe} [label={label}];')
+            short_type = dtype.split("(")[0]
+            pk = " PK" if pk_cols.get(table) == name else ""
+            lines.append(f"        {short_type} {name}{pk}")
+        lines.append("    }")
 
-    relationships = [
-        ("metric_alias", "metric"), ("metric_tag", "metric"),
-        ("metric_version", "metric"), ("metric_dimension", "metric"),
-        ("metric_period", "metric"), ("metric_owner", "metric"),
-        ("metric_change", "metric"), ("metric_usage", "metric"),
-        ("metric_benchmark", "metric"), ("metric_execution", "metric"),
-        ("metric_permission", "metric"), ("metric_relation", "metric"),
-        ("metric_dependency", "metric"), ("metric_quality", "metric"),
-        ("metric_column", "metric"), ("metric_join", "metric"),
-        ("metric_column", "data_source"), ("metric_join", "data_source"),
-    ]
+    lines.append("")
+    for parent, child, label in relationships:
+        lines.append(f'    {parent} ||--o{{ {child} : "{label}"')
 
-    for child, parent in relationships:
-        lines.append(f'  {child} -> {parent} [label="metric_id → metric_id"];')
-
-    lines.append("}")
+    lines.append("```")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -442,12 +450,12 @@ def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(
             "Usage: python metric_catalog_to_duckdb.py "
-            "metric_catalog_v1.json [output.duckdb] [output.dot]"
+            "metric_catalog_v1.json [output.duckdb] [output.md]"
         )
 
     input_path = Path(sys.argv[1])
-    db_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("metric_catalog.duckdb")
-    dot_path = Path(sys.argv[3]) if len(sys.argv) > 3 else db_path.with_suffix(".dot")
+    db_path  = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("metric_catalog.duckdb")
+    erd_path = Path(sys.argv[3]) if len(sys.argv) > 3 else db_path.with_suffix(".md")
 
     catalog = load_catalog(input_path)
 
@@ -455,11 +463,11 @@ def main() -> None:
     try:
         populate(con, catalog)
         create_views(con)
-        write_dot(con, dot_path)
+        write_mermaid(con, erd_path)
 
         count = con.execute("SELECT COUNT(*) FROM metric").fetchone()[0]
         print(f"Loaded {count} metrics into {db_path}")
-        print(f"ERD Graphviz source: {dot_path}")
+        print(f"ERD Mermaid source: {erd_path}")
         print("\nTop-level tables:")
         for row in con.execute("SHOW TABLES").fetchall():
             print(f"  - {row[0]}")

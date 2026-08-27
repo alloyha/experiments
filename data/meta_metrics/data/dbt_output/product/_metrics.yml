@@ -1,0 +1,612 @@
+version: 2
+metrics:
+- name: product_activation_rate
+  label: Taxa de Ativação
+  description: Percentual de novos usuários que atingem o evento de valor definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: activated_users / NULLIF(new_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_avg_session_duration
+  label: Duração Média da Sessão
+  description: Duração média das sessões de usuários.
+  type: simple
+  type_params:
+    measure:
+      name: avg_session_duration
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: segundos
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_dau
+  label: Usuários Ativos Diários (DAU)
+  description: Número de usuários únicos que executaram uma ação ativa no dia.
+  type: derived
+  type_params:
+    expr: '# TODO translate: COUNT(DISTINCT active_user_id)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: usuários
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_dau_mau_ratio
+  label: Razão DAU/MAU (Stickiness)
+  description: Razão entre usuários ativos diários e mensais.
+  type: derived
+  type_params:
+    expr: AVG(product_dau) / NULLIF(product_mau,0)
+    metrics:
+    - name: product_dau
+    - name: product_mau
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_feature_adoption_rate
+  label: Adoção de Feature
+  description: Percentual de usuários ativos que utilizaram uma feature.
+  type: derived
+  type_params:
+    expr: '# TODO translate: feature_users / NULLIF(active_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_feature_usage_frequency
+  label: Frequência de Uso de Feature
+  description: Número médio de usos da feature por usuário adotante.
+  type: derived
+  type_params:
+    expr: '# TODO translate: feature_events / NULLIF(feature_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: eventos/usuário
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_free_to_paid_rate
+  label: Conversão Free → Pago
+  description: Percentual de usuários gratuitos que se tornam pagantes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: new_payers / NULLIF(eligible_free_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_mau
+  label: Usuários Ativos Mensais (MAU)
+  description: Número de usuários únicos ativos no mês.
+  type: derived
+  type_params:
+    expr: '# TODO translate: COUNT(DISTINCT active_user_id)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: usuários
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_north_star_value
+  label: Valor da North Star Metric
+  description: Valor agregado do evento ou resultado escolhido como principal indicador de valor entregue.
+  type: simple
+  type_params:
+    measure:
+      name: north_star_value
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: unidades
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_onboarding_completion_rate
+  label: Conclusão de Onboarding
+  description: Percentual de novos usuários que concluem o onboarding.
+  type: derived
+  type_params:
+    expr: '# TODO translate: completed_onboarding / NULLIF(started_onboarding,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_product_revenue_per_user
+  label: Receita por Usuário
+  description: Receita atribuída por usuário ativo ou pagante.
+  type: derived
+  type_params:
+    expr: '# TODO translate: product_revenue / NULLIF(paying_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_retention_d1
+  label: Retenção D1
+  description: Percentual da cohort que retorna no dia seguinte ao evento de aquisição.
+  type: derived
+  type_params:
+    expr: '# TODO translate: retained_d1 / NULLIF(cohort_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_retention_d30
+  label: Retenção D30
+  description: Percentual da cohort que retorna trinta dias após aquisição.
+  type: derived
+  type_params:
+    expr: '# TODO translate: retained_d30 / NULLIF(cohort_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_retention_d7
+  label: Retenção D7
+  description: Percentual da cohort que retorna sete dias após aquisição.
+  type: derived
+  type_params:
+    expr: '# TODO translate: retained_d7 / NULLIF(cohort_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_session_frequency
+  label: Frequência de Sessões
+  description: Número médio de sessões por usuário ativo.
+  type: derived
+  type_params:
+    expr: '# TODO translate: sessions / NULLIF(active_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: sessões/usuário
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_signup_conversion_rate
+  label: Conversão de Cadastro
+  description: Percentual de visitantes elegíveis que concluem cadastro.
+  type: derived
+  type_params:
+    expr: '# TODO translate: signups / NULLIF(eligible_visitors,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_time_to_activation
+  label: Tempo até Ativação
+  description: Tempo mediano entre cadastro e primeiro evento de ativação.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(signup_at,activation_at))'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_trial_to_paid_rate
+  label: Conversão Trial → Pago
+  description: Percentual de trials que se tornam clientes pagantes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: paid_trials / NULLIF(completed_trials,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_user_growth_rate
+  label: Crescimento de Usuários
+  description: Variação percentual da base ativa em relação ao período comparável.
+  type: derived
+  type_params:
+    expr: '# TODO translate: (active_users - prior_active_users) / NULLIF(prior_active_users,0)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: product_wau
+  label: Usuários Ativos Semanais (WAU)
+  description: Número de usuários únicos ativos na semana.
+  type: derived
+  type_params:
+    expr: '# TODO translate: COUNT(DISTINCT active_user_id)'
+  tags:
+  - product
+  meta:
+    owners:
+    - type: business
+      team: Product
+      contact: product@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: usuários
+    data_quality: audited
+    refresh_frequency: daily

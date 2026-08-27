@@ -1,0 +1,97 @@
+version: 2
+sources:
+- name: metric_catalog
+  description: Auto-generated from metric_catalog.duckdb
+  schema: analytics
+  database: warehouse
+  tables:
+  - name: active_subscription
+    identifier: active_subscription
+    description: Source table for catalog metrics using active_subscription
+  - name: attributed_closed_won
+    identifier: attributed_closed_won
+    description: Source table for catalog metrics using attributed_closed_won
+  - name: cash_accounts
+    identifier: cash_accounts
+    description: Source table for catalog metrics using cash_accounts
+  - name: churned_subscription
+    identifier: churned_subscription
+    description: Source table for catalog metrics using churned_subscription
+  - name: closed_won
+    identifier: closed_won
+    description: Source table for catalog metrics using closed_won
+  - name: contraction
+    identifier: contraction
+    description: Source table for catalog metrics using contraction
+  - name: customer
+    identifier: customer
+    description: Source table for catalog metrics using customer
+  - name: dataset
+    identifier: dataset
+    description: Source table for catalog metrics using dataset
+  - name: deployment
+    identifier: deployment
+    description: Source table for catalog metrics using deployment
+  - name: employee
+    identifier: employee
+    description: Source table for catalog metrics using employee
+  - name: engagement_survey
+    identifier: engagement_survey
+    description: Source table for catalog metrics using engagement_survey
+  - name: expansion
+    identifier: expansion
+    description: Source table for catalog metrics using expansion
+  - name: incident
+    identifier: incident
+    description: Source table for catalog metrics using incident
+  - name: influenced_closed_won
+    identifier: influenced_closed_won
+    description: Source table for catalog metrics using influenced_closed_won
+  - name: inventory
+    identifier: inventory
+    description: Source table for catalog metrics using inventory
+  - name: invoice
+    identifier: invoice
+    description: Source table for catalog metrics using invoice
+  - name: lead
+    identifier: lead
+    description: Source table for catalog metrics using lead
+  - name: new_customer
+    identifier: new_customer
+    description: Source table for catalog metrics using new_customer
+  - name: north_star_event
+    identifier: north_star_event
+    description: Source table for catalog metrics using north_star_event
+  - name: open_opportunity
+    identifier: open_opportunity
+    description: Source table for catalog metrics using open_opportunity
+  - name: opportunity
+    identifier: opportunity
+    description: Source table for catalog metrics using opportunity
+  - name: order
+    identifier: order
+    description: Source table for catalog metrics using order
+  - name: reactivation
+    identifier: reactivation
+    description: Source table for catalog metrics using reactivation
+  - name: response
+    identifier: response
+    description: Source table for catalog metrics using response
+  - name: security_incident
+    identifier: security_incident
+    description: Source table for catalog metrics using security_incident
+  - name: session
+    identifier: session
+    description: Source table for catalog metrics using session
+  - name: survey
+    identifier: survey
+    description: Source table for catalog metrics using survey
+  - name: target
+    identifier: target
+    description: Source table for catalog metrics using target
+  - name: ticket
+    identifier: ticket
+    description: Source table for catalog metrics using ticket
+  - name: vulnerability
+    identifier: vulnerability
+    description: Source table for catalog metrics using vulnerability

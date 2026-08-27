@@ -1,0 +1,307 @@
+version: 2
+metrics:
+- name: data_completeness
+  label: Completude
+  description: Percentual de registros ou campos esperados que estão presentes.
+  type: derived
+  type_params:
+    expr: '# TODO translate: present_values / NULLIF(expected_values,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_data_contract_compliance
+  label: Conformidade de Data Contract
+  description: Percentual de datasets que atendem aos contratos de esquema, qualidade e SLA.
+  type: derived
+  type_params:
+    expr: '# TODO translate: compliant_checks / NULLIF(total_checks,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_data_incident_rate
+  label: Taxa de Incidentes de Dados
+  description: Incidentes de qualidade ou disponibilidade por período ou dataset.
+  type: derived
+  type_params:
+    expr: '# TODO translate: data_incidents / normalization_base'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: incidentes/unidade
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_duplicate_rate
+  label: Taxa de Duplicidade
+  description: Percentual de registros que violam a chave ou unicidade esperada.
+  type: derived
+  type_params:
+    expr: '# TODO translate: duplicate_rows / NULLIF(total_rows,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_freshness
+  label: Freshness de Dados
+  description: Atraso entre a última atualização observada e o momento esperado de disponibilidade.
+  type: derived
+  type_params:
+    expr: '# TODO translate: NOW() - MAX(dataset.updated_at)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: tempo
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_null_rate
+  label: Taxa de Nulos
+  description: Percentual de valores nulos em um atributo monitorado.
+  type: derived
+  type_params:
+    expr: '# TODO translate: null_values / NULLIF(total_values,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_pipeline_duration
+  label: Duração de Pipeline
+  description: Tempo de execução de um pipeline entre início e conclusão.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(minutes_between(start_at,end_at))'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: minutos
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_pipeline_failure_rate
+  label: Taxa de Falha de Pipeline
+  description: Percentual de execuções de pipeline que falham.
+  type: derived
+  type_params:
+    expr: '# TODO translate: failed_runs / NULLIF(total_runs,0)'
+    metrics:
+    - name: data_pipeline_success_rate
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_pipeline_success_rate
+  label: Taxa de Sucesso de Pipeline
+  description: Percentual de execuções de pipeline concluídas com sucesso.
+  type: derived
+  type_params:
+    expr: '# TODO translate: successful_runs / NULLIF(total_runs,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: data_validity_rate
+  label: Taxa de Validade
+  description: Percentual de valores que satisfazem regras de domínio e formato.
+  type: derived
+  type_params:
+    expr: '# TODO translate: valid_values / NULLIF(total_values,0)'
+  tags:
+  - data
+  meta:
+    owners:
+    - type: business
+      team: Data
+      contact: data@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily

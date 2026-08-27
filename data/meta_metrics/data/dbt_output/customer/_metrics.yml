@@ -1,0 +1,485 @@
+version: 2
+metrics:
+- name: customer_churn_rate
+  label: Taxa de Churn de Clientes
+  description: Percentual de clientes elegíveis no início do período que cancelam.
+  type: derived
+  type_params:
+    expr: '# TODO translate: churned_customers / NULLIF(starting_eligible_customers,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_churned_mrr
+  label: MRR Perdido por Churn
+  description: MRR perdido por cancelamento de clientes.
+  type: simple
+  type_params:
+    measure:
+      name: churned_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_contraction_mrr
+  label: MRR de Contração
+  description: MRR perdido por redução de contrato de clientes existentes.
+  type: simple
+  type_params:
+    measure:
+      name: contraction_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_csat
+  label: Customer Satisfaction Score (CSAT)
+  description: Percentual ou média de respostas positivas à pesquisa de satisfação.
+  type: derived
+  type_params:
+    expr: '# TODO translate: positive_responses / NULLIF(valid_responses,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_customer_concentration
+  label: Concentração de Receita em Clientes
+  description: Participação da receita gerada pelos maiores clientes no total.
+  type: derived
+  type_params:
+    expr: '# TODO translate: SUM(top_n_customer_revenue) / NULLIF(total_revenue,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_customer_effort_score
+  label: Customer Effort Score (CES)
+  description: Avaliação do esforço percebido pelo cliente para realizar uma tarefa.
+  type: simple
+  type_params:
+    measure:
+      name: customer_effort_score
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: score
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_customer_expansion_rate
+  label: Taxa de Expansão de Clientes
+  description: Percentual de clientes existentes que expandiram seu relacionamento.
+  type: derived
+  type_params:
+    expr: '# TODO translate: expanded_customers / NULLIF(starting_customers,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_customer_health_score
+  label: Customer Health Score
+  description: Pontuação composta de saúde do cliente baseada nos sinais definidos pela organização.
+  type: derived
+  type_params:
+    expr: '# TODO translate: WEIGHTED_SUM(health_signals)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: score
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_expansion_mrr
+  label: MRR de Expansão
+  description: MRR incremental obtido de clientes existentes por expansão.
+  type: simple
+  type_params:
+    measure:
+      name: expansion_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_gross_revenue_retention
+  label: Gross Revenue Retention (GRR)
+  description: Receita inicial retida após churn e contração, excluindo expansão.
+  type: derived
+  type_params:
+    expr: (starting_MRR - customer_churned_mrr - customer_contraction_mrr) / NULLIF(starting_MRR,0)
+    metrics:
+    - name: customer_churned_mrr
+    - name: customer_contraction_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_logo_retention_rate
+  label: Retenção de Clientes
+  description: Percentual de clientes iniciais que permanecem ativos ao fim do período.
+  type: derived
+  type_params:
+    expr: '# TODO translate: ending_starting_cohort_customers / NULLIF(starting_customers,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_nps
+  label: Net Promoter Score (NPS)
+  description: Percentual de promotores menos percentual de detratores.
+  type: derived
+  type_params:
+    expr: '# TODO translate: pct_promoters - pct_detractors'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: score
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_reactivation_mrr
+  label: MRR de Reativação
+  description: MRR recuperado de clientes anteriormente cancelados.
+  type: simple
+  type_params:
+    measure:
+      name: reactivation_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: null_rate
+      threshold: '0.01'
+      severity: warning
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: BRL
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_renewal_rate
+  label: Taxa de Renovação
+  description: Percentual de contratos elegíveis que são renovados.
+  type: derived
+  type_params:
+    expr: '# TODO translate: renewed_contracts / NULLIF(eligible_contracts,0)'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_revenue_churn_rate
+  label: Taxa de Churn de Receita
+  description: Percentual da receita recorrente inicial perdida por churn e contração.
+  type: derived
+  type_params:
+    expr: (customer_churned_mrr + customer_contraction_mrr) / NULLIF(starting_MRR,0)
+    metrics:
+    - name: customer_churned_mrr
+    - name: customer_contraction_mrr
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: completeness
+      rule: denominator_not_zero_rate
+      threshold: '0.99'
+      severity: warning
+    - dimension: accuracy
+      rule: value_in_range_0_to_2
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: '%'
+    data_quality: audited
+    refresh_frequency: daily
+- name: customer_time_to_value
+  label: Tempo até Valor
+  description: Tempo entre início do relacionamento e primeira realização do valor definido.
+  type: derived
+  type_params:
+    expr: '# TODO translate: MEDIAN(days_between(start_at,value_at))'
+  tags:
+  - customer
+  meta:
+    owners:
+    - type: business
+      team: Customer
+      contact: customer@empresa.com
+    quality:
+    - dimension: freshness
+      rule: max_age_hours
+      threshold: '26'
+      severity: error
+    - dimension: consistency
+      rule: cross_system_reconciliation
+      threshold: '0.001'
+      severity: error
+    unit: dias
+    data_quality: audited
+    refresh_frequency: daily

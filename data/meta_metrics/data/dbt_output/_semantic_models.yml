@@ -1,0 +1,731 @@
+version: 2
+semantic_models:
+- name: churned_subscription
+  description: 'Physical source: churned_subscription'
+  model: ref('churned_subscription')
+  entities:
+  - name: customer
+    type: primary
+    expr: customer_id
+  dimensions:
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: cohort
+  measures:
+  - name: churned_mrr
+    agg: sum
+    expr: mrr
+    description: MRR perdido por cancelamento de clientes.
+- name: contraction
+  description: 'Physical source: contraction'
+  model: ref('contraction')
+  entities:
+  - name: customer
+    type: primary
+    expr: customer_id
+  dimensions:
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: cohort
+  measures:
+  - name: contraction_mrr
+    agg: sum
+    expr: mrr_delta
+    description: MRR perdido por redução de contrato de clientes existentes.
+- name: response
+  description: 'Physical source: response'
+  model: ref('response')
+  entities:
+  - name: survey_response
+    type: primary
+    expr: response_id
+  dimensions:
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: cohort
+  measures:
+  - name: customer_effort_score
+    agg: average
+    expr: score
+    description: Avaliação do esforço percebido pelo cliente para realizar uma tarefa.
+- name: expansion
+  description: 'Physical source: expansion'
+  model: ref('expansion')
+  entities:
+  - name: customer
+    type: primary
+    expr: customer_id
+  dimensions:
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: cohort
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: expansion_mrr
+    agg: sum
+    expr: mrr_delta
+    description: MRR incremental obtido de clientes existentes por expansão.
+  - name: expansion_revenue
+    agg: sum
+    expr: contract_value
+    description: Receita incremental de clientes existentes por upsell, cross-sell ou expansão.
+- name: reactivation
+  description: 'Physical source: reactivation'
+  model: ref('reactivation')
+  entities:
+  - name: customer
+    type: primary
+    expr: customer_id
+  dimensions:
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: cohort
+  measures:
+  - name: reactivation_mrr
+    agg: sum
+    expr: mrr
+    description: MRR recuperado de clientes anteriormente cancelados.
+- name: dataset
+  description: 'Physical source: dataset'
+  model: ref('dataset')
+  entities:
+  - name: dataset
+    type: primary
+    expr: dataset_id
+  dimensions:
+  - name: pipeline
+    type: categorical
+    expr: id
+  - name: dom_nio
+    type: categorical
+    expr: domain
+  - name: criticidade
+    type: categorical
+    expr: criticality
+- name: order
+  description: 'Physical source: order'
+  model: ref('order')
+  entities:
+  - name: order
+    type: primary
+    expr: order_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: categoria
+    type: categorical
+    expr: category
+  - name: produto
+    type: categorical
+    expr: id
+  measures:
+  - name: gross_merchandise_value
+    agg: sum
+    expr: gross_value
+    description: Valor bruto de mercadorias transacionadas antes de ajustes definidos.
+  - name: net_merchandise_value
+    agg: sum
+    expr: net_value
+    description: Valor líquido de mercadorias após descontos, devoluções e ajustes aplicáveis.
+  - name: orders
+    agg: count
+    expr: id
+    description: Número de pedidos realizados no período.
+  - name: purchasers
+    agg: count_distinct
+    expr: customer_id
+    description: Número de clientes únicos que realizaram ao menos uma compra.
+- name: deployment
+  description: 'Physical source: deployment'
+  model: ref('deployment')
+  entities:
+  - name: deployment
+    type: primary
+    expr: deployment_id
+  dimensions:
+  - name: time
+    type: categorical
+    expr: team
+  - name: servi_o
+    type: categorical
+    expr: service
+  - name: reposit_rio
+    type: categorical
+    expr: repository
+  measures:
+  - name: change_volume
+    agg: count
+    expr: id
+    description: Número de mudanças de software implantadas no período.
+- name: incident
+  description: 'Physical source: incident'
+  model: ref('incident')
+  entities:
+  - name: incident
+    type: primary
+    expr: incident_id
+  dimensions:
+  - name: time
+    type: categorical
+    expr: team
+  - name: servi_o
+    type: categorical
+    expr: service
+  - name: reposit_rio
+    type: categorical
+    expr: repository
+  measures:
+  - name: incident_count
+    agg: count
+    expr: id
+    description: Quantidade de incidentes de produção no período.
+- name: cash_accounts
+  description: 'Physical source: cash_accounts'
+  model: ref('cash_accounts')
+  entities:
+  - name: account
+    type: primary
+    expr: account_id
+  dimensions:
+  - name: segmento_cliente
+    type: categorical
+    expr: segment
+  - name: produto
+    type: categorical
+    expr: id
+  - name: plano
+    type: categorical
+    expr: plan_id
+  measures:
+  - name: cash_balance
+    agg: sum
+    expr: balance
+    description: Saldo de caixa e equivalentes na data de referência.
+- name: invoice
+  description: 'Physical source: invoice'
+  model: ref('invoice')
+  entities:
+  - name: invoice
+    type: primary
+    expr: invoice_id
+  dimensions:
+  - name: segmento_cliente
+    type: categorical
+    expr: segment
+  - name: produto
+    type: categorical
+    expr: id
+  - name: plano
+    type: categorical
+    expr: plan_id
+  measures:
+  - name: gross_revenue
+    agg: sum
+    expr: gross_amount
+    description: Receita antes de descontos, devoluções e impostos dedutíveis.
+  - name: net_revenue
+    agg: sum
+    expr: net_amount
+    description: Receita após descontos, devoluções e abatimentos aplicáveis.
+  - name: revenue
+    agg: sum
+    expr: net_amount
+    description: Soma da receita faturada no período.
+- name: active_subscription
+  description: 'Physical source: active_subscription'
+  model: ref('active_subscription')
+  entities:
+  - name: subscription
+    type: primary
+    expr: subscription_id
+  dimensions:
+  - name: segmento_cliente
+    type: categorical
+    expr: segment
+  - name: produto
+    type: categorical
+    expr: id
+  - name: plano
+    type: categorical
+    expr: plan_id
+  measures:
+  - name: mrr
+    agg: sum
+    expr: monthly_equivalent
+    description: Receita recorrente ativa normalizada para base mensal.
+- name: engagement_survey
+  description: 'Physical source: engagement_survey'
+  model: ref('engagement_survey')
+  entities:
+  - name: survey_response
+    type: primary
+    expr: response_id
+  dimensions:
+  - name: departamento
+    type: categorical
+    expr: department
+  - name: cargo
+    type: categorical
+    expr: role
+  - name: localidade
+    type: categorical
+    expr: location
+  measures:
+  - name: employee_engagement_score
+    agg: average
+    expr: score
+    description: Pontuação agregada de engajamento obtida por pesquisa definida pela organização.
+- name: employee
+  description: 'Physical source: employee'
+  model: ref('employee')
+  entities:
+  - name: employee
+    type: primary
+    expr: employee_id
+  dimensions:
+  - name: departamento
+    type: categorical
+    expr: department
+  - name: cargo
+    type: categorical
+    expr: role
+  - name: localidade
+    type: categorical
+    expr: location
+  measures:
+  - name: headcount
+    agg: count
+    expr: id
+    description: Número de colaboradores ativos na data de referência.
+- name: lead
+  description: 'Physical source: lead'
+  model: ref('lead')
+  entities:
+  - name: lead
+    type: primary
+    expr: lead_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: campanha
+    type: categorical
+    expr: id
+  - name: segmento
+    type: categorical
+    expr: segment
+  measures:
+  - name: leads_generated
+    agg: count
+    expr: id
+    description: Número de leads capturados no período.
+  - name: mql_volume
+    agg: count
+    expr: id
+    description: Número de leads qualificados por marketing.
+  - name: sql_volume
+    agg: count
+    expr: id
+    description: Número de leads aceitos e qualificados por vendas.
+- name: influenced_closed_won
+  description: 'Physical source: influenced_closed_won'
+  model: ref('influenced_closed_won')
+  entities:
+  - name: opportunity
+    type: primary
+    expr: opportunity_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: campanha
+    type: categorical
+    expr: id
+  - name: segmento
+    type: categorical
+    expr: segment
+  measures:
+  - name: marketing_influenced_revenue
+    agg: sum
+    expr: amount
+    description: Receita de negócios que tiveram interação atribuível com marketing.
+- name: attributed_closed_won
+  description: 'Physical source: attributed_closed_won'
+  model: ref('attributed_closed_won')
+  entities:
+  - name: opportunity
+    type: primary
+    expr: opportunity_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: campanha
+    type: categorical
+    expr: id
+  - name: segmento
+    type: categorical
+    expr: segment
+  measures:
+  - name: marketing_sourced_revenue
+    agg: sum
+    expr: amount
+    description: Receita de negócios atribuídos à origem de marketing.
+- name: session
+  description: 'Physical source: session'
+  model: ref('session')
+  entities:
+  - name: session
+    type: primary
+    expr: session_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: campanha
+    type: categorical
+    expr: id
+  - name: segmento
+    type: categorical
+    expr: segment
+  - name: plataforma
+    type: categorical
+    expr: platform
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: signup_cohort
+  measures:
+  - name: website_sessions
+    agg: count
+    expr: id
+    description: Número de sessões do website no período.
+  - name: avg_session_duration
+    agg: average
+    expr: duration_seconds
+    description: Duração média das sessões de usuários.
+- name: north_star_event
+  description: 'Physical source: north_star_event'
+  model: ref('north_star_event')
+  entities:
+  - name: period
+    type: primary
+    expr: period_date
+  dimensions:
+  - name: plataforma
+    type: categorical
+    expr: platform
+  - name: plano
+    type: categorical
+    expr: plan_id
+  - name: cohort
+    type: categorical
+    expr: signup_cohort
+  measures:
+  - name: north_star_value
+    agg: sum
+    expr: value
+    description: Valor agregado do evento ou resultado escolhido como principal indicador de valor entregue.
+- name: closed_won
+  description: 'Physical source: closed_won'
+  model: ref('closed_won')
+  entities:
+  - name: opportunity
+    type: primary
+    expr: opportunity_id
+  dimensions:
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: average_deal_size
+    agg: average
+    expr: amount
+    description: Valor médio das oportunidades ganhas.
+  - name: bookings
+    agg: sum
+    expr: contract_value
+    description: Valor contratado em novos negócios no período.
+- name: new_customer
+  description: 'Physical source: new_customer'
+  model: ref('new_customer')
+  entities:
+  - name: contract
+    type: primary
+    expr: contract_id
+  dimensions:
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: new_logo_revenue
+    agg: sum
+    expr: contract_value
+    description: Receita contratada proveniente de novos clientes.
+- name: opportunity
+  description: 'Physical source: opportunity'
+  model: ref('opportunity')
+  entities:
+  - name: opportunity
+    type: primary
+    expr: opportunity_id
+  dimensions:
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: opportunities_created
+    agg: count
+    expr: id
+    description: Número de novas oportunidades criadas no período.
+  - name: weighted_pipeline
+    agg: sum
+    expr: amount
+    description: Pipeline ponderado pelas probabilidades de fechamento.
+- name: open_opportunity
+  description: 'Physical source: open_opportunity'
+  model: ref('open_opportunity')
+  entities:
+  - name: opportunity
+    type: primary
+    expr: opportunity_id
+  dimensions:
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: pipeline_value
+    agg: sum
+    expr: amount
+    description: Valor total das oportunidades abertas elegíveis.
+- name: target
+  description: 'Physical source: target'
+  model: ref('target')
+  entities:
+  - name: target
+    type: primary
+    expr: target_id
+  dimensions:
+  - name: vendedor
+    type: categorical
+    expr: owner_id
+  - name: produto
+    type: categorical
+    expr: product_id
+  - name: canal
+    type: categorical
+    expr: source
+  measures:
+  - name: sales_target
+    agg: sum
+    expr: amount
+    description: Valor-alvo de vendas para o período e escopo definidos.
+- name: vulnerability
+  description: 'Physical source: vulnerability'
+  model: ref('vulnerability')
+  entities:
+  - name: vulnerability
+    type: primary
+    expr: vulnerability_id
+  dimensions:
+  - name: servi_o
+    type: categorical
+    expr: service
+  - name: severidade
+    type: categorical
+    expr: severity
+  - name: origem
+    type: categorical
+    expr: source
+  measures:
+  - name: critical_vulnerability_count
+    agg: count
+    expr: id
+    description: Número de vulnerabilidades críticas abertas na referência.
+- name: security_incident
+  description: 'Physical source: security_incident'
+  model: ref('security_incident')
+  entities:
+  - name: incident
+    type: primary
+    expr: incident_id
+  dimensions:
+  - name: servi_o
+    type: categorical
+    expr: service
+  - name: severidade
+    type: categorical
+    expr: severity
+  - name: origem
+    type: categorical
+    expr: source
+  measures:
+  - name: security_incident_count
+    agg: count
+    expr: id
+    description: Número de incidentes de segurança registrados.
+- name: customer
+  description: 'Physical source: customer'
+  model: ref('customer')
+  entities:
+  - name: customer
+    type: primary
+    expr: customer_id
+  dimensions:
+  - name: unidade_neg_cio
+    type: categorical
+    expr: id
+  - name: regi_o
+    type: categorical
+    expr: region
+  - name: segmento
+    type: categorical
+    expr: segment
+  measures:
+  - name: customer_count
+    agg: count_distinct
+    expr: id
+    description: Número de clientes ativos na referência.
+  - name: new_customer_count
+    agg: count_distinct
+    expr: id
+    description: Número de clientes adquiridos no período.
+- name: inventory
+  description: 'Physical source: inventory'
+  model: ref('inventory')
+  entities:
+  - name: sku
+    type: primary
+    expr: sku_id
+  dimensions:
+  - name: produto
+    type: categorical
+    expr: id
+  - name: fornecedor
+    type: categorical
+    expr: id
+  - name: localidade
+    type: categorical
+    expr: location
+  measures:
+  - name: inventory_units
+    agg: sum
+    expr: quantity
+    description: Quantidade física disponível ou registrada em estoque.
+  - name: inventory_value
+    agg: sum
+    expr: stock_value
+    description: Valor contábil ou gerencial do estoque na referência.
+- name: ticket
+  description: 'Physical source: ticket'
+  model: ref('ticket')
+  entities:
+  - name: ticket
+    type: primary
+    expr: ticket_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: categoria
+    type: categorical
+    expr: category
+  - name: prioridade
+    type: categorical
+    expr: priority
+  measures:
+  - name: backlog
+    agg: count
+    expr: id
+    description: Número de tickets abertos e não resolvidos na referência.
+  - name: ticket_volume
+    agg: count
+    expr: id
+    description: Número de tickets criados no período.
+- name: survey
+  description: 'Physical source: survey'
+  model: ref('survey')
+  entities:
+  - name: survey_response
+    type: primary
+    expr: response_id
+  dimensions:
+  - name: canal
+    type: categorical
+    expr: channel
+  - name: categoria
+    type: categorical
+    expr: category
+  - name: prioridade
+    type: categorical
+    expr: priority
+  measures:
+  - name: csat
+    agg: average
+    expr: score
+    description: Satisfação média ou percentual positivo após atendimento.

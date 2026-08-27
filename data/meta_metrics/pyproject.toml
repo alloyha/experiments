@@ -1,0 +1,14 @@
+[project]
+name = "meta-metrics"
+version = "0.1.0"
+description = "Metrics by departament for semantic layer"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=1.5.5",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+load-catalog = "metric_catalog_to_duckdb:main"
+generate-dbt = "metric_catalog_to_dbt:main"
