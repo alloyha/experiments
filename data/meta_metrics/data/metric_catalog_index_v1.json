@@ -1,0 +1,1874 @@
+[
+  {
+    "id": "customer.churn_rate",
+    "name": "Taxa de Churn de Clientes",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.churned_mrr",
+    "name": "MRR Perdido por Churn",
+    "department": "Customer",
+    "aggregation": "sum",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "customer.contraction_mrr",
+    "name": "MRR de Contração",
+    "department": "Customer",
+    "aggregation": "sum",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "customer.csat",
+    "name": "Customer Satisfaction Score (CSAT)",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "resposta",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.customer_concentration",
+    "name": "Concentração de Receita em Clientes",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.customer_effort_score",
+    "name": "Customer Effort Score (CES)",
+    "department": "Customer",
+    "aggregation": "avg",
+    "grain": "resposta",
+    "unit": "score",
+    "status": "active"
+  },
+  {
+    "id": "customer.customer_expansion_rate",
+    "name": "Taxa de Expansão de Clientes",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.customer_health_score",
+    "name": "Customer Health Score",
+    "department": "Customer",
+    "aggregation": "custom",
+    "grain": "cliente",
+    "unit": "score",
+    "status": "active"
+  },
+  {
+    "id": "customer.expansion_mrr",
+    "name": "MRR de Expansão",
+    "department": "Customer",
+    "aggregation": "sum",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "customer.gross_revenue_retention",
+    "name": "Gross Revenue Retention (GRR)",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.logo_retention_rate",
+    "name": "Retenção de Clientes",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.nps",
+    "name": "Net Promoter Score (NPS)",
+    "department": "Customer",
+    "aggregation": "custom",
+    "grain": "resposta",
+    "unit": "score",
+    "status": "active"
+  },
+  {
+    "id": "customer.reactivation_mrr",
+    "name": "MRR de Reativação",
+    "department": "Customer",
+    "aggregation": "sum",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "customer.renewal_rate",
+    "name": "Taxa de Renovação",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "contrato",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.revenue_churn_rate",
+    "name": "Taxa de Churn de Receita",
+    "department": "Customer",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "customer.time_to_value",
+    "name": "Tempo até Valor",
+    "department": "Customer",
+    "aggregation": "custom",
+    "grain": "cliente",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "data.completeness",
+    "name": "Completude",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "dataset",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.data_contract_compliance",
+    "name": "Conformidade de Data Contract",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "dataset",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.data_incident_rate",
+    "name": "Taxa de Incidentes de Dados",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "incidentes/unidade",
+    "status": "active"
+  },
+  {
+    "id": "data.duplicate_rate",
+    "name": "Taxa de Duplicidade",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "registro",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.freshness",
+    "name": "Freshness de Dados",
+    "department": "Data",
+    "aggregation": "custom",
+    "grain": "dataset",
+    "unit": "tempo",
+    "status": "active"
+  },
+  {
+    "id": "data.null_rate",
+    "name": "Taxa de Nulos",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "coluna",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.pipeline_duration",
+    "name": "Duração de Pipeline",
+    "department": "Data",
+    "aggregation": "custom",
+    "grain": "execução",
+    "unit": "minutos",
+    "status": "active"
+  },
+  {
+    "id": "data.pipeline_failure_rate",
+    "name": "Taxa de Falha de Pipeline",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "execução",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.pipeline_success_rate",
+    "name": "Taxa de Sucesso de Pipeline",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "execução",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "data.validity_rate",
+    "name": "Taxa de Validade",
+    "department": "Data",
+    "aggregation": "ratio",
+    "grain": "coluna",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.average_order_value",
+    "name": "Ticket Médio (AOV)",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "pedido",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.cart_abandonment_rate",
+    "name": "Abandono de Carrinho",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "carrinho",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.cart_add_rate",
+    "name": "Taxa de Adição ao Carrinho",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "sessão",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.checkout_completion_rate",
+    "name": "Conclusão de Checkout",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "checkout",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.conversion_rate",
+    "name": "Taxa de Conversão de Compra",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "sessão",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.customer_lifetime_orders",
+    "name": "Pedidos por Cliente ao Longo da Vida",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "pedidos/cliente",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.discount_rate",
+    "name": "Taxa de Desconto",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "pedido",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.gross_merchandise_value",
+    "name": "GMV",
+    "department": "Ecommerce",
+    "aggregation": "sum",
+    "grain": "pedido",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.items_per_order",
+    "name": "Itens por Pedido",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "pedido",
+    "unit": "itens",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.net_merchandise_value",
+    "name": "NMV",
+    "department": "Ecommerce",
+    "aggregation": "sum",
+    "grain": "pedido",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.orders",
+    "name": "Pedidos",
+    "department": "Ecommerce",
+    "aggregation": "count",
+    "grain": "pedido",
+    "unit": "pedidos",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.purchasers",
+    "name": "Compradores",
+    "department": "Ecommerce",
+    "aggregation": "count_distinct",
+    "grain": "cliente",
+    "unit": "clientes",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.refund_rate",
+    "name": "Taxa de Reembolso",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "pedido",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.repeat_purchase_rate",
+    "name": "Taxa de Recompra",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "ecommerce.return_rate",
+    "name": "Taxa de Devolução",
+    "department": "Ecommerce",
+    "aggregation": "ratio",
+    "grain": "item",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "engineering.change_fail_rate",
+    "name": "Taxa de Falha de Mudança",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "deploy",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "engineering.change_lead_time",
+    "name": "Lead Time de Mudança",
+    "department": "Engineering",
+    "aggregation": "custom",
+    "grain": "deploy",
+    "unit": "horas",
+    "status": "active"
+  },
+  {
+    "id": "engineering.change_volume",
+    "name": "Volume de Mudanças",
+    "department": "Engineering",
+    "aggregation": "count",
+    "grain": "deploy",
+    "unit": "deployments",
+    "status": "active"
+  },
+  {
+    "id": "engineering.deployment_frequency",
+    "name": "Frequência de Deploy",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "deploys/período",
+    "status": "active"
+  },
+  {
+    "id": "engineering.deployment_rework_rate",
+    "name": "Taxa de Retrabalho de Deploy",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "deploy",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "engineering.error_rate",
+    "name": "Taxa de Erro",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "requisição",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "engineering.failed_deployment_recovery_time",
+    "name": "Tempo de Recuperação de Deploy Falho",
+    "department": "Engineering",
+    "aggregation": "custom",
+    "grain": "deploy",
+    "unit": "minutos",
+    "status": "active"
+  },
+  {
+    "id": "engineering.incident_count",
+    "name": "Número de Incidentes",
+    "department": "Engineering",
+    "aggregation": "count",
+    "grain": "incidente",
+    "unit": "incidentes",
+    "status": "active"
+  },
+  {
+    "id": "engineering.incident_rate",
+    "name": "Taxa de Incidentes",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "incidentes/unidade",
+    "status": "active"
+  },
+  {
+    "id": "engineering.mean_time_to_recover",
+    "name": "MTTR Operacional",
+    "department": "Engineering",
+    "aggregation": "avg",
+    "grain": "incidente",
+    "unit": "horas",
+    "status": "active"
+  },
+  {
+    "id": "engineering.release_success_rate",
+    "name": "Taxa de Sucesso de Release",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "release",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "engineering.service_availability",
+    "name": "Disponibilidade do Serviço",
+    "department": "Engineering",
+    "aggregation": "ratio",
+    "grain": "serviço",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.arpa",
+    "name": "Receita Média por Conta (ARPA)",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.arpu",
+    "name": "Receita Média por Usuário (ARPU)",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.arr",
+    "name": "Receita Recorrente Anualizada (ARR)",
+    "department": "Finance",
+    "aggregation": "custom",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.burn_rate",
+    "name": "Burn Rate",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "BRL/mês",
+    "status": "active"
+  },
+  {
+    "id": "finance.cac",
+    "name": "Custo de Aquisição de Cliente (CAC)",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.cac_payback_months",
+    "name": "Payback do CAC",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "meses",
+    "status": "active"
+  },
+  {
+    "id": "finance.cash_balance",
+    "name": "Saldo de Caixa",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "conta",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.ebitda",
+    "name": "EBITDA",
+    "department": "Finance",
+    "aggregation": "custom",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.ebitda_margin",
+    "name": "Margem EBITDA",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.free_cash_flow",
+    "name": "Fluxo de Caixa Livre",
+    "department": "Finance",
+    "aggregation": "custom",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.gross_margin",
+    "name": "Margem Bruta",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.gross_profit",
+    "name": "Lucro Bruto",
+    "department": "Finance",
+    "aggregation": "custom",
+    "grain": "mês",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.gross_revenue",
+    "name": "Receita Bruta",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "fatura",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.ltv",
+    "name": "Lifetime Value (LTV)",
+    "department": "Finance",
+    "aggregation": "custom",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.ltv_cac_ratio",
+    "name": "Razão LTV:CAC",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "x",
+    "status": "active"
+  },
+  {
+    "id": "finance.mrr",
+    "name": "Receita Recorrente Mensal (MRR)",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "assinatura",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.mrr_growth_rate",
+    "name": "Crescimento de MRR",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.net_margin",
+    "name": "Margem Líquida",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.net_revenue",
+    "name": "Receita Líquida",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "fatura",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.net_revenue_retention",
+    "name": "Net Revenue Retention (NRR)",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.operating_cash_flow",
+    "name": "Fluxo de Caixa Operacional",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "movimento",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.operating_margin",
+    "name": "Margem Operacional",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.revenue",
+    "name": "Receita Total",
+    "department": "Finance",
+    "aggregation": "sum",
+    "grain": "fatura",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "finance.revenue_growth_rate",
+    "name": "Crescimento de Receita",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "finance.runway",
+    "name": "Runway",
+    "department": "Finance",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "meses",
+    "status": "active"
+  },
+  {
+    "id": "hr.absenteeism_rate",
+    "name": "Taxa de Absenteísmo",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "colaborador",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "hr.cost_per_hire",
+    "name": "Custo por Contratação",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "contratação",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "hr.employee_engagement_score",
+    "name": "Índice de Engajamento",
+    "department": "Hr",
+    "aggregation": "avg",
+    "grain": "resposta",
+    "unit": "score",
+    "status": "active"
+  },
+  {
+    "id": "hr.headcount",
+    "name": "Headcount",
+    "department": "Hr",
+    "aggregation": "count",
+    "grain": "colaborador",
+    "unit": "pessoas",
+    "status": "active"
+  },
+  {
+    "id": "hr.headcount_growth_rate",
+    "name": "Crescimento de Headcount",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "hr.involuntary_turnover_rate",
+    "name": "Turnover Involuntário",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "hr.offer_acceptance_rate",
+    "name": "Taxa de Aceite de Oferta",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "oferta",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "hr.retention_rate",
+    "name": "Taxa de Retenção de Pessoas",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "hr.revenue_per_employee",
+    "name": "Receita por Colaborador",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "BRL/pessoa",
+    "status": "active"
+  },
+  {
+    "id": "hr.time_to_fill",
+    "name": "Tempo para Preenchimento",
+    "department": "Hr",
+    "aggregation": "custom",
+    "grain": "vaga",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "hr.time_to_hire",
+    "name": "Tempo para Contratação",
+    "department": "Hr",
+    "aggregation": "custom",
+    "grain": "contratação",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "hr.voluntary_turnover_rate",
+    "name": "Turnover Voluntário",
+    "department": "Hr",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.brand_search_share",
+    "name": "Participação de Busca de Marca",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.campaign_roi",
+    "name": "ROI de Campanha",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "campanha",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.cost_per_lead",
+    "name": "Custo por Lead",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "lead",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "marketing.cost_per_mql",
+    "name": "Custo por MQL",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "MQL",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "marketing.cost_per_sql",
+    "name": "Custo por SQL",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "SQL",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "marketing.customer_acquisition_growth",
+    "name": "Crescimento de Aquisição",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.email_click_rate",
+    "name": "Taxa de Clique de Email",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "email",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.email_open_rate",
+    "name": "Taxa de Abertura de Email",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "email",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.leads_generated",
+    "name": "Leads Gerados",
+    "department": "Marketing",
+    "aggregation": "count",
+    "grain": "lead",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "marketing.marketing_influenced_revenue",
+    "name": "Receita Influenciada por Marketing",
+    "department": "Marketing",
+    "aggregation": "sum",
+    "grain": "oportunidade",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "marketing.marketing_sourced_revenue",
+    "name": "Receita Sourced por Marketing",
+    "department": "Marketing",
+    "aggregation": "sum",
+    "grain": "oportunidade",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "marketing.mql_to_sql_rate",
+    "name": "Taxa MQL → SQL",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "lead",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.mql_volume",
+    "name": "Volume de MQLs",
+    "department": "Marketing",
+    "aggregation": "count",
+    "grain": "lead",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "marketing.paid_media_roas",
+    "name": "ROAS de Mídia Paga",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "campanha",
+    "unit": "x",
+    "status": "active"
+  },
+  {
+    "id": "marketing.sql_volume",
+    "name": "Volume de SQLs",
+    "department": "Marketing",
+    "aggregation": "count",
+    "grain": "lead",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "marketing.unsubscribe_rate",
+    "name": "Taxa de Descadastro",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "email",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.website_conversion_rate",
+    "name": "Conversão do Website",
+    "department": "Marketing",
+    "aggregation": "ratio",
+    "grain": "sessão",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "marketing.website_sessions",
+    "name": "Sessões do Website",
+    "department": "Marketing",
+    "aggregation": "count",
+    "grain": "sessão",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "operations.capacity_utilization",
+    "name": "Utilização de Capacidade",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.cost_per_unit",
+    "name": "Custo por Unidade",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "BRL/unidade",
+    "status": "active"
+  },
+  {
+    "id": "operations.cycle_time",
+    "name": "Tempo de Ciclo Operacional",
+    "department": "Operations",
+    "aggregation": "custom",
+    "grain": "operação",
+    "unit": "horas",
+    "status": "active"
+  },
+  {
+    "id": "operations.defect_rate",
+    "name": "Taxa de Defeito",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.downtime_rate",
+    "name": "Taxa de Indisponibilidade",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "recurso",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.first_pass_yield",
+    "name": "First Pass Yield",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.forecast_accuracy",
+    "name": "Acurácia de Previsão Operacional",
+    "department": "Operations",
+    "aggregation": "custom",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.on_time_rate",
+    "name": "Taxa de Entrega no Prazo",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "operação",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.productivity",
+    "name": "Produtividade",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "unidades/recurso",
+    "status": "active"
+  },
+  {
+    "id": "operations.rework_rate",
+    "name": "Taxa de Retrabalho",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.sla_attainment",
+    "name": "Atingimento de SLA Operacional",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "operação",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "operations.throughput",
+    "name": "Throughput Operacional",
+    "department": "Operations",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "unidades/tempo",
+    "status": "active"
+  },
+  {
+    "id": "product.activation_rate",
+    "name": "Taxa de Ativação",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.avg_session_duration",
+    "name": "Duração Média da Sessão",
+    "department": "Product",
+    "aggregation": "avg",
+    "grain": "sessão",
+    "unit": "segundos",
+    "status": "active"
+  },
+  {
+    "id": "product.dau",
+    "name": "Usuários Ativos Diários (DAU)",
+    "department": "Product",
+    "aggregation": "count_distinct",
+    "grain": "dia",
+    "unit": "usuários",
+    "status": "active"
+  },
+  {
+    "id": "product.dau_mau_ratio",
+    "name": "Razão DAU/MAU (Stickiness)",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "mês",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.feature_adoption_rate",
+    "name": "Adoção de Feature",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "feature",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.feature_usage_frequency",
+    "name": "Frequência de Uso de Feature",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "feature",
+    "unit": "eventos/usuário",
+    "status": "active"
+  },
+  {
+    "id": "product.free_to_paid_rate",
+    "name": "Conversão Free → Pago",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.mau",
+    "name": "Usuários Ativos Mensais (MAU)",
+    "department": "Product",
+    "aggregation": "count_distinct",
+    "grain": "mês",
+    "unit": "usuários",
+    "status": "active"
+  },
+  {
+    "id": "product.north_star_value",
+    "name": "Valor da North Star Metric",
+    "department": "Product",
+    "aggregation": "sum",
+    "grain": "período",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "product.onboarding_completion_rate",
+    "name": "Conclusão de Onboarding",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.product_revenue_per_user",
+    "name": "Receita por Usuário",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "product.retention_d1",
+    "name": "Retenção D1",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.retention_d30",
+    "name": "Retenção D30",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.retention_d7",
+    "name": "Retenção D7",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "cohort",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.session_frequency",
+    "name": "Frequência de Sessões",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "sessões/usuário",
+    "status": "active"
+  },
+  {
+    "id": "product.signup_conversion_rate",
+    "name": "Conversão de Cadastro",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.time_to_activation",
+    "name": "Tempo até Ativação",
+    "department": "Product",
+    "aggregation": "custom",
+    "grain": "usuário",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "product.trial_to_paid_rate",
+    "name": "Conversão Trial → Pago",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "trial",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.user_growth_rate",
+    "name": "Crescimento de Usuários",
+    "department": "Product",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "product.wau",
+    "name": "Usuários Ativos Semanais (WAU)",
+    "department": "Product",
+    "aggregation": "count_distinct",
+    "grain": "semana",
+    "unit": "usuários",
+    "status": "active"
+  },
+  {
+    "id": "quality.audit_nonconformity_rate",
+    "name": "Taxa de Não Conformidade em Auditoria",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "auditoria",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "quality.corrective_action_on_time_rate",
+    "name": "Ações Corretivas no Prazo",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "ação",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "quality.cost_of_poor_quality",
+    "name": "Custo da Má Qualidade",
+    "department": "Quality",
+    "aggregation": "sum",
+    "grain": "período",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "quality.customer_complaint_rate",
+    "name": "Taxa de Reclamação de Cliente",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "reclamações/unidade",
+    "status": "active"
+  },
+  {
+    "id": "quality.defect_density",
+    "name": "Densidade de Defeitos",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "defeitos/unidade",
+    "status": "active"
+  },
+  {
+    "id": "quality.first_time_quality_rate",
+    "name": "Qualidade na Primeira Passagem",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "quality.process_capability_index",
+    "name": "Índice de Capacidade de Processo",
+    "department": "Quality",
+    "aggregation": "custom",
+    "grain": "processo",
+    "unit": "índice",
+    "status": "active"
+  },
+  {
+    "id": "quality.scrap_rate",
+    "name": "Taxa de Refugo",
+    "department": "Quality",
+    "aggregation": "ratio",
+    "grain": "unidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.average_days_to_close_won",
+    "name": "Dias Médios até Ganho",
+    "department": "Sales",
+    "aggregation": "avg",
+    "grain": "oportunidade",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "sales.average_deal_size",
+    "name": "Ticket Médio de Venda",
+    "department": "Sales",
+    "aggregation": "avg",
+    "grain": "oportunidade",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.average_revenue_per_sales_rep",
+    "name": "Receita Média por Vendedor",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.bookings",
+    "name": "Bookings",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "contrato",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.discount_rate",
+    "name": "Taxa Média de Desconto",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "linha de venda",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.expansion_revenue",
+    "name": "Receita de Expansão",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "contrato",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.forecast_accuracy",
+    "name": "Acurácia de Forecast",
+    "department": "Sales",
+    "aggregation": "custom",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.lead_to_opportunity_rate",
+    "name": "Conversão Lead → Oportunidade",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "lead",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.lost_rate",
+    "name": "Taxa de Perda",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "oportunidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.new_logo_revenue",
+    "name": "Receita de Novos Clientes",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "contrato",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.opportunities_created",
+    "name": "Oportunidades Criadas",
+    "department": "Sales",
+    "aggregation": "count",
+    "grain": "oportunidade",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "sales.opportunity_to_customer_rate",
+    "name": "Conversão Oportunidade → Cliente",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "oportunidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.pipeline_coverage",
+    "name": "Cobertura de Pipeline",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "x",
+    "status": "active"
+  },
+  {
+    "id": "sales.pipeline_value",
+    "name": "Valor do Pipeline",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "oportunidade",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.quota_attainment",
+    "name": "Atingimento de Quota",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "vendedor",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "sales.sales_cycle_length",
+    "name": "Duração do Ciclo de Vendas",
+    "department": "Sales",
+    "aggregation": "avg",
+    "grain": "oportunidade",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "sales.sales_target",
+    "name": "Meta de Vendas",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "meta",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.sales_velocity",
+    "name": "Velocidade de Vendas",
+    "department": "Sales",
+    "aggregation": "custom",
+    "grain": "período",
+    "unit": "BRL/dia",
+    "status": "active"
+  },
+  {
+    "id": "sales.weighted_pipeline",
+    "name": "Pipeline Ponderado",
+    "department": "Sales",
+    "aggregation": "sum",
+    "grain": "oportunidade",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "sales.win_rate",
+    "name": "Taxa de Conversão de Vendas (Win Rate)",
+    "department": "Sales",
+    "aggregation": "ratio",
+    "grain": "oportunidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "security.critical_vulnerability_count",
+    "name": "Vulnerabilidades Críticas",
+    "department": "Security",
+    "aggregation": "count",
+    "grain": "vulnerabilidade",
+    "unit": "vulnerabilidades",
+    "status": "active"
+  },
+  {
+    "id": "security.mean_time_to_contain",
+    "name": "Tempo Médio de Contenção (MTTC)",
+    "department": "Security",
+    "aggregation": "avg",
+    "grain": "incidente",
+    "unit": "minutos",
+    "status": "active"
+  },
+  {
+    "id": "security.mean_time_to_detect",
+    "name": "Tempo Médio de Detecção (MTTD)",
+    "department": "Security",
+    "aggregation": "avg",
+    "grain": "incidente",
+    "unit": "minutos",
+    "status": "active"
+  },
+  {
+    "id": "security.mean_time_to_remediate",
+    "name": "Tempo Médio de Remediação (MTTR)",
+    "department": "Security",
+    "aggregation": "avg",
+    "grain": "incidente",
+    "unit": "horas",
+    "status": "active"
+  },
+  {
+    "id": "security.phishing_failure_rate",
+    "name": "Taxa de Falha em Simulação de Phishing",
+    "department": "Security",
+    "aggregation": "ratio",
+    "grain": "usuário",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "security.security_control_compliance",
+    "name": "Conformidade de Controles",
+    "department": "Security",
+    "aggregation": "ratio",
+    "grain": "controle",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "security.security_incident_count",
+    "name": "Incidentes de Segurança",
+    "department": "Security",
+    "aggregation": "count",
+    "grain": "incidente",
+    "unit": "incidentes",
+    "status": "active"
+  },
+  {
+    "id": "security.vulnerability_remediation_sla_rate",
+    "name": "Atendimento de SLA de Vulnerabilidade",
+    "department": "Security",
+    "aggregation": "ratio",
+    "grain": "vulnerabilidade",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "strategy.customer_count",
+    "name": "Clientes Ativos",
+    "department": "Strategy",
+    "aggregation": "count_distinct",
+    "grain": "cliente",
+    "unit": "clientes",
+    "status": "active"
+  },
+  {
+    "id": "strategy.customer_growth_rate",
+    "name": "Crescimento de Clientes",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "strategy.market_share",
+    "name": "Participação de Mercado",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "strategy.new_customer_count",
+    "name": "Novos Clientes",
+    "department": "Strategy",
+    "aggregation": "count_distinct",
+    "grain": "cliente",
+    "unit": "clientes",
+    "status": "active"
+  },
+  {
+    "id": "strategy.profitability_per_customer",
+    "name": "Lucro por Cliente",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "strategy.revenue_per_customer",
+    "name": "Receita por Cliente",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "strategy.share_of_wallet",
+    "name": "Share of Wallet",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "strategy.strategic_kpi_attainment",
+    "name": "Atingimento de KPI Estratégico",
+    "department": "Strategy",
+    "aggregation": "ratio",
+    "grain": "KPI",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.days_inventory_outstanding",
+    "name": "Dias de Estoque (DIO)",
+    "department": "Supply_Chain",
+    "aggregation": "custom",
+    "grain": "período",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.fill_rate",
+    "name": "Taxa de Atendimento de Pedido",
+    "department": "Supply_Chain",
+    "aggregation": "ratio",
+    "grain": "pedido",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.forecast_accuracy",
+    "name": "Acurácia de Forecast de Demanda",
+    "department": "Supply_Chain",
+    "aggregation": "custom",
+    "grain": "SKU/período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.forecast_bias",
+    "name": "Viés de Forecast",
+    "department": "Supply_Chain",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.inventory_turnover",
+    "name": "Giro de Estoque",
+    "department": "Supply_Chain",
+    "aggregation": "ratio",
+    "grain": "período",
+    "unit": "x",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.inventory_units",
+    "name": "Unidades em Estoque",
+    "department": "Supply_Chain",
+    "aggregation": "sum",
+    "grain": "SKU",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.inventory_value",
+    "name": "Valor de Estoque",
+    "department": "Supply_Chain",
+    "aggregation": "sum",
+    "grain": "SKU",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.order_fulfillment_cycle_time",
+    "name": "Tempo de Fulfillment",
+    "department": "Supply_Chain",
+    "aggregation": "custom",
+    "grain": "pedido",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.procurement_savings",
+    "name": "Economia de Compras",
+    "department": "Supply_Chain",
+    "aggregation": "custom",
+    "grain": "pedido de compra",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.purchase_order_cycle_time",
+    "name": "Tempo de Ciclo de Compra",
+    "department": "Supply_Chain",
+    "aggregation": "custom",
+    "grain": "pedido de compra",
+    "unit": "dias",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.stockout_rate",
+    "name": "Taxa de Ruptura",
+    "department": "Supply_Chain",
+    "aggregation": "ratio",
+    "grain": "SKU",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "supply_chain.supplier_on_time_rate",
+    "name": "Entrega no Prazo do Fornecedor",
+    "department": "Supply_Chain",
+    "aggregation": "ratio",
+    "grain": "entrega",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.agent_utilization",
+    "name": "Utilização de Agente",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "agente",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.backlog",
+    "name": "Backlog de Suporte",
+    "department": "Support",
+    "aggregation": "count",
+    "grain": "ticket",
+    "unit": "tickets",
+    "status": "active"
+  },
+  {
+    "id": "support.cost_per_ticket",
+    "name": "Custo por Ticket",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "ticket",
+    "unit": "BRL",
+    "status": "active"
+  },
+  {
+    "id": "support.csat",
+    "name": "CSAT de Suporte",
+    "department": "Support",
+    "aggregation": "avg",
+    "grain": "resposta",
+    "unit": "score",
+    "status": "active"
+  },
+  {
+    "id": "support.escalation_rate",
+    "name": "Taxa de Escalação",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "ticket",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.first_contact_resolution_rate",
+    "name": "Resolução no Primeiro Contato",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "ticket",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.first_response_time",
+    "name": "Tempo até Primeira Resposta",
+    "department": "Support",
+    "aggregation": "custom",
+    "grain": "ticket",
+    "unit": "minutos",
+    "status": "active"
+  },
+  {
+    "id": "support.resolution_time",
+    "name": "Tempo de Resolução",
+    "department": "Support",
+    "aggregation": "custom",
+    "grain": "ticket",
+    "unit": "horas",
+    "status": "active"
+  },
+  {
+    "id": "support.sla_breach_rate",
+    "name": "Taxa de Violação de SLA",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "ticket",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.ticket_reopen_rate",
+    "name": "Taxa de Reabertura",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "ticket",
+    "unit": "%",
+    "status": "active"
+  },
+  {
+    "id": "support.ticket_volume",
+    "name": "Volume de Tickets",
+    "department": "Support",
+    "aggregation": "count",
+    "grain": "ticket",
+    "unit": "tickets",
+    "status": "active"
+  },
+  {
+    "id": "support.tickets_per_customer",
+    "name": "Tickets por Cliente",
+    "department": "Support",
+    "aggregation": "ratio",
+    "grain": "cliente",
+    "unit": "tickets/cliente",
+    "status": "active"
+  }
+]
