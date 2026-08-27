@@ -144,7 +144,7 @@ def load_data(con: duckdb.DuckDBPyConnection) -> dict:
             "department":        r[2],
             "description":       r[3],
             "aggregation":       r[4],
-            "grain":             r[5],
+            "entity_id":         r[5],
             "unit":              r[6],
             "status":            r[7],
             "data_quality":      r[8],
@@ -154,28 +154,31 @@ def load_data(con: duckdb.DuckDBPyConnection) -> dict:
         }
         for r in con.execute("""
             SELECT m.metric_id, m.name, m.department, m.description,
-                   m.aggregation, m.grain, m.unit, m.status,
+                   m.aggregation, m.entity_id, m.unit, m.status,
                    m.data_quality, m.refresh_frequency,
-                   v.expression, v.source_table
-            FROM metric m
-            LEFT JOIN metric_version v
-              ON v.metric_id = m.metric_id AND v.valid_to IS NULL
+                   i.expression, i.source_table
+            FROM metric_definition m
+            LEFT JOIN metric_implementation i
+              ON i.metric_id = m.metric_id AND i.is_current = true
             ORDER BY m.metric_id
         """).fetchall()
     }
 
     cols: dict[str, list] = defaultdict(list)
     for r in con.execute("""
-        SELECT mc.metric_id, mc.source_id, mc.column_name, mc.role, ds.table_name
-        FROM metric_column mc
-        JOIN data_source ds ON ds.source_id = mc.source_id
+        SELECT mi.metric_id, ic.dataset_id, ic.column_name, ic.role, ds.table_name
+        FROM impl_column ic
+        JOIN metric_implementation mi ON mi.impl_id = ic.impl_id AND mi.is_current = true
+        JOIN dataset ds ON ds.dataset_id = ic.dataset_id
     """).fetchall():
         cols[r[0]].append({"source_id": r[1], "column": r[2], "role": r[3], "table": r[4]})
 
     dims: dict[str, list] = defaultdict(list)
-    for r in con.execute(
-        "SELECT metric_id, name, role, required, join_path FROM metric_dimension"
-    ).fetchall():
+    for r in con.execute("""
+        SELECT md.metric_id, d.name, md.role, md.required, d.default_expr
+        FROM metric_dimension md
+        JOIN dimension d ON d.dimension_id = md.dimension_id
+    """).fetchall():
         dims[r[0]].append({"name": r[1], "role": r[2], "required": r[3], "join_path": r[4]})
 
     deps: dict[str, list] = defaultdict(list)
@@ -196,7 +199,7 @@ def load_data(con: duckdb.DuckDBPyConnection) -> dict:
 
     quality: dict[str, list] = defaultdict(list)
     for r in con.execute(
-        "SELECT metric_id, dimension, rule, threshold, severity FROM metric_quality"
+        "SELECT metric_id, dimension, rule, threshold, severity FROM quality_contract"
     ).fetchall():
         quality[r[0]].append(_compact({"dimension": r[1], "rule": r[2],
                                         "threshold": r[3], "severity": r[4]}))
@@ -216,13 +219,18 @@ def load_data(con: duckdb.DuckDBPyConnection) -> dict:
         r[0]: {"source_id": r[0], "warehouse": r[1], "db_schema": r[2],
                "table_name": r[3], "full_ref": r[4]}
         for r in con.execute(
-            "SELECT source_id, warehouse, db_schema, table_name, full_ref FROM data_source"
+            "SELECT dataset_id, warehouse, db_schema, table_name, full_ref FROM dataset"
         ).fetchall()
+    }
+
+    entities: dict[str, dict] = {
+        r[0]: {"name": r[1], "pk_column": r[2]}
+        for r in con.execute("SELECT entity_id, name, pk_column FROM entity").fetchall()
     }
 
     return dict(metrics=metrics, cols=cols, dims=dims, deps=deps,
                 owners=owners, tags=tags, quality=quality,
-                benchmarks=benchmarks, sources=sources)
+                benchmarks=benchmarks, sources=sources, entities=entities)
 
 
 # ── semantic model builder ────────────────────────────────────────────────────
@@ -246,14 +254,19 @@ def build_semantic_models(data: dict) -> dict[str, dict]:
 
     sem_models: dict[str, dict] = {}
     for source_id, metric_ids in metrics_by_source.items():
-        # infer entity from most common grain
-        grain_counts: dict[str, int] = defaultdict(int)
+        # use entity_id from metric_definition directly instead of grain inference
+        ent_counts: dict[str, int] = defaultdict(int)
         for mid in metric_ids:
-            g = metrics[mid].get("grain") or ""
-            if g:
-                grain_counts[g] += 1
-        best_grain = max(grain_counts, key=grain_counts.get) if grain_counts else "row"
-        entity_name, entity_col = _infer_entity(best_grain)
+            eid = metrics[mid].get("entity_id")
+            if eid:
+                ent_counts[eid] += 1
+        top_entity = max(ent_counts, key=ent_counts.get) if ent_counts else None
+        if top_entity:
+            edata = data.get("entities", {}).get(top_entity, {})
+            entity_name = top_entity
+            entity_col  = edata.get("pk_column") or (top_entity + "_id")
+        else:
+            entity_name, entity_col = "row", "id"
 
         # one measure per metric
         measures = []

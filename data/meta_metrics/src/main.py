@@ -1,5 +1,160 @@
 import json, os, re
+from collections import defaultdict
 from pathlib import Path
+
+# ── Entity registry: grain text → entity_id ───────────────────────────────────────────
+GRAIN_TO_ENTITY: dict[str, str] = {
+    "fatura":           "invoice",
+    "assinatura":       "subscription",
+    "cliente":          "customer",
+    "oportunidade":     "opportunity",
+    "usuário":          "user",
+    "usuario":          "user",
+    "lead":             "lead",
+    "pedido":           "order",
+    "ticket":           "ticket",
+    "colaborador":      "employee",
+    "deploy":           "deployment",
+    "incidente":        "incident",
+    "campanha":         "campaign",
+    "sku":              "sku",
+    "contrato":         "contract",
+    "mês":              "month",
+    "mes":              "month",
+    "período":          "period",
+    "periodo":          "period",
+    "dia":              "day",
+    "semana":           "week",
+    "cohort":           "cohort",
+    "resposta":         "survey_response",
+    "sessão":           "session",
+    "sessao":           "session",
+    "release":          "release",
+    "execução":         "pipeline_run",
+    "execucao":         "pipeline_run",
+    "dataset":          "dataset",
+    "auditoria":        "audit",
+    "vulnerabilidade":  "vulnerability",
+    "controle":         "control",
+    "processo":         "process",
+    "conta":            "account",
+    "movimento":        "movement",
+    "vaga":             "job",
+    "contratação":      "hire",
+    "contratacao":      "hire",
+    "entrega":          "delivery",
+    "pedido de compra": "purchase_order",
+    "meta":             "target",
+    "kpi":              "kpi",
+    "feature":          "feature",
+    "oferta":           "offer",
+    "trial":            "trial",
+    "ção":              "action",
+    "acao":             "action",
+    "item":             "item",
+    "carrinho":         "cart",
+    "checkout":         "checkout",
+    "recurso":          "resource",
+    "operação":         "operation",
+    "operacao":         "operation",
+    "linha de venda":   "sale_line",
+    "agente":           "agent",
+    "produto":          "product",
+    "requisição":       "request",
+    "requisicao":       "request",
+    "serviço":          "service",
+    "servico":          "service",
+}
+
+ENTITY_PK: dict[str, str] = {
+    "invoice":         "invoice_id",
+    "subscription":    "subscription_id",
+    "customer":        "customer_id",
+    "opportunity":     "opportunity_id",
+    "user":            "user_id",
+    "lead":            "lead_id",
+    "order":           "order_id",
+    "ticket":          "ticket_id",
+    "employee":        "employee_id",
+    "deployment":      "deployment_id",
+    "incident":        "incident_id",
+    "campaign":        "campaign_id",
+    "sku":             "sku_id",
+    "contract":        "contract_id",
+    "month":           "month_date",
+    "period":          "period_date",
+    "day":             "date_day",
+    "week":            "date_week",
+    "cohort":          "cohort_id",
+    "survey_response": "response_id",
+    "session":         "session_id",
+    "release":         "release_id",
+    "pipeline_run":    "run_id",
+    "dataset":         "dataset_id",
+    "audit":           "audit_id",
+    "vulnerability":   "vulnerability_id",
+    "control":         "control_id",
+    "process":         "process_id",
+    "account":         "account_id",
+    "movement":        "movement_id",
+    "job":             "job_id",
+    "hire":            "hire_id",
+    "delivery":        "delivery_id",
+    "purchase_order":  "po_id",
+    "target":          "target_id",
+    "kpi":             "kpi_id",
+    "feature":         "feature_id",
+    "offer":           "offer_id",
+    "trial":           "trial_id",
+    "action":          "action_id",
+    "item":            "item_id",
+    "cart":            "cart_id",
+    "checkout":        "checkout_id",
+    "resource":        "resource_id",
+    "operation":       "operation_id",
+    "sale_line":       "sale_line_id",
+    "agent":           "agent_id",
+    "product":         "product_id",
+    "request":         "request_id",
+    "service":         "service_id",
+}
+
+
+def _infer_entity_id(grain: str) -> str | None:
+    return GRAIN_TO_ENTITY.get(grain.lower().strip())
+
+
+def _infer_metric_kind(aggregation: str, deps: list) -> str:
+    if deps or aggregation == "custom":
+        return "derived"
+    if aggregation == "ratio":
+        return "ratio"
+    return "base"
+
+
+def _infer_additivity(aggregation: str, unit: str) -> str:
+    if aggregation in ("ratio", "custom"):
+        return "non_additive"
+    if aggregation in ("avg", "max", "min", "count_distinct"):
+        return "semi_additive"
+    _non_additive_units = {"%", "x", "score", "meses", "dias", "horas", "minutos",
+                           "BRL/mês", "unidades/tempo", "unidades/recurso", "BRL/pessoa",
+                           "deploys/período", "BRL/dia", "eventos/usuário",
+                           "sessões/usuário", "pedidos/cliente", "tickets/cliente",
+                           "incidentes/unidade", "reclamações/unidade", "defeitos/unidade"}
+    if unit in _non_additive_units:
+        return "non_additive"
+    return "additive"
+
+
+def _infer_time_grain(supported_periods: list) -> str:
+    for p in supported_periods:
+        if p in ("dia", "day"):
+            return "day"
+        if p in ("semana", "week"):
+            return "week"
+    return "month"
+
 
 catalog = []
 
@@ -106,6 +261,13 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
         "dependencies": [{"depends_on": dep, "type": t} for dep, t in DEPS.get(id, [])],
         "quality": _make_quality(aggregation, unit, quality, refresh),
         "lineage": _extract_lineage(expression, source_table),
+        "entity_id": _infer_entity_id(grain),
+        "metric_kind": _infer_metric_kind(aggregation, DEPS.get(id, [])),
+        "additivity": _infer_additivity(aggregation, unit),
+        "time_grain": _infer_time_grain(supported_periods),
+        "superseded_by": None,
+        "deprecated_at": None,
+        "deprecation_reason": None,
         "usage_context": {
             "when_to_use": when or description,
             "related_metrics": related or [],
@@ -430,12 +592,31 @@ for x in quality_metrics: metric("quality",*x)
 # Normalize benchmark field and add a catalog-level summary.
 catalog.sort(key=lambda x: x["id"])
 
+# Build entity table from all unique entity_ids referenced by metrics
+_entity_grains: dict = defaultdict(set)
+for _m in catalog:
+    _eid = _m.get("entity_id")
+    if _eid:
+        _entity_grains[_eid].add(_m["grain"].lower())
+
+entities = sorted([
+    {
+        "entity_id":    eid,
+        "name":         eid.replace("_", " ").title(),
+        "pk_column":    ENTITY_PK.get(eid, eid + "_id"),
+        "grain_aliases": sorted(_entity_grains[eid]),
+    }
+    for eid in _entity_grains
+], key=lambda x: x["entity_id"])
+
 output = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "catalog_version": "1.0",
+    "catalog_version": "2.0",
     "title": "Comprehensive Business Metric Catalog",
     "description": "Research-informed canonical metric catalog spanning finance, sales, marketing, product, customer success, ecommerce, support, engineering, HR, operations, supply chain, data, security, strategy and quality.",
+    "entity_count": len(entities),
     "metric_count": len(catalog),
+    "entities": entities,
     "metrics": catalog
 }
 

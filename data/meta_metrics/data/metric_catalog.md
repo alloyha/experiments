@@ -1,17 +1,115 @@
 ```mermaid
 erDiagram
-    metric {
+    entity {
+        VARCHAR entity_id PK
+        VARCHAR name
+        VARCHAR description
+        VARCHAR pk_column
+        VARCHAR[] grain_aliases
+    }
+    dimension {
+        VARCHAR dimension_id PK
+        VARCHAR name
+        VARCHAR description
+        VARCHAR dimension_type
+        VARCHAR entity_id
+        VARCHAR default_expr
+    }
+    dataset {
+        VARCHAR dataset_id PK
+        VARCHAR name
+        VARCHAR layer
+        VARCHAR engine
+        VARCHAR db_catalog
+        VARCHAR db_schema
+        VARCHAR table_name
+        VARCHAR full_ref
+        VARCHAR warehouse
+    }
+    metric_definition {
         VARCHAR metric_id PK
         VARCHAR name
         VARCHAR department
         VARCHAR description
+        VARCHAR metric_kind
         VARCHAR aggregation
-        VARCHAR grain
+        VARCHAR entity_id
         VARCHAR unit
         VARCHAR status
-        VARCHAR refresh_frequency
-        VARCHAR data_quality
+        VARCHAR additivity
+        VARCHAR[] non_additive_dimensions
+        VARCHAR time_grain
         VARCHAR default_period
+        VARCHAR data_quality
+        VARCHAR refresh_frequency
+        VARCHAR superseded_by
+        DATE deprecated_at
+        VARCHAR deprecation_reason
+    }
+    metric_implementation {
+        VARCHAR impl_id PK
+        VARCHAR metric_id
+        VARCHAR engine
+        VARCHAR expression
+        VARCHAR language
+        VARCHAR source_table
+        VARCHAR version
+        DATE valid_from
+        DATE valid_to
+        BOOLEAN is_current
+    }
+    impl_column {
+        VARCHAR impl_id
+        VARCHAR dataset_id
+        VARCHAR column_name
+        VARCHAR role
+        VARCHAR origin
+        FLOAT confidence
+        VARCHAR inference_rule
+    }
+    impl_join {
+        VARCHAR impl_id
+        VARCHAR left_dataset_id
+        VARCHAR right_dataset_id
+        VARCHAR join_type
+        VARCHAR condition
+        VARCHAR origin
+        FLOAT confidence
+    }
+    metric_dependency {
+        VARCHAR metric_id
+        VARCHAR depends_on_metric_id
+        VARCHAR dependency_type
+        VARCHAR origin
+    }
+    metric_relation {
+        VARCHAR metric_id
+        VARCHAR related_metric_id
+        VARCHAR relation_type
+    }
+    metric_dimension {
+        VARCHAR metric_id
+        VARCHAR dimension_id
+        VARCHAR role
+        BOOLEAN required
+    }
+    quality_contract {
+        VARCHAR contract_id PK
+        VARCHAR metric_id
+        VARCHAR dimension
+        VARCHAR rule
+        VARCHAR threshold
+        VARCHAR severity
+        VARCHAR origin
+    }
+    quality_run {
+        VARCHAR run_id
+        VARCHAR contract_id
+        TIMESTAMP run_at
+        VARCHAR observed_value
+        VARCHAR expected_threshold
+        VARCHAR status
+        VARCHAR execution_context
     }
     metric_alias {
         VARCHAR metric_id
@@ -20,22 +118,6 @@ erDiagram
     metric_tag {
         VARCHAR metric_id
         VARCHAR tag
-    }
-    metric_version {
-        VARCHAR metric_id
-        VARCHAR version
-        VARCHAR expression
-        VARCHAR language
-        VARCHAR source_table
-        DATE valid_from
-        DATE valid_to
-    }
-    metric_dimension {
-        VARCHAR metric_id
-        VARCHAR name
-        VARCHAR role
-        BOOLEAN required
-        VARCHAR join_path
     }
     metric_period {
         VARCHAR metric_id
@@ -79,61 +161,27 @@ erDiagram
         VARCHAR metric_id
         VARCHAR permission
     }
-    metric_relation {
-        VARCHAR metric_id
-        VARCHAR related_metric_id
-        VARCHAR relation_type
-    }
-    metric_dependency {
-        VARCHAR metric_id
-        VARCHAR depends_on_metric_id
-        VARCHAR dependency_type
-    }
-    metric_quality {
-        VARCHAR metric_id
-        VARCHAR dimension
-        VARCHAR rule
-        VARCHAR threshold
-        VARCHAR severity
-    }
-    data_source {
-        VARCHAR source_id PK
-        VARCHAR warehouse
-        VARCHAR db_catalog
-        VARCHAR db_schema
-        VARCHAR table_name
-        VARCHAR full_ref
-    }
-    metric_column {
-        VARCHAR metric_id
-        VARCHAR source_id
-        VARCHAR column_name
-        VARCHAR role
-    }
-    metric_join {
-        VARCHAR metric_id
-        VARCHAR left_source_id
-        VARCHAR right_source_id
-        VARCHAR join_type
-        VARCHAR condition
-    }
 
-    metric ||--o{ metric_alias : "contains"
-    metric ||--o{ metric_tag : "contains"
-    metric ||--o{ metric_version : "versions"
-    metric ||--o{ metric_dimension : "has"
-    metric ||--o{ metric_period : "has"
-    metric ||--o{ metric_owner : "owned by"
-    metric ||--o{ metric_change : "changelog"
-    metric ||--o{ metric_usage : "usage"
-    metric ||--o{ metric_benchmark : "benchmark"
-    metric ||--o{ metric_execution : "execution"
-    metric ||--o{ metric_permission : "requires"
-    metric ||--o{ metric_relation : "related to"
-    metric ||--o{ metric_dependency : "depends on"
-    metric ||--o{ metric_quality : "quality"
-    metric ||--o{ metric_column : "lineage"
-    metric ||--o{ metric_join : "lineage"
-    data_source ||--o{ metric_column : "reads from"
-    data_source ||--o{ metric_join : "joins"
+    entity ||--o{ metric_definition : "defines entity for"
+    entity ||--o{ dimension : "context for"
+    metric_definition ||--o{ metric_implementation : "implemented by"
+    metric_definition ||--o{ metric_dependency : "depends on"
+    metric_definition ||--o{ metric_relation : "related to"
+    metric_definition ||--o{ metric_dimension : "grouped by"
+    metric_definition ||--o{ quality_contract : "governed by"
+    metric_definition ||--o{ metric_alias : "aliased as"
+    metric_definition ||--o{ metric_tag : "tagged"
+    metric_definition ||--o{ metric_period : "supports period"
+    metric_definition ||--o{ metric_owner : "owned by"
+    metric_definition ||--o{ metric_change : "changelog"
+    metric_definition ||--o{ metric_usage : "usage"
+    metric_definition ||--o{ metric_benchmark : "benchmark"
+    metric_definition ||--o{ metric_execution : "execution"
+    metric_definition ||--o{ metric_permission : "requires"
+    dimension ||--o{ metric_dimension : "used in"
+    metric_implementation ||--o{ impl_column : "reads column"
+    metric_implementation ||--o{ impl_join : "joins"
+    dataset ||--o{ impl_column : "sourced from"
+    dataset ||--o{ impl_join : "joined in"
+    quality_contract ||--o{ quality_run : "executed as"
 ```

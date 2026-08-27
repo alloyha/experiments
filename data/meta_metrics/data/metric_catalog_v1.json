@@ -1,9 +1,396 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "catalog_version": "1.0",
+  "catalog_version": "2.0",
   "title": "Comprehensive Business Metric Catalog",
   "description": "Research-informed canonical metric catalog spanning finance, sales, marketing, product, customer success, ecommerce, support, engineering, HR, operations, supply chain, data, security, strategy and quality.",
+  "entity_count": 48,
   "metric_count": 208,
+  "entities": [
+    {
+      "entity_id": "account",
+      "name": "Account",
+      "pk_column": "account_id",
+      "grain_aliases": [
+        "conta"
+      ]
+    },
+    {
+      "entity_id": "agent",
+      "name": "Agent",
+      "pk_column": "agent_id",
+      "grain_aliases": [
+        "agente"
+      ]
+    },
+    {
+      "entity_id": "audit",
+      "name": "Audit",
+      "pk_column": "audit_id",
+      "grain_aliases": [
+        "auditoria"
+      ]
+    },
+    {
+      "entity_id": "campaign",
+      "name": "Campaign",
+      "pk_column": "campaign_id",
+      "grain_aliases": [
+        "campanha"
+      ]
+    },
+    {
+      "entity_id": "cart",
+      "name": "Cart",
+      "pk_column": "cart_id",
+      "grain_aliases": [
+        "carrinho"
+      ]
+    },
+    {
+      "entity_id": "checkout",
+      "name": "Checkout",
+      "pk_column": "checkout_id",
+      "grain_aliases": [
+        "checkout"
+      ]
+    },
+    {
+      "entity_id": "cohort",
+      "name": "Cohort",
+      "pk_column": "cohort_id",
+      "grain_aliases": [
+        "cohort"
+      ]
+    },
+    {
+      "entity_id": "contract",
+      "name": "Contract",
+      "pk_column": "contract_id",
+      "grain_aliases": [
+        "contrato"
+      ]
+    },
+    {
+      "entity_id": "control",
+      "name": "Control",
+      "pk_column": "control_id",
+      "grain_aliases": [
+        "controle"
+      ]
+    },
+    {
+      "entity_id": "customer",
+      "name": "Customer",
+      "pk_column": "customer_id",
+      "grain_aliases": [
+        "cliente"
+      ]
+    },
+    {
+      "entity_id": "dataset",
+      "name": "Dataset",
+      "pk_column": "dataset_id",
+      "grain_aliases": [
+        "dataset"
+      ]
+    },
+    {
+      "entity_id": "day",
+      "name": "Day",
+      "pk_column": "date_day",
+      "grain_aliases": [
+        "dia"
+      ]
+    },
+    {
+      "entity_id": "delivery",
+      "name": "Delivery",
+      "pk_column": "delivery_id",
+      "grain_aliases": [
+        "entrega"
+      ]
+    },
+    {
+      "entity_id": "deployment",
+      "name": "Deployment",
+      "pk_column": "deployment_id",
+      "grain_aliases": [
+        "deploy"
+      ]
+    },
+    {
+      "entity_id": "employee",
+      "name": "Employee",
+      "pk_column": "employee_id",
+      "grain_aliases": [
+        "colaborador"
+      ]
+    },
+    {
+      "entity_id": "feature",
+      "name": "Feature",
+      "pk_column": "feature_id",
+      "grain_aliases": [
+        "feature"
+      ]
+    },
+    {
+      "entity_id": "hire",
+      "name": "Hire",
+      "pk_column": "hire_id",
+      "grain_aliases": [
+        "contratação"
+      ]
+    },
+    {
+      "entity_id": "incident",
+      "name": "Incident",
+      "pk_column": "incident_id",
+      "grain_aliases": [
+        "incidente"
+      ]
+    },
+    {
+      "entity_id": "invoice",
+      "name": "Invoice",
+      "pk_column": "invoice_id",
+      "grain_aliases": [
+        "fatura"
+      ]
+    },
+    {
+      "entity_id": "item",
+      "name": "Item",
+      "pk_column": "item_id",
+      "grain_aliases": [
+        "item"
+      ]
+    },
+    {
+      "entity_id": "job",
+      "name": "Job",
+      "pk_column": "job_id",
+      "grain_aliases": [
+        "vaga"
+      ]
+    },
+    {
+      "entity_id": "kpi",
+      "name": "Kpi",
+      "pk_column": "kpi_id",
+      "grain_aliases": [
+        "kpi"
+      ]
+    },
+    {
+      "entity_id": "lead",
+      "name": "Lead",
+      "pk_column": "lead_id",
+      "grain_aliases": [
+        "lead"
+      ]
+    },
+    {
+      "entity_id": "month",
+      "name": "Month",
+      "pk_column": "month_date",
+      "grain_aliases": [
+        "mês"
+      ]
+    },
+    {
+      "entity_id": "movement",
+      "name": "Movement",
+      "pk_column": "movement_id",
+      "grain_aliases": [
+        "movimento"
+      ]
+    },
+    {
+      "entity_id": "offer",
+      "name": "Offer",
+      "pk_column": "offer_id",
+      "grain_aliases": [
+        "oferta"
+      ]
+    },
+    {
+      "entity_id": "operation",
+      "name": "Operation",
+      "pk_column": "operation_id",
+      "grain_aliases": [
+        "operação"
+      ]
+    },
+    {
+      "entity_id": "opportunity",
+      "name": "Opportunity",
+      "pk_column": "opportunity_id",
+      "grain_aliases": [
+        "oportunidade"
+      ]
+    },
+    {
+      "entity_id": "order",
+      "name": "Order",
+      "pk_column": "order_id",
+      "grain_aliases": [
+        "pedido"
+      ]
+    },
+    {
+      "entity_id": "period",
+      "name": "Period",
+      "pk_column": "period_date",
+      "grain_aliases": [
+        "período"
+      ]
+    },
+    {
+      "entity_id": "pipeline_run",
+      "name": "Pipeline Run",
+      "pk_column": "run_id",
+      "grain_aliases": [
+        "execução"
+      ]
+    },
+    {
+      "entity_id": "process",
+      "name": "Process",
+      "pk_column": "process_id",
+      "grain_aliases": [
+        "processo"
+      ]
+    },
+    {
+      "entity_id": "purchase_order",
+      "name": "Purchase Order",
+      "pk_column": "po_id",
+      "grain_aliases": [
+        "pedido de compra"
+      ]
+    },
+    {
+      "entity_id": "release",
+      "name": "Release",
+      "pk_column": "release_id",
+      "grain_aliases": [
+        "release"
+      ]
+    },
+    {
+      "entity_id": "request",
+      "name": "Request",
+      "pk_column": "request_id",
+      "grain_aliases": [
+        "requisição"
+      ]
+    },
+    {
+      "entity_id": "resource",
+      "name": "Resource",
+      "pk_column": "resource_id",
+      "grain_aliases": [
+        "recurso"
+      ]
+    },
+    {
+      "entity_id": "sale_line",
+      "name": "Sale Line",
+      "pk_column": "sale_line_id",
+      "grain_aliases": [
+        "linha de venda"
+      ]
+    },
+    {
+      "entity_id": "service",
+      "name": "Service",
+      "pk_column": "service_id",
+      "grain_aliases": [
+        "serviço"
+      ]
+    },
+    {
+      "entity_id": "session",
+      "name": "Session",
+      "pk_column": "session_id",
+      "grain_aliases": [
+        "sessão"
+      ]
+    },
+    {
+      "entity_id": "sku",
+      "name": "Sku",
+      "pk_column": "sku_id",
+      "grain_aliases": [
+        "sku"
+      ]
+    },
+    {
+      "entity_id": "subscription",
+      "name": "Subscription",
+      "pk_column": "subscription_id",
+      "grain_aliases": [
+        "assinatura"
+      ]
+    },
+    {
+      "entity_id": "survey_response",
+      "name": "Survey Response",
+      "pk_column": "response_id",
+      "grain_aliases": [
+        "resposta"
+      ]
+    },
+    {
+      "entity_id": "target",
+      "name": "Target",
+      "pk_column": "target_id",
+      "grain_aliases": [
+        "meta"
+      ]
+    },
+    {
+      "entity_id": "ticket",
+      "name": "Ticket",
+      "pk_column": "ticket_id",
+      "grain_aliases": [
+        "ticket"
+      ]
+    },
+    {
+      "entity_id": "trial",
+      "name": "Trial",
+      "pk_column": "trial_id",
+      "grain_aliases": [
+        "trial"
+      ]
+    },
+    {
+      "entity_id": "user",
+      "name": "User",
+      "pk_column": "user_id",
+      "grain_aliases": [
+        "usuário"
+      ]
+    },
+    {
+      "entity_id": "vulnerability",
+      "name": "Vulnerability",
+      "pk_column": "vulnerability_id",
+      "grain_aliases": [
+        "vulnerabilidade"
+      ]
+    },
+    {
+      "entity_id": "week",
+      "name": "Week",
+      "pk_column": "date_week",
+      "grain_aliases": [
+        "semana"
+      ]
+    }
+  ],
   "metrics": [
     {
       "id": "customer.churn_rate",
@@ -87,6 +474,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de clientes elegíveis no início do período que cancelam.",
         "related_metrics": [],
@@ -188,6 +582,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "MRR perdido por cancelamento de clientes.",
         "related_metrics": [],
@@ -289,6 +690,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "MRR perdido por redução de contrato de clientes existentes.",
         "related_metrics": [],
@@ -386,6 +794,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "survey_response",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual ou média de respostas positivas à pesquisa de satisfação.",
         "related_metrics": [],
@@ -483,6 +898,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Participação da receita gerada pelos maiores clientes no total.",
         "related_metrics": [],
@@ -578,6 +1000,13 @@
         ],
         "joins": []
       },
+      "entity_id": "survey_response",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Avaliação do esforço percebido pelo cliente para realizar uma tarefa.",
         "related_metrics": [],
@@ -675,6 +1104,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de clientes existentes que expandiram seu relacionamento.",
         "related_metrics": [],
@@ -760,6 +1196,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Pontuação composta de saúde do cliente baseada nos sinais definidos pela organização.",
         "related_metrics": [],
@@ -861,6 +1304,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "MRR incremental obtido de clientes existentes por expansão.",
         "related_metrics": [],
@@ -967,6 +1417,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita inicial retida após churn e contração, excluindo expansão.",
         "related_metrics": [],
@@ -1064,6 +1521,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de clientes iniciais que permanecem ativos ao fim do período.",
         "related_metrics": [],
@@ -1149,6 +1613,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "survey_response",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de promotores menos percentual de detratores.",
         "related_metrics": [],
@@ -1250,6 +1721,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "MRR recuperado de clientes anteriormente cancelados.",
         "related_metrics": [],
@@ -1347,6 +1825,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "contract",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de contratos elegíveis que são renovados.",
         "related_metrics": [],
@@ -1453,6 +1938,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da receita recorrente inicial perdida por churn e contração.",
         "related_metrics": [],
@@ -1538,6 +2030,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre início do relacionamento e primeira realização do valor definido.",
         "related_metrics": [],
@@ -1635,6 +2134,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "dataset",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de registros ou campos esperados que estão presentes.",
         "related_metrics": [],
@@ -1732,6 +2238,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "dataset",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de datasets que atendem aos contratos de esquema, qualidade e SLA.",
         "related_metrics": [],
@@ -1823,6 +2336,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Incidentes de qualidade ou disponibilidade por período ou dataset.",
         "related_metrics": [],
@@ -1920,6 +2440,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de registros que violam a chave ou unicidade esperada.",
         "related_metrics": [],
@@ -2015,6 +2542,13 @@
         ],
         "joins": []
       },
+      "entity_id": "dataset",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Atraso entre a última atualização observada e o momento esperado de disponibilidade.",
         "related_metrics": [],
@@ -2112,6 +2646,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de valores nulos em um atributo monitorado.",
         "related_metrics": [],
@@ -2197,6 +2738,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "pipeline_run",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo de execução de um pipeline entre início e conclusão.",
         "related_metrics": [],
@@ -2266,12 +2814,7 @@
           "change": "Métrica adicionada ao catálogo canônico v1.0."
         }
       ],
-      "dependencies": [
-        {
-          "depends_on": "data.pipeline_success_rate",
-          "type": "computational"
-        }
-      ],
+      "dependencies": [],
       "quality": [
         {
           "dimension": "freshness",
@@ -2299,6 +2842,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "pipeline_run",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de execuções de pipeline que falham.",
         "related_metrics": [],
@@ -2396,6 +2946,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "pipeline_run",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de execuções de pipeline concluídas com sucesso.",
         "related_metrics": [],
@@ -2493,6 +3050,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de valores que satisfazem regras de domínio e formato.",
         "related_metrics": [],
@@ -2584,6 +3148,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita líquida média por pedido.",
         "related_metrics": [],
@@ -2681,6 +3252,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cart",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de carrinhos iniciados que não resultam em compra.",
         "related_metrics": [],
@@ -2778,6 +3356,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "session",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de sessões elegíveis que adicionam itens ao carrinho.",
         "related_metrics": [],
@@ -2875,6 +3460,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "checkout",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de checkouts iniciados que resultam em compra.",
         "related_metrics": [],
@@ -2972,6 +3564,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "session",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de sessões ou visitantes que realizam compra.",
         "related_metrics": [],
@@ -3063,6 +3662,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número médio de pedidos por cliente desde a primeira compra.",
         "related_metrics": [],
@@ -3160,6 +3766,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual do valor de tabela concedido em descontos.",
         "related_metrics": [],
@@ -3261,6 +3874,13 @@
         ],
         "joins": []
       },
+      "entity_id": "order",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor bruto de mercadorias transacionadas antes de ajustes definidos.",
         "related_metrics": [],
@@ -3352,6 +3972,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Quantidade média de itens por pedido.",
         "related_metrics": [],
@@ -3453,6 +4080,13 @@
         ],
         "joins": []
       },
+      "entity_id": "order",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor líquido de mercadorias após descontos, devoluções e ajustes aplicáveis.",
         "related_metrics": [],
@@ -3554,6 +4188,13 @@
         ],
         "joins": []
       },
+      "entity_id": "order",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de pedidos realizados no período.",
         "related_metrics": [],
@@ -3655,6 +4296,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de clientes únicos que realizaram ao menos uma compra.",
         "related_metrics": [],
@@ -3752,6 +4400,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual do valor ou pedidos vendidos que foram reembolsados.",
         "related_metrics": [],
@@ -3849,6 +4504,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de compradores que realizam uma compra adicional no período definido.",
         "related_metrics": [],
@@ -3946,6 +4608,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "item",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de pedidos ou itens devolvidos.",
         "related_metrics": [],
@@ -4043,6 +4712,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "deployment",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de deployments que causam falha em produção e exigem intervenção.",
         "related_metrics": [],
@@ -4128,6 +4804,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "deployment",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre commit e implantação bem-sucedida em produção.",
         "related_metrics": [],
@@ -4229,6 +4912,13 @@
         ],
         "joins": []
       },
+      "entity_id": "deployment",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de mudanças de software implantadas no período.",
         "related_metrics": [],
@@ -4320,6 +5010,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de deployments bem-sucedidos por unidade de tempo.",
         "related_metrics": [],
@@ -4417,6 +5114,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "deployment",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de deployments que são trabalho não planejado para corrigir incidentes.",
         "related_metrics": [],
@@ -4514,6 +5218,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "request",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proporção de requisições que resultam em erro segundo a definição operacional.",
         "related_metrics": [],
@@ -4599,6 +5310,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "deployment",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo para recuperar de uma implantação que falha e exige intervenção.",
         "related_metrics": [],
@@ -4700,6 +5418,13 @@
         ],
         "joins": []
       },
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Quantidade de incidentes de produção no período.",
         "related_metrics": [],
@@ -4791,6 +5516,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Incidentes normalizados por volume de releases, tráfego ou período definido.",
         "related_metrics": [],
@@ -4876,6 +5608,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo médio para restaurar o serviço após um incidente operacional.",
         "related_metrics": [],
@@ -4973,6 +5712,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "release",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de releases sem rollback, hotfix crítico ou falha definida.",
         "related_metrics": [],
@@ -5070,6 +5816,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "service",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tempo em que o serviço atende o critério de disponibilidade.",
         "related_metrics": [],
@@ -5166,6 +5919,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita média por conta pagante no período.",
         "related_metrics": [],
@@ -5262,6 +6022,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita média atribuída por usuário ativo ou pagante no período.",
         "related_metrics": [],
@@ -5352,6 +6119,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "MRR anualizado para representar receita recorrente em base anual.",
         "related_metrics": [],
@@ -5443,6 +6217,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Velocidade média de consumo líquido de caixa.",
         "related_metrics": [],
@@ -5534,6 +6315,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Investimento de marketing e vendas dividido pelos novos clientes pagantes adquiridos.",
         "related_metrics": [],
@@ -5630,6 +6418,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de meses necessários para recuperar o CAC via margem bruta.",
         "related_metrics": [],
@@ -5731,6 +6526,13 @@
         ],
         "joins": []
       },
+      "entity_id": "account",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Saldo de caixa e equivalentes na data de referência.",
         "related_metrics": [],
@@ -5816,6 +6618,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Resultado operacional antes de juros, impostos, depreciação e amortização.",
         "related_metrics": [],
@@ -5922,6 +6731,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "EBITDA dividido pela receita líquida.",
         "related_metrics": [],
@@ -6012,6 +6828,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Caixa operacional após investimentos de capital.",
         "related_metrics": [],
@@ -6114,6 +6937,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da receita líquida que permanece após custos diretamente atribuíveis.",
         "related_metrics": [],
@@ -6204,6 +7034,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita líquida menos custo dos produtos ou serviços vendidos.",
         "related_metrics": [],
@@ -6305,6 +7142,13 @@
         ],
         "joins": []
       },
+      "entity_id": "invoice",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita antes de descontos, devoluções e impostos dedutíveis.",
         "related_metrics": [],
@@ -6390,6 +7234,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor econômico esperado de um cliente ao longo de sua vida, segundo a metodologia definida.",
         "related_metrics": [],
@@ -6490,6 +7341,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor de vida do cliente dividido pelo custo de aquisição.",
         "related_metrics": [],
@@ -6591,6 +7449,13 @@
         ],
         "joins": []
       },
+      "entity_id": "subscription",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita recorrente ativa normalizada para base mensal.",
         "related_metrics": [],
@@ -6693,6 +7558,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação percentual do MRR em relação ao período anterior.",
         "related_metrics": [],
@@ -6795,6 +7667,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Lucro líquido dividido pela receita líquida.",
         "related_metrics": [],
@@ -6896,6 +7775,13 @@
         ],
         "joins": []
       },
+      "entity_id": "invoice",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita após descontos, devoluções e abatimentos aplicáveis.",
         "related_metrics": [],
@@ -7010,6 +7896,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita recorrente inicial retida após expansão, contração e churn, sem incluir novos clientes.",
         "related_metrics": [],
@@ -7101,6 +7994,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "movement",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Caixa gerado ou consumido pelas operações.",
         "related_metrics": [],
@@ -7203,6 +8103,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Resultado operacional dividido pela receita líquida.",
         "related_metrics": [],
@@ -7304,6 +8211,13 @@
         ],
         "joins": []
       },
+      "entity_id": "invoice",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Soma da receita faturada no período.",
         "related_metrics": [],
@@ -7406,6 +8320,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação percentual da receita em relação ao período comparável anterior.",
         "related_metrics": [],
@@ -7506,6 +8427,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Meses estimados até o caixa se esgotar sob o burn atual.",
         "related_metrics": [],
@@ -7603,6 +8531,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "employee",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de horas planejadas perdidas por ausência.",
         "related_metrics": [],
@@ -7694,6 +8629,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "hire",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Custo total de recrutamento dividido pelas contratações realizadas.",
         "related_metrics": [],
@@ -7789,6 +8731,13 @@
         ],
         "joins": []
       },
+      "entity_id": "survey_response",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Pontuação agregada de engajamento obtida por pesquisa definida pela organização.",
         "related_metrics": [],
@@ -7890,6 +8839,13 @@
         ],
         "joins": []
       },
+      "entity_id": "employee",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de colaboradores ativos na data de referência.",
         "related_metrics": [],
@@ -7987,6 +8943,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação percentual do headcount em relação ao período comparável.",
         "related_metrics": [],
@@ -8084,6 +9047,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual médio de colaboradores desligados involuntariamente.",
         "related_metrics": [],
@@ -8181,6 +9151,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "offer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de ofertas de emprego aceitas.",
         "related_metrics": [],
@@ -8278,6 +9255,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de colaboradores iniciais que permanecem ao fim do período.",
         "related_metrics": [],
@@ -8369,6 +9353,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita atribuída dividida pelo headcount médio.",
         "related_metrics": [],
@@ -8454,6 +9445,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "job",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre abertura da vaga e ocupação efetiva.",
         "related_metrics": [],
@@ -8539,6 +9537,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "hire",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre abertura da vaga e aceite da proposta.",
         "related_metrics": [],
@@ -8636,6 +9641,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual médio de colaboradores que saem voluntariamente no período.",
         "related_metrics": [],
@@ -8733,6 +9745,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Participação estimada da demanda de busca associada à marca.",
         "related_metrics": [],
@@ -8830,6 +9849,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "campaign",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Retorno incremental atribuído à campanha em relação ao custo.",
         "related_metrics": [],
@@ -8926,6 +9952,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "lead",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Investimento de marketing dividido pelo volume de leads.",
         "related_metrics": [],
@@ -9022,6 +10055,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Investimento de marketing dividido pelo número de MQLs.",
         "related_metrics": [],
@@ -9118,6 +10158,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Investimento de marketing dividido pelo número de SQLs.",
         "related_metrics": [],
@@ -9215,6 +10262,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação do número de novos clientes adquiridos.",
         "related_metrics": [],
@@ -9312,6 +10366,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de emails entregues que geraram clique.",
         "related_metrics": [],
@@ -9409,6 +10470,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de emails entregues que foram abertos.",
         "related_metrics": [],
@@ -9510,6 +10578,13 @@
         ],
         "joins": []
       },
+      "entity_id": "lead",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de leads capturados no período.",
         "related_metrics": [],
@@ -9611,6 +10686,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita de negócios que tiveram interação atribuível com marketing.",
         "related_metrics": [],
@@ -9712,6 +10794,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita de negócios atribuídos à origem de marketing.",
         "related_metrics": [],
@@ -9818,6 +10907,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "lead",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de MQLs que se tornam SQLs.",
         "related_metrics": [],
@@ -9919,6 +11015,13 @@
         ],
         "joins": []
       },
+      "entity_id": "lead",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de leads qualificados por marketing.",
         "related_metrics": [],
@@ -10010,6 +11113,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "campaign",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita atribuída dividida pelo gasto em mídia.",
         "related_metrics": [],
@@ -10111,6 +11221,13 @@
         ],
         "joins": []
       },
+      "entity_id": "lead",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de leads aceitos e qualificados por vendas.",
         "related_metrics": [],
@@ -10208,6 +11325,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de emails entregues que resultaram em descadastro.",
         "related_metrics": [],
@@ -10305,6 +11429,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "session",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de sessões que atingem o evento de conversão definido.",
         "related_metrics": [],
@@ -10406,6 +11537,13 @@
         ],
         "joins": []
       },
+      "entity_id": "session",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de sessões do website no período.",
         "related_metrics": [],
@@ -10503,6 +11641,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Uso efetivo da capacidade disponível.",
         "related_metrics": [],
@@ -10594,6 +11739,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Custo operacional total dividido pelo output produzido.",
         "related_metrics": [],
@@ -10679,6 +11831,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "operation",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre início e conclusão de uma operação.",
         "related_metrics": [],
@@ -10776,6 +11935,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proporção de unidades que apresentam defeito segundo o critério definido.",
         "related_metrics": [],
@@ -10873,6 +12039,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "resource",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tempo em que o recurso operacional está indisponível.",
         "related_metrics": [],
@@ -10970,6 +12143,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de unidades aprovadas sem retrabalho na primeira passagem.",
         "related_metrics": [],
@@ -11055,6 +12235,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Acurácia entre previsão operacional e realização observada.",
         "related_metrics": [],
@@ -11152,6 +12339,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "operation",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de operações concluídas dentro do prazo acordado.",
         "related_metrics": [],
@@ -11243,6 +12437,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Output operacional por unidade de recurso consumido.",
         "related_metrics": [],
@@ -11340,6 +12541,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de unidades que exigem processamento adicional.",
         "related_metrics": [],
@@ -11437,6 +12645,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "operation",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de operações que atendem ao SLA definido.",
         "related_metrics": [],
@@ -11528,6 +12743,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Volume de unidades processadas por unidade de tempo.",
         "related_metrics": [],
@@ -11625,6 +12847,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de novos usuários que atingem o evento de valor definido.",
         "related_metrics": [],
@@ -11720,6 +12949,13 @@
         ],
         "joins": []
       },
+      "entity_id": "session",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Duração média das sessões de usuários.",
         "related_metrics": [],
@@ -11811,6 +13047,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "day",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de usuários únicos que executaram uma ação ativa no dia.",
         "related_metrics": [],
@@ -11917,6 +13160,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Razão entre usuários ativos diários e mensais.",
         "related_metrics": [],
@@ -12014,6 +13264,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "feature",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de usuários ativos que utilizaram uma feature.",
         "related_metrics": [],
@@ -12105,6 +13362,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "feature",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número médio de usos da feature por usuário adotante.",
         "related_metrics": [],
@@ -12202,6 +13466,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de usuários gratuitos que se tornam pagantes.",
         "related_metrics": [],
@@ -12293,6 +13564,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "month",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de usuários únicos ativos no mês.",
         "related_metrics": [],
@@ -12394,6 +13672,13 @@
         ],
         "joins": []
       },
+      "entity_id": "period",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor agregado do evento ou resultado escolhido como principal indicador de valor entregue.",
         "related_metrics": [],
@@ -12491,6 +13776,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de novos usuários que concluem o onboarding.",
         "related_metrics": [],
@@ -12582,6 +13874,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita atribuída por usuário ativo ou pagante.",
         "related_metrics": [],
@@ -12679,6 +13978,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da cohort que retorna no dia seguinte ao evento de aquisição.",
         "related_metrics": [],
@@ -12776,6 +14082,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da cohort que retorna trinta dias após aquisição.",
         "related_metrics": [],
@@ -12873,6 +14186,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "cohort",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da cohort que retorna sete dias após aquisição.",
         "related_metrics": [],
@@ -12964,6 +14284,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número médio de sessões por usuário ativo.",
         "related_metrics": [],
@@ -13061,6 +14388,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de visitantes elegíveis que concluem cadastro.",
         "related_metrics": [],
@@ -13146,6 +14480,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo mediano entre cadastro e primeiro evento de ativação.",
         "related_metrics": [],
@@ -13243,6 +14584,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "trial",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de trials que se tornam clientes pagantes.",
         "related_metrics": [],
@@ -13340,6 +14688,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação percentual da base ativa em relação ao período comparável.",
         "related_metrics": [],
@@ -13431,6 +14786,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "week",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de usuários únicos ativos na semana.",
         "related_metrics": [],
@@ -13528,6 +14890,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "audit",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Não conformidades encontradas por item ou requisito auditado.",
         "related_metrics": [],
@@ -13625,6 +14994,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de ações corretivas concluídas dentro do prazo.",
         "related_metrics": [],
@@ -13716,6 +15092,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Custo associado a falhas internas, externas, retrabalho e refugo.",
         "related_metrics": [],
@@ -13807,6 +15190,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Reclamações normalizadas por volume de clientes ou unidades vendidas.",
         "related_metrics": [],
@@ -13898,6 +15288,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de defeitos normalizado por unidade produzida, código ou volume definido.",
         "related_metrics": [],
@@ -13995,6 +15392,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de unidades que atendem aos requisitos sem correção.",
         "related_metrics": [],
@@ -14080,6 +15484,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "process",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Índice estatístico de capacidade do processo em relação aos limites de especificação.",
         "related_metrics": [],
@@ -14177,6 +15588,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de produção descartada por não conformidade.",
         "related_metrics": [],
@@ -14262,6 +15680,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo médio entre criação e fechamento ganho.",
         "related_metrics": [],
@@ -14357,6 +15782,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor médio das oportunidades ganhas.",
         "related_metrics": [],
@@ -14448,6 +15880,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita ganha média atribuída por vendedor.",
         "related_metrics": [],
@@ -14549,6 +15988,13 @@
         ],
         "joins": []
       },
+      "entity_id": "contract",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor contratado em novos negócios no período.",
         "related_metrics": [],
@@ -14646,6 +16092,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "sale_line",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Desconto médio aplicado sobre o preço de tabela.",
         "related_metrics": [],
@@ -14747,6 +16200,13 @@
         ],
         "joins": []
       },
+      "entity_id": "contract",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita incremental de clientes existentes por upsell, cross-sell ou expansão.",
         "related_metrics": [],
@@ -14832,6 +16292,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proximidade entre previsão comercial e resultado realizado.",
         "related_metrics": [],
@@ -14929,6 +16396,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "lead",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de leads que se tornam oportunidades qualificadas.",
         "related_metrics": [],
@@ -15026,6 +16500,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "opportunity",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de oportunidades encerradas que foram perdidas.",
         "related_metrics": [],
@@ -15127,6 +16608,13 @@
         ],
         "joins": []
       },
+      "entity_id": "contract",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita contratada proveniente de novos clientes.",
         "related_metrics": [],
@@ -15228,6 +16716,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de novas oportunidades criadas no período.",
         "related_metrics": [],
@@ -15325,6 +16820,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "opportunity",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de oportunidades encerradas que viram clientes.",
         "related_metrics": [],
@@ -15425,6 +16927,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Pipeline necessário em relação ao restante da meta de vendas.",
         "related_metrics": [],
@@ -15526,6 +17035,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor total das oportunidades abertas elegíveis.",
         "related_metrics": [],
@@ -15623,6 +17139,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Vendas realizadas como percentual da quota atribuída.",
         "related_metrics": [],
@@ -15708,6 +17231,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo médio entre criação e fechamento de uma oportunidade.",
         "related_metrics": [],
@@ -15809,6 +17339,13 @@
         ],
         "joins": []
       },
+      "entity_id": "target",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor-alvo de vendas para o período e escopo definidos.",
         "related_metrics": [],
@@ -15907,6 +17444,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor esperado gerado pelo funil por unidade de tempo.",
         "related_metrics": [],
@@ -16014,6 +17558,13 @@
         ],
         "joins": []
       },
+      "entity_id": "opportunity",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Pipeline ponderado pelas probabilidades de fechamento.",
         "related_metrics": [],
@@ -16111,6 +17662,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "opportunity",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de oportunidades encerradas que foram ganhas.",
         "related_metrics": [],
@@ -16212,6 +17770,13 @@
         ],
         "joins": []
       },
+      "entity_id": "vulnerability",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de vulnerabilidades críticas abertas na referência.",
         "related_metrics": [],
@@ -16297,6 +17862,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre detecção e contenção de um incidente.",
         "related_metrics": [],
@@ -16382,6 +17954,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre ocorrência de um incidente e sua detecção.",
         "related_metrics": [],
@@ -16467,6 +18046,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre detecção e remediação completa.",
         "related_metrics": [],
@@ -16564,6 +18150,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "user",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de participantes que executam uma ação considerada falha na simulação.",
         "related_metrics": [],
@@ -16661,6 +18254,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "control",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de controles de segurança avaliados como conformes.",
         "related_metrics": [],
@@ -16762,6 +18362,13 @@
         ],
         "joins": []
       },
+      "entity_id": "incident",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de incidentes de segurança registrados.",
         "related_metrics": [],
@@ -16859,6 +18466,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "vulnerability",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de vulnerabilidades remediadas dentro do prazo.",
         "related_metrics": [],
@@ -16960,6 +18574,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de clientes ativos na referência.",
         "related_metrics": [],
@@ -17057,6 +18678,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Variação percentual da base de clientes em relação ao período comparável.",
         "related_metrics": [],
@@ -17154,6 +18782,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita ou volume da empresa dividido pelo mercado relevante definido.",
         "related_metrics": [],
@@ -17255,6 +18890,13 @@
         ],
         "joins": []
       },
+      "entity_id": "customer",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de clientes adquiridos no período.",
         "related_metrics": [],
@@ -17346,6 +18988,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Lucro ou margem atribuível dividido pela base de clientes.",
         "related_metrics": [],
@@ -17437,6 +19086,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Receita média por cliente ativo ou pagante.",
         "related_metrics": [],
@@ -17534,6 +19190,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Participação estimada da empresa no gasto total do cliente na categoria relevante.",
         "related_metrics": [],
@@ -17631,6 +19294,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "kpi",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Resultado realizado como percentual da meta estratégica.",
         "related_metrics": [],
@@ -17716,6 +19386,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número estimado de dias de estoque com base no consumo.",
         "related_metrics": [],
@@ -17813,6 +19490,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual da demanda atendida imediatamente pelo estoque disponível.",
         "related_metrics": [],
@@ -17898,6 +19582,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": null,
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proximidade entre demanda prevista e realizada.",
         "related_metrics": [],
@@ -17995,6 +19686,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Desvio sistemático entre demanda prevista e observada.",
         "related_metrics": [],
@@ -18086,6 +19784,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "period",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Custo das mercadorias vendidas dividido pelo estoque médio.",
         "related_metrics": [],
@@ -18187,6 +19892,13 @@
         ],
         "joins": []
       },
+      "entity_id": "sku",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Quantidade física disponível ou registrada em estoque.",
         "related_metrics": [],
@@ -18288,6 +20000,13 @@
         ],
         "joins": []
       },
+      "entity_id": "sku",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Valor contábil ou gerencial do estoque na referência.",
         "related_metrics": [],
@@ -18373,6 +20092,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "order",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre pedido confirmado e pedido entregue.",
         "related_metrics": [],
@@ -18458,6 +20184,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "purchase_order",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Economia obtida em relação ao baseline de preço definido.",
         "related_metrics": [],
@@ -18543,6 +20276,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "purchase_order",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre criação do pedido de compra e recebimento.",
         "related_metrics": [],
@@ -18640,6 +20380,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "sku",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proporção de demanda ou SKUs indisponíveis quando solicitados.",
         "related_metrics": [],
@@ -18737,6 +20484,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "delivery",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de entregas de fornecedores recebidas no prazo.",
         "related_metrics": [],
@@ -18834,6 +20588,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "agent",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Proporção do tempo disponível do agente dedicado a trabalho produtivo.",
         "related_metrics": [],
@@ -18935,6 +20696,13 @@
         ],
         "joins": []
       },
+      "entity_id": "ticket",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de tickets abertos e não resolvidos na referência.",
         "related_metrics": [],
@@ -19026,6 +20794,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Custo operacional do suporte dividido pelo volume de tickets.",
         "related_metrics": [],
@@ -19121,6 +20896,13 @@
         ],
         "joins": []
       },
+      "entity_id": "survey_response",
+      "metric_kind": "base",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Satisfação média ou percentual positivo após atendimento.",
         "related_metrics": [],
@@ -19218,6 +21000,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tickets que exigem transferência para outro nível.",
         "related_metrics": [],
@@ -19315,6 +21104,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tickets resolvidos sem interação adicional significativa.",
         "related_metrics": [],
@@ -19400,6 +21196,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo médio ou mediano entre criação e primeira resposta humana.",
         "related_metrics": [],
@@ -19485,6 +21288,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "derived",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Tempo entre criação e resolução do ticket.",
         "related_metrics": [],
@@ -19582,6 +21392,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tickets que ultrapassam o SLA aplicável.",
         "related_metrics": [],
@@ -19679,6 +21496,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "ticket",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Percentual de tickets resolvidos que são reabertos.",
         "related_metrics": [],
@@ -19780,6 +21604,13 @@
         ],
         "joins": []
       },
+      "entity_id": "ticket",
+      "metric_kind": "base",
+      "additivity": "additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número de tickets criados no período.",
         "related_metrics": [],
@@ -19871,6 +21702,13 @@
         }
       ],
       "lineage": {},
+      "entity_id": "customer",
+      "metric_kind": "ratio",
+      "additivity": "non_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
       "usage_context": {
         "when_to_use": "Número médio de tickets por cliente atendido.",
         "related_metrics": [],
