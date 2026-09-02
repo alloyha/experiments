@@ -18,7 +18,46 @@ POSTGRES_DB=os.getenv('POSTGRES_DB')
 
 
 DSN = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-print(DSN)
+SAFE_DSN = f"postgresql://{POSTGRES_USER}:***@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+print(SAFE_DSN)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _random_customer_id(cur):
+    """
+    Returns a random existing customer_id, or None if the
+    customers table is empty.
+    """
+    cur.execute("select customer_id from customers order by random() limit 1")
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def _random_order_id(cur):
+    """
+    Returns a random existing order_id, or None if the
+    orders table is empty.
+    """
+    cur.execute("select order_id from orders order by random() limit 1")
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+# Valid values used by the "normal" (non-buggy) mutations.
+VALID_COUNTRY_CODES = ["BR", "DE", "US"]
+VALID_ORDER_STATUSES = ["pending", "paid", "cancelled", "refunded"]
+
+# Range used when generating a random order amount.
+ORDER_AMOUNT_MIN = 10.00
+ORDER_AMOUNT_MAX = 500.00
+
+
+def _random_amount(min_value=ORDER_AMOUNT_MIN, max_value=ORDER_AMOUNT_MAX):
+    return round(random.uniform(min_value, max_value), 2)
+
 
 # ---------------------------------------------------------------------------
 # Normal mutations
@@ -51,6 +90,14 @@ def insert_customer(conn):
 
 def insert_order(conn):
     with conn.cursor() as cur:
+        customer_id = _random_customer_id(cur)
+
+        if customer_id is None:
+            print("No customer found, skipping insert_order")
+            return
+
+        amount = _random_amount()
+
         cur.execute(
             """
             insert into orders (
@@ -61,42 +108,89 @@ def insert_order(conn):
             values (%s, %s, %s)
             returning order_id
             """,
-            (1, 299.90, "paid"),
+            (customer_id, amount, "paid"),
         )
 
         order_id = cur.fetchone()[0]
 
-    print(f"Created order {order_id}")
+    print(
+        f"Created order {order_id} for customer {customer_id} "
+        f"with amount={amount}"
+    )
 
 
 def update_customer(conn):
     with conn.cursor() as cur:
+        customer_id = _random_customer_id(cur)
+
+        if customer_id is None:
+            print("No customer found, skipping update_customer")
+            return
+
+        cur.execute(
+            "select country_code from customers where customer_id = %s",
+            (customer_id,),
+        )
+        current_country = cur.fetchone()[0]
+
+        # Pick a different valid country so the mutation is visible.
+        candidates = [
+            c for c in VALID_COUNTRY_CODES if c != current_country
+        ]
+        new_country = random.choice(candidates)
+
         cur.execute(
             """
             update customers
             set
-                country_code = 'DE',
+                country_code = %s,
                 updated_at = now()
-            where customer_id = 1
-            """
+            where customer_id = %s
+            """,
+            (new_country, customer_id),
         )
 
-    print("Customer 1 moved from BR to DE")
+    print(
+        f"Customer {customer_id} moved from "
+        f"{current_country} to {new_country}"
+    )
 
 
 def update_order(conn):
     with conn.cursor() as cur:
+        order_id = _random_order_id(cur)
+
+        if order_id is None:
+            print("No order found, skipping update_order")
+            return
+
+        cur.execute(
+            "select status from orders where order_id = %s",
+            (order_id,),
+        )
+        current_status = cur.fetchone()[0]
+
+        # Pick a different valid status so the mutation is visible.
+        candidates = [
+            s for s in VALID_ORDER_STATUSES if s != current_status
+        ]
+        new_status = random.choice(candidates)
+
         cur.execute(
             """
             update orders
             set
-                status = 'refunded',
+                status = %s,
                 updated_at = now()
-            where order_id = 1
-            """
+            where order_id = %s
+            """,
+            (new_status, order_id),
         )
 
-    print("Order 1 changed to refunded")
+    print(
+        f"Order {order_id} changed from "
+        f"{current_status} to {new_status}"
+    )
 
 
 def delete_order(conn):
@@ -118,6 +212,49 @@ def delete_order(conn):
         print(f"Deleted order {row[0]}")
     else:
         print("No order found")
+
+
+def delete_customer_cascade(conn):
+    """
+    Deletes a random customer that has at least one order, removing
+    their orders first since orders.customer_id has no ON DELETE
+    CASCADE in the schema. Simulates a churn / GDPR-style delete.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select c.customer_id
+            from customers c
+            join orders o on o.customer_id = c.customer_id
+            group by c.customer_id
+            order by random()
+            limit 1
+            """
+        )
+
+        row = cur.fetchone()
+
+        if not row:
+            print("No customer with orders found")
+            return
+
+        customer_id = row[0]
+
+        cur.execute(
+            "delete from orders where customer_id = %s",
+            (customer_id,),
+        )
+        deleted_orders = cur.rowcount
+
+        cur.execute(
+            "delete from customers where customer_id = %s",
+            (customer_id,),
+        )
+
+    print(
+        f"Deleted customer {customer_id} "
+        f"and {deleted_orders} associated order(s)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +300,8 @@ def bug_negative_amount(conn):
     amount > 0.
     """
     with conn.cursor() as cur:
+        customer_id = _random_customer_id(cur)
+
         cur.execute(
             """
             insert into orders (
@@ -173,7 +312,7 @@ def bug_negative_amount(conn):
             values (%s, %s, %s)
             returning order_id
             """,
-            (1, -150.00, "paid"),
+            (customer_id, -150.00, "paid"),
         )
 
         order_id = cur.fetchone()[0]
@@ -186,6 +325,8 @@ def bug_negative_amount(conn):
 
 def bug_zero_amount(conn):
     with conn.cursor() as cur:
+        customer_id = _random_customer_id(cur)
+
         cur.execute(
             """
             insert into orders (
@@ -196,7 +337,7 @@ def bug_zero_amount(conn):
             values (%s, %s, %s)
             returning order_id
             """,
-            (2, 0, "paid"),
+            (customer_id, 0, "paid"),
         )
 
         order_id = cur.fetchone()[0]
@@ -211,6 +352,8 @@ def bug_future_order(conn):
     future_date = datetime.now() + timedelta(days=30)
 
     with conn.cursor() as cur:
+        customer_id = _random_customer_id(cur)
+
         cur.execute(
             """
             insert into orders (
@@ -223,7 +366,7 @@ def bug_future_order(conn):
             returning order_id
             """,
             (
-                3,
+                customer_id,
                 future_date,
                 199.90,
                 "paid",
@@ -233,7 +376,7 @@ def bug_future_order(conn):
         order_id = cur.fetchone()[0]
 
     print(
-        f"BUG injected: order {order_id} "
+        f"BUG injected: order {order_id} (customer {customer_id}) "
         f"has future date {future_date.date()}"
     )
 
@@ -383,6 +526,7 @@ ACTIONS = {
     "update-customer": update_customer,
     "update-order": update_order,
     "delete-order": delete_order,
+    "delete-customer-cascade": delete_customer_cascade,
 
     "bug-invalid-country": bug_invalid_country,
     "bug-negative-amount": bug_negative_amount,
@@ -414,4 +558,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
