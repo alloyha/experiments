@@ -1,0 +1,107 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: >
+      Customer dimension used by analytical models.
+      Grain: one row per customer.
+
+    columns:
+      - name: customer_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: email
+        data_tests:
+          - not_null
+          - unique
+
+      - name: country_code
+        data_tests:
+          - not_null
+
+      - name: country_name
+        data_tests:
+          - not_null
+
+      - name: region
+        data_tests:
+          - not_null
+
+      - name: currency
+        data_tests:
+          - not_null
+
+
+  - name: fct_orders
+    description: >
+      Atomic order fact table.
+      Grain: one row per order.
+
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+
+      - name: order_date
+        data_tests:
+          - not_null
+
+      - name: amount
+        data_tests:
+          - not_null
+
+      - name: status
+        data_tests:
+          - not_null
+
+      - name: recognized_revenue
+        data_tests:
+          - not_null
+
+      - name: refunded_amount
+        data_tests:
+          - not_null
+
+
+  - name: mart_customer_sales
+    description: >
+      Business-facing customer sales summary.
+      Grain: one row per customer.
+
+    columns:
+      - name: customer_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: total_orders
+        data_tests:
+          - not_null
+
+      - name: paid_orders
+        data_tests:
+          - not_null
+
+      - name: cancelled_orders
+        data_tests:
+          - not_null
+
+      - name: refunded_orders
+        data_tests:
+          - not_null
+
+      - name: revenue
+        data_tests:
+          - not_null
+

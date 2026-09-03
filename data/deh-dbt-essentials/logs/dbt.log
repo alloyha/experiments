@@ -1,0 +1,150 @@
+[0m13:08:06.335699 [debug] [MainThread]: Got an exception trying to initialize tracking
+
+
+============================== 13:08:06.370623 | c7158a1c-63b9-46b2-bde0-c3f1e43fda6e ==============================
+[0m13:08:06.370623 [info ] [MainThread]: Running with dbt=1.12.3
+[0m13:08:06.371187 [debug] [MainThread]: running dbt with arguments {'no_print': 'None', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'debug': 'False', 'introspect': 'True', 'use_colors': 'True', 'send_anonymous_usage_stats': 'True', 'profiles_dir': '/home/pingu/.dbt', 'printer_width': '80', 'quiet': 'False', 'cache_selected_only': 'False', 'log_cache_events': 'False', 'write_json': 'True', 'empty': 'None', 'hints_enabled': 'True', 'version_check': 'True', 'maximum_seed_size_mib': '1', 'target_path': 'None', 'log_format': 'default', 'invocation_command': 'dbt init', 'partial_parse': 'True', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'warn_error': 'None', 'indirect_selection': 'eager', 'static_parser': 'True', 'log_path': 'logs'}
+[0m13:08:13.157888 [debug] [MainThread]: Starter project path: /home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/include/starter_project
+[0m13:08:13.166821 [info ] [MainThread]: Setting up your profile.
+[0m13:08:40.310406 [error] [MainThread]: [[31mERROR[0m]: Encountered an error:
+
+[0m13:08:40.319098 [error] [MainThread]: Traceback (most recent call last):
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 198, in wrapper
+    result, success = func(*args, **kwargs)
+                      ~~~~^^^^^^^^^^^^^^^^^
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 144, in wrapper
+    return func(*args, **kwargs)
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/cli/main.py", line 504, in init
+    results = task.run()
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/task/init.py", line 363, in run
+    self.setup_profile(profile_name)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/task/init.py", line 265, in setup_profile
+    self.create_profile_from_target(adapter, profile_name=profile_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/task/init.py", line 182, in create_profile_from_target
+    self.create_profile_from_profile_template(profile_template, profile_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/task/init.py", line 166, in create_profile_from_profile_template
+    target = self.generate_target_from_input(prompts, initial_target)
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/task/init.py", line 132, in generate_target_from_input
+    target[key] = click.prompt(
+                  ~~~~~~~~~~~~^
+        text, default=default, hide_input=hide_input, type=type
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/click/termui.py", line 262, in prompt
+    value = prompt_func(prompt)
+  File "/home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/click/termui.py", line 245, in prompt_func
+    raise Abort() from None
+click.exceptions.Abort
+
+[0m13:08:40.326801 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": false, "command_wall_clock_time": 34.056877, "process_in_blocks": "3264", "process_kernel_time": 0.862288, "process_mem_max_rss": "140372", "process_out_blocks": "38056", "process_user_time": 2.807545}
+[0m13:08:40.327343 [debug] [MainThread]: Command `dbt init` failed at 13:08:40.327243 after 34.06 seconds
+[0m13:08:40.327633 [debug] [MainThread]: Flushing usage events
+[0m13:08:43.108107 [debug] [MainThread]: Got an exception trying to initialize tracking
+
+
+============================== 13:08:43.112866 | dc77b09d-ade8-4dab-bf3a-411cca9f5962 ==============================
+[0m13:08:43.112866 [info ] [MainThread]: Running with dbt=1.12.3
+[0m13:08:43.113354 [debug] [MainThread]: running dbt with arguments {'log_path': 'logs', 'use_experimental_parser': 'False', 'fail_fast': 'False', 'partial_parse': 'True', 'write_json': 'True', 'indirect_selection': 'eager', 'hints_enabled': 'True', 'introspect': 'True', 'use_colors': 'True', 'printer_width': '80', 'invocation_command': 'dbt init', 'profiles_dir': '/home/pingu/.dbt', 'no_print': 'None', 'quiet': 'False', 'debug': 'False', 'cache_selected_only': 'False', 'version_check': 'True', 'static_parser': 'True', 'log_cache_events': 'False', 'target_path': 'None', 'warn_error': 'None', 'send_anonymous_usage_stats': 'True', 'empty': 'None', 'log_format': 'default', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'maximum_seed_size_mib': '1'}
+[0m13:08:48.653161 [info ] [MainThread]: A project called ecommerce already exists here.
+[0m13:08:48.657006 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 5.6153326, "process_in_blocks": "0", "process_kernel_time": 0.159722, "process_mem_max_rss": "111836", "process_out_blocks": "0", "process_user_time": 1.068913}
+[0m13:08:48.657447 [debug] [MainThread]: Command `dbt init` succeeded at 13:08:48.657375 after 5.62 seconds
+[0m13:08:48.657659 [debug] [MainThread]: Flushing usage events
+[0m13:08:58.289600 [debug] [MainThread]: Got an exception trying to initialize tracking
+
+
+============================== 13:08:58.295597 | 030eb05c-f4f0-4887-8d9e-83031f2b129b ==============================
+[0m13:08:58.295597 [info ] [MainThread]: Running with dbt=1.12.3
+[0m13:08:58.296111 [debug] [MainThread]: running dbt with arguments {'maximum_seed_size_mib': '1', 'empty': 'None', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'invocation_command': 'dbt init', 'cache_selected_only': 'False', 'profiles_dir': '/home/pingu/.dbt', 'quiet': 'False', 'no_print': 'None', 'send_anonymous_usage_stats': 'True', 'partial_parse': 'True', 'hints_enabled': 'True', 'write_json': 'True', 'introspect': 'True', 'log_format': 'default', 'indirect_selection': 'eager', 'log_path': 'logs', 'version_check': 'True', 'debug': 'False', 'target_path': 'None', 'use_experimental_parser': 'False', 'printer_width': '80', 'warn_error': 'None', 'fail_fast': 'False', 'log_cache_events': 'False', 'use_colors': 'True'}
+[0m13:09:00.823649 [debug] [MainThread]: Starter project path: /home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/lib/python3.13/site-packages/dbt/include/starter_project
+[0m13:09:00.826489 [info ] [MainThread]: Setting up your profile.
+[0m13:09:26.163048 [info ] [MainThread]: Profile ecommerce written to /home/pingu/.dbt/profiles.yml using target's profile_template.yml and your supplied values.
+[0m13:09:26.169583 [info ] [MainThread]: Running dbt debug to validate the project...
+[0m13:09:26.170125 [info ] [MainThread]: dbt version: 1.12.3
+[0m13:09:26.170357 [info ] [MainThread]: python version: 3.13.5
+[0m13:09:26.170551 [info ] [MainThread]: python path: /home/pingu/github/experiments/data/deh-dbt-fundamentals/.venv/bin/python3
+[0m13:09:26.170760 [info ] [MainThread]: os info: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39
+[0m13:09:26.195702 [info ] [MainThread]: Using profiles dir at /home/pingu/.dbt
+[0m13:09:26.196147 [info ] [MainThread]: Using profiles.yml file at /home/pingu/.dbt/profiles.yml
+[0m13:09:26.196477 [info ] [MainThread]: Using dbt_project.yml file at /home/pingu/github/experiments/data/deh-dbt-fundamentals/ecommerce/dbt_project.yml
+[0m13:09:26.197113 [info ] [MainThread]: adapter type: postgres
+[0m13:09:26.197406 [info ] [MainThread]: adapter version: 1.11.0
+[0m13:09:26.286623 [info ] [MainThread]: Configuration:
+[0m13:09:26.287071 [info ] [MainThread]:   profiles.yml file [[32mOK found and valid[0m]
+[0m13:09:26.287390 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m13:09:26.287607 [info ] [MainThread]: Required dependencies:
+[0m13:09:26.287843 [debug] [MainThread]: Executing "git --help"
+[0m13:09:26.293545 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]\n           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]\n           [--config-env=<name>=<envvar>] <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone     Clone a repository into a new directory\n   init      Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add       Add file contents to the index\n   mv        Move or rename a file, a directory, or a symlink\n   restore   Restore working tree files\n   rm        Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect    Use binary search to find the commit that introduced a bug\n   diff      Show changes between commits, commit and working tree, etc\n   grep      Print lines matching a pattern\n   log       Show commit logs\n   show      Show various types of objects\n   status    Show the working tree status\n\ngrow, mark and tweak your common history\n   branch    List, create, or delete branches\n   commit    Record changes to the repository\n   merge     Join two or more development histories together\n   rebase    Reapply commits on top of another base tip\n   reset     Reset current HEAD to the specified state\n   switch    Switch branches\n   tag       Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch     Download objects and refs from another repository\n   pull      Fetch from and integrate with another repository or a local branch\n   push      Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m13:09:26.293920 [debug] [MainThread]: STDERR: "b''"
+[0m13:09:26.294103 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m13:09:26.294332 [info ] [MainThread]: Connection:
+[0m13:09:26.294555 [info ] [MainThread]:   host: localhost
+[0m13:09:26.294758 [info ] [MainThread]:   port: 5432
+[0m13:09:26.294948 [info ] [MainThread]:   user: dbt
+[0m13:09:26.295155 [info ] [MainThread]:   database: shop
+[0m13:09:26.295320 [info ] [MainThread]:   schema: public
+[0m13:09:26.295482 [info ] [MainThread]:   connect_timeout: 10
+[0m13:09:26.295645 [info ] [MainThread]:   role: None
+[0m13:09:26.295809 [info ] [MainThread]:   search_path: None
+[0m13:09:26.295974 [info ] [MainThread]:   keepalives_idle: 0
+[0m13:09:26.296134 [info ] [MainThread]:   sslmode: None
+[0m13:09:26.296295 [info ] [MainThread]:   sslcert: None
+[0m13:09:26.296454 [info ] [MainThread]:   sslkey: None
+[0m13:09:26.296676 [info ] [MainThread]:   sslrootcert: None
+[0m13:09:26.296847 [info ] [MainThread]:   application_name: dbt
+[0m13:09:26.297024 [info ] [MainThread]:   autocommit: False
+[0m13:09:26.297187 [info ] [MainThread]:   retries: 1
+[0m13:09:26.297530 [info ] [MainThread]: Registered adapter: postgres=1.11.0
+[0m13:09:26.350315 [debug] [MainThread]: Acquiring new postgres connection 'debug'
+[0m13:09:26.392219 [debug] [MainThread]: Using postgres connection "debug"
+[0m13:09:26.392537 [debug] [MainThread]: On debug: select 1 as id
+[0m13:09:26.392792 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m13:09:26.485786 [debug] [MainThread]: Postgres adapter: Got a retryable error when attempting to open a postgres connection.
+1 attempts remaining. Retrying in 0 seconds.
+Error:
+connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "dbt"
+connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "dbt"
+
+[0m13:09:26.498508 [debug] [MainThread]: Postgres adapter: Error running SQL: select 1 as id
+[0m13:09:26.498825 [debug] [MainThread]: Postgres adapter: Rolling back transaction.
+[0m13:09:26.499079 [debug] [MainThread]: On debug: No close available on handle
+[0m13:09:26.499266 [info ] [MainThread]:   Connection test: [[31mERROR[0m]
+
+[0m13:09:26.499559 [info ] [MainThread]: [31m1 check failed:[0m
+[0m13:09:26.499833 [info ] [MainThread]: dbt was unable to connect to the specified database.
+The database returned the following error:
+
+  >Database Error
+  connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "dbt"
+  connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "dbt"
+  
+
+Check your database credentials and try again. For more information, visit:
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m13:09:26.500384 [info ] [MainThread]: Your new dbt project "ecommerce" was created!
+Initialized new project in /home/pingu/github/experiments/data/deh-dbt-fundamentals/ecommerce/ecommerce
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m13:09:26.501029 [info ] [MainThread]: [31mYour profile may need adjustments. You can find the logs of `dbt debug` above[0m
+[0m13:09:26.501722 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 28.26116, "process_in_blocks": "64", "process_kernel_time": 0.178659, "process_mem_max_rss": "131684", "process_out_blocks": "384", "process_user_time": 1.377661}
+[0m13:09:26.502096 [debug] [MainThread]: Command `dbt init` succeeded at 13:09:26.502022 after 28.26 seconds
+[0m13:09:26.502305 [debug] [MainThread]: Connection 'debug' was properly closed.
+[0m13:09:26.502486 [debug] [MainThread]: Flushing usage events
