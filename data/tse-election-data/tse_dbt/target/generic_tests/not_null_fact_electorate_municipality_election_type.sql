@@ -1,1 +1,0 @@
-{{ test_not_null(column_name="election_type", model=get_where_subquery(ref('fact_electorate_municipality'))) }}

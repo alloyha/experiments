@@ -1,1 +1,0 @@
-{{ test_not_null(column_name="total_legend_valid_delta", model=get_where_subquery(ref('party_tally_reconciliation'))) }}

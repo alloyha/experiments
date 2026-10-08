@@ -5,28 +5,27 @@ flowchart LR
     RAW["RAW<br/>immutable TSE objects"]
     B["Bronze<br/>source interpretation"]
     S["Silver<br/>canonical grain"]
-    P["Physical<br/>implementation helper"]
+    P["Physical<br/>execution helper"]
+    A[("candidate_fact_partition<br/>Parquet")]
     G["Gold<br/>facts / dimensions / reconciliation"]
     M["Semantic<br/>consumer metrics"]
 
     RAW --> B
     B --> S
-    S --> P
     B --> G
     S --> G
-    P --> G
+    S --> P
+    P -. publish .-> A
+    A -. read .-> G
     G --> M
 ```
 
-Allowed dependency direction:
+Logical dependencies are validated through `ref()`. Physical lineage is declared
+with `meta.physical_publish` and `meta.physical_source`, so external persisted
+artifacts do not disappear from architectural lineage.
 
-```text
-RAW -> Bronze -> Silver -> Gold -> Semantic
-                 |
-                 +-> Physical -> Gold
-```
-
-Backward dependencies are architectural violations and should fail CI.
+Bronze/Silver leaf models must either feed another model or explicitly declare
+`meta.architecture_status='orphan'` with an `architecture_reason`.
 
 ## Layer selectors
 

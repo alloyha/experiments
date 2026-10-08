@@ -1,1 +1,0 @@
-{{ dbt_utils.test_unique_combination_of_columns(combination_of_columns=["election_year","election_type","election_code","round_number","uf","municipality_code","zone","office_code","is_transit_vote"], model=get_where_subquery(ref('fact_turnout'))) }}

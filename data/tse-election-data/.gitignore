@@ -1,0 +1,3 @@
+tse_dbt/target/
+tse_dbt/dbt_packages/
+tse_dbt/logs/

@@ -1,4 +1,10 @@
-{{ config(enabled=false) }}
+{{ config(
+    enabled=false,
+    meta={
+        'architecture_status': 'orphan',
+        'architecture_reason': 'Source retained for future section-level electorate products'
+    }
+) }}
 
 {#
   Disabled intentionally.
@@ -10,9 +16,8 @@
       transfer type
       QT_ELEITOR
 
-  It is not a general electorate-by-section dataset and must not be modeled as
-  QT_ELEITORES_PERFIL. Reintroduce this as a dedicated
-  stg_temporary_transfer_section model when that subject area is needed.
+  It is not a general electorate-by-section dataset. Reintroduce this as a
+  dedicated modeled subject area when section-level electorate products exist.
 #}
 
 select 1 where false

@@ -1,4 +1,9 @@
-{{ config(materialized='view') }}
+{{ config(
+    materialized='view',
+    meta={
+        'physical_source': 'candidate_fact_partition'
+    }
+) }}
 
 select *
 from read_parquet(

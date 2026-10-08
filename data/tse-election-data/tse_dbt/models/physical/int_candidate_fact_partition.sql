@@ -4,7 +4,8 @@
     meta={
         'load_semantics': 'full_snapshot_ctas',
         'history_semantics': 'authoritative_snapshot',
-        'partition_key': ['election_year', 'election_type']
+        'partition_key': ['election_year', 'election_type'],
+        'physical_publish': 'candidate_fact_partition'
     }
 ) }}
 

@@ -1,1 +1,0 @@
-{{ test_accepted_values(column_name="election_scope", model=get_where_subquery(ref('election_calendar')), values=["federal_state","municipal"]) }}

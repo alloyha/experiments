@@ -1,1 +1,0 @@
-{{ test_not_null(column_name="party", model=get_where_subquery(ref('dim_party'))) }}
