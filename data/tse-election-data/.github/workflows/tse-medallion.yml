@@ -1,0 +1,20 @@
+name: TSE medallion contracts
+on:
+  pull_request:
+    paths: ['data/tse-election-data/**', '.github/workflows/tse-medallion.yml']
+  push:
+    branches: [main]
+    paths: ['data/tse-election-data/**', '.github/workflows/tse-medallion.yml']
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: data/tse-election-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make setup
+      - run: make unit
+      - run: make medallion-contracts
+      - run: make compile

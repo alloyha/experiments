@@ -8,7 +8,7 @@ with source_rows as (
         blank_votes, total_null_votes,
         annulled_votes, annulled_subjudice_votes
     from "tse_analytics"."main"."bronze_tally_munzona"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 target_rows as (
     select
@@ -20,7 +20,7 @@ target_rows as (
         blank_votes, total_null_votes,
         annulled_votes, annulled_subjudice_votes
     from "tse_analytics"."main"."fact_tally_munzona"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 diff as (
     (select 'missing_or_changed_in_target' as issue, * from source_rows

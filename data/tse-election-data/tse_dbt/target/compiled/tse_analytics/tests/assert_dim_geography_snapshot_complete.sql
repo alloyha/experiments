@@ -3,14 +3,14 @@ with source_rows as (
         election_year, election_type, election_scope,
         uf, municipality_code, municipality
     from "tse_analytics"."main"."silver_electorate_municipality"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 target_rows as (
     select
         election_year, election_type, election_scope,
         uf, municipality_code, municipality
     from "tse_analytics"."main"."dim_geography"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 diff as (
     (select 'missing_or_changed_in_target' as issue, * from source_rows

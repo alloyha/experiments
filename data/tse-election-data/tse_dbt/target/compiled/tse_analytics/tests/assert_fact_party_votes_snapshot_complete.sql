@@ -6,7 +6,7 @@ with source_rows as (
         nominal_converted_to_legend_votes, total_legend_valid_votes,
         nominal_annulled_subjudice_votes, legend_annulled_subjudice_votes
     from "tse_analytics"."main"."silver_party_votes_munzona"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 target_rows as (
     select
@@ -16,7 +16,7 @@ target_rows as (
         nominal_converted_to_legend_votes, total_legend_valid_votes,
         nominal_annulled_subjudice_votes, legend_annulled_subjudice_votes
     from "tse_analytics"."main"."fact_party_votes"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 diff as (
     (select 'missing_or_changed_in_target' as issue, * from source_rows

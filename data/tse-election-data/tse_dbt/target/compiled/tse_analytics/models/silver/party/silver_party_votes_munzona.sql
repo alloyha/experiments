@@ -4,7 +4,7 @@ with source_rows as (
     select *
     from "tse_analytics"."main"."bronze_party_votes_raw"
     
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
     
 ),
 

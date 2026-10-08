@@ -5,7 +5,7 @@ with source_rows as (
         election_code,
         party_number
     from "tse_analytics"."main"."silver_party_votes_munzona"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 target_rows as (
     select
@@ -14,7 +14,7 @@ target_rows as (
         election_code,
         party_number
     from "tse_analytics"."main"."dim_party"
-    where election_year in (2026) and election_type in ('general')
+    where election_year in (2018) and election_type in ('general')
 ),
 diff as (
     (select 'missing_in_target' as issue, * from source_rows

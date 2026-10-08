@@ -27,3 +27,13 @@ RAW -> Bronze -> Silver -> Gold -> Semantic
 ```
 
 Backward dependencies are architectural violations and should fail CI.
+
+## Layer selectors
+
+```bash
+make dbt-bronze
+make dbt-silver
+make dbt-gold
+make dbt-semantic-layer
+make medallion-contracts
+```

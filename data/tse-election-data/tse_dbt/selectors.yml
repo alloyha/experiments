@@ -1,0 +1,9 @@
+selectors:
+  - name: bronze
+    definition: {method: tag, value: bronze}
+  - name: silver
+    definition: {method: tag, value: silver}
+  - name: gold
+    definition: {method: tag, value: gold}
+  - name: semantic
+    definition: {method: tag, value: semantic}
