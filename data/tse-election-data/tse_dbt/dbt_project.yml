@@ -1,5 +1,5 @@
 name: tse_analytics
-version: '0.6.0'
+version: '0.7.0'
 config-version: 2
 profile: tse_analytics
 model-paths: ['models']
@@ -25,7 +25,16 @@ models:
       +materialized: view
     physical:
       +tags: ['physical']
-    marts:
+    gold:
+      +tags: ['gold']
       +materialized: incremental
+      dimensions:
+        +tags: ['dimension']
+      facts:
+        +tags: ['fact']
+      reconciliation:
+        +tags: ['reconciliation']
+        +materialized: view
     semantic:
+      +tags: ['semantic']
       +materialized: view

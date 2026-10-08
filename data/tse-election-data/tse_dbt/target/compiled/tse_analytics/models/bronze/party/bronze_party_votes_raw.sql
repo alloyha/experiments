@@ -5,25 +5,49 @@ with src as (
     from 
   
     
+    
     (
-      select
-        *,
-        cast(null as varchar) as _election_type,
-        cast(null as varchar) as _election_scope
-      from read_csv(
-        '/home/pingu/github/experiments/data/tse-election-data/tse_dbt/fixtures/vote_result.csv',
-        delim = ',',
-        header = true,
-        all_varchar = true,
-        union_by_name = true,
-        filename = true,
-        sample_size = 20480,
-        encoding = 'utf-8',
-        strict_mode = true,
-        null_padding = false,
-        ignore_errors = false
+      with _index as (
+        select distinct
+          '/home/pingu/github/experiments/data/tse-election-data/data/tse' || '/' || object as object_path,
+          year as _index_year,
+          election_type as _election_type,
+          election_scope as _election_scope
+        from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+        where domain = 'vote_result'
+          and year in (2026)
+          and election_type in ('general')
+          
+          and resource_name ilike 'Votação em partido por município e zona%'
+          
+      ),
+      _raw as (
+        select *
+        from read_csv(
+  [
+    '/home/pingu/github/experiments/data/tse-election-data/data/tse/raw/election_type=general/year=2026/domain=vote_result/dataset=resultados_2026/resource=b255886a_23f5_462f_8385_b2df4c3ddac3/sha256=85dd5241e46e78e1437666e901c1b15fe126e7476686ea8da075e306a6a5e56c/extracted/votacao_partido_munzona_2026_BRASIL.csv'
+  ],
+  delim = ';',
+  quote = '"',
+  escape = '"',
+  header = true,
+  all_varchar = true,
+  union_by_name = true,
+  filename = true,
+  sample_size = 20480,
+  encoding = 'latin-1',
+  strict_mode = true,
+  null_padding = false,
+  ignore_errors = false
+)
       )
-      where false
+      select
+        _raw.*,
+        _index._election_type,
+        _index._election_scope
+      from _raw
+      left join _index
+        on replace(_raw.filename, '\\', '/') = replace(_index.object_path, '\\', '/')
     )
   
 
@@ -91,7 +115,7 @@ end
 
         try_cast("QT_VOTOS_LEGENDA_VALIDOS" as bigint) as legend_valid_votes,
         
-        try_cast("QT_VOTOS_NOMINAIS_CONVR_LEG" as bigint)
+        try_cast("QT_VOTOS_NOM_CONVR_LEG_VALIDOS" as bigint)
          as nominal_converted_to_legend_votes,
         try_cast("QT_TOTAL_VOTOS_LEG_VALIDOS" as bigint) as total_legend_valid_votes,
         try_cast("QT_VOTOS_NOMINAIS_VALIDOS" as bigint) as nominal_valid_votes,
@@ -106,4 +130,4 @@ end
 select *
 from typed
 
-where election_year in (2018) and election_type in ('general')
+where election_year in (2026) and election_type in ('general')

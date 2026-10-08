@@ -1,0 +1,20 @@
+{
+  "target_dir": "/home/pingu/github/experiments/data/tse-election-data/tse_dbt/target",
+  "fingerprints": {
+    "semantic_manifest.json": {
+      "size": 234,
+      "modified_secs": 1791483034
+    },
+    "manifest.json": {
+      "size": 1203039,
+      "modified_secs": 1791483238
+    },
+    "run_results.json": {
+      "size": 169907,
+      "modified_secs": 1791483238
+    }
+  },
+  "write_source": "DirectWrite",
+  "context_dir": null,
+  "context_fingerprints": {}
+}
