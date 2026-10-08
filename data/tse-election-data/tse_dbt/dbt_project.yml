@@ -1,0 +1,31 @@
+name: tse_analytics
+version: '0.5.0'
+config-version: 2
+
+profile: tse_analytics
+
+model-paths: ['models']
+macro-paths: ['macros']
+test-paths: ['tests']
+seed-paths: ['seeds']
+clean-targets: ['target', 'dbt_packages']
+
+vars:
+  tse_raw_root: '../data/tse'
+  tse_csv_encoding: 'latin-1'
+  election_year: 2026
+  election_years: [2026]
+  election_types: ['general']
+  incremental_years: [2026]
+  incremental_election_types: ['general']
+
+models:
+  tse_analytics:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: incremental
+    semantic:
+      +materialized: view

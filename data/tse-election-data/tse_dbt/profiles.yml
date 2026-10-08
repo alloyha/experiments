@@ -1,0 +1,20 @@
+tse_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('TSE_DUCKDB_PATH', './tse_analytics.duckdb') }}"
+      # One dbt node at a time. Heavy CSV scans must not overlap in-process.
+      threads: 1
+      extensions:
+        - httpfs
+        - parquet
+      settings:
+        # Conservative WSL-safe default. Raise explicitly after measuring.
+        memory_limit: "{{ env_var('TSE_DUCKDB_MEMORY_LIMIT', '2GB') }}"
+        # DuckDB recommendation for large CSV/table loads.
+        preserve_insertion_order: false
+        temp_directory: "{{ env_var('TSE_DUCKDB_TEMP_DIRECTORY', 'data/warehouse/.duckdb_tmp') }}"
+        max_temp_directory_size: "{{ env_var('TSE_DUCKDB_MAX_TEMP_DIRECTORY_SIZE', '50GB') }}"
+        # Also constrain parallelism inside a single DuckDB query.
+        threads: 1

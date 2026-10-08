@@ -1,0 +1,11 @@
+{{ config(
+    meta={'load_semantics': 'partition_replace_via_delete_insert', 'history_semantics': 'authoritative_snapshot', 'partition_key': ['election_year', 'election_type']},
+    materialized='incremental',
+    incremental_strategy='delete+insert',
+    unique_key=['election_year', 'election_type'],
+    on_schema_change='sync_all_columns'
+) }}
+
+select *
+from {{ ref('int_candidate_votes') }}
+{{ incremental_election_filter('election_year', 'election_type') }}

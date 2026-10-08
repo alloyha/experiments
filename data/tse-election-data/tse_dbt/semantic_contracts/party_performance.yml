@@ -1,0 +1,141 @@
+version: 1
+cube: party_performance
+status: implemented_reference_cube
+base_fact: fact_party_votes
+base_grain:
+- election_year
+- election_type
+- election_code
+- round_number
+- uf
+- municipality_code
+- zone
+- office_code
+- party_number
+- is_transit_vote
+conformed_dimensions:
+- dim_election
+- dim_geography
+- dim_party
+- dim_candidate
+hierarchies:
+  geography:
+    levels:
+    - brazil
+    - uf
+    - municipality
+    - zone
+    rollup: allowed
+measures:
+  party_reported_nominal_valid_votes:
+    aggregation: sum
+    additive: true
+  candidate_nominal_valid_votes:
+    aggregation: sum
+    additive: true
+  legend_valid_votes:
+    aggregation: sum
+    additive: true
+  party_valid_votes:
+    formula: party_reported_nominal_valid_votes + legend_valid_votes
+    aggregation: recompute_from_additive_components
+  nominal_reconciliation_delta:
+    formula: party_reported_nominal_votes - candidate_nominal_votes
+    aggregation: sum
+  vote_share:
+    formula: sum(party_valid_votes) / sum(valid_votes)
+    aggregation: recompute
+    additive: false
+  turnout_rate:
+    formula: sum(turnout) / sum(eligible_voters)
+    aggregation: recompute
+    additive: false
+  abstention_rate:
+    formula: sum(abstentions) / sum(eligible_voters)
+    aggregation: recompute
+    additive: false
+  nominal_tally_delta:
+    formula: sum(party_reported_nominal_valid_votes) - sum(tally_nominal_valid_votes)
+    aggregation: sum
+    additive: true
+    semantic_role: strict_reconciliation_delta
+drill_across:
+  candidate_votes:
+    source: fact_candidate_votes
+    bridge_dimension: dim_candidate
+    common_grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - party_number
+    - is_transit_vote
+    invariant: candidate nominal valid votes reconcile to tally nominal valid votes at the shared grain; candidate↔party
+      differences are preserved as attribution gaps
+  tally:
+    source: fact_tally_munzona
+    common_grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - is_transit_vote
+    provides:
+    - valid_votes
+    - turnout
+    - eligible_voters
+    - abstentions
+    - nominal_valid_votes
+deferred_measures: []
+deferred_reason: null
+canonical_cuboids:
+- - election_year
+  - round_number
+  - office_code
+  - party_number
+- - election_year
+  - round_number
+  - uf
+  - office_code
+  - party_number
+- - election_year
+  - round_number
+  - uf
+  - municipality_code
+  - office_code
+  - party_number
+- - election_year
+  - round_number
+  - uf
+  - municipality_code
+  - zone
+  - office_code
+  - party_number
+noncanonical_policy:
+  materialize: false
+  query_on_demand: true
+reconciliation_policy:
+  candidate_to_tally: strict_zero_delta
+  party_to_tally: strict_zero_delta
+  party_to_candidate: strict_zero_delta_via_tally
+  source_collapse:
+    method: max_per_measure_at_analytical_grain
+    validated_on: 2018-general
+    evidence:
+      duplicate_grains: 607022
+      nominal_diff_grains: 74
+      legend_diff_grains: 0
+      total_legend_diff_grains: 0
+      zero_plus_positive_nominal_grains: 74
+      party_vs_tally_after_max_nominal_mismatches: 0
+      party_vs_tally_after_max_nominal_delta: 0
+      party_vs_tally_after_max_legend_mismatches: 0
+      party_vs_tally_after_max_legend_delta: 0

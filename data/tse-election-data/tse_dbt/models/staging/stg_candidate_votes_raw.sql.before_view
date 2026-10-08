@@ -1,0 +1,58 @@
+{{ config(
+    materialized='incremental',
+    incremental_strategy='delete+insert',
+    unique_key=['election_year', 'election_type'],
+    on_schema_change='sync_all_columns',
+    meta={
+      'load_semantics': 'partition_replace_via_delete_insert',
+      'history_semantics': 'source_versions',
+      'partition_key': ['election_year', 'election_type'],
+      'resource_class': 'very_heavy_streaming'
+    }
+) }}
+
+with src as (
+    select *
+    from {{ read_raw_csv('vote_result', 'Votação nominal por município e zona%') }}
+),
+
+typed as (
+    select
+        try_cast("ANO_ELEICAO" as integer) as election_year,
+        _election_type as election_type,
+        _election_scope as election_scope,
+
+        "CD_ELEICAO" as election_code,
+        try_cast("NR_TURNO" as integer) as round_number,
+        try_strptime(
+            trim("DT_GERACAO") || ' ' || trim("HH_GERACAO"),
+            '%d/%m/%Y %H:%M:%S'
+        ) as generated_at,
+
+        "SG_UF" as uf,
+        {{ normalize_municipality_code('"CD_MUNICIPIO"') }} as municipality_code,
+        try_cast("NR_ZONA" as integer) as zone,
+
+        "CD_CARGO" as office_code,
+        {{ office_scope('"DS_CARGO"') }} as office_scope,
+
+        "SQ_CANDIDATO" as candidate_id,
+        "CD_SIT_TOT_TURNO" as totalization_status_code,
+
+        case
+          when upper(trim("ST_VOTO_EM_TRANSITO")) = 'S' then true
+          when upper(trim("ST_VOTO_EM_TRANSITO")) = 'N' then false
+          else null
+        end as is_transit_vote,
+
+        try_cast("QT_VOTOS_NOMINAIS" as bigint) as nominal_votes,
+        try_cast("QT_VOTOS_NOMINAIS_VALIDOS" as bigint) as nominal_valid_votes,
+        filename as source_file
+    from src
+)
+
+select *
+from typed
+{% if is_incremental() %}
+where {{ incremental_partition_predicate('election_year', 'election_type') }}
+{% endif %}

@@ -1,0 +1,56 @@
+version: 1
+cube: electoral_participation
+status: implemented_reference_cube
+base_fact: fact_turnout
+base_grain:
+- election_year
+- election_type
+- election_code
+- round_number
+- uf
+- municipality_code
+- zone
+- office_code
+hierarchies:
+  geography:
+    levels:
+    - brazil
+    - uf
+    - municipality
+    - zone
+    rollup: allowed
+dimensions:
+- election
+- round
+- office
+- geography
+measures:
+  eligible_voters:
+    aggregation: sum
+    additive: true
+  turnout:
+    aggregation: sum
+    additive: true
+  abstentions:
+    aggregation: sum
+    additive: true
+  turnout_rate:
+    formula: sum(turnout) / sum(eligible_voters)
+    aggregation: recompute
+    additive: false
+  abstention_rate:
+    formula: sum(abstentions) / sum(eligible_voters)
+    aggregation: recompute
+    additive: false
+  voters_uninstalled_sections:
+    aggregation: sum
+    additive: true
+  uncounted_voters:
+    formula: sum(eligible_voters) - sum(turnout) - sum(abstentions)
+    aggregation: recompute
+    additive: true
+constraints:
+- Do not roll up across office_code by summing eligible_voters/turnout/abstentions; those measures repeat by office.
+- Geography roll-up is valid while office remains fixed.
+- eligible_voters = turnout + abstentions + uncounted_voters; 2018 exposes voters in uninstalled sections as an
+  observed component of uncounted_voters.

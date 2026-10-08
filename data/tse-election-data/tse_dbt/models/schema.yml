@@ -1,0 +1,454 @@
+version: 2
+seeds:
+- name: election_calendar
+  description: Canonical regular Brazilian election cycles used by both ingestion and analytics.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - general
+          - municipal
+  - name: election_scope
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - federal_state
+          - municipal
+models:
+- name: stg_candidates
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - candidate_id
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - general
+          - municipal
+  - name: election_scope
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - federal_state
+          - municipal
+  - name: office_scope
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - federal
+          - state
+          - municipal
+          - other
+  - name: candidate_id
+    tests:
+    - not_null
+  - name: candidate_name
+    tests:
+    - not_null
+- name: stg_candidate_assets
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: candidate_id
+    tests:
+    - not_null
+- name: dim_election
+  description: One row per canonical election cycle.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+  columns:
+  - name: election_id
+    tests:
+    - not_null
+    - unique
+  - name: election_type
+    tests:
+    - accepted_values:
+        arguments:
+          values:
+          - general
+          - municipal
+- name: dim_candidate
+  description: Candidate dimension enriched with election cycle/scope and declared asset aggregates.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - candidate_id
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: election_id
+    tests:
+    - not_null
+  - name: election_code
+    tests:
+    - not_null
+  - name: candidate_id
+    tests:
+    - not_null
+- name: fact_electorate_municipality
+  description: Electorate aggregated at municipality level for each election cycle.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - uf
+        - municipality_code
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: election_scope
+    tests:
+    - not_null
+  - name: uf
+    tests:
+    - not_null
+  - name: municipality_code
+    tests:
+    - not_null
+- name: dim_geography
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - uf
+        - municipality_code
+- name: stg_candidate_votes_munzona
+  description: Latest TSE version of nominal candidate voting at municipality/zone grain.
+  tests: []
+  columns:
+  - name: election_year
+  - name: election_type
+  - name: election_code
+  - name: round_number
+  - name: uf
+  - name: municipality_code
+  - name: zone
+  - name: office_code
+  - name: office_scope
+  - name: candidate_id
+  - name: nominal_votes
+  - name: nominal_valid_votes
+- name: fact_candidate_votes
+  description: Nominal candidate votes by election, round, municipality, zone, office, candidate and transit-vote
+    flag.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - candidate_id
+        - is_transit_vote
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: election_id
+    tests:
+    - not_null
+  - name: election_code
+    tests:
+    - not_null
+  - name: round_number
+    tests:
+    - not_null
+  - name: candidate_id
+    tests:
+    - not_null
+  - name: nominal_votes
+    tests:
+    - not_null
+- name: stg_party_votes_munzona
+  description: Latest TSE party-vote snapshot at municipality/zone/office/party grain.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - party_number
+        - is_transit_vote
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: election_code
+    tests:
+    - not_null
+  - name: round_number
+    tests:
+    - not_null
+  - name: uf
+    tests:
+    - not_null
+  - name: municipality_code
+    tests:
+    - not_null
+  - name: zone
+    tests:
+    - not_null
+  - name: office_code
+    tests:
+    - not_null
+  - name: party_number
+    tests:
+    - not_null
+  - name: nominal_valid_votes
+    tests:
+    - not_null
+  - name: legend_valid_votes
+    tests:
+    - not_null
+  - name: total_legend_valid_votes
+    tests:
+    - not_null
+- name: dim_party
+  description: Conformed election-snapshot party dimension; candidate for SCD2 after multi-cycle validation.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - party_number
+  columns:
+  - name: party_id
+    tests:
+    - not_null
+    - unique
+  - name: party_number
+    tests:
+    - not_null
+  - name: party
+    tests:
+    - not_null
+  - name: party_name
+    tests:
+    - not_null
+- name: fact_party_votes
+  description: Party-reported nominal and legend votes at municipality/zone/office/party grain.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - party_number
+        - is_transit_vote
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_type
+    tests:
+    - not_null
+  - name: election_code
+    tests:
+    - not_null
+  - name: round_number
+    tests:
+    - not_null
+  - name: party_number
+    tests:
+    - not_null
+  - name: nominal_valid_votes
+    tests:
+    - not_null
+  - name: legend_valid_votes
+    tests:
+    - not_null
+  - name: total_legend_valid_votes
+    tests:
+    - not_null
+  - name: party_valid_votes
+    tests:
+    - not_null
+- name: stg_tally_munzona
+  description: Latest TSE tally snapshot by election, round, municipality, zone and office.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - is_transit_vote
+  columns:
+  - name: election_year
+    tests:
+    - not_null
+  - name: election_code
+    tests:
+    - not_null
+  - name: round_number
+    tests:
+    - not_null
+  - name: municipality_code
+    tests:
+    - not_null
+  - name: zone
+    tests:
+    - not_null
+  - name: office_code
+    tests:
+    - not_null
+  - name: eligible_voters
+    tests:
+    - not_null
+  - name: turnout
+    tests:
+    - not_null
+  - name: abstentions
+    tests:
+    - not_null
+- name: fact_tally_munzona
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - is_transit_vote
+- name: fact_turnout
+  description: Participation fact retaining office in the grain to prevent cross-office double counting.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - is_transit_vote
+  columns:
+  - name: eligible_voters
+    tests:
+    - not_null
+  - name: turnout
+    tests:
+    - not_null
+  - name: abstentions
+    tests:
+    - not_null
+- name: candidate_tally_reconciliation
+  description: Strict candidate-to-tally reconciliation restricted to election/office slices with candidate-resource
+    coverage.
+  columns:
+  - name: nominal_valid_delta
+    tests:
+    - not_null
+- name: party_tally_reconciliation
+  description: Strict reconciliation of party valid nominal/legend totals against the TSE tally at the exact common
+    grain.
+  columns:
+  - name: nominal_valid_delta
+    tests:
+    - not_null
+  - name: total_legend_valid_delta
+    tests:
+    - not_null
+  - name: total_valid_delta
+    tests:
+    - not_null
+- name: candidate_tally_coverage_gaps
+  description: Tally grains whose election/round/UF/office slice is absent from the candidate resource. These are
+    coverage gaps, not reconciliation failures.
+  columns:
+  - name: gap_reason
+    tests:
+    - not_null

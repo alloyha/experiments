@@ -1,0 +1,296 @@
+version: 1
+principles:
+- TSE analytical resources are authoritative snapshots unless explicitly classified otherwise.
+- Snapshot facts and election-snapshot dimensions are never append-only by default.
+- Incremental snapshot loads replace the complete selected election partition.
+- SCD2 is used only for a persistent business entity whose attributes can change independently of an election grain.
+- A single election snapshot is not sufficient evidence to manufacture SCD2 history.
+- Full-refresh replaces the whole relation with the currently selected election_years/election_types scope.
+partition_defaults:
+  keys:
+  - election_year
+  - election_type
+  vars:
+    years: incremental_years
+    types: incremental_election_types
+models:
+  dim_election:
+    status: implemented
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    key: election_id = year:type:election_code
+    reason: 2018 general data contains distinct elections such as 297 and 339.
+  dim_candidate:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: election_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - candidate_id
+    scd2: false
+    rationale: Candidate here means a candidature in a specific election, not a persistent person.
+  dim_geography:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: election_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - uf
+    - municipality_code
+    scd2: false
+    future: A persistent geography dimension may become SCD2 once multi-year administrative changes are modeled.
+  stg_candidate_votes_munzona:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: current_source_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    resource_class: very_heavy
+    deduplication: row_number latest-version selection from persisted narrow raw table; external sort may spill
+      to disk
+  fact_candidate_votes:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: authoritative_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - candidate_id
+    - is_transit_vote
+  fact_electorate_municipality:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: authoritative_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - uf
+    - municipality_code
+  dim_party:
+    status: implemented_as_election_snapshot
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: election_snapshot
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - party_number
+    future_load_semantics: scd2_merge
+    scd2_activation_gate:
+    - load at least two election cycles
+    - validate stable persistent party business key
+    - define election-effective valid_from/valid_to semantics
+  dim_person:
+    status: planned
+    load_semantics: scd2_merge
+    history_semantics: type_2
+    note: Separate persistent person identity from election-specific dim_candidate.
+  event_audit:
+    status: planned
+    load_semantics: append
+    history_semantics: event_log
+    note: Append is reserved for genuinely event-like/audit data, not TSE snapshot facts.
+  int_electorate_municipality:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: derived_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - uf
+    - municipality_code
+    resource_class: heavy
+    rationale: Persist once so fact_electorate_municipality and dim_geography do not independently rescan the large
+      electorate CSV.
+  stg_candidate_votes_raw:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: source_versions
+    partition_by:
+    - election_year
+    - election_type
+    resource_class: very_heavy_streaming
+    rationale: Persist a narrow projection of the multi-GiB CSV before deduplication, so version resolution can
+      use disk-spilling sort instead of a near-row-cardinality hash table.
+  stg_party_votes_raw:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: source_versions
+    partition_by:
+    - election_year
+    - election_type
+    resource_class: heavy_streaming
+  stg_party_votes_munzona:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: current_source_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - party_number
+    - is_transit_vote
+    duplicate_resolution:
+      method: max_per_measure
+      validated_on: 2018-general
+      evidence:
+        duplicate_grains: 607022
+        nominal_diff_grains: 74
+        legend_diff_grains: 0
+        total_legend_diff_grains: 0
+        zero_plus_positive_nominal_grains: 74
+        party_vs_tally_after_max_nominal_mismatches: 0
+        party_vs_tally_after_max_nominal_delta: 0
+        party_vs_tally_after_max_legend_mismatches: 0
+        party_vs_tally_after_max_legend_delta: 0
+  fact_party_votes:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: authoritative_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - party_number
+    - is_transit_vote
+  stg_tally_munzona:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: current_source_snapshot
+    partition_by:
+    - election_year
+    - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - is_transit_vote
+  fact_tally_munzona:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: authoritative_snapshot
+    partition_by:
+    - election_year
+    - election_type
+  fact_turnout:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: derived_snapshot
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - is_transit_vote
+    note: office remains in grain; roll-up across offices is not allowed for turnout denominators without explicit
+      semantic handling
+  candidate_tally_reconciliation:
+    status: implemented
+    semantic_contract: strict_within_candidate_coverage
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - is_transit_vote
+    coverage_grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - office_code
+  party_tally_reconciliation:
+    status: implemented
+    materialization: view
+    semantic_contract: strict_reconciliation
+    invariant: party nominal valid, legend valid and total valid votes reconcile exactly to tally at the shared
+      grain
+  candidate_tally_coverage_gaps:
+    status: implemented
+    semantic_contract: explicit_source_coverage_gap
+    known_2018_case:
+      election_code: '339'
+      uf: PE
+      municipality_code: '30015'
+      zone: 4
+      office_code: '25'
+      nominal_valid_votes: 1836
+resource_policy:
+  local_duckdb:
+    dbt_threads: 1
+    duckdb_threads: 1
+    default_memory_limit: 2GB
+    preserve_insertion_order: false
+    rationale: Large TSE CSV scans and aggregations must not execute concurrently inside memory-constrained WSL
+      environments.
