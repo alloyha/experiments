@@ -1,0 +1,56 @@
+[
+  {
+    "file": "schema_01_fct_account_e_outros.mermaid",
+    "shape": "constellation",
+    "tables": [
+      "dim_cohort",
+      "dim_plan",
+      "fct_account",
+      "fct_customer",
+      "fct_order",
+      "fct_subscription"
+    ],
+    "facts": [
+      "fct_account",
+      "fct_customer",
+      "fct_order",
+      "fct_subscription"
+    ],
+    "reason": "4 tabelas fct_ neste componente, com ao menos uma FK ligando um fct_ diretamente a outro fct_ — não é uma única estrela, é uma constelação de fatos compartilhando dimensões (e, em parte, se referenciando entre si)."
+  },
+  {
+    "file": "schema_02_operation_process.mermaid",
+    "shape": "cluster sem fato (não é estrela nem snowflake)",
+    "tables": [
+      "dim_operation",
+      "dim_process"
+    ],
+    "facts": [],
+    "reason": "Nenhuma tabela fct_ neste componente — são apenas dim_ ligadas entre si, sem um fato no centro."
+  },
+  {
+    "file": "schema_03_fct_deployment.mermaid",
+    "shape": "estrela",
+    "tables": [
+      "dim_service",
+      "fct_deployment"
+    ],
+    "facts": [
+      "fct_deployment"
+    ],
+    "reason": "Uma única fct_ (fct_deployment), todo o resto liga direto a ela — estrela clássica."
+  },
+  {
+    "file": "schema_04_fct_employee_fct_opportunity.mermaid",
+    "shape": "constellation",
+    "tables": [
+      "fct_employee",
+      "fct_opportunity"
+    ],
+    "facts": [
+      "fct_employee",
+      "fct_opportunity"
+    ],
+    "reason": "2 tabelas fct_ neste componente, com ao menos uma FK ligando um fct_ diretamente a outro fct_ — não é uma única estrela, é uma constelação de fatos compartilhando dimensões (e, em parte, se referenciando entre si)."
+  }
+]

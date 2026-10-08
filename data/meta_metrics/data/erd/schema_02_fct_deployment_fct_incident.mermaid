@@ -1,0 +1,45 @@
+erDiagram
+    %% Forma: constelação (fatos compartilhando dimensões)
+    %% 2 tabelas fct_ neste componente, todas ligadas apenas a dim_ compartilhadas, sem FK direta entre facts..
+
+    dim_release }o--|| dim_service : "service_id"
+    dim_request }o--|| dim_service : "service_id"
+    fct_deployment }o--|| dim_service : "service_id"
+    fct_incident }o--|| dim_service : "service_id"
+
+    dim_release {
+        VARCHAR release_id PK
+        VARCHAR id
+        VARCHAR service_id  FK
+    }
+    dim_request {
+        VARCHAR request_id PK
+        VARCHAR id
+        VARCHAR service_id  FK
+    }
+    dim_service {
+        VARCHAR service_id PK
+        VARCHAR id
+    }
+    fct_deployment {
+        VARCHAR deployment_id PK
+        VARCHAR id
+        TIMESTAMP commit_at
+        TIMESTAMP failure_at
+        TIMESTAMP production_at
+        TIMESTAMP recovery_at
+        VARCHAR repository
+        VARCHAR service_id  FK
+        VARCHAR team
+    }
+    fct_incident {
+        VARCHAR incident_id PK
+        VARCHAR id
+        TIMESTAMP contained_at
+        TIMESTAMP detected_at
+        TIMESTAMP occurred_at
+        TIMESTAMP recovery_at
+        TIMESTAMP remediated_at
+        VARCHAR service_id  FK
+        VARCHAR severity
+    }

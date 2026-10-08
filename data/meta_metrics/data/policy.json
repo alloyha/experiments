@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {
+      "name": "prefer_entity_pk_bootstrap_for_identifiers",
+      "semantic_type": "identifier",
+      "pattern": "bootstrap_vs_lineage",
+      "choose": "bootstrap"
+    }
+  ]
+}

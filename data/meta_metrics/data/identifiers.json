@@ -1,0 +1,11 @@
+{
+  "lead.identifier": "lead.identifier:bootstrap",
+  "customer.identifier": "customer.identifier:bootstrap",
+  "incident.identifier": "incident.identifier:bootstrap",
+  "ticket.identifier": "ticket.identifier:bootstrap",
+  "deployment.identifier": "deployment.identifier:bootstrap",
+  "employee.identifier": "employee.identifier:bootstrap",
+  "opportunity.identifier": "opportunity.identifier:bootstrap",
+  "session.identifier": "session.identifier:bootstrap",
+  "vulnerability.identifier": "vulnerability.identifier:bootstrap"
+}

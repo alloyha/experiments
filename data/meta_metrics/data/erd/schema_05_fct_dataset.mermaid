@@ -1,0 +1,22 @@
+erDiagram
+    %% Forma: estrela
+    %% Uma única fct_ (fct_dataset), todo o resto liga direto a ela — estrela clássica..
+    %% ATENCAO: colunas tipadas DOUBLE (semantic_type='measure' no catalogo) com nome de cara categorica, nao numerica - suspeita de classificacao errada upstream, nao corrigida aqui:
+    %%   - fct_dataset.domain
+
+    dim_pipeline_run }o--|| fct_dataset : "dataset_id"
+
+    dim_pipeline_run {
+        VARCHAR run_id PK
+        VARCHAR id
+        VARCHAR dataset_id  FK
+        TIMESTAMP end_at
+        TIMESTAMP start_at
+    }
+    fct_dataset {
+        VARCHAR dataset_id PK
+        VARCHAR id
+        DOUBLE criticality
+        DOUBLE domain
+        TIMESTAMP updated_at
+    }

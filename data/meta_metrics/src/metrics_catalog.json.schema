@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metric",
+  "type": "object",
+  "required": ["id", "name", "department", "description", "formula", "aggregation", "grain", "status", "owner"],
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "description": "Identificador único e estável, ex: 'sales.mrr'"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome canônico legível, ex: 'Monthly Recurring Revenue'"
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sinônimos usados por humanos, ex: ['MRR', 'receita recorrente mensal']"
+    },
+    "department": {
+      "type": "string",
+      "description": "Departamento dono, ex: 'Financeiro', 'Vendas', 'Produto'"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "description": {
+      "type": "string",
+      "description": "Explicação textual do que a métrica representa"
+    },
+
+    "formula": {
+      "type": "object",
+      "required": ["expression", "language"],
+      "properties": {
+        "expression": { "type": "string", "description": "SQL, DAX ou pseudocódigo executável" },
+        "language": { "type": "string", "enum": ["sql", "dax", "python", "pseudocode"] },
+        "source_table": { "type": "string" }
+      }
+    },
+    "aggregation": {
+      "type": "string",
+      "enum": ["sum", "count", "count_distinct", "avg", "ratio", "max", "min", "custom"]
+    },
+    "grain": {
+      "type": "string",
+      "description": "Granularidade mínima, ex: 'dia', 'transação', 'cliente'"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unidade de medida, ex: 'BRL', '%', 'dias'"
+    },
+
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":      { "type": "string" },
+          "role":      { "type": "string", "enum": ["grouping", "filter", "temporal", "hierarchical"], "default": "grouping" },
+          "required":  { "type": "boolean", "default": false },
+          "join_path": { "type": "string", "description": "Como chegar nessa dimensão a partir da tabela base" }
+        }
+      }
+    },
+    "default_period": { "type": "string", "description": "ex: 'últimos 30 dias'" },
+    "supported_periods": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "owner": {
+      "type": "object",
+      "description": "Single owner shorthand; use 'owners' for multiple ownership dimensions.",
+      "properties": {
+        "team":    { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "owners": {
+      "type": "array",
+      "description": "Multiple owners; takes precedence over 'owner' when present.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type":    { "type": "string", "enum": ["business", "technical", "data", "steward"], "default": "business" },
+          "team":    { "type": "string" },
+          "contact": { "type": "string" }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "deprecated", "under_review", "experimental"]
+    },
+    "refresh_frequency": { "type": "string", "description": "ex: 'diário às 06h'" },
+    "data_quality": {
+      "type": "string",
+      "enum": ["audited", "estimated", "self_reported"]
+    },
+    "version": { "type": "string" },
+    "change_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "change": { "type": "string" }
+        }
+      }
+    },
+
+    "usage_context": {
+      "type": "object",
+      "properties": {
+        "when_to_use": { "type": "string" },
+        "related_metrics": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs de métricas relacionadas ou concorrentes semânticos"
+        },
+        "example_questions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Perguntas em linguagem natural que essa métrica responde"
+        },
+        "benchmarks": {
+          "type": "object",
+          "properties": {
+            "type":       { "type": "string", "default": "default" },
+            "target":     { "type": "number" },
+            "range_low":  { "type": "number" },
+            "range_high": { "type": "number" },
+            "population": { "type": "string", "description": "e.g. 'SaaS enterprise BR'" },
+            "period":     { "type": "string", "description": "e.g. 'monthly', 'Q1 2025'" },
+            "source":     { "type": "string" },
+            "valid_from": { "type": "string", "format": "date" },
+            "valid_to":   { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+
+    "access": {
+      "type": "object",
+      "description": "Execution metadata and access control.",
+      "properties": {
+        "endpoint":            { "type": "string" },
+        "requires_permission": { "type": "string", "description": "Single permission string; stored in metric_permission." },
+        "execution_cost":      { "type": "string", "enum": ["low", "medium", "high"] },
+        "cacheable":           { "type": "boolean" }
+      }
+    },
+
+    "dependencies": {
+      "type": "array",
+      "description": "Computational dependency DAG edges (distinct from semantic relations).",
+      "items": {
+        "type": "object",
+        "required": ["depends_on"],
+        "properties": {
+          "depends_on": { "type": "string", "description": "metric_id this metric is computed from" },
+          "type":       { "type": "string", "enum": ["computational", "filter", "denominator"], "default": "computational" }
+        }
+      }
+    },
+
+    "quality": {
+      "type": "array",
+      "description": "Structured quality contract; supersedes data_quality string.",
+      "items": {
+        "type": "object",
+        "required": ["dimension", "rule"],
+        "properties": {
+          "dimension": { "type": "string", "enum": ["freshness", "completeness", "accuracy", "consistency"] },
+          "rule":      { "type": "string", "description": "e.g. 'max_age_hours', 'null_rate'" },
+          "threshold": { "type": "string" },
+          "severity":  { "type": "string", "enum": ["warning", "error"], "default": "warning" }
+        }
+      }
+    },
+
+    "lineage": {
+      "type": "object",
+      "description": "Physical data lineage: which warehouse columns and joins produce this metric.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "column", "role"],
+            "properties": {
+              "source":    { "type": "string", "description": "Dot-notation table ref, e.g. 'finance.subscriptions'" },
+              "warehouse": { "type": "string" },
+              "catalog":   { "type": "string" },
+              "schema":    { "type": "string" },
+              "table":     { "type": "string" },
+              "column":    { "type": "string" },
+              "role":      { "type": "string", "enum": ["numerator", "denominator", "filter", "dimension", "date_key"] }
+            }
+          }
+        },
+        "joins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["left", "right", "on"],
+            "properties": {
+              "left":  { "type": "string", "description": "source_id of the left table" },
+              "right": { "type": "string", "description": "source_id of the right table" },
+              "type":  { "type": "string", "enum": ["INNER", "LEFT", "RIGHT", "FULL"], "default": "INNER" },
+              "on":    { "type": "string", "description": "SQL join condition" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

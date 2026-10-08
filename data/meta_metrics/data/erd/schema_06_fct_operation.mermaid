@@ -1,0 +1,20 @@
+erDiagram
+    %% Forma: estrela
+    %% Uma única fct_ (fct_operation), todo o resto liga direto a ela — estrela clássica..
+    %% ATENCAO: colunas tipadas DOUBLE (semantic_type='measure' no catalogo) com nome de cara categorica, nao numerica - suspeita de classificacao errada upstream, nao corrigida aqui:
+    %%   - fct_operation.site
+
+    fct_operation }o--|| dim_process : "process_id"
+
+    dim_process {
+        VARCHAR process_id PK
+        VARCHAR id
+    }
+    fct_operation {
+        VARCHAR operation_id PK
+        VARCHAR id
+        TIMESTAMP completed_at
+        VARCHAR process_id  FK
+        DOUBLE site
+        TIMESTAMP start_at
+    }

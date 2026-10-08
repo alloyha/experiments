@@ -477,6 +477,24 @@
     "status": "active"
   },
   {
+    "id": "finance.active_paying_accounts",
+    "name": "Contas Pagantes Ativas",
+    "department": "Finance",
+    "aggregation": "count_distinct",
+    "grain": "conta",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
+    "id": "finance.active_paying_customers",
+    "name": "Clientes Pagantes Ativos",
+    "department": "Finance",
+    "aggregation": "count_distinct",
+    "grain": "cliente",
+    "unit": "unidades",
+    "status": "active"
+  },
+  {
     "id": "finance.arpa",
     "name": "Receita Média por Conta (ARPA)",
     "department": "Finance",

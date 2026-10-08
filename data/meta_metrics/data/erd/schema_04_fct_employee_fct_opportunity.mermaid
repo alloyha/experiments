@@ -1,0 +1,27 @@
+erDiagram
+    %% Forma: constellation
+    %% 2 tabelas fct_ neste componente, com ao menos uma FK ligando um fct_ diretamente a outro fct_ — não é uma única estrela, é uma constelação de fatos compartilhando dimensões (e, em parte, se referenciando entre si)..
+
+    fct_opportunity }o--|| fct_employee : "owner_id"
+
+    fct_employee {
+        VARCHAR employee_id PK
+        VARCHAR id
+        VARCHAR department
+        VARCHAR location
+        VARCHAR role
+    }
+    fct_opportunity {
+        VARCHAR opportunity_id PK
+        VARCHAR id
+        DOUBLE amount
+        TIMESTAMP closed_at
+        DOUBLE contract_value
+        TIMESTAMP created_at
+        VARCHAR owner_id  FK
+        DOUBLE probability
+        TIMESTAMP won_at
+        VARCHAR stage
+        BOOLEAN marketing_attributed
+        BOOLEAN marketing_influenced
+    }

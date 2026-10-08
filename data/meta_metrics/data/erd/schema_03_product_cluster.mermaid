@@ -1,0 +1,24 @@
+erDiagram
+    %% Forma: cluster sem fato (não é estrela nem snowflake)
+    %% Nenhuma tabela fct_ neste componente — são apenas dim_ ligadas entre si, sem um fato no centro..
+
+    dim_purchase_order }o--|| dim_product : "product_id"
+    dim_sku }o--|| dim_product : "product_id"
+
+    dim_product {
+        VARCHAR product_id PK
+        VARCHAR id
+        VARCHAR category
+    }
+    dim_purchase_order {
+        VARCHAR po_id PK
+        VARCHAR id
+        TIMESTAMP po_created_at
+        VARCHAR product_id  FK
+        TIMESTAMP received_at
+    }
+    dim_sku {
+        VARCHAR sku_id PK
+        VARCHAR id
+        VARCHAR product_id  FK
+    }

@@ -1,0 +1,21 @@
+erDiagram
+    %% Forma: estrela
+    %% Uma única fct_ (fct_deployment), todo o resto liga direto a ela — estrela clássica..
+
+    fct_deployment }o--|| dim_service : "service_id"
+
+    dim_service {
+        VARCHAR service_id PK
+        VARCHAR id
+    }
+    fct_deployment {
+        VARCHAR deployment_id PK
+        VARCHAR id
+        TIMESTAMP commit_at
+        TIMESTAMP failure_at
+        TIMESTAMP production_at
+        TIMESTAMP recovery_at
+        VARCHAR repository
+        VARCHAR service_id  FK
+        VARCHAR team
+    }

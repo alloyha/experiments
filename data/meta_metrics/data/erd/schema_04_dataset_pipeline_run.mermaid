@@ -1,0 +1,20 @@
+erDiagram
+    %% Forma: cluster sem fato (não é estrela nem snowflake)
+    %% Nenhuma tabela fct_ neste componente — são apenas dim_ ligadas entre si, sem um fato no centro..
+
+    dim_pipeline_run }o--|| dim_dataset : "dataset_id"
+
+    dim_dataset {
+        VARCHAR dataset_id PK
+        VARCHAR id
+        VARCHAR criticality
+        VARCHAR domain
+        TIMESTAMP updated_at
+    }
+    dim_pipeline_run {
+        VARCHAR run_id PK
+        VARCHAR id
+        VARCHAR dataset_id  FK
+        TIMESTAMP end_at
+        TIMESTAMP start_at
+    }

@@ -1,0 +1,50 @@
+erDiagram
+    %% Forma: constellation
+    %% 4 tabelas fct_ neste componente, com ao menos uma FK ligando um fct_ diretamente a outro fct_ — não é uma única estrela, é uma constelação de fatos compartilhando dimensões (e, em parte, se referenciando entre si)..
+
+    fct_account }o--|| dim_plan : "plan_id"
+    fct_customer }o--|| dim_cohort : "cohort_id"
+    fct_order }o--|| fct_customer : "customer_id"
+    fct_subscription }o--|| fct_account : "account_id"
+    fct_subscription }o--|| fct_customer : "customer_id"
+
+    dim_cohort {
+        VARCHAR cohort_id PK
+        VARCHAR id
+    }
+    dim_plan {
+        VARCHAR plan_id PK
+        VARCHAR id
+    }
+    fct_account {
+        VARCHAR account_id PK
+        VARCHAR id
+        VARCHAR plan_id  FK
+    }
+    fct_customer {
+        VARCHAR customer_id PK
+        VARCHAR id
+        VARCHAR cohort_id  FK
+        DOUBLE contract_value
+        VARCHAR segment
+        TIMESTAMP start_at
+        TIMESTAMP value_at
+    }
+    fct_order {
+        VARCHAR order_id PK
+        VARCHAR id
+        VARCHAR channel
+        VARCHAR customer_id  FK
+        TIMESTAMP delivered_at
+        DOUBLE gross_value
+        DOUBLE net_value
+        TIMESTAMP order_confirmed_at
+    }
+    fct_subscription {
+        VARCHAR subscription_id PK
+        VARCHAR id
+        VARCHAR account_id  FK
+        VARCHAR customer_id  FK
+        DOUBLE monthly_equivalent
+        DOUBLE mrr
+    }

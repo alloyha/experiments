@@ -18,6 +18,8 @@ erDiagram
         BOOLEAN temporal
         VARCHAR origin
         FLOAT confidence
+        VARCHAR from_attribute_id
+        VARCHAR to_attribute_id
     }
     dimension {
         VARCHAR dimension_id PK
@@ -26,6 +28,7 @@ erDiagram
         VARCHAR dimension_type
         VARCHAR entity_id
         VARCHAR default_expr
+        VARCHAR attribute_id
     }
     dataset {
         VARCHAR dataset_id PK
@@ -199,6 +202,36 @@ erDiagram
         VARCHAR dataset_id
         VARCHAR rollup_entity_id
     }
+    semantic_attribute {
+        VARCHAR attribute_id PK
+        VARCHAR entity_id
+        VARCHAR name
+        VARCHAR description
+        VARCHAR semantic_type
+        VARCHAR data_type
+        VARCHAR unit
+        VARCHAR references_entity_id
+    }
+    attribute_binding {
+        VARCHAR binding_id PK
+        VARCHAR attribute_id
+        VARCHAR dataset_id
+        VARCHAR column_name
+        VARCHAR expression
+        VARCHAR engine
+        VARCHAR binding_role
+        VARCHAR origin
+        VARCHAR resolution_state
+        VARCHAR inference_rule
+        DATE valid_from
+        DATE valid_to
+    }
+    metric_attribute {
+        VARCHAR metric_id
+        VARCHAR attribute_id
+        VARCHAR role
+        VARCHAR origin
+    }
 
     entity ||--o{ metric_definition : "defines entity for"
     entity ||--o{ dimension : "context for"
@@ -229,4 +262,9 @@ erDiagram
     metric_definition ||--o{ cube_metric : "member of"
     dimension ||--o{ cube_dimension : "used in cube"
     dataset ||--o{ cube_dataset : "in cube"
+    entity ||--o{ semantic_attribute : "declares attribute"
+    semantic_attribute ||--o{ attribute_binding : "bound as"
+    dataset ||--o{ attribute_binding : "backs"
+    metric_definition ||--o{ metric_attribute : "uses attribute"
+    semantic_attribute ||--o{ metric_attribute : "used by metric"
 ```

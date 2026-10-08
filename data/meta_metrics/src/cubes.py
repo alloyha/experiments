@@ -12,10 +12,86 @@ persist_cube_cover(con, cover)     — write cover to analytical_cube bridge tab
 """
 from __future__ import annotations
 
+import os
+import re
+import sys
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 import duckdb
+
+# bindings.py lives alongside this file (both under src/ in the project
+# layout). Insert this file's own directory into sys.path so `import
+# bindings` works both when run directly (`python3 src/cubes.py`) and as a
+# module (`python3 -m src.cubes`) — in the latter case Python does not
+# automatically add the script's directory to sys.path the way it does for
+# direct execution, so this insert is still needed.
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+if _this_dir not in sys.path:
+    sys.path.insert(0, _this_dir)
+import bindings as _bindings  # noqa: E402
+
+_JOIN_EXPR_RE = re.compile(
+    r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)"
+)
+
+
+def _derive_relation_attributes(
+    con: duckdb.DuckDBPyConnection, from_e: str, to_e: str, join_expr: str | None,
+) -> tuple[str | None, str | None]:
+    """Best-effort decomposition of a legacy join_expression string into
+    (from_attribute_id, to_attribute_id) semantic references.
+
+    Example: 'invoice.customer_id = customer.customer_id' becomes
+    ('invoice.customer', 'customer.identifier') — the right-hand side of a
+    structural entity relation is assumed to be the target entity's own
+    identifier, whatever column name it happens to use.
+
+    This is a naming-convention parse of a free-text string, so results are
+    written as origin='inferred', resolution_state='candidate' — never
+    treated as authoritative just because the regex matched.
+    """
+    if not join_expr:
+        return None, None
+    m = _JOIN_EXPR_RE.search(join_expr)
+    if not m:
+        return None, None
+    _, left_col, _, _ = m.groups()
+
+    from_attr_name = left_col[:-3] if left_col.endswith("_id") else left_col
+    from_attribute_id = f"{from_e}.{from_attr_name}"
+    to_attribute_id = f"{to_e}.identifier"
+
+    exists = con.execute(
+        "SELECT 1 FROM semantic_attribute WHERE attribute_id = ?", [from_attribute_id]
+    ).fetchone()
+    if not exists:
+        con.execute("""
+            INSERT INTO semantic_attribute VALUES (?, ?, ?, NULL, 'entity_reference', NULL, NULL, ?)
+        """, [from_attribute_id, from_e, from_attr_name, to_e])
+        # dataset_id = the OWNING entity (from_e) — same fix as to_duckdb.py's
+        # formula-lineage and dimension-join_path bootstraps: we already know
+        # which entity this column lives on, so don't throw that away and
+        # leave dataset_id NULL. NULL dataset_id is exactly what made
+        # review.py's --schema-db cross-check unable to do better than
+        # 'ambiguous (N tables have this column)' for every one of these —
+        # e.g. 'user_id' alone matches any table with a user FK, but
+        # dataset_id='cart' narrows it to cart's own table.
+        if not con.execute("SELECT 1 FROM dataset WHERE dataset_id = ?", [from_e]).fetchone():
+            con.execute(
+                "INSERT INTO dataset VALUES (?, ?, 'unknown', NULL, NULL, NULL, ?, ?, NULL)",
+                [from_e, from_e, from_e, from_e],
+            )
+        con.execute("""
+            INSERT INTO attribute_binding VALUES
+            (?, ?, ?, ?, NULL, NULL, 'physical', 'inferred', 'candidate', ?, NULL, NULL, NULL, NULL)
+        """, [
+            f"{from_attribute_id}:from_entity_relation", from_attribute_id, from_e, left_col,
+            f"bootstrap_from_entity_relation_join_expression: parsed from declared "
+            f"structural relation '{from_e}'→'{to_e}', join_expression='{join_expr}'",
+        ])
+
+    return from_attribute_id, to_attribute_id
 
 # ── Entities that represent time grains, not business objects ────────────────
 TIME_GRAIN_ENTITIES: frozenset[str] = frozenset(
@@ -634,6 +710,8 @@ def persist_cube_cover(con: duckdb.DuckDBPyConnection, cover: CubeCover) -> None
     con.execute("DELETE FROM cube_metric")
     con.execute("DELETE FROM analytical_cube")
 
+    known_entities = {r[0] for r in con.execute("SELECT entity_id FROM entity").fetchall()}
+
     for cube in cover.cubes:
         entities_in_cube = ", ".join(sorted({
             s.entity_id for s in cube.metrics if s.entity_id
@@ -643,9 +721,16 @@ def persist_cube_cover(con: duckdb.DuckDBPyConnection, cover: CubeCover) -> None
             f"entities=[{entities_in_cube}] | "
             + " | ".join(cube.reasons)
         )
+        anchor_entity_id = cube.entity_id if cube.entity_id in known_entities else None
+        if cube.entity_id and anchor_entity_id is None:
+            explanation += (
+                f" | WARNING: anchor entity '{cube.entity_id}' declared in CUBE_CLUSTERS "
+                "but not present in entity table (no metric resolves to that grain) — "
+                "pre-existing data issue, unrelated to the semantic binding layer"
+            )
         con.execute(
             "INSERT INTO analytical_cube VALUES (?, ?, ?, ?, true, ?)",
-            [cube.cube_id, cube.name, cube.entity_id, cube.cube_type, explanation[:2000]],
+            [cube.cube_id, cube.name, anchor_entity_id, cube.cube_type, explanation[:2000]],
         )
         for sig in cube.metrics:
             con.execute(
@@ -667,6 +752,102 @@ def persist_cube_cover(con: duckdb.DuckDBPyConnection, cover: CubeCover) -> None
                             [cube.cube_id, ds_id, cube.entity_id])
 
 
+# ── Physical executability (separate from semantic compatibility) ────────────
+#
+# generate_cube_cover() / metrics_compatible() above decide SEMANTIC cube
+# membership using only Entity / EntityRelation / rollup-safety — never
+# physical column names. That is deliberate and unchanged.
+#
+# check_cube_executability() answers a different question: given the semantic
+# cube that was already built, can it actually be RUN against a specific
+# physical implementation right now? A cube can be semantically valid while
+# still lacking resolved bindings for some of its attributes — that state is
+# expected and representable, not an error in cube construction itself.
+
+def check_cube_executability(
+    con: duckdb.DuckDBPyConnection,
+    cube_id: str,
+    *,
+    engine: str | None = None,
+) -> _bindings.CubeExecutabilityResult:
+    cube_row = con.execute(
+        "SELECT analytical_entity_id FROM analytical_cube WHERE cube_id = ?", [cube_id]
+    ).fetchone()
+    if cube_row is None:
+        raise _bindings.UnresolvedBindingError(cube_id, detail="No such cube_id.")
+    anchor_entity = cube_row[0]
+
+    unresolved_attributes: list[str] = []
+    ambiguous_bindings: list[str] = []
+    missing_relations: list[str] = []
+
+    # 1. Every semantic attribute used by a metric in this cube must resolve.
+    attr_rows = con.execute("""
+        SELECT DISTINCT ma.attribute_id
+        FROM cube_metric cm
+        JOIN metric_attribute ma ON ma.metric_id = cm.metric_id
+        WHERE cm.cube_id = ?
+    """, [cube_id]).fetchall()
+    for (attribute_id,) in attr_rows:
+        try:
+            _bindings.resolve_attribute_binding(con, attribute_id, engine=engine)
+        except _bindings.AmbiguousBindingError:
+            ambiguous_bindings.append(attribute_id)
+        except _bindings.UnresolvedBindingError:
+            unresolved_attributes.append(attribute_id)
+
+    # 2. Every rollup-safe entity_relation edge this cube depends on (from a
+    #    metric's own entity up to the cube's anchor entity) must have been
+    #    decomposed into from_attribute_id/to_attribute_id — a relation
+    #    that's still only a raw join_expression string can't be resolved
+    #    through bindings yet.
+    if anchor_entity:
+        entity_graph = EntityGraph(con)
+        metric_entities = con.execute("""
+            SELECT DISTINCT m.entity_id
+            FROM cube_metric cm
+            JOIN metric_definition m ON m.metric_id = cm.metric_id
+            WHERE cm.cube_id = ? AND m.entity_id IS NOT NULL
+              AND m.entity_id NOT IN ?
+        """, [cube_id, list(TIME_GRAIN_ENTITIES)]).fetchall()
+
+        rel_lookup = {
+            r[0]: (r[1], r[2])  # relation_id -> (from_attribute_id, to_attribute_id)
+            for r in con.execute(
+                "SELECT relation_id, from_attribute_id, to_attribute_id FROM entity_relation"
+            ).fetchall()
+        }
+        # relation lookup keyed by (from_entity, to_entity) to find the id for a hop
+        edge_relation_id: dict[tuple[str, str], str] = {}
+        for r in con.execute(
+            "SELECT relation_id, from_entity_id, to_entity_id FROM entity_relation"
+        ).fetchall():
+            edge_relation_id[(r[1], r[2])] = r[0]
+
+        for (entity_id,) in metric_entities:
+            if entity_id == anchor_entity:
+                continue
+            path = entity_graph.safe_rollup_path(entity_id, anchor_entity)
+            if not path:
+                continue  # semantic cover algorithm already handles unreachable cases
+            for a, b in zip(path, path[1:]):
+                rel_id = edge_relation_id.get((a, b))
+                if rel_id is None:
+                    continue
+                from_attr, to_attr = rel_lookup.get(rel_id, (None, None))
+                if not from_attr or not to_attr:
+                    if rel_id not in missing_relations:
+                        missing_relations.append(rel_id)
+
+    executable = not (unresolved_attributes or ambiguous_bindings or missing_relations)
+    return _bindings.CubeExecutabilityResult(
+        executable=executable,
+        unresolved_attributes=unresolved_attributes,
+        ambiguous_bindings=ambiguous_bindings,
+        missing_relations=missing_relations,
+    )
+
+
 def ensure_entity_relations(con: duckdb.DuckDBPyConnection) -> int:
     """Seed entity_relation from ENTITY_RELATIONS. Skips missing entities. Returns rows inserted."""
     existing_entities = {
@@ -681,9 +862,38 @@ def ensure_entity_relations(con: duckdb.DuckDBPyConnection) -> int:
             continue
         if from_e not in existing_entities or to_e not in existing_entities:
             continue
+        from_attribute_id, to_attribute_id = _derive_relation_attributes(
+            con, from_e, to_e, join_expr
+        )
         con.execute("""
             INSERT INTO entity_relation
-            VALUES (?, ?, ?, 'structural', ?, ?, ?, ?, 'declared', 1.0)
-        """, [rel_id, from_e, to_e, card, join_expr, rollup, temporal])
+            VALUES (?, ?, ?, 'structural', ?, ?, ?, ?, 'declared', 1.0, ?, ?)
+        """, [rel_id, from_e, to_e, card, join_expr, rollup, temporal,
+              from_attribute_id, to_attribute_id])
         inserted += 1
     return inserted
+
+
+def main() -> None:
+    """Seed entity_relation, build the analytical cube cover, and persist it.
+    Run this after to_duckdb.py has loaded the catalog — cube_metric /
+    analytical_cube stay empty (and cube_orphan_metrics will flag every
+    active metric as orphaned) until this has actually run."""
+    db_path = sys.argv[1] if len(sys.argv) > 1 else "metric_catalog.duckdb"
+
+    con = duckdb.connect(db_path)
+    try:
+        n_rel = ensure_entity_relations(con)
+        print(f"Ensured {n_rel} entity_relation row(s)")
+
+        cover = generate_cube_cover(con)
+        persist_cube_cover(con, cover)
+        s = cover.summary()
+        print(f"Persisted {s['cube_count']} cube(s) covering {s['metrics_covered']} "
+              f"metric(s) ({s['metrics_uncovered']} uncovered)")
+    finally:
+        con.close()
+
+
+if __name__ == "__main__":
+    main()

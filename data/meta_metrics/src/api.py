@@ -15,6 +15,7 @@ from typing import Any
 
 import duckdb
 from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel
 
 _CATALOG_PATH = "data/metric_catalog.duckdb"
 _RUNTIME_PATH = "data/runtime.duckdb"
@@ -251,6 +252,16 @@ def get_dimension_metrics(dimension_id: str) -> list[dict]:
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 
+class QualityRunIn(BaseModel):
+    contract_id: str
+    run_id: str
+    run_at: str
+    status: str
+    observed_value: str | None = None
+    expected_threshold: str | None = None
+    execution_context: str | None = None
+
+
 @app.get("/quality/contracts", summary="List quality contracts")
 def list_quality_contracts(
     metric_id: str | None = None,
@@ -272,22 +283,14 @@ def list_quality_contracts(
 
 
 @app.post("/quality/runs", summary="Record a quality check result", status_code=201)
-def record_quality_run(
-    contract_id:        str,
-    run_id:             str,
-    run_at:             str,
-    status:             str,
-    observed_value:     str | None = None,
-    expected_threshold: str | None = None,
-    execution_context:  str | None = None,
-) -> dict:
-    if not _q1("SELECT 1 FROM quality_contract WHERE contract_id = ?", [contract_id]):
-        raise HTTPException(404, f"Contract '{contract_id}' not found")
+def record_quality_run(payload: QualityRunIn) -> dict:
+    if not _q1("SELECT 1 FROM quality_contract WHERE contract_id = ?", [payload.contract_id]):
+        raise HTTPException(404, f"Contract '{payload.contract_id}' not found")
     _runtime_con.execute("""
         INSERT INTO quality_run VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, [run_id, contract_id, run_at, observed_value, expected_threshold,
-          status, execution_context])
-    return {"run_id": run_id, "status": "recorded"}
+    """, [payload.run_id, payload.contract_id, payload.run_at, payload.observed_value,
+          payload.expected_threshold, payload.status, payload.execution_context])
+    return {"run_id": payload.run_id, "status": "recorded"}
 
 
 # ── Cubes ─────────────────────────────────────────────────────────────────────
@@ -424,12 +427,151 @@ def get_cube_analysis() -> dict:
 def run_validation() -> dict:
     import validate as v
     results = {}
-    total = 0
-    for name, fn in v.CHECKS:
+    error_total, info_total = 0, 0
+    for name, fn, severity in v.CHECKS:
         issues = fn(_con)
-        results[name] = {"count": len(issues), "issues": issues[:10]}
-        total += len(issues)
-    return {"total_issues": total, "checks": results}
+        results[name] = {"count": len(issues), "severity": severity, "issues": issues[:10]}
+        if severity == "error":
+            error_total += len(issues)
+        else:
+            info_total += len(issues)
+    return {
+        "error_issues": error_total,
+        "info_issues": info_total,
+        "total_issues": error_total + info_total,
+        "checks": results,
+    }
+
+
+# ── Semantic binding layer ───────────────────────────────────────────────────
+
+@app.get("/attributes", summary="List semantic attributes")
+def list_attributes(
+    entity: str | None = Query(None),
+    semantic_type: str | None = Query(None),
+) -> list[dict]:
+    where, params = [], []
+    if entity:
+        where.append("entity_id = ?"); params.append(entity)
+    if semantic_type:
+        where.append("semantic_type = ?"); params.append(semantic_type)
+    clause = ("WHERE " + " AND ".join(where)) if where else ""
+    return _q(f"SELECT * FROM semantic_attribute {clause} ORDER BY attribute_id", params)
+
+
+@app.get("/attributes/{attribute_id}", summary="Attribute detail with bindings")
+def get_attribute(attribute_id: str) -> dict:
+    attr = _q1("SELECT * FROM semantic_attribute WHERE attribute_id = ?", [attribute_id])
+    if not attr:
+        raise HTTPException(404, f"Attribute '{attribute_id}' not found")
+    attr["bindings"] = _q(
+        "SELECT * FROM attribute_binding WHERE attribute_id = ? ORDER BY resolution_state, binding_id",
+        [attribute_id],
+    )
+    attr["used_by_metrics"] = _q(
+        "SELECT metric_id, role, origin FROM metric_attribute WHERE attribute_id = ?",
+        [attribute_id],
+    )
+    return attr
+
+
+@app.get("/attributes/{attribute_id}/bindings", summary="Bindings for an attribute")
+def get_attribute_bindings(attribute_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM semantic_attribute WHERE attribute_id = ?", [attribute_id]):
+        raise HTTPException(404, f"Attribute '{attribute_id}' not found")
+    return _q(
+        "SELECT * FROM attribute_binding WHERE attribute_id = ? ORDER BY resolution_state, binding_id",
+        [attribute_id],
+    )
+
+
+@app.get("/entities/{entity_id}/attributes", summary="Semantic attributes owned by this entity")
+def get_entity_attributes(entity_id: str) -> list[dict]:
+    if not _q1("SELECT 1 FROM entity WHERE entity_id = ?", [entity_id]):
+        raise HTTPException(404, f"Entity '{entity_id}' not found")
+    return _q(
+        "SELECT * FROM semantic_attribute WHERE entity_id = ? ORDER BY semantic_type, name",
+        [entity_id],
+    )
+
+
+@app.get("/entities/{entity_id}/identifier", summary="Canonical identifier attribute + bindings")
+def get_entity_identifier(entity_id: str) -> dict:
+    if not _q1("SELECT 1 FROM entity WHERE entity_id = ?", [entity_id]):
+        raise HTTPException(404, f"Entity '{entity_id}' not found")
+    attribute_id = f"{entity_id}.identifier"
+    attr = _q1("SELECT * FROM semantic_attribute WHERE attribute_id = ?", [attribute_id])
+    if not attr:
+        raise HTTPException(
+            404,
+            f"Entity '{entity_id}' has no declared identifier attribute "
+            "(should not happen — see validate.py: entity_missing_identifier)",
+        )
+    attr["bindings"] = _q(
+        "SELECT * FROM attribute_binding WHERE attribute_id = ? ORDER BY resolution_state, binding_id",
+        [attribute_id],
+    )
+    return attr
+
+
+@app.get("/bindings", summary="List attribute bindings")
+def list_bindings(
+    attribute_id:     str | None = Query(None),
+    dataset_id:       str | None = Query(None),
+    origin:           str | None = Query(None),
+    resolution_state: str | None = Query(None),
+) -> list[dict]:
+    where, params = [], []
+    if attribute_id:
+        where.append("attribute_id = ?"); params.append(attribute_id)
+    if dataset_id:
+        where.append("dataset_id = ?"); params.append(dataset_id)
+    if origin:
+        where.append("origin = ?"); params.append(origin)
+    if resolution_state:
+        where.append("resolution_state = ?"); params.append(resolution_state)
+    clause = ("WHERE " + " AND ".join(where)) if where else ""
+    return _q(f"SELECT * FROM attribute_binding {clause} ORDER BY attribute_id, binding_id", params)
+
+
+@app.get("/bindings/unresolved", summary="Attributes with zero resolved binding")
+def list_unresolved_bindings() -> list[dict]:
+    return _q("""
+        SELECT sa.attribute_id, sa.entity_id, sa.semantic_type,
+               count(ab.binding_id) FILTER (WHERE ab.resolution_state = 'candidate') AS candidate_count
+        FROM semantic_attribute sa
+        LEFT JOIN attribute_binding ab ON ab.attribute_id = sa.attribute_id
+        GROUP BY sa.attribute_id, sa.entity_id, sa.semantic_type
+        HAVING count(ab.binding_id) FILTER (WHERE ab.resolution_state = 'resolved') = 0
+        ORDER BY sa.attribute_id
+    """)
+
+
+@app.get("/bindings/candidates", summary="Candidate (unreviewed, inferred) bindings")
+def list_candidate_bindings() -> list[dict]:
+    return _q(
+        "SELECT * FROM attribute_binding WHERE resolution_state = 'candidate' "
+        "ORDER BY attribute_id, binding_id"
+    )
+
+
+@app.get("/cubes/{cube_id}/executability", summary="Physical executability of a cube (distinct from semantic validity)")
+def get_cube_executability(cube_id: str, engine: str | None = Query(None)) -> dict:
+    if not _q1("SELECT 1 FROM analytical_cube WHERE cube_id = ?", [cube_id]):
+        raise HTTPException(404, f"Cube '{cube_id}' not found")
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import cubes as _cubes
+    result = _cubes.check_cube_executability(_con, cube_id, engine=engine)
+    return {
+        "cube_id": cube_id,
+        "engine": engine,
+        "executable": result.executable,
+        "unresolved_attributes": result.unresolved_attributes,
+        "ambiguous_bindings": result.ambiguous_bindings,
+        "missing_relations": result.missing_relations,
+    }
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────

@@ -64,6 +64,16 @@ GRAIN_TO_ENTITY: dict[str, str] = {
     "requisicao":       "request",
     "serviço":          "service",
     "servico":          "service",
+    # Explicit, well-justified additions (same entity, different label used
+    # as the metric's own grain string) — not a heuristic guess, a direct
+    # 1:1 correspondence to an entity already in ENTITY_PK.
+    "vendedor":         "employee",   # a sales rep is an employee
+    "mql":              "lead",       # MQL is a qualification stage of a lead
+    "sql":              "lead",       # SQL is a qualification stage of a lead
+    "unidade":          "production_unit",  # a manufactured output unit, not an 'operation' instance
+    "email":            "email_send",       # a single email send, not a whole 'campaign'
+    "registro":         "dataset",          # data-quality metric about rows within a monitored dataset
+    "coluna":           "dataset",          # data-quality metric about a column within a monitored dataset
 }
 
 ENTITY_PK: dict[str, str] = {
@@ -117,6 +127,23 @@ ENTITY_PK: dict[str, str] = {
     "product":         "product_id",
     "request":         "request_id",
     "service":         "service_id",
+    # ── New entities added to eliminate dimension/lineage gaps discovered
+    #    during semantic-layer migration. Each is a genuinely distinct
+    #    business concept — not a rename of an existing entity — added
+    #    because at least one dimension or formula token legitimately
+    #    referred to it and no existing entity meant the same thing.
+    "supplier":         "supplier_id",         # supply_chain/quality: vendor of goods
+    "event":            "event_id",            # product/security: a single analytics event, finer-grained than 'session'
+    "business_unit":    "business_unit_id",    # strategy: org unit, distinct from a production unit
+    "production_unit":  "production_unit_id",  # operations/quality: a manufactured output unit, distinct from 'operation'
+    "email_send":       "email_id",            # marketing: one email send, finer-grained than 'campaign'
+    "pipeline":         "pipeline_id",         # data: the pipeline definition, distinct from 'pipeline_run' (one execution)
+    "cash_account":     "cash_account_id",     # finance: a treasury/bank account, distinct from a customer 'account'
+    "inventory_position": "inventory_id",      # supply_chain: a stock/inventory record, distinct from 'sku'
+    "plan":             "plan_id",             # product/finance: the pricing-plan catalog (Starter/Pro/Enterprise)
+                                                # referenced by subscription.plan_id and account.plan_id, but never
+                                                # itself declared — discovered as an unresolved FK target while
+                                                # fixing build_warehouse.py's 'no entity to resolve to' warnings.
 }
 
 
@@ -176,8 +203,12 @@ catalog = []
 # ── Computational dependency edges ────────────────────────────────────────────
 DEPS: dict = {
     "finance.arr":                   [("finance.mrr", "computational")],
-    "finance.arpu":                  [("finance.net_revenue", "denominator")],
-    "finance.arpa":                  [("finance.net_revenue", "denominator")],
+    # net_revenue is the DIVIDEND (numerator) in "net_revenue / X" for both of
+    # these — was mistagged "denominator" here, the opposite of the formula.
+    "finance.arpu":                  [("finance.net_revenue", "numerator"),
+                                       ("finance.active_paying_customers", "denominator")],
+    "finance.arpa":                  [("finance.net_revenue", "numerator"),
+                                       ("finance.active_paying_accounts", "denominator")],
     "finance.gross_margin":          [("finance.net_revenue", "denominator")],
     "finance.gross_profit":          [("finance.net_revenue", "computational")],
     "finance.ebitda_margin":         [("finance.ebitda", "computational"), ("finance.net_revenue", "denominator")],
@@ -208,26 +239,61 @@ DEPS: dict = {
                                          ("customer.contraction_mrr", "computational")],
 }
 
-_TABLE_COL  = re.compile(r'\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b')
+_TABLE_COL     = re.compile(r'\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b')
+_BARE_TEMPORAL = re.compile(r'\b([a-z][a-z0-9_]*_(?:at|date))\b')
 _SQL_TOKENS = frozenset({"nullif", "count", "sum", "avg", "median", "min", "max",
                           "distinct", "where", "between", "not", "and", "or", "in"})
 
 
-def _extract_lineage(expr: str, source_table) -> dict:
-    """Parse table.column references from a formula expression into a lineage block."""
-    seen: dict = {}
-    cols = []
-    for tbl, col in _TABLE_COL.findall(expr.lower()):
+def _extract_lineage(expr: str, source_table, entity_id: str | None = None) -> dict:
+    """
+    Parse column references from a formula expression into a lineage block.
+    Two sources:
+      1. Explicit 'table.column' dotted references anywhere in expr.
+      2. Bare (undotted) TEMPORAL-looking identifiers (ending in _at/_date),
+         e.g. 'AVG(days_between(created_at,won_at))'. These are deliberately
+         narrow: a metric's own grain entity overwhelmingly owns its own
+         timestamp columns (an opportunity metric's bare 'created_at'/
+         'won_at' tokens are the opportunity row's own columns) — a safe,
+         well-justified inference, unlike guessing arbitrary bare business
+         columns generally (which this function still does NOT do; a bare
+         'net_revenue' or 'cogs' token is never captured here).
+    Without this, most duration/lag metrics (sales cycle length, MTTR,
+    resolution time, ...) leave the semantic layer with literally zero
+    temporal attributes anywhere, which then blocks every dbt Semantic Layer
+    model on that entity from ever declaring an agg_time_dimension — not
+    just the duration metric itself.
+    """
+    seen_tables: dict = {}
+    seen_cols: set[tuple[str, str]] = set()
+    cols: list = []
+
+    def _add(tbl: str, col: str, role: str) -> None:
+        if (tbl, col) in seen_cols:
+            return
+        seen_cols.add((tbl, col))
+        seen_tables.setdefault(tbl, tbl)
+        cols.append({"source": tbl, "table": tbl, "column": col, "role": role})
+
+    lower = expr.lower()
+    for tbl, col in _TABLE_COL.findall(lower):
         if tbl in _SQL_TOKENS:
             continue
-        if tbl not in seen:
-            seen[tbl] = tbl
         role = "date_key" if col.endswith(("_at", "_date")) else (
                "filter"   if col in ("status", "type", "category", "severity") else "numerator")
-        cols.append({"source": tbl, "table": tbl, "column": col, "role": role})
+        _add(tbl, col, role)
+
+    implied_table = source_table or entity_id
+    if implied_table:
+        dotted_temporal_cols = {c for _t, c in _TABLE_COL.findall(lower) if c.endswith(("_at", "_date"))}
+        for tok in _BARE_TEMPORAL.findall(lower):
+            if tok in dotted_temporal_cols:
+                continue  # already captured via dotted syntax above
+            _add(implied_table, tok, "date_key")
+
     if not cols:
         return {}
-    sources = list(seen)
+    sources = list(seen_tables)
     joins = [
         {"left": sources[i], "right": sources[i + 1], "type": "INNER",
          "on": f"{sources[i]}.id = {sources[i + 1]}.{sources[i]}_id"}
@@ -267,7 +333,19 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
         "id": id, "name": name, "aliases": aliases, "department": department,
         "tags": tags, "description": description, "formula": formula,
         "aggregation": aggregation, "grain": grain, "unit": unit,
-        "dimensions": [{"name": n, "join_path": p} for n,p in dimensions],
+        "dimensions": [
+            {
+                "name": n, "join_path": p,
+                # Same '_at'/'_date' suffix heuristic _infer_semantic_type
+                # uses in to_duckdb.py — without this, dimensions here never
+                # carried a 'role' at all, so to_duckdb.py's dimension_type
+                # inference (which reads d.get('role')) always fell through
+                # to 'categorical', even for a join_path that plainly points
+                # at a timestamp column.
+                "role": "temporal" if p.split(".")[-1].endswith(("_at", "_date")) else "categorical",
+            }
+            for n, p in dimensions
+        ],
         "default_period": default_period, "supported_periods": supported_periods,
         "owner": {"team": owner_team, "contact": owner_contact},
         "status": status, "refresh_frequency": refresh,
@@ -275,7 +353,7 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
         "change_log": [{"date": "2024-01-15", "change": "Métrica adicionada ao catálogo canônico v1.0."}],
         "dependencies": [{"depends_on": dep, "type": t} for dep, t in DEPS.get(id, [])],
         "quality": _make_quality(aggregation, unit, quality, refresh),
-        "lineage": _extract_lineage(expression, source_table),
+        "lineage": _extract_lineage(expression, source_table, _infer_entity_id(grain)),
         "entity_id": _infer_entity_id(grain),
         "display_grain": grain,
         "metric_kind": _infer_metric_kind(aggregation, DEPS.get(id, [])),
@@ -301,21 +379,21 @@ def add(id, name, aliases, department, tags, description, expression, aggregatio
 
 # Helper for standard dimensions by domain
 dims = {
-    "finance": [("segmento_cliente","customer.segment"),("produto","product.id"),("plano","subscription.plan_id")],
+    "finance": [("segmento_cliente","customer.segment"),("produto","product.product_id"),("plano","subscription.plan_id"),("data_inicio","subscription.started_at")],
     "sales": [("vendedor","opportunity.owner_id"),("produto","opportunity.product_id"),("canal","opportunity.source")],
-    "marketing": [("canal","campaign.channel"),("campanha","campaign.id"),("segmento","customer.segment")],
+    "marketing": [("canal","campaign.channel"),("campanha","campaign.campaign_id"),("segmento","customer.segment"),("data_criacao","lead.created_at"),("status_lead","lead.status")],
     "product": [("plataforma","event.platform"),("plano","account.plan_id"),("cohort","user.signup_cohort")],
-    "customer": [("segmento","customer.segment"),("plano","account.plan_id"),("cohort","customer.cohort")],
+    "customer": [("segmento","customer.segment"),("plano","account.plan_id"),("cohort","customer.cohort"),("data_movimento","movement.occurred_at")],
     "support": [("canal","ticket.channel"),("categoria","ticket.category"),("prioridade","ticket.priority")],
     "engineering": [("time","deployment.team"),("serviço","deployment.service"),("repositório","deployment.repository")],
     "hr": [("departamento","employee.department"),("cargo","employee.role"),("localidade","employee.location")],
     "operations": [("unidade","operation.site"),("processo","operation.process"),("categoria","operation.category")],
-    "supply_chain": [("produto","product.id"),("fornecedor","supplier.id"),("localidade","warehouse.location")],
-    "data": [("pipeline","pipeline.id"),("domínio","dataset.domain"),("criticidade","dataset.criticality")],
-    "ecommerce": [("canal","order.channel"),("categoria","product.category"),("produto","product.id")],
-    "security": [("serviço","security.service"),("severidade","incident.severity"),("origem","event.source")],
-    "strategy": [("unidade_negócio","business_unit.id"),("região","business_unit.region"),("segmento","customer.segment")],
-    "quality": [("processo","quality.process"),("produto","quality.product"),("fornecedor","quality.supplier")]
+    "supply_chain": [("produto","product.product_id"),("fornecedor","supplier.supplier_id"),("localidade","warehouse.location")],
+    "data": [("pipeline","pipeline.pipeline_id"),("domínio","dataset.domain"),("criticidade","dataset.criticality")],
+    "ecommerce": [("canal","order.channel"),("categoria","product.category"),("produto","product.product_id")],
+    "security": [("serviço","service.service_id"),("severidade","incident.severity"),("origem","event.source")],
+    "strategy": [("unidade_negócio","business_unit.business_unit_id"),("região","business_unit.region"),("segmento","customer.segment")],
+    "quality": [("processo","process.process_id"),("produto","product.product_id"),("fornecedor","supplier.supplier_id")]
 }
 
 def metric(domain, key, name, desc, expr, agg, grain, unit, aliases=None, tags=None, **kw):
@@ -331,8 +409,10 @@ finance_metrics = [
 ("net_revenue","Receita Líquida","Receita após descontos, devoluções e abatimentos aplicáveis.","SUM(invoice.net_amount)","sum","fatura","BRL"),
 ("mrr","Receita Recorrente Mensal (MRR)","Receita recorrente ativa normalizada para base mensal.","SUM(active_subscription.monthly_equivalent)","sum","assinatura","BRL"),
 ("arr","Receita Recorrente Anualizada (ARR)","MRR anualizado para representar receita recorrente em base anual.","MRR * 12","custom","mês","BRL"),
-("arpu","Receita Média por Usuário (ARPU)","Receita média atribuída por usuário ativo ou pagante no período.","net_revenue / NULLIF(distinct_paying_users,0)","ratio","mês","BRL"),
-("arpa","Receita Média por Conta (ARPA)","Receita média por conta pagante no período.","net_revenue / NULLIF(distinct_paying_accounts,0)","ratio","mês","BRL"),
+("arpu","Receita Média por Usuário (ARPU)","Receita média atribuída por usuário ativo ou pagante no período.","net_revenue / NULLIF(active_paying_customers,0)","ratio","mês","BRL"),
+("arpa","Receita Média por Conta (ARPA)","Receita média por conta pagante no período.","net_revenue / NULLIF(active_paying_accounts,0)","ratio","mês","BRL"),
+("active_paying_customers","Clientes Pagantes Ativos","Número de clientes distintos com assinatura ativa e paga no período.","COUNT(DISTINCT active_subscription.customer_id)","count_distinct","cliente","unidades"),
+("active_paying_accounts","Contas Pagantes Ativas","Número de contas distintas com assinatura ativa e paga no período.","COUNT(DISTINCT active_subscription.account_id)","count_distinct","conta","unidades"),
 ("gross_margin","Margem Bruta","Percentual da receita líquida que permanece após custos diretamente atribuíveis.","(net_revenue - cogs) / NULLIF(net_revenue,0)","ratio","mês","%"),
 ("gross_profit","Lucro Bruto","Receita líquida menos custo dos produtos ou serviços vendidos.","net_revenue - cogs","custom","mês","BRL"),
 ("ebitda","EBITDA","Resultado operacional antes de juros, impostos, depreciação e amortização.","operating_profit + depreciation + amortization","custom","mês","BRL"),
@@ -343,14 +423,14 @@ finance_metrics = [
 ("operating_cash_flow","Fluxo de Caixa Operacional","Caixa gerado ou consumido pelas operações.","SUM(operating_cash_movements)","sum","movimento","BRL"),
 ("free_cash_flow","Fluxo de Caixa Livre","Caixa operacional após investimentos de capital.","operating_cash_flow - capex","custom","mês","BRL"),
 ("burn_rate","Burn Rate","Velocidade média de consumo líquido de caixa.","net_cash_outflow / months","ratio","mês","BRL/mês"),
-("runway","Runway","Meses estimados até o caixa se esgotar sob o burn atual.","cash_balance / NULLIF(monthly_net_burn,0)","ratio","mês","meses"),
+("runway","Runway","Meses estimados até o caixa se esgotar sob o burn atual.","cash_balance / NULLIF(burn_rate,0)","ratio","mês","meses"),
 ("cac","Custo de Aquisição de Cliente (CAC)","Investimento de marketing e vendas dividido pelos novos clientes pagantes adquiridos.","(marketing_spend + sales_spend) / NULLIF(new_customers,0)","ratio","mês","BRL"),
 ("ltv","Lifetime Value (LTV)","Valor econômico esperado de um cliente ao longo de sua vida, segundo a metodologia definida.","expected_gross_profit_per_period * expected_lifetime_periods","custom","cliente","BRL"),
 ("ltv_cac_ratio","Razão LTV:CAC","Valor de vida do cliente dividido pelo custo de aquisição.","LTV / NULLIF(CAC,0)","ratio","mês","x"),
 ("cac_payback_months","Payback do CAC","Número de meses necessários para recuperar o CAC via margem bruta.","CAC / NULLIF(monthly_gross_profit_per_customer,0)","ratio","cliente","meses"),
 ("revenue_growth_rate","Crescimento de Receita","Variação percentual da receita em relação ao período comparável anterior.","(revenue - prior_revenue) / NULLIF(prior_revenue,0)","ratio","período","%"),
 ("mrr_growth_rate","Crescimento de MRR","Variação percentual do MRR em relação ao período anterior.","(MRR - prior_MRR) / NULLIF(prior_MRR,0)","ratio","mês","%"),
-("net_revenue_retention","Net Revenue Retention (NRR)","Receita recorrente inicial retida após expansão, contração e churn, sem incluir novos clientes.","(starting_MRR + expansion_MRR - contraction_MRR - churned_MRR) / NULLIF(starting_MRR,0)","ratio","cohort","%")
+("net_revenue_retention","Net Revenue Retention (NRR)","Receita recorrente inicial retida após expansão, contração e churn, sem incluir novos clientes.","(mrr + expansion_mrr - contraction_mrr - churned_mrr) / NULLIF(mrr,0)","ratio","cohort","%")
 ]
 for x in finance_metrics: metric("finance",*x)
 
@@ -358,7 +438,7 @@ for x in finance_metrics: metric("finance",*x)
 sales_metrics = [
 ("pipeline_value","Valor do Pipeline","Valor total das oportunidades abertas elegíveis.","SUM(open_opportunity.amount)","sum","oportunidade","BRL"),
 ("weighted_pipeline","Pipeline Ponderado","Pipeline ponderado pelas probabilidades de fechamento.","SUM(opportunity.amount * opportunity.probability)","sum","oportunidade","BRL"),
-("pipeline_coverage","Cobertura de Pipeline","Pipeline necessário em relação ao restante da meta de vendas.","open_pipeline / NULLIF(target - closed_won,0)","ratio","período","x"),
+("pipeline_coverage","Cobertura de Pipeline","Pipeline necessário em relação ao restante da meta de vendas.","pipeline_value / NULLIF(sales_target - closed_won,0)","ratio","período","x"),
 ("win_rate","Taxa de Conversão de Vendas (Win Rate)","Percentual de oportunidades encerradas que foram ganhas.","closed_won / NULLIF(closed_won + closed_lost,0)","ratio","oportunidade","%"),
 ("sales_cycle_length","Duração do Ciclo de Vendas","Tempo médio entre criação e fechamento de uma oportunidade.","AVG(days_between(created_at,closed_at))","avg","oportunidade","dias"),
 ("lead_to_opportunity_rate","Conversão Lead → Oportunidade","Percentual de leads que se tornam oportunidades qualificadas.","opportunities / NULLIF(leads,0)","ratio","lead","%"),
@@ -368,7 +448,7 @@ sales_metrics = [
 ("quota_attainment","Atingimento de Quota","Vendas realizadas como percentual da quota atribuída.","closed_won_amount / NULLIF(quota,0)","ratio","vendedor","%"),
 ("new_logo_revenue","Receita de Novos Clientes","Receita contratada proveniente de novos clientes.","SUM(new_customer.contract_value)","sum","contrato","BRL"),
 ("expansion_revenue","Receita de Expansão","Receita incremental de clientes existentes por upsell, cross-sell ou expansão.","SUM(expansion.contract_value)","sum","contrato","BRL"),
-("sales_velocity","Velocidade de Vendas","Valor esperado gerado pelo funil por unidade de tempo.","qualified_opportunities * avg_deal_size * win_rate / sales_cycle_length","custom","período","BRL/dia"),
+("sales_velocity","Velocidade de Vendas","Valor esperado gerado pelo funil por unidade de tempo.","qualified_opportunities * average_deal_size * win_rate / sales_cycle_length","custom","período","BRL/dia"),
 ("forecast_accuracy","Acurácia de Forecast","Proximidade entre previsão comercial e resultado realizado.","1 - ABS(forecast - actual) / NULLIF(ABS(actual),0)","custom","período","%"),
 ("average_days_to_close_won","Dias Médios até Ganho","Tempo médio entre criação e fechamento ganho.","AVG(days_between(created_at,won_at))","avg","oportunidade","dias"),
 ("lost_rate","Taxa de Perda","Percentual de oportunidades encerradas que foram perdidas.","closed_lost / NULLIF(closed_won + closed_lost,0)","ratio","oportunidade","%"),
@@ -384,10 +464,10 @@ marketing_metrics = [
 ("leads_generated","Leads Gerados","Número de leads capturados no período.","COUNT(lead.id)","count","lead","unidades"),
 ("mql_volume","Volume de MQLs","Número de leads qualificados por marketing.","COUNT(lead.id WHERE status='mql')","count","lead","unidades"),
 ("sql_volume","Volume de SQLs","Número de leads aceitos e qualificados por vendas.","COUNT(lead.id WHERE status='sql')","count","lead","unidades"),
-("mql_to_sql_rate","Taxa MQL → SQL","Percentual de MQLs que se tornam SQLs.","sql / NULLIF(mql,0)","ratio","lead","%"),
-("cost_per_lead","Custo por Lead","Investimento de marketing dividido pelo volume de leads.","marketing_spend / NULLIF(leads,0)","ratio","lead","BRL"),
-("cost_per_mql","Custo por MQL","Investimento de marketing dividido pelo número de MQLs.","marketing_spend / NULLIF(mql,0)","ratio","MQL","BRL"),
-("cost_per_sql","Custo por SQL","Investimento de marketing dividido pelo número de SQLs.","marketing_spend / NULLIF(sql,0)","ratio","SQL","BRL"),
+("mql_to_sql_rate","Taxa MQL → SQL","Percentual de MQLs que se tornam SQLs.","sql_volume / NULLIF(mql_volume,0)","ratio","lead","%"),
+("cost_per_lead","Custo por Lead","Investimento de marketing dividido pelo volume de leads.","marketing_spend / NULLIF(leads_generated,0)","ratio","lead","BRL"),
+("cost_per_mql","Custo por MQL","Investimento de marketing dividido pelo número de MQLs.","marketing_spend / NULLIF(mql_volume,0)","ratio","MQL","BRL"),
+("cost_per_sql","Custo por SQL","Investimento de marketing dividido pelo número de SQLs.","marketing_spend / NULLIF(sql_volume,0)","ratio","SQL","BRL"),
 ("campaign_roi","ROI de Campanha","Retorno incremental atribuído à campanha em relação ao custo.","(attributed_margin - campaign_cost) / NULLIF(campaign_cost,0)","ratio","campanha","%"),
 ("marketing_sourced_revenue","Receita Sourced por Marketing","Receita de negócios atribuídos à origem de marketing.","SUM(attributed_closed_won.amount)","sum","oportunidade","BRL"),
 ("marketing_influenced_revenue","Receita Influenciada por Marketing","Receita de negócios que tiveram interação atribuível com marketing.","SUM(influenced_closed_won.amount)","sum","oportunidade","BRL"),
@@ -610,12 +690,43 @@ for x in quality_metrics: metric("quality",*x)
 # Normalize benchmark field and add a catalog-level summary.
 catalog.sort(key=lambda x: x["id"])
 
-# Build entity table from all unique entity_ids referenced by metrics
+# Build entity table from all unique entity_ids referenced by metrics AND by
+# dimension join_paths. A dimension can legitimately reference an entity that
+# no metric happens to use as its own grain (e.g. 'produto' never appears as
+# a metric's grain, but 'product.category' is a real dimension on several
+# metrics) — such an entity is still real and must exist in the entity table.
+# Only join_path entities already declared in ENTITY_PK are accepted here:
+# that is the authoritative "this is a known entity" registry, so this does
+# NOT invent new entities from names that merely look structured
+# (e.g. 'event', 'business_unit', 'supplier' are NOT in ENTITY_PK and stay
+# unresolved — see validate.py's dimension_missing_attribute check).
 _entity_grains: dict = defaultdict(set)
 for _m in catalog:
     _eid = _m.get("entity_id")
     if _eid:
         _entity_grains[_eid].add(_m["grain"].lower())
+    for _dim in _m.get("dimensions", []):
+        _jp = _dim.get("join_path", "")
+        if "." in _jp:
+            _dim_entity = _jp.split(".", 1)[0]
+            if _dim_entity in ENTITY_PK:
+                _entity_grains.setdefault(_dim_entity, set())
+
+# Entities that exist only to anchor a dependency that main.py's automatic
+# discovery (metric grain, or dimension join_path prefix) can't see, because
+# nothing else here inspects formula tokens or FK-column-name stems. Two
+# known cases:
+#   - referenced only through to_duckdb.py's _DATASET_ALIASES table (a
+#     formula token names it, no metric grain or join_path does): 'cash_account',
+#     'inventory_position'.
+#   - referenced only as the inferred target of an entity_reference FK
+#     column (e.g. account.plan_id / subscription.plan_id -> 'plan'), which
+#     to_duckdb.py's _infer_semantic_type resolves by column-name stem, not
+#     by join_path: 'plan'.
+# Declared explicitly here rather than left implicit, so it's clear *why*
+# each of these entities exists with no other visible usage.
+for _alias_target_entity in ("cash_account", "inventory_position", "plan"):
+    _entity_grains.setdefault(_alias_target_entity, set())
 
 entities = sorted([
     {
@@ -659,4 +770,3 @@ index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding=
 print(f"Created {path} with {len(catalog)} canonical metrics.")
 print(f"Created {index_path} with compact index.")
 print("Domains:", sorted({m["id"].split('.')[0] for m in catalog}))
-

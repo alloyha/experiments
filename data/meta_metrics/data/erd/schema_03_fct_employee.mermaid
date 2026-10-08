@@ -1,0 +1,32 @@
+erDiagram
+    %% Forma: estrela
+    %% Uma única fct_ (fct_employee), todo o resto liga direto a ela — estrela clássica..
+    %% ATENCAO: colunas tipadas DOUBLE (semantic_type='measure' no catalogo) com nome de cara categorica, nao numerica - suspeita de classificacao errada upstream, nao corrigida aqui:
+    %%   - fct_employee.department
+    %%   - fct_employee.location
+    %%   - fct_employee.role
+
+    dim_hire }o--|| fct_employee : "employee_id"
+    dim_job }o--|| fct_employee : "employee_id"
+
+    dim_hire {
+        VARCHAR hire_id PK
+        VARCHAR id
+        VARCHAR employee_id  FK
+        TIMESTAMP job_opened_at
+        TIMESTAMP offer_accepted_at
+    }
+    dim_job {
+        VARCHAR job_id PK
+        VARCHAR id
+        VARCHAR employee_id  FK
+        TIMESTAMP job_opened_at
+        TIMESTAMP start_at
+    }
+    fct_employee {
+        VARCHAR employee_id PK
+        VARCHAR id
+        DOUBLE department
+        DOUBLE location
+        DOUBLE role
+    }

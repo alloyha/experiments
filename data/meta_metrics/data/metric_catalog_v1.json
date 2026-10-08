@@ -3,8 +3,8 @@
   "catalog_version": "2.0",
   "title": "Comprehensive Business Metric Catalog",
   "description": "Research-informed canonical metric catalog spanning finance, sales, marketing, product, customer success, ecommerce, support, engineering, HR, operations, supply chain, data, security, strategy and quality.",
-  "entity_count": 49,
-  "metric_count": 208,
+  "entity_count": 59,
+  "metric_count": 210,
   "entities": [
     {
       "entity_id": "account",
@@ -39,6 +39,12 @@
       ]
     },
     {
+      "entity_id": "business_unit",
+      "name": "Business Unit",
+      "pk_column": "business_unit_id",
+      "grain_aliases": []
+    },
+    {
       "entity_id": "campaign",
       "name": "Campaign",
       "pk_column": "campaign_id",
@@ -53,6 +59,12 @@
       "grain_aliases": [
         "carrinho"
       ]
+    },
+    {
+      "entity_id": "cash_account",
+      "name": "Cash Account",
+      "pk_column": "cash_account_id",
+      "grain_aliases": []
     },
     {
       "entity_id": "checkout",
@@ -99,7 +111,9 @@
       "name": "Dataset",
       "pk_column": "dataset_id",
       "grain_aliases": [
-        "dataset"
+        "coluna",
+        "dataset",
+        "registro"
       ]
     },
     {
@@ -127,12 +141,27 @@
       ]
     },
     {
+      "entity_id": "email_send",
+      "name": "Email Send",
+      "pk_column": "email_id",
+      "grain_aliases": [
+        "email"
+      ]
+    },
+    {
       "entity_id": "employee",
       "name": "Employee",
       "pk_column": "employee_id",
       "grain_aliases": [
-        "colaborador"
+        "colaborador",
+        "vendedor"
       ]
+    },
+    {
+      "entity_id": "event",
+      "name": "Event",
+      "pk_column": "event_id",
+      "grain_aliases": []
     },
     {
       "entity_id": "feature",
@@ -157,6 +186,12 @@
       "grain_aliases": [
         "incidente"
       ]
+    },
+    {
+      "entity_id": "inventory_position",
+      "name": "Inventory Position",
+      "pk_column": "inventory_id",
+      "grain_aliases": []
     },
     {
       "entity_id": "invoice",
@@ -195,7 +230,9 @@
       "name": "Lead",
       "pk_column": "lead_id",
       "grain_aliases": [
-        "lead"
+        "lead",
+        "mql",
+        "sql"
       ]
     },
     {
@@ -255,6 +292,12 @@
       ]
     },
     {
+      "entity_id": "pipeline",
+      "name": "Pipeline",
+      "pk_column": "pipeline_id",
+      "grain_aliases": []
+    },
+    {
       "entity_id": "pipeline_run",
       "name": "Pipeline Run",
       "pk_column": "run_id",
@@ -263,11 +306,31 @@
       ]
     },
     {
+      "entity_id": "plan",
+      "name": "Plan",
+      "pk_column": "plan_id",
+      "grain_aliases": []
+    },
+    {
       "entity_id": "process",
       "name": "Process",
       "pk_column": "process_id",
       "grain_aliases": [
         "processo"
+      ]
+    },
+    {
+      "entity_id": "product",
+      "name": "Product",
+      "pk_column": "product_id",
+      "grain_aliases": []
+    },
+    {
+      "entity_id": "production_unit",
+      "name": "Production Unit",
+      "pk_column": "production_unit_id",
+      "grain_aliases": [
+        "unidade"
       ]
     },
     {
@@ -341,6 +404,12 @@
       "grain_aliases": [
         "assinatura"
       ]
+    },
+    {
+      "entity_id": "supplier",
+      "name": "Supplier",
+      "pk_column": "supplier_id",
+      "grain_aliases": []
     },
     {
       "entity_id": "survey_response",
@@ -2082,7 +2151,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "customer",
+            "table": "customer",
+            "column": "start_at",
+            "role": "date_key"
+          },
+          {
+            "source": "customer",
+            "table": "customer",
+            "column": "value_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "customer",
       "display_grain": "cliente",
       "metric_kind": "derived",
@@ -2129,7 +2214,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2236,7 +2321,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2343,7 +2428,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2444,7 +2529,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2505,7 +2590,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "dataset",
       "display_grain": "registro",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -2551,7 +2636,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2656,7 +2741,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2717,7 +2802,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "dataset",
       "display_grain": "coluna",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -2763,7 +2848,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2811,7 +2896,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "pipeline_run",
+            "table": "pipeline_run",
+            "column": "start_at",
+            "role": "date_key"
+          },
+          {
+            "source": "pipeline_run",
+            "table": "pipeline_run",
+            "column": "end_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "pipeline_run",
       "display_grain": "execução",
       "metric_kind": "derived",
@@ -2858,7 +2959,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -2965,7 +3066,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -3072,7 +3173,7 @@
       "dimensions": [
         {
           "name": "pipeline",
-          "join_path": "pipeline.id"
+          "join_path": "pipeline.pipeline_id"
         },
         {
           "name": "domínio",
@@ -3133,7 +3234,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "dataset",
       "display_grain": "coluna",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -3187,7 +3288,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3288,7 +3389,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3395,7 +3496,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3502,7 +3603,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3609,7 +3710,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3716,7 +3817,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3817,7 +3918,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -3924,7 +4025,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4035,7 +4136,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4136,7 +4237,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4247,7 +4348,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4358,7 +4459,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4469,7 +4570,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4576,7 +4677,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4683,7 +4784,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         }
       ],
       "default_period": "mês corrente",
@@ -4937,7 +5038,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "deployment",
+            "table": "deployment",
+            "column": "commit_at",
+            "role": "date_key"
+          },
+          {
+            "source": "deployment",
+            "table": "deployment",
+            "column": "production_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "deployment",
       "display_grain": "deploy",
       "metric_kind": "derived",
@@ -5458,7 +5575,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "deployment",
+            "table": "deployment",
+            "column": "failure_at",
+            "role": "date_key"
+          },
+          {
+            "source": "deployment",
+            "table": "deployment",
+            "column": "recovery_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "deployment",
       "display_grain": "deploy",
       "metric_kind": "derived",
@@ -5765,7 +5898,17 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "recovery_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "incident",
       "display_grain": "incidente",
       "metric_kind": "base",
@@ -6006,6 +6149,228 @@
       }
     },
     {
+      "id": "finance.active_paying_accounts",
+      "name": "Contas Pagantes Ativas",
+      "aliases": [
+        "contas pagantes ativas"
+      ],
+      "department": "Finance",
+      "tags": [
+        "finance"
+      ],
+      "description": "Número de contas distintas com assinatura ativa e paga no período.",
+      "formula": {
+        "expression": "COUNT(DISTINCT active_subscription.account_id)",
+        "language": "pseudocode"
+      },
+      "aggregation": "count_distinct",
+      "grain": "conta",
+      "unit": "unidades",
+      "dimensions": [
+        {
+          "name": "segmento_cliente",
+          "join_path": "customer.segment"
+        },
+        {
+          "name": "produto",
+          "join_path": "product.product_id"
+        },
+        {
+          "name": "plano",
+          "join_path": "subscription.plan_id"
+        }
+      ],
+      "default_period": "mês corrente",
+      "supported_periods": [
+        "dia",
+        "mês",
+        "trimestre",
+        "ano",
+        "customizado"
+      ],
+      "owner": {
+        "team": "Finance",
+        "contact": "finance@empresa.com"
+      },
+      "status": "active",
+      "refresh_frequency": "daily",
+      "data_quality": "audited",
+      "version": "1.0",
+      "change_log": [
+        {
+          "date": "2024-01-15",
+          "change": "Métrica adicionada ao catálogo canônico v1.0."
+        }
+      ],
+      "dependencies": [],
+      "quality": [
+        {
+          "dimension": "freshness",
+          "rule": "max_age_hours",
+          "threshold": "26",
+          "severity": "error"
+        },
+        {
+          "dimension": "completeness",
+          "rule": "null_rate",
+          "threshold": "0.01",
+          "severity": "warning"
+        },
+        {
+          "dimension": "consistency",
+          "rule": "cross_system_reconciliation",
+          "threshold": "0.001",
+          "severity": "error"
+        }
+      ],
+      "lineage": {
+        "columns": [
+          {
+            "source": "active_subscription",
+            "table": "active_subscription",
+            "column": "account_id",
+            "role": "numerator"
+          }
+        ],
+        "joins": []
+      },
+      "entity_id": "account",
+      "display_grain": "conta",
+      "metric_kind": "base",
+      "derivation_type": "base",
+      "metric_type": "scalar",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
+      "usage_context": {
+        "when_to_use": "Número de contas distintas com assinatura ativa e paga no período.",
+        "related_metrics": [],
+        "example_questions": [
+          "Qual é contas pagantes ativas?"
+        ],
+        "benchmarks": {}
+      },
+      "access": {
+        "endpoint": "/api/metrics/finance/active_paying_accounts",
+        "requires_permission": "finance.read",
+        "execution_cost": "low",
+        "cacheable": true
+      }
+    },
+    {
+      "id": "finance.active_paying_customers",
+      "name": "Clientes Pagantes Ativos",
+      "aliases": [
+        "clientes pagantes ativos"
+      ],
+      "department": "Finance",
+      "tags": [
+        "finance"
+      ],
+      "description": "Número de clientes distintos com assinatura ativa e paga no período.",
+      "formula": {
+        "expression": "COUNT(DISTINCT active_subscription.customer_id)",
+        "language": "pseudocode"
+      },
+      "aggregation": "count_distinct",
+      "grain": "cliente",
+      "unit": "unidades",
+      "dimensions": [
+        {
+          "name": "segmento_cliente",
+          "join_path": "customer.segment"
+        },
+        {
+          "name": "produto",
+          "join_path": "product.product_id"
+        },
+        {
+          "name": "plano",
+          "join_path": "subscription.plan_id"
+        }
+      ],
+      "default_period": "mês corrente",
+      "supported_periods": [
+        "dia",
+        "mês",
+        "trimestre",
+        "ano",
+        "customizado"
+      ],
+      "owner": {
+        "team": "Finance",
+        "contact": "finance@empresa.com"
+      },
+      "status": "active",
+      "refresh_frequency": "daily",
+      "data_quality": "audited",
+      "version": "1.0",
+      "change_log": [
+        {
+          "date": "2024-01-15",
+          "change": "Métrica adicionada ao catálogo canônico v1.0."
+        }
+      ],
+      "dependencies": [],
+      "quality": [
+        {
+          "dimension": "freshness",
+          "rule": "max_age_hours",
+          "threshold": "26",
+          "severity": "error"
+        },
+        {
+          "dimension": "completeness",
+          "rule": "null_rate",
+          "threshold": "0.01",
+          "severity": "warning"
+        },
+        {
+          "dimension": "consistency",
+          "rule": "cross_system_reconciliation",
+          "threshold": "0.001",
+          "severity": "error"
+        }
+      ],
+      "lineage": {
+        "columns": [
+          {
+            "source": "active_subscription",
+            "table": "active_subscription",
+            "column": "customer_id",
+            "role": "numerator"
+          }
+        ],
+        "joins": []
+      },
+      "entity_id": "customer",
+      "display_grain": "cliente",
+      "metric_kind": "base",
+      "derivation_type": "base",
+      "metric_type": "scalar",
+      "additivity": "semi_additive",
+      "time_grain": "day",
+      "superseded_by": null,
+      "deprecated_at": null,
+      "deprecation_reason": null,
+      "usage_context": {
+        "when_to_use": "Número de clientes distintos com assinatura ativa e paga no período.",
+        "related_metrics": [],
+        "example_questions": [
+          "Qual é clientes pagantes ativos?"
+        ],
+        "benchmarks": {}
+      },
+      "access": {
+        "endpoint": "/api/metrics/finance/active_paying_customers",
+        "requires_permission": "finance.read",
+        "execution_cost": "low",
+        "cacheable": true
+      }
+    },
+    {
       "id": "finance.arpa",
       "name": "Receita Média por Conta (ARPA)",
       "aliases": [
@@ -6017,7 +6382,7 @@
       ],
       "description": "Receita média por conta pagante no período.",
       "formula": {
-        "expression": "net_revenue / NULLIF(distinct_paying_accounts,0)",
+        "expression": "net_revenue / NULLIF(active_paying_accounts,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -6030,7 +6395,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6062,6 +6427,10 @@
       "dependencies": [
         {
           "depends_on": "finance.net_revenue",
+          "type": "numerator"
+        },
+        {
+          "depends_on": "finance.active_paying_accounts",
           "type": "denominator"
         }
       ],
@@ -6123,7 +6492,7 @@
       ],
       "description": "Receita média atribuída por usuário ativo ou pagante no período.",
       "formula": {
-        "expression": "net_revenue / NULLIF(distinct_paying_users,0)",
+        "expression": "net_revenue / NULLIF(active_paying_customers,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -6136,7 +6505,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6168,6 +6537,10 @@
       "dependencies": [
         {
           "depends_on": "finance.net_revenue",
+          "type": "numerator"
+        },
+        {
+          "depends_on": "finance.active_paying_customers",
           "type": "denominator"
         }
       ],
@@ -6242,7 +6615,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6342,7 +6715,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6443,7 +6816,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6544,7 +6917,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6650,7 +7023,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6761,7 +7134,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6856,7 +7229,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -6972,7 +7345,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7072,7 +7445,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7184,7 +7557,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7284,7 +7657,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7395,7 +7768,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7490,7 +7863,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7600,7 +7973,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7711,7 +8084,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7823,7 +8196,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -7935,7 +8308,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8033,7 +8406,7 @@
       ],
       "description": "Receita recorrente inicial retida após expansão, contração e churn, sem incluir novos clientes.",
       "formula": {
-        "expression": "(starting_MRR + expansion_MRR - contraction_MRR - churned_MRR) / NULLIF(starting_MRR,0)",
+        "expression": "(mrr + expansion_mrr - contraction_mrr - churned_mrr) / NULLIF(mrr,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -8046,7 +8419,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8170,7 +8543,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8271,7 +8644,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8383,7 +8756,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8494,7 +8867,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -8593,7 +8966,7 @@
       ],
       "description": "Meses estimados até o caixa se esgotar sob o burn atual.",
       "formula": {
-        "expression": "cash_balance / NULLIF(monthly_net_burn,0)",
+        "expression": "cash_balance / NULLIF(burn_rate,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -8606,7 +8979,7 @@
         },
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "plano",
@@ -9713,7 +10086,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "job",
+            "table": "job",
+            "column": "job_opened_at",
+            "role": "date_key"
+          },
+          {
+            "source": "job",
+            "table": "job",
+            "column": "start_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "job",
       "display_grain": "vaga",
       "metric_kind": "derived",
@@ -9808,7 +10197,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "hire",
+            "table": "hire",
+            "column": "job_opened_at",
+            "role": "date_key"
+          },
+          {
+            "source": "hire",
+            "table": "hire",
+            "column": "offer_accepted_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "hire",
       "display_grain": "contratação",
       "metric_kind": "derived",
@@ -9966,7 +10371,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10073,7 +10478,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10167,7 +10572,7 @@
       ],
       "description": "Investimento de marketing dividido pelo volume de leads.",
       "formula": {
-        "expression": "marketing_spend / NULLIF(leads,0)",
+        "expression": "marketing_spend / NULLIF(leads_generated,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -10180,7 +10585,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10273,7 +10678,7 @@
       ],
       "description": "Investimento de marketing dividido pelo número de MQLs.",
       "formula": {
-        "expression": "marketing_spend / NULLIF(mql,0)",
+        "expression": "marketing_spend / NULLIF(mql_volume,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -10286,7 +10691,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10342,7 +10747,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "lead",
       "display_grain": "MQL",
       "metric_kind": "derived",
       "derivation_type": "derived",
@@ -10379,7 +10784,7 @@
       ],
       "description": "Investimento de marketing dividido pelo número de SQLs.",
       "formula": {
-        "expression": "marketing_spend / NULLIF(sql,0)",
+        "expression": "marketing_spend / NULLIF(sql_volume,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -10392,7 +10797,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10448,7 +10853,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "lead",
       "display_grain": "SQL",
       "metric_kind": "derived",
       "derivation_type": "derived",
@@ -10498,7 +10903,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10605,7 +11010,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10662,7 +11067,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "email_send",
       "display_grain": "email",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -10712,7 +11117,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10769,7 +11174,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "email_send",
       "display_grain": "email",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -10819,7 +11224,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -10930,7 +11335,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11041,7 +11446,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11139,7 +11544,7 @@
       ],
       "description": "Percentual de MQLs que se tornam SQLs.",
       "formula": {
-        "expression": "sql / NULLIF(mql,0)",
+        "expression": "sql_volume / NULLIF(mql_volume,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -11152,7 +11557,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11268,7 +11673,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11379,7 +11784,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11480,7 +11885,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11591,7 +11996,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11648,7 +12053,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "email_send",
       "display_grain": "email",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -11698,7 +12103,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -11805,7 +12210,7 @@
         },
         {
           "name": "campanha",
-          "join_path": "campaign.id"
+          "join_path": "campaign.campaign_id"
         },
         {
           "name": "segmento",
@@ -12074,7 +12479,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -12168,7 +12573,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "operation",
+            "table": "operation",
+            "column": "start_at",
+            "role": "date_key"
+          },
+          {
+            "source": "operation",
+            "table": "operation",
+            "column": "completed_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "operation",
       "display_grain": "operação",
       "metric_kind": "derived",
@@ -12276,7 +12697,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -12490,7 +12911,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -12900,7 +13321,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -14895,7 +15316,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "user",
+            "table": "user",
+            "column": "signup_at",
+            "role": "date_key"
+          },
+          {
+            "source": "user",
+            "table": "user",
+            "column": "activation_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "user",
       "display_grain": "usuário",
       "metric_kind": "derived",
@@ -15257,15 +15694,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15364,15 +15801,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15471,15 +15908,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15572,15 +16009,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15673,15 +16110,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15728,7 +16165,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -15774,15 +16211,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15835,7 +16272,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -15881,15 +16318,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -15976,15 +16413,15 @@
       "dimensions": [
         {
           "name": "processo",
-          "join_path": "quality.process"
+          "join_path": "process.process_id"
         },
         {
           "name": "produto",
-          "join_path": "quality.product"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "quality.supplier"
+          "join_path": "supplier.supplier_id"
         }
       ],
       "default_period": "mês corrente",
@@ -16037,7 +16474,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "production_unit",
       "display_grain": "unidade",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -16131,7 +16568,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "opportunity",
+            "table": "opportunity",
+            "column": "created_at",
+            "role": "date_key"
+          },
+          {
+            "source": "opportunity",
+            "table": "opportunity",
+            "column": "won_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "opportunity",
       "display_grain": "oportunidade",
       "metric_kind": "base",
@@ -17342,7 +17795,7 @@
       ],
       "description": "Pipeline necessário em relação ao restante da meta de vendas.",
       "formula": {
-        "expression": "open_pipeline / NULLIF(target - closed_won,0)",
+        "expression": "pipeline_value / NULLIF(sales_target - closed_won,0)",
         "language": "pseudocode"
       },
       "aggregation": "ratio",
@@ -17633,7 +18086,7 @@
         }
       ],
       "lineage": {},
-      "entity_id": null,
+      "entity_id": "employee",
       "display_grain": "vendedor",
       "metric_kind": "ratio",
       "derivation_type": "base",
@@ -17727,7 +18180,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "opportunity",
+            "table": "opportunity",
+            "column": "created_at",
+            "role": "date_key"
+          },
+          {
+            "source": "opportunity",
+            "table": "opportunity",
+            "column": "closed_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "opportunity",
       "display_grain": "oportunidade",
       "metric_kind": "base",
@@ -17876,7 +18345,7 @@
       ],
       "description": "Valor esperado gerado pelo funil por unidade de tempo.",
       "formula": {
-        "expression": "qualified_opportunities * avg_deal_size * win_rate / sales_cycle_length",
+        "expression": "qualified_opportunities * average_deal_size * win_rate / sales_cycle_length",
         "language": "pseudocode"
       },
       "aggregation": "custom",
@@ -18217,7 +18686,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18328,7 +18797,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18376,7 +18845,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "detected_at",
+            "role": "date_key"
+          },
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "contained_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "incident",
       "display_grain": "incidente",
       "metric_kind": "base",
@@ -18423,7 +18908,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18471,7 +18956,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "occurred_at",
+            "role": "date_key"
+          },
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "detected_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "incident",
       "display_grain": "incidente",
       "metric_kind": "base",
@@ -18518,7 +19019,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18566,7 +19067,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "detected_at",
+            "role": "date_key"
+          },
+          {
+            "source": "incident",
+            "table": "incident",
+            "column": "remediated_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "incident",
       "display_grain": "incidente",
       "metric_kind": "base",
@@ -18613,7 +19130,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18720,7 +19237,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18827,7 +19344,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -18938,7 +19455,7 @@
       "dimensions": [
         {
           "name": "serviço",
-          "join_path": "security.service"
+          "join_path": "service.service_id"
         },
         {
           "name": "severidade",
@@ -19045,7 +19562,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19156,7 +19673,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19263,7 +19780,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19370,7 +19887,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19481,7 +19998,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19582,7 +20099,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19683,7 +20200,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19790,7 +20307,7 @@
       "dimensions": [
         {
           "name": "unidade_negócio",
-          "join_path": "business_unit.id"
+          "join_path": "business_unit.business_unit_id"
         },
         {
           "name": "região",
@@ -19897,11 +20414,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -19992,11 +20509,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20099,11 +20616,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20194,11 +20711,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20301,11 +20818,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20402,11 +20919,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20513,11 +21030,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20624,11 +21141,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20672,7 +21189,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "order",
+            "table": "order",
+            "column": "order_confirmed_at",
+            "role": "date_key"
+          },
+          {
+            "source": "order",
+            "table": "order",
+            "column": "delivered_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "order",
       "display_grain": "pedido",
       "metric_kind": "derived",
@@ -20719,11 +21252,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20814,11 +21347,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -20862,7 +21395,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "purchase_order",
+            "table": "purchase_order",
+            "column": "po_created_at",
+            "role": "date_key"
+          },
+          {
+            "source": "purchase_order",
+            "table": "purchase_order",
+            "column": "received_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "purchase_order",
       "display_grain": "pedido de compra",
       "metric_kind": "derived",
@@ -20909,11 +21458,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -21016,11 +21565,11 @@
       "dimensions": [
         {
           "name": "produto",
-          "join_path": "product.id"
+          "join_path": "product.product_id"
         },
         {
           "name": "fornecedor",
-          "join_path": "supplier.id"
+          "join_path": "supplier.supplier_id"
         },
         {
           "name": "localidade",
@@ -21809,7 +22358,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "ticket",
+            "table": "ticket",
+            "column": "created_at",
+            "role": "date_key"
+          },
+          {
+            "source": "ticket",
+            "table": "ticket",
+            "column": "first_response_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "ticket",
       "display_grain": "ticket",
       "metric_kind": "derived",
@@ -21904,7 +22469,23 @@
           "severity": "error"
         }
       ],
-      "lineage": {},
+      "lineage": {
+        "columns": [
+          {
+            "source": "ticket",
+            "table": "ticket",
+            "column": "created_at",
+            "role": "date_key"
+          },
+          {
+            "source": "ticket",
+            "table": "ticket",
+            "column": "resolved_at",
+            "role": "date_key"
+          }
+        ],
+        "joins": []
+      },
       "entity_id": "ticket",
       "display_grain": "ticket",
       "metric_kind": "derived",
