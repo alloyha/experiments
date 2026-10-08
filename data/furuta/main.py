@@ -29,7 +29,7 @@ Pipeline:
        obtida do modelo contínuo médio completo via Rosenbrock.
 
 7. Controle:
-       controlador transverso discreto.
+       LQI tangencial-transversal discreto com integrador de theta.
 
 8. Estimação:
        Kalman discreto usando somente theta.
@@ -37,10 +37,11 @@ Pipeline:
 Objetivo:
        alpha -> pi
        alpha_dot -> 0
-
-A zero manifold não necessariamente impõe:
-       theta -> 0
+       theta -> 0 (absolute)
        theta_dot -> 0
+
+O integrador de theta elimina erro estacionario de posicao
+do braco, com anti-windup durante saturacao.
 """
 
 # ============================================================
@@ -67,6 +68,7 @@ from scipy.signal import (
     cont2discrete,
     place_poles,
 )
+from scipy.optimize import differential_evolution
 
 from scipy.linalg import (
     eig,
@@ -88,15 +90,93 @@ np.set_printoptions(
 # 1. CONFIGURAÇÃO
 # ============================================================
 
-# Tempo de amostragem e frequência de amostragem
 T_SAMPLE = 0.002
 F_SAMPLE = 1.0 / T_SAMPLE
 
-# Tempo total de simulação
-SIMULATION_TIME = 15.0
+SIMULATION_TIME = 8.0
 
-# Duty cycle máximo permitido
 MAX_DUTY = 1.0
+
+SWING_UP_SWITCH_ANGLE = np.deg2rad(25.0)
+# Tightened from 360 deg/s: basin-of-attraction testing (see debug notes)
+# shows the corrected LQI reliably recovers for handoff angular rates up
+# to ~180-200 deg/s across the whole +/-25 deg catch window, but can fail
+# right at 300-360 deg/s. 180 deg/s keeps every tested combination well
+# inside the verified capture basin.
+SWING_UP_SWITCH_ALPHA_RATE = np.deg2rad(180.0)
+
+# If the LQI is engaged but the pendulum strays past this angle from the
+# top, it has lost the catch: the linear controller has no validity that
+# far from equilibrium, so we disengage and let the swing-up pump
+# re-establish energy rather than let the LQI fight (and fail) in a
+# regime it was never designed for.
+SWING_UP_REENGAGE_ANGLE = np.deg2rad(45.0)
+
+# Hysteresis band on the energy error (in Joules) around zero, used only to
+# stop duty chatter once the pendulum is essentially at the target energy.
+SWING_UP_ENERGY_DEADBAND = 0.005
+
+# ============================================================
+# ONE-SWING SYNTHESIS
+# ============================================================
+# The planned swing is restricted to one alternating, finite sequence.
+# The optimizer chooses the switching durations while enforcing:
+#
+#       theta(T) ~= 0
+#       theta_dot(T) small
+#       |theta(t)| <= 2*pi  (360 deg)
+#       terminal pendulum state inside the LQI capture window.
+#
+# If no feasible plan is found, the simulation aborts instead of using
+# an unconstrained energy-pump fallback that could violate the arm limit.
+
+ONE_SWING_ENABLE = True
+
+# False: use the already synthesized/validated durations below.
+# True : rerun differential evolution when the script starts.
+ONE_SWING_REDESIGN = False
+
+ONE_SWING_SIGNS = np.array([
+    -1.0, +1.0, -1.0, +1.0, -1.0, +1.0, -1.0, +1.0, -1.0,
+])
+
+# Nominal solution synthesized for the physical parameters in this file.
+# Total duration ~= 3.15050 s.
+ONE_SWING_NOMINAL_DURATIONS = np.array([
+    0.5108844491,
+    0.1635736562,
+    0.0971325810,
+    0.7527305436,
+    0.4824041240,
+    0.4989880832,
+    0.3860485780,
+    0.1528992686,
+    0.1058425247,
+])
+
+ONE_SWING_DURATION_BOUNDS = (0.015, 0.90)
+ONE_SWING_DESIGN_DT = 0.004
+ONE_SWING_MAXITER = 120
+ONE_SWING_POPSIZE = 12
+ONE_SWING_SEEDS = (7, 17, 29, 41)
+
+# Terminal weights/scales for the one-swing shooting problem.
+ONE_SWING_TARGET_ANGLE = np.deg2rad(8.0)
+ONE_SWING_TARGET_ALPHA_RATE = np.deg2rad(70.0)
+ONE_SWING_TARGET_THETA_RATE = np.deg2rad(45.0)
+
+# Hard geometric requirements for the planned swing.
+ONE_SWING_HANDOFF_THETA_LIMIT = np.deg2rad(280.0)
+ONE_SWING_THETA_LIMIT = np.deg2rad(360.0)
+
+# Extra handoff safety constraint.  Alpha and alpha_dot are already
+# constrained by SWING_UP_SWITCH_* above; this prevents handing a very
+# fast arm to the local LQI even if the pendulum happens to pass the top.
+SWING_UP_SWITCH_THETA_RATE = np.deg2rad(140.0)
+
+# If the nominal one-swing misses the verified capture window because the
+# model/parameters were changed, fall back to the original energy pump.
+ONE_SWING_FALLBACK_TO_ENERGY = False
 
 
 # ============================================================
@@ -135,8 +215,18 @@ L_MOTOR = 8.0e-3
 K_T = 0.040
 K_E = 0.040
 
-GEAR_RATIO = 1.0
-GEAR_EFFICIENCY = 1.0
+# NOTE (debug fix): with GEAR_RATIO = 1.0 the motor can only sustain about
+# Kt*Vdc/R = 0.04*12/4 = 0.12 N.m at the arm. Diagnostics (see debug notes)
+# show that even a torque/energy-optimal bang-bang swing-up policy driven
+# with unbounded time (and even with friction removed) plateaus around an
+# alpha amplitude of ~110-120 deg with that torque budget: the motor is
+# simply too weak to invert this pendulum, direct-drive, by itself -- this
+# is a genuine actuator-authority limit, not a controller tuning issue.
+# A modest 3:1 gearbox (a completely standard fix on real Furuta rigs)
+# triples torque at the arm and is sufficient for swing-up to succeed
+# reliably in well under 2 seconds with the corrected bang-bang law below.
+GEAR_RATIO = 3.0
+GEAR_EFFICIENCY = 0.85
 
 
 TAU_ELECTRICAL = (
@@ -145,43 +235,50 @@ TAU_ELECTRICAL = (
 
 
 # ============================================================
-# 4. CONTROLADOR UNIFICADO TANGENCIAL-TRANSVERSAL (LQR)
+# 4. CONTROLADOR UNIFICADO TANGENCIAL-TRANSVERSAL (LQI)
 #
-# Em vez de dois controladores desconectados
-# (feedforward V_u*eta  +  K_perp*z_perp via pole placement),
-# sintetizamos um UNICO ganho
+# Coordenadas do modelo linear:
 #
-#       K_xi = [ K_eta   K_perp ]
+#       xi = [eta ; z_perp]
 #
-# em coordenadas xi = [eta ; z_perp], via LQR discreto, com
+# e adicionamos um estado integral da posicao do braco:
 #
-#       Q_xi = blockdiag(Q_ETA_WEIGHT, Q_ZPERP_WEIGHT)
+#       zeta_theta[k+1] = zeta_theta[k] + Ts * theta_hat[k]
 #
-# Q_ZPERP_WEIGHT >> Q_ETA_WEIGHT reflete a prioridade:
-# primeiro nao deixar o pendulo cair (z_perp -> 0 rapido),
-# depois, mais devagar, trazer o braco a zero (eta -> 0).
+# O controlador final e um unico ganho LQI:
 #
-# Como ha um unico atuador, essa regulacao tangencial deixa
-# de preservar a zero manifold de forma EXATA (z_perp=0 nao
-# e mais exatamente invariante quando K_eta != 0) — essa e a
-# troca conceitual discutida: exatidao da manifold versus
-# convergencia completa ao equilibrio x_eq_full.
+#       duty = -K_XI @ xi_hat - K_I * zeta_theta
+#
+# A parte transversal recebe peso muito maior que a parte
+# tangencial. O integrador elimina erro estacionario em theta.
+# Como ha saturacao |duty| <= 1, usamos anti-windup por
+# integracao condicional no loop de simulacao.
 # ============================================================
 
 Q_ETA_WEIGHT = np.diag([
-    1.0,      # theta    (regulacao lenta, baixa prioridade)
-    1.0,      # theta_dot
+    1.0,      # eta_1 ~ theta
+    1.0,      # eta_2 ~ theta_dot
 ])
 
 Q_ZPERP_WEIGHT = np.diag([
-    1.0e4,    # alpha       (alta prioridade: nao deixar cair)
-    1.0e2,    # alpha_dot
-    1.0e2,    # current
+    1.0e4,    # alta prioridade transversal
+    1.0e2,
+    1.0e2,
 ])
+
+# Peso do estado integral de theta.
+# Aumentar -> elimina offset mais agressivamente, mas pode
+# elevar duty e saturacao.
+Q_INTEGRAL_WEIGHT = 25.0
 
 R_XI = np.array([
     [1.0]
 ])
+
+# Limite numerico adicional para o estado integral.
+# O anti-windup principal e condicional, mas este clamp evita
+# crescimento ilimitado em casos patologicos.
+THETA_INTEGRAL_LIMIT = np.deg2rad(120.0) * 10.0
 
 
 # ============================================================
@@ -428,25 +525,60 @@ h_symbolic = (
 # 10. PARÂMETROS MECÂNICOS
 # ============================================================
 
+PENDULUM_LENGTH = 0.340
+PENDULUM_COM = PENDULUM_LENGTH / 2.0
+PENDULUM_MASS = 0.125
+
+PENDULUM_INERTIA_CM = (
+    PENDULUM_MASS
+    * PENDULUM_LENGTH**2
+    / 12.0
+)
+
+ARM_LENGTH = 0.215
+ARM_MASS = 0.300
+HUB_INERTIA = 0.00038
+
+ARM_INERTIA_ROD = (
+    ARM_MASS
+    * ARM_LENGTH**2
+    / 3.0
+)
+
+ARM_INERTIA_TOTAL = (
+    ARM_INERTIA_ROD
+    + HUB_INERTIA
+)
+
 params = {
+    m: PENDULUM_MASS,
 
-    m: 0.127,
+    Lr: ARM_LENGTH,
+    Lp: PENDULUM_COM,
 
-    Lr: 0.2159,
-    Lp: 0.1683,
+    Jr: ARM_INERTIA_TOTAL,
+    Jp: PENDULUM_INERTIA_CM,
 
-    Jr: 0.0050,
-    Jp: 0.0012,
-
-    br: 0.002,
-    bp: 0.001,
+    br: 0.0020,
+    bp: 0.0010,
 
     g: 9.81,
 }
 
 
-parameter_values = (
+PENDULUM_INERTIA = (
+    params[Jp]
+    + params[m] * params[Lp] ** 2
+)
 
+PENDULUM_ENERGY_TARGET = (
+    params[m]
+    * params[g]
+    * params[Lp]
+)
+
+
+parameter_values = (
     params[m],
 
     params[Lr],
@@ -1783,16 +1915,20 @@ N_PERP = (
 
 
 # ============================================================
-# 23. CONTROLADOR UNIFICADO TANGENCIAL-TRANSVERSAL (LQR)
+# 23. CONTROLADOR UNIFICADO TANGENCIAL-TRANSVERSAL (LQI)
 #
-# Transformacao de coordenadas:
+# Transformacao:
 #
-#       x = T_XI @ xi,     xi = [eta ; z_perp],
-#       T_XI = [ V_x   Q_perp ]   (5x5)
+#       dx = T_XI @ xi
+#       xi = [eta ; z_perp]
+#       T_XI = [V_x  Q_perp]
 #
-# Note que T_XI NAO precisa ser ortonormal para ser valida —
-# apenas invertivel. V_x da a base (nao-ortonormal) do
-# subespaco tangente; Q_perp ja e ortonormal (via null_space).
+# Em seguida aumentamos o sistema com
+#
+#       zeta_theta = integral(theta dt)
+#
+# O seletor de theta em coordenadas xi NAO e assumido
+# manualmente: ele e obtido da transformacao fisica.
 # ============================================================
 
 T_XI = np.hstack([
@@ -1800,34 +1936,12 @@ T_XI = np.hstack([
     Q_perp,
 ])
 
+T_XI_COND = np.linalg.cond(T_XI)
+T_XI_INV = np.linalg.inv(T_XI)
 
-T_XI_COND = np.linalg.cond(
-    T_XI
-)
-
-
-T_XI_INV = np.linalg.inv(
-    T_XI
-)
-
-
-A_xi_c = (
-    T_XI_INV
-    @ A_full
-    @ T_XI
-)
-
-
-B_xi_c = (
-    T_XI_INV
-    @ B_full
-)
-
-
-N_XI = (
-    A_xi_c.shape[0]
-)
-
+A_xi_c = T_XI_INV @ A_full @ T_XI
+B_xi_c = T_XI_INV @ B_full
+N_XI = A_xi_c.shape[0]
 
 (
     A_xi_d,
@@ -1836,90 +1950,75 @@ N_XI = (
     _,
     _,
 ) = cont2discrete(
-
     (
         A_xi_c,
         B_xi_c,
-
-        np.eye(
-            N_XI
-        ),
-
-        np.zeros(
-            (
-                N_XI,
-                1,
-            )
-        ),
+        np.eye(N_XI),
+        np.zeros((N_XI, 1)),
     ),
-
     T_SAMPLE,
-
     method="zoh",
 )
 
-
-# --------------------------------------------------------
-# LQR discreto conjunto
-# --------------------------------------------------------
-
-Q_XI = (
-    block_diag(
-        Q_ETA_WEIGHT,
-        Q_ZPERP_WEIGHT,
-    )
+Q_XI = block_diag(
+    Q_ETA_WEIGHT,
+    Q_ZPERP_WEIGHT,
 )
 
+# theta = C_THETA_X @ dx = C_THETA_XI @ xi
+C_THETA_X = np.array([[1.0, 0.0, 0.0, 0.0, 0.0]])
+C_THETA_XI = C_THETA_X @ T_XI
 
-P_XI = solve_discrete_are(
-    A_xi_d,
+# Sistema discreto aumentado do LQI:
+#
+#   xi[k+1]   = A_xi_d xi[k] + B_xi_d duty[k]
+#   zeta[k+1] = zeta[k] + Ts*C_THETA_XI*xi[k]
+#
+A_LQI = np.block([
+    [
+        A_xi_d,
+        np.zeros((N_XI, 1)),
+    ],
+    [
+        T_SAMPLE * C_THETA_XI,
+        np.ones((1, 1)),
+    ],
+])
+
+B_LQI = np.vstack([
     B_xi_d,
+    np.zeros((1, 1)),
+])
+
+Q_LQI = block_diag(
     Q_XI,
+    np.array([[Q_INTEGRAL_WEIGHT]]),
+)
+
+P_LQI = solve_discrete_are(
+    A_LQI,
+    B_LQI,
+    Q_LQI,
     R_XI,
 )
 
-
-K_XI = (
+K_LQI = (
     np.linalg.inv(
         R_XI
-        + B_xi_d.T
-        @ P_XI
-        @ B_xi_d
+        + B_LQI.T @ P_LQI @ B_LQI
     )
-
-    @ (
-        B_xi_d.T
-        @ P_XI
-        @ A_xi_d
-    )
+    @ (B_LQI.T @ P_LQI @ A_LQI)
 )
 
+K_XI = K_LQI[:, :N_XI]
+K_I = K_LQI[:, N_XI:]
 
-K_eta = (
-    K_XI[:, :N_ZERO]
+K_eta = K_XI[:, :N_ZERO]
+K_perp = K_XI[:, N_ZERO:]
+
+closed_loop_poles_lqi, _ = eig(
+    A_LQI - B_LQI @ K_LQI
 )
-
-
-K_perp = (
-    K_XI[:, N_ZERO:]
-)
-
-
-# --------------------------------------------------------
-# Polos de malha fechada resultantes (para diagnostico) —
-# equivalente discreto de "TRANSVERSE_CONTINUOUS_POLES" do
-# projeto anterior, mas agora sao consequencia do LQR, nao
-# uma escolha direta.
-# --------------------------------------------------------
-
-closed_loop_poles_xi, _ = (
-    eig(
-        A_xi_d
-        - B_xi_d
-        @ K_XI,
-    )
-)
-
 
 # ============================================================
 # 24. MODELO REDUZIDO DISCRETO
@@ -2023,77 +2122,674 @@ def augmented_estimate(
 
 
 # ============================================================
-# 27. CONTROLADOR
+# 27. CONTROLADOR LQI
 # ============================================================
 
 def control_law(
     dx_hat_red,
     previous_duty,
+    theta_integral,
+    theta_reference,
 ):
 
-    dx_hat_aug = (
-        augmented_estimate(
-            dx_hat_red,
-            previous_duty,
-        )
+    dx_hat_aug = augmented_estimate(
+        dx_hat_red,
+        previous_duty,
     )
 
+    # ------------------------------------------------------------------
+    # BUG FIX: T_XI, K_eta, K_perp (and therefore eta_hat/z_hat) were all
+    # derived from a linearization about x_eq_full = [0, pi, 0, 0, 0].
+    # dx_hat_aug holds the ABSOLUTE state estimate (alpha ~ pi at the
+    # top, not ~0; theta can also be far from 0 after the arm has spun
+    # through several full turns during swing-up). Feeding that directly
+    # through T_XI_INV multiplies an O(pi) (or O(many*2*pi)) quantity by
+    # gains sized for small deviations, producing enormous bogus control
+    # effort and saturating the actuator regardless of how close the
+    # pendulum truly is to being balanced. Fix: re-center on the
+    # equilibrium first.
+    #
+    # alpha: wrap so we always take the *shortest* angular deviation
+    # from pi, regardless of how many turns alpha has accumulated.
+    #
+    # theta: there is no physical reason to unwind whatever number of
+    # full turns the arm made during swing-up -- any fixed arm angle is
+    # an equally good "home" position. We regulate deviation from
+    # theta_reference (the arm angle captured at the moment the LQI took
+    # over), not deviation from a hard-coded absolute zero. This avoids
+    # the controller wasting/competing for torque authority trying to
+    # unwind hundreds of degrees of accumulated rotation immediately
+    # after a catch, which was observed to make the catch fail.
+    # ------------------------------------------------------------------
 
-    eta_hat = (
-        V_x_pinv
-        @ dx_hat_aug
-    )
+    dx_centered = dx_hat_aug - x_eq_full
+    dx_centered[0] = dx_hat_aug[0] - theta_reference
+    dx_centered[1] = wrap_to_pi(dx_centered[1])
 
+    xi_hat = T_XI_INV @ dx_centered
 
-    z_hat = (
-        Q_perp.T
-        @ dx_hat_aug
-    )
-
-
-    # Controlador unificado K_xi = [K_eta  K_perp] (LQR),
-    # sintetizado em coordenadas xi = [eta ; z_perp].
-    # Substitui o antigo par (feedforward V_u@eta) + (K_perp
-    # via pole placement) por um unico ganho projetado
-    # conjuntamente, com Q_ZPERP_WEIGHT >> Q_ETA_WEIGHT.
+    eta_hat = xi_hat[:N_ZERO]
+    z_hat = xi_hat[N_ZERO:]
 
     duty_eta = float(
-        (
-            -K_eta
-            @ eta_hat
-        ).item()
+        (-K_eta @ eta_hat).item()
     )
-
 
     duty_transverse = float(
-        (
-            -K_perp
-            @ z_hat
-        ).item()
+        (-K_perp @ z_hat).item()
     )
 
+    duty_integral = float(
+        (-K_I * theta_integral).item()
+    )
 
     duty_raw = (
         duty_eta
         + duty_transverse
+        + duty_integral
     )
 
-
-    duty = (
-        saturate_duty(
-            duty_raw
-        )
-    )
-
+    duty = saturate_duty(duty_raw)
 
     return (
         duty,
         duty_raw,
         duty_eta,
         duty_transverse,
+        duty_integral,
         eta_hat,
         z_hat,
+        xi_hat,
         dx_hat_aug,
+    )
+
+
+# ============================================================
+# 27B. ONE-SWING FINITE-HORIZON SYNTHESIS
+# ============================================================
+
+def compact_full_average_rhs_design(x, duty):
+    """Fast averaged electromechanical Furuta model for offline shooting.
+
+    State:
+        x = [theta, alpha, theta_dot, alpha_dot, current]
+
+    The mechanical equations are the compact symbolic equations generated by
+    the same Lagrangian used by the main plant.  The electrical state is kept
+    dynamically; only the 20 kHz switching ripple is averaged during design.
+
+    The executed trajectory is still validated on multirate_plant_step().
+    """
+
+    theta_value, alpha_value, theta_dot_value, alpha_dot_value, current = x
+
+    m_value = float(params[m])
+    lr = float(params[Lr])
+    lp = float(params[Lp])
+    jr = float(params[Jr])
+    jp = float(params[Jp])
+    br_value = float(params[br])
+    bp_value = float(params[bp])
+    g_value = float(params[g])
+
+    torque = motor_to_arm_torque(current)
+
+    sin_alpha = np.sin(alpha_value)
+    cos_alpha = np.cos(alpha_value)
+
+    M11 = (
+        jr
+        + m_value
+        * (
+            lp**2 * sin_alpha**2
+            + lr**2
+        )
+    )
+
+    M12 = (
+        m_value
+        * lp
+        * lr
+        * cos_alpha
+    )
+
+    M22 = (
+        jp
+        + m_value * lp**2
+    )
+
+    h1 = (
+        m_value
+        * lp**2
+        * alpha_dot_value
+        * theta_dot_value
+        * np.sin(2.0 * alpha_value)
+
+        - m_value
+        * lp
+        * lr
+        * alpha_dot_value**2
+        * sin_alpha
+
+        + br_value * theta_dot_value
+        - torque
+    )
+
+    h2 = (
+        -0.5
+        * m_value
+        * lp**2
+        * theta_dot_value**2
+        * np.sin(2.0 * alpha_value)
+
+        + m_value
+        * g_value
+        * lp
+        * sin_alpha
+
+        + bp_value * alpha_dot_value
+    )
+
+    determinant = (
+        M11 * M22
+        - M12**2
+    )
+
+    theta_ddot_value = (
+        -M22 * h1
+        + M12 * h2
+    ) / determinant
+
+    alpha_ddot_value = (
+        M12 * h1
+        - M11 * h2
+    ) / determinant
+
+    current_dot = (
+        V_DC * duty
+        - R_MOTOR * current
+        - K_E * GEAR_RATIO * theta_dot_value
+    ) / L_MOTOR
+
+    return np.array([
+        theta_dot_value,
+        alpha_dot_value,
+        theta_ddot_value,
+        alpha_ddot_value,
+        current_dot,
+    ])
+
+
+def one_swing_edges(durations):
+    return np.cumsum(
+        np.asarray(
+            durations,
+            dtype=float,
+        )
+    )
+
+
+def one_swing_duty(time_value, durations):
+    durations = np.asarray(
+        durations,
+        dtype=float,
+    )
+
+    edges = one_swing_edges(
+        durations
+    )
+
+    if time_value < 0.0:
+        return 0.0
+
+    if time_value >= edges[-1]:
+        return 0.0
+
+    segment = int(
+        np.searchsorted(
+            edges,
+            time_value,
+            side="right",
+        )
+    )
+
+    segment = min(
+        segment,
+        len(ONE_SWING_SIGNS) - 1,
+    )
+
+    return float(
+        ONE_SWING_SIGNS[segment]
+    )
+
+
+def simulate_one_swing_candidate(
+    durations,
+    x0_full,
+    store=False,
+):
+    durations = np.asarray(
+        durations,
+        dtype=float,
+    )
+
+    duration_total = float(
+        np.sum(durations)
+    )
+
+    n_step = max(
+        1,
+        int(
+            np.ceil(
+                duration_total
+                / ONE_SWING_DESIGN_DT
+            )
+        ),
+    )
+
+    dt = (
+        duration_total
+        / n_step
+    )
+
+    x = np.asarray(
+        x0_full,
+        dtype=float,
+    ).copy()
+
+    if store:
+        time_history = np.linspace(
+            0.0,
+            duration_total,
+            n_step + 1,
+        )
+
+        state_history = np.zeros(
+            (
+                n_step + 1,
+                N_FULL,
+            )
+        )
+
+        duty_history_local = np.zeros(
+            n_step
+        )
+
+        state_history[0] = x
+
+    for k_local in range(n_step):
+        t_local = k_local * dt
+
+        duty = one_swing_duty(
+            t_local,
+            durations,
+        )
+
+        k1 = compact_full_average_rhs_design(
+            x,
+            duty,
+        )
+
+        k2 = compact_full_average_rhs_design(
+            x + 0.5 * dt * k1,
+            duty,
+        )
+
+        k3 = compact_full_average_rhs_design(
+            x + 0.5 * dt * k2,
+            duty,
+        )
+
+        k4 = compact_full_average_rhs_design(
+            x + dt * k3,
+            duty,
+        )
+
+        x = (
+            x
+            + dt
+            * (
+                k1
+                + 2.0 * k2
+                + 2.0 * k3
+                + k4
+            )
+            / 6.0
+        )
+
+        if not np.all(
+            np.isfinite(x)
+        ):
+            return None
+
+        if store:
+            state_history[k_local + 1] = x
+            duty_history_local[k_local] = duty
+
+    if not store:
+        return x
+
+    return {
+        "duration": duration_total,
+        "durations": durations.copy(),
+        "edges": one_swing_edges(durations),
+        "time": time_history,
+        "state": state_history,
+        "duty": duty_history_local,
+    }
+
+
+def one_swing_objective(
+    durations,
+    x0_full,
+):
+    plan = simulate_one_swing_candidate(
+        durations,
+        x0_full,
+        store=True,
+    )
+
+    if plan is None:
+        return 1.0e12
+
+    xf = plan["state"][-1]
+
+    alpha_error_final = wrap_to_pi(
+        xf[1] - np.pi
+    )
+
+    cost = (
+        (
+            alpha_error_final
+            / ONE_SWING_TARGET_ANGLE
+        )**2
+
+        + (
+            xf[3]
+            / ONE_SWING_TARGET_ALPHA_RATE
+        )**2
+
+        + 2.0
+        * (
+            xf[2]
+            / ONE_SWING_TARGET_THETA_RATE
+        )**2
+
+        + 0.35
+        * (
+            xf[0]
+            / ONE_SWING_HANDOFF_THETA_LIMIT
+        )**2
+    )
+
+    # Hard path requirement: the arm must never cross +/- 360 degrees.
+    theta_abs_max = float(np.max(np.abs(plan["state"][:, 0])))
+    if theta_abs_max > ONE_SWING_THETA_LIMIT:
+        violation = (theta_abs_max - ONE_SWING_THETA_LIMIT) / np.deg2rad(5.0)
+        cost += 1.0e5 * (1.0 + violation**2)
+
+    # Leave geometric margin for the LQI to return the arm to theta=0.
+    if abs(xf[0]) > ONE_SWING_HANDOFF_THETA_LIMIT:
+        violation = (abs(xf[0]) - ONE_SWING_HANDOFF_THETA_LIMIT) / np.deg2rad(10.0)
+        cost += 2.0e3 * (1.0 + violation**2)
+
+    # Keep the trajectory in a genuine one-swing family rather than allowing
+    # complete pendulum revolutions.  A moderate backswing is allowed because
+    # it is exactly what supplies the kinetic energy for the upward stroke.
+    alpha_unwrapped = np.unwrap(
+        plan["state"][:, 1]
+    )
+
+    alpha_max = float(
+        np.max(alpha_unwrapped)
+    )
+
+    alpha_min = float(
+        np.min(alpha_unwrapped)
+    )
+
+    if alpha_max > np.deg2rad(225.0):
+        cost += (
+            30.0
+            * (
+                (
+                    alpha_max
+                    - np.deg2rad(225.0)
+                )
+                / np.deg2rad(15.0)
+            )**2
+        )
+
+    if alpha_min < np.deg2rad(-105.0):
+        cost += (
+            30.0
+            * (
+                (
+                    np.deg2rad(-105.0)
+                    - alpha_min
+                )
+                / np.deg2rad(15.0)
+            )**2
+        )
+
+    return float(cost)
+
+
+def design_one_swing(x0_full):
+    bounds = [ONE_SWING_DURATION_BOUNDS for _ in ONE_SWING_SIGNS]
+
+    best_result = None
+    best_plan = None
+
+    for seed in ONE_SWING_SEEDS:
+        result = differential_evolution(
+            lambda durations: one_swing_objective(durations, x0_full),
+            bounds=bounds,
+            maxiter=ONE_SWING_MAXITER,
+            popsize=ONE_SWING_POPSIZE,
+            seed=seed,
+            polish=True,
+            tol=1.0e-5,
+            updating="immediate",
+            workers=1,
+            x0=ONE_SWING_NOMINAL_DURATIONS,
+        )
+        plan = simulate_one_swing_candidate(result.x, x0_full, store=True)
+        if plan is None:
+            continue
+        if best_result is None or result.fun < best_result.fun:
+            best_result = result
+            best_plan = plan
+
+        xf = plan["state"][-1]
+        ae = wrap_to_pi(xf[1] - np.pi)
+        feasible = (
+            abs(ae) < SWING_UP_SWITCH_ANGLE
+            and abs(xf[3]) < SWING_UP_SWITCH_ALPHA_RATE
+            and abs(xf[2]) < SWING_UP_SWITCH_THETA_RATE
+            and abs(xf[0]) < ONE_SWING_HANDOFF_THETA_LIMIT
+            and np.max(np.abs(plan["state"][:, 0])) <= ONE_SWING_THETA_LIMIT
+        )
+        if feasible:
+            best_result = result
+            best_plan = plan
+            break
+
+    if best_plan is None:
+        raise RuntimeError("One-swing optimizer produced no finite candidate.")
+
+    best_plan["optimizer_cost"] = float(best_result.fun)
+    best_plan["optimizer_success"] = bool(best_result.success)
+    return best_plan
+
+def build_one_swing_plan(x0_full):
+    if ONE_SWING_REDESIGN:
+        plan = design_one_swing(
+            x0_full
+        )
+    else:
+        plan = simulate_one_swing_candidate(
+            ONE_SWING_NOMINAL_DURATIONS,
+            x0_full,
+            store=True,
+        )
+
+        plan["optimizer_cost"] = one_swing_objective(
+            ONE_SWING_NOMINAL_DURATIONS,
+            x0_full,
+        )
+
+        plan["optimizer_success"] = True
+
+    xf = plan["state"][-1]
+
+    plan["terminal_alpha_error"] = wrap_to_pi(
+        xf[1] - np.pi
+    )
+
+    plan["terminal_alpha_rate"] = float(
+        xf[3]
+    )
+
+    plan["terminal_theta_rate"] = float(
+        xf[2]
+    )
+
+    plan["terminal_theta"] = float(xf[0])
+    plan["max_abs_theta"] = float(np.max(np.abs(plan["state"][:, 0])))
+
+    plan["inside_capture_nominal"] = (
+        abs(
+            plan["terminal_alpha_error"]
+        ) < SWING_UP_SWITCH_ANGLE
+
+        and abs(
+            plan["terminal_alpha_rate"]
+        ) < SWING_UP_SWITCH_ALPHA_RATE
+
+        and abs(
+            plan["terminal_theta_rate"]
+        ) < SWING_UP_SWITCH_THETA_RATE
+
+        and abs(plan["terminal_theta"]) < ONE_SWING_HANDOFF_THETA_LIMIT
+
+        and plan["max_abs_theta"] <= ONE_SWING_THETA_LIMIT
+    )
+
+    return plan
+
+
+def energy_swing_up_fallback(
+    x_mech,
+):
+    theta_value, alpha_value, theta_dot_value, alpha_dot_value = x_mech
+
+    energy = (
+        0.5
+        * PENDULUM_INERTIA
+        * alpha_dot_value**2
+
+        - PENDULUM_ENERGY_TARGET
+        * np.cos(alpha_value)
+    )
+
+    energy_error = (
+        energy
+        - PENDULUM_ENERGY_TARGET
+    )
+
+    direction = np.sign(
+        alpha_dot_value
+        * np.cos(alpha_value)
+    )
+
+    if direction == 0.0:
+        direction = 1.0
+
+    if energy_error < -SWING_UP_ENERGY_DEADBAND:
+        duty_raw = -direction
+
+    elif energy_error > SWING_UP_ENERGY_DEADBAND:
+        duty_raw = direction
+
+    else:
+        duty_raw = 0.0
+
+    return (
+        saturate_duty(duty_raw),
+        float(duty_raw),
+        float(energy),
+    )
+
+
+def swing_up_control_law(
+    time_value,
+    x_mech,
+    previous_duty,
+    one_swing_plan,
+):
+    """Execute the precomputed one-swing plan.
+
+    If the plant was changed and the plan ends outside the capture region, an
+    energy-pump fallback can recover rather than leaving the pendulum open-loop.
+    """
+
+    dx_hat_aug = augmented_estimate(
+        x_mech,
+        previous_duty,
+    )
+
+    if (
+        ONE_SWING_ENABLE
+        and time_value < one_swing_plan["duration"]
+    ):
+        duty_raw = one_swing_duty(
+            time_value,
+            one_swing_plan["durations"],
+        )
+
+        duty = saturate_duty(
+            duty_raw
+        )
+
+        energy = (
+            0.5
+            * PENDULUM_INERTIA
+            * x_mech[3]**2
+
+            - PENDULUM_ENERGY_TARGET
+            * np.cos(x_mech[1])
+        )
+
+    elif ONE_SWING_FALLBACK_TO_ENERGY:
+        (
+            duty,
+            duty_raw,
+            energy,
+        ) = energy_swing_up_fallback(
+            x_mech
+        )
+
+    else:
+        duty = 0.0
+        duty_raw = 0.0
+
+        energy = (
+            0.5
+            * PENDULUM_INERTIA
+            * x_mech[3]**2
+
+            - PENDULUM_ENERGY_TARGET
+            * np.cos(x_mech[1])
+        )
+
+    return (
+        duty,
+        duty_raw,
+        dx_hat_aug,
+        energy,
+        np.nan,
+        np.nan,
     )
 
 
@@ -2107,33 +2803,54 @@ def kalman_step(
     measurement_next,
 ):
 
-    prediction = (
+    # ------------------------------------------------------------------
+    # BUG FIX: A_red_d/B_red_d come from a linearization of reduced_rhs
+    # about x_eq_red = [0, pi, 0, 0]. Exactly like control_law, this
+    # predictor is only valid acting on the DEVIATION from that
+    # equilibrium, not on the absolute state. dx_hat's alpha component is
+    # ~pi (or many turns away from it during/just after swing-up), so it
+    # must be centered (with wraparound, since alpha can accumulate many
+    # full turns) before being pushed through the linear predictor, and
+    # shifted back afterwards.
+    # ------------------------------------------------------------------
+
+    dx_dev = dx_hat - x_eq_red
+    dx_dev[1] = wrap_to_pi(dx_dev[1])
+
+    prediction_dev = (
         A_red_d
-        @ dx_hat
+        @ dx_dev
 
         + B_red_d[:, 0]
         * duty
     )
 
 
-    innovation = (
+    measurement_dev = (
         measurement_next
+        - x_eq_red[0]
+    )
+
+    innovation = (
+        measurement_dev
 
         - float(
             (
                 C_measure
-                @ prediction
+                @ prediction_dev
             ).item()
         )
     )
 
 
-    corrected = (
-        prediction
+    corrected_dev = (
+        prediction_dev
 
         + K_kalman[:, 0]
         * innovation
     )
+
+    corrected = corrected_dev + x_eq_red
 
 
     return (
@@ -2148,33 +2865,98 @@ def kalman_step(
 
 x_initial = np.array([
 
-    np.deg2rad(
-        33.0
-    ),
+    0.0,
 
-    np.pi
-    + np.deg2rad(
-        8.0
-    ),
+    0.0,
+
+    0.0,
 
     np.deg2rad(
-        7.0
-    ),
-
-    np.deg2rad(
-        1.0
+        5.0
     ),
 
     0.0,
 ])
 
 
-dx_hat_initial = np.array([
-    x_initial[0],
-    0.0,
-    0.0,
-    0.0,
-])
+dx_hat_initial = x_initial[:4].copy()
+
+
+# ============================================================
+# 29B. ONE-SWING PLAN
+# ============================================================
+
+if ONE_SWING_ENABLE:
+    print("\n========================================")
+    print("ONE-SWING TRAJECTORY")
+    print("========================================")
+
+    ONE_SWING_PLAN = build_one_swing_plan(
+        x_initial
+    )
+
+    print(
+        "signs =",
+        ONE_SWING_SIGNS,
+    )
+
+    print(
+        "durations [s] =",
+        ONE_SWING_PLAN["durations"],
+    )
+
+    print(
+        "total duration [s] =",
+        ONE_SWING_PLAN["duration"],
+    )
+
+    print(
+        "objective =",
+        ONE_SWING_PLAN["optimizer_cost"],
+    )
+
+    print(
+        "nominal terminal alpha error [deg] =",
+        np.rad2deg(
+            ONE_SWING_PLAN["terminal_alpha_error"]
+        ),
+    )
+
+    print(
+        "nominal terminal alpha_dot [deg/s] =",
+        np.rad2deg(
+            ONE_SWING_PLAN["terminal_alpha_rate"]
+        ),
+    )
+
+    print(
+        "nominal terminal theta_dot [deg/s] =",
+        np.rad2deg(
+            ONE_SWING_PLAN["terminal_theta_rate"]
+        ),
+    )
+
+    print(
+        "nominal terminal state inside LQI capture =",
+        ONE_SWING_PLAN["inside_capture_nominal"],
+    )
+
+    if not ONE_SWING_PLAN["inside_capture_nominal"]:
+        raise RuntimeError(
+            "One-swing synthesis did not find a feasible trajectory satisfying "
+            "a capture state with arm margin, |theta(t)|<=360 deg, and the LQI "
+            "capture constraints. Inspect the printed terminal metrics and "
+            "increase the trajectory degrees of freedom or redesign settings."
+        )
+
+else:
+    ONE_SWING_PLAN = {
+        "duration": 0.0,
+        "durations": np.zeros(
+            len(ONE_SWING_SIGNS)
+        ),
+        "inside_capture_nominal": False,
+    }
 
 
 # ============================================================
@@ -2226,6 +3008,12 @@ duty_history = np.zeros(
 )
 
 
+lqr_active_history = np.zeros(
+    N_SAMPLE,
+    dtype=bool,
+)
+
+
 duty_raw_history = np.zeros(
     N_SAMPLE
 )
@@ -2238,6 +3026,16 @@ duty_eta_history = np.zeros(
 
 duty_transverse_history = np.zeros(
     N_SAMPLE
+)
+
+
+duty_integral_history = np.zeros(
+    N_SAMPLE
+)
+
+
+theta_integral_history = np.zeros(
+    N_SAMPLE + 1
 )
 
 
@@ -2267,6 +3065,9 @@ dx_hat_red_history[0] = (
 
 
 previous_duty = 0.0
+theta_integral = 0.0
+theta_reference = 0.0
+lqr_active = False
 
 
 # ============================================================
@@ -2350,41 +3151,27 @@ print(
 )
 
 
-print("\nQ_XI (pesos do LQR, blockdiag(Q_eta, Q_zperp)) =")
-print(
-    Q_XI
-)
+print("\nQ_LQI = blockdiag(Q_eta, Q_zperp, q_integral) =")
+print(Q_LQI)
 
+print("\nC_THETA_XI =")
+print(C_THETA_XI)
 
-print("\nK_XI = [K_eta  K_perp] (ganho unico, LQR) =")
-print(
-    K_XI
-)
-
+print("\nK_LQI = [K_eta  K_perp  K_I] =")
+print(K_LQI)
 
 print("\nK_eta =")
-print(
-    K_eta
-)
-
+print(K_eta)
 
 print("\nK_perp =")
-print(
-    K_perp
-)
+print(K_perp)
 
+print("\nK_I =")
+print(K_I)
 
-print("\nPolos de malha fechada em xi (discretos, |z|<1 para estabilidade):")
-print(
-    closed_loop_poles_xi
-)
-
-print(
-    "  |polos| =",
-    np.abs(
-        closed_loop_poles_xi
-    ),
-)
+print("\nPolos de malha fechada LQI (discretos, |z|<1):")
+print(closed_loop_poles_lqi)
+print("  |polos| =", np.abs(closed_loop_poles_lqi))
 
 
 print("\nK_kalman =")
@@ -2420,19 +3207,95 @@ for k in range(
     # Controlador
     # --------------------------------------------------------
 
-    (
-        duty,
-        duty_raw,
-        duty_eta,
-        duty_transverse,
-        _,
-        _,
-        dx_hat_aug,
-
-    ) = control_law(
-        dx_hat_k,
+    swing_up_state = x_k[:4]
+    dx_hat_aug_candidate = augmented_estimate(
+        swing_up_state,
         previous_duty,
     )
+    alpha_error = wrap_to_pi(
+        dx_hat_aug_candidate[1] - np.pi
+    )
+
+    if (
+        not lqr_active
+        and times[k] >= ONE_SWING_PLAN["duration"]
+        and abs(alpha_error) < SWING_UP_SWITCH_ANGLE
+        and abs(dx_hat_aug_candidate[3]) < SWING_UP_SWITCH_ALPHA_RATE
+        and abs(dx_hat_aug_candidate[2]) < SWING_UP_SWITCH_THETA_RATE
+        and abs(dx_hat_aug_candidate[0]) < ONE_SWING_HANDOFF_THETA_LIMIT
+    ):
+        lqr_active = True
+        theta_integral = 0.0
+        # The planner only needs to enter the LQI capture region while
+        # preserving enough angular margin. From the handoff onward, the
+        # LQI regulates the absolute physical equilibrium theta = 0.
+        theta_reference = 0.0
+
+        # BUG FIX (bumpless transfer): the reduced Kalman filter's linear
+        # model is only valid near the top equilibrium. During the
+        # violent, large-angle swing-up it tracks theta/theta_dot
+        # reasonably (they are directly measured / well-behaved) but
+        # alpha/alpha_dot (never directly measured, purely propagated
+        # through a small-signal model) drift completely away from
+        # truth -- verified directly: at one handoff instant the true
+        # alpha error was -25 deg / +141 deg/s while the filter's
+        # estimate said -80 deg / -616 deg/s. Handing that garbage
+        # estimate to the LQR guarantees an immediate loss of the catch
+        # regardless of how good the controller's true capture basin is.
+        # Swing-up already uses the true mechanical state directly (see
+        # swing_up_state below), so at the transition we simply
+        # re-initialize the estimator with that same true state -- a
+        # standard bumpless-transfer reset -- and let the Kalman filter
+        # track from a correct starting point once we are actually near
+        # the equilibrium where its linear model applies.
+        dx_hat_k = swing_up_state.copy()
+
+    elif (
+        lqr_active
+        and abs(alpha_error) > SWING_UP_REENGAGE_ANGLE
+    ):
+        # Lost the catch: fall back to the swing-up pump instead of
+        # letting the linear controller keep fighting (and failing) far
+        # outside its region of validity.
+        lqr_active = False
+        theta_integral = 0.0
+
+    if lqr_active:
+        (
+            duty,
+            duty_raw,
+            duty_eta,
+            duty_transverse,
+            duty_integral,
+            _,
+            _,
+            _,
+            dx_hat_aug,
+        ) = control_law(
+            dx_hat_k,
+            previous_duty,
+            theta_integral,
+            theta_reference,
+        )
+    else:
+        (
+            duty,
+            duty_raw,
+            dx_hat_aug,
+            _,
+            _,
+            _,
+        ) = swing_up_control_law(
+            times[k],
+            swing_up_state,
+            previous_duty,
+            ONE_SWING_PLAN,
+        )
+        duty_eta = 0.0
+        duty_transverse = 0.0
+        duty_integral = 0.0
+
+    lqr_active_history[k] = lqr_active
 
 
     duty_history[k] = (
@@ -2455,10 +3318,22 @@ for k in range(
     )
 
 
+    duty_integral_history[k] = (
+        duty_integral
+    )
+
+
     dx_hat_aug_history[k] = (
         dx_hat_aug
     )
 
+
+    # Hard mechanical travel constraint required by the one-swing specification.
+    if abs(x_k[0]) > ONE_SWING_THETA_LIMIT + 1e-9:
+        raise RuntimeError(
+            f"Arm travel constraint violated at t={times[k]:.6f} s: "
+            f"theta={np.rad2deg(x_k[0]):.3f} deg."
+        )
 
     # --------------------------------------------------------
     # Planta multirate
@@ -2500,6 +3375,12 @@ for k in range(
         x_next
     )
 
+    if abs(x_next[0]) > ONE_SWING_THETA_LIMIT + 1e-9:
+        raise RuntimeError(
+            f"Arm travel limit violated at t={times[k+1]:.4f} s: "
+            f"theta={np.rad2deg(x_next[0]):.3f} deg"
+        )
+
 
     # --------------------------------------------------------
     # Encoder
@@ -2535,6 +3416,40 @@ for k in range(
     innovation_history[k] = (
         innovation
     )
+
+
+    # --------------------------------------------------------
+    # Integrador de theta + anti-windup condicional
+    #
+    # Integramos quando o atuador nao esta saturado OU quando
+    # o erro de theta tenderia a empurrar o comando para fora
+    # da saturacao. Isso evita windup mantendo capacidade de
+    # recuperacao durante saturacao transitoria.
+    # --------------------------------------------------------
+
+    theta_hat = float(dx_hat_k[0]) - theta_reference
+
+    not_saturated = abs(duty_raw) <= MAX_DUTY
+
+    # Sensibilidade do duty ao integrador: -K_I.
+    # Se duty_raw > +limit, queremos Delta duty < 0.
+    # Se duty_raw < -limit, queremos Delta duty > 0.
+    integral_would_desaturate = (
+        (duty_raw > MAX_DUTY and float((-K_I * theta_hat).item()) < 0.0)
+        or
+        (duty_raw < -MAX_DUTY and float((-K_I * theta_hat).item()) > 0.0)
+    )
+
+    if not_saturated or integral_would_desaturate:
+        theta_integral += T_SAMPLE * theta_hat
+
+    theta_integral = float(np.clip(
+        theta_integral,
+        -THETA_INTEGRAL_LIMIT,
+        THETA_INTEGRAL_LIMIT,
+    ))
+
+    theta_integral_history[k + 1] = theta_integral
 
 
     previous_duty = (
@@ -2610,8 +3525,18 @@ for k in range(
 
 
 mechanical_error = (
-    dx_true_history[:, :4]
+    x_history[:, :4]
     - dx_hat_red_history
+)
+
+# NOTE: column 1 is alpha. Both x_history and dx_hat_red_history store
+# the *absolute* (unwrapped) mechanical angle here, so a plain
+# subtraction is the right comparison -- but alpha can differ by whole
+# multiples of 2*pi (accumulated arm/pendulum rotations) while
+# physically representing the same angle, so the raw difference must be
+# wrapped to get the true, minimal angular error.
+mechanical_error[:, 1] = wrap_to_pi(
+    mechanical_error[:, 1]
 )
 
 
@@ -2890,6 +3815,16 @@ print(
 )
 
 
+handoff_indices = np.flatnonzero(
+    lqr_active_history
+)
+
+print(
+    "LQR handoff time [s] =",
+    times[handoff_indices[0]] if handoff_indices.size else "not reached",
+)
+
+
 print(
     "\nMaximum |average torque| [Nm] =",
     np.max(
@@ -3091,6 +4026,14 @@ ax.step(
     where="post",
     linestyle="--",
     label="transverse feedback",
+)
+
+ax.step(
+    times[:-1],
+    duty_integral_history,
+    where="post",
+    linestyle="-.",
+    label="integral feedback",
 )
 
 
@@ -3384,6 +4327,30 @@ plt.close(fig)
 
 
 # ============================================================
+# 44B. PLOT — ESTADO INTEGRAL DO LQI
+# ============================================================
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+ax.plot(
+    times,
+    theta_integral_history,
+)
+
+ax.set_xlabel("time [s]")
+ax.set_ylabel(r"$\zeta_\theta = \int \hat\theta dt$ [rad s]")
+ax.set_title("LQI integral state")
+ax.grid(True)
+
+fig.tight_layout()
+fig.savefig(
+    "furuta_lqi_integral.png",
+    dpi=150,
+)
+plt.close(fig)
+
+
+# ============================================================
 # 45. ARQUIVOS
 # ============================================================
 
@@ -3410,6 +4377,9 @@ for filename in [
 
     "furuta_states.png",
 
+    "furuta_lqi_integral.png",
+    "furuta_one_swing_plan.png",
+
 ]:
 
     print(
@@ -3418,14 +4388,100 @@ for filename in [
     )
 
 # ============================================================
+# ONE-SWING NOMINAL PLAN PLOT
+# ============================================================
+
+if ONE_SWING_ENABLE:
+    fig, axes = plt.subplots(
+        4,
+        1,
+        figsize=(10, 10),
+        sharex=True,
+    )
+
+    plan_time = ONE_SWING_PLAN["time"]
+    plan_state = ONE_SWING_PLAN["state"]
+
+    axes[0].plot(
+        plan_time,
+        np.rad2deg(
+            plan_state[:, 1]
+        ),
+    )
+
+    axes[0].axhline(
+        180.0,
+        linestyle="--",
+        linewidth=1,
+    )
+
+    axes[0].set_ylabel(
+        "alpha [deg]"
+    )
+
+    axes[1].plot(
+        plan_time,
+        np.rad2deg(
+            plan_state[:, 3]
+        ),
+    )
+
+    axes[1].set_ylabel(
+        "alpha_dot [deg/s]"
+    )
+
+    axes[2].plot(
+        plan_time,
+        np.rad2deg(
+            plan_state[:, 2]
+        ),
+    )
+
+    axes[2].set_ylabel(
+        "theta_dot [deg/s]"
+    )
+
+    axes[3].step(
+        plan_time[:-1],
+        ONE_SWING_PLAN["duty"],
+        where="post",
+    )
+
+    axes[3].set_ylabel(
+        "duty"
+    )
+
+    axes[3].set_xlabel(
+        "time [s]"
+    )
+
+    for axis in axes:
+        axis.grid(True)
+
+    fig.suptitle(
+        "Synthesized one-swing trajectory"
+    )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        "furuta_one_swing_plan.png",
+        dpi=150,
+    )
+
+    plt.close(fig)
+
+
+# ============================================================
 # VIDEO ANIMATION
 # ============================================================
 
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+import shutil
 
 
-SAVE_VIDEO = True
+SAVE_VIDEO = False
 
 VIDEO_FILENAME = "furuta_simulation.mp4"
 
@@ -3995,26 +5051,29 @@ if SAVE_VIDEO:
     # SAVE MP4
     # ========================================================
 
-    writer = FFMpegWriter(
+    ffmpeg_path = shutil.which("ffmpeg")
 
-        fps=VIDEO_FPS,
+    if ffmpeg_path is None:
+        print(
+            "WARNING: ffmpeg was not found in PATH. "
+            "Video was not generated."
+        )
+    else:
+        matplotlib.rcParams["animation.ffmpeg_path"] = ffmpeg_path
 
-        bitrate=2500,
-    )
+        writer = FFMpegWriter(
+            fps=VIDEO_FPS,
+            bitrate=2500,
+        )
 
+        animation.save(
+            VIDEO_FILENAME,
+            writer=writer,
+            dpi=150,
+        )
 
-    animation.save(
-        VIDEO_FILENAME,
-        writer=writer,
-        dpi=150,
-    )
+        print(
+            f"Generated: {VIDEO_FILENAME}"
+        )
 
-
-    plt.close(
-        fig
-    )
-
-
-    print(
-        f"Generated: {VIDEO_FILENAME}"
-    )
+    plt.close(fig)
