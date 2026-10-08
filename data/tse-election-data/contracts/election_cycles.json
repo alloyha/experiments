@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "description": "Frozen warehouse regressions for validated TSE election cycles. Provisional cycles require an intentional baseline update when TSE republishes authoritative data.",
+  "cycles": [
+    {
+      "year": 2018,
+      "election_type": "general",
+      "status": "frozen",
+      "candidate_fact_rows": 8680108,
+      "candidate_gap_count": 1,
+      "candidate_gap_nominal_votes": 1836,
+      "candidate_reconciliation_mismatches": 0,
+      "party_reconciliation_mismatches": 0
+    },
+    {
+      "year": 2020,
+      "election_type": "municipal",
+      "status": "frozen",
+      "candidate_fact_rows": 983614,
+      "candidate_gap_count": 1,
+      "party_gap_counts": {
+        "converted_vote_overlap": 1,
+        "missing_party_source_coverage": 1
+      },
+      "candidate_reconciliation_mismatches": 0,
+      "party_reconciliation_mismatches": 0
+    },
+    {
+      "year": 2022,
+      "election_type": "general",
+      "status": "frozen",
+      "candidate_fact_rows": 9377845,
+      "candidate_gap_count": 0,
+      "candidate_reconciliation_mismatches": 0,
+      "party_reconciliation_mismatches": 0
+    },
+    {
+      "year": 2024,
+      "election_type": "municipal",
+      "status": "frozen",
+      "candidate_fact_rows": 717246,
+      "party_gap_counts": {
+        "missing_party_nominal_coverage": 24,
+        "missing_party_source_coverage": 11
+      },
+      "candidate_reconciliation_mismatches": 0,
+      "party_reconciliation_mismatches": 0
+    },
+    {
+      "year": 2026,
+      "election_type": "general",
+      "status": "provisional",
+      "candidate_fact_rows": 6737183,
+      "dim_candidate_rows": 20989,
+      "candidate_gap_count": 0,
+      "party_gap_counts": {},
+      "candidate_reconciliation_mismatches": 0,
+      "party_reconciliation_mismatches": 0
+    }
+  ]
+}

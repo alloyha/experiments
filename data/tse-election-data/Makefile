@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
-.NOTPARALLEL: pipeline pipeline-backfill
+.NOTPARALLEL: pipeline pipeline-backfill production-gate
 
 UV ?= uv
 PYTHON ?= python3
@@ -10,6 +10,7 @@ DBT_DIR ?= tse_dbt
 DATA_ROOT ?= ./data/tse
 DUCKDB_PATH ?= ./data/warehouse/tse_analytics.duckdb
 CANDIDATE_FACT_ROOT ?= ./data/warehouse/fact_candidate_votes
+CYCLE_CONTRACTS ?= ./contracts/election_cycles.json
 
 # ----------------------------------------------------------------------
 # Warehouse scope
@@ -111,6 +112,11 @@ DBT_VARS_CMD = \
 	candidate-fact-partition \
 	dbt-build \
 	dbt-full-refresh \
+	unit \
+	raw-contracts \
+	cycle-regressions \
+	prune-cache \
+	production-gate \
 	semantic \
 	test \
 	test-only \
@@ -132,6 +138,10 @@ help: ## Show available targets and configuration knobs
 	  '  make backfill                  Raw historical backfill only' \
 	  '  make candidate-fact-partition  Build/replace one candidate fact partition' \
 	  '  make dbt-build                 Transform/test all normal dbt layers' \
+	  '  make raw-contracts             Validate active raw/index contracts' \
+	  '  make cycle-regressions         Check frozen warehouse baselines' \
+	  '  make production-gate           Unit -> ingest -> raw -> dbt -> regressions' \
+	  '  make prune-cache               Dry-run extracted-cache pruning' \
 	  '  make semantic                  Build semantic models and dependencies' \
 	  '  make test                      Ingest current data and run dbt build/tests' \
 	  '  make test-only                 Run tests against existing warehouse' \
@@ -240,7 +250,34 @@ candidate-fact-partition: dbt-deps ## Build and atomically replace one candidate
 	  --year '$(INCREMENTAL_YEARS)' \
 	  --election-type '$(INCREMENTAL_ELECTION_TYPES)'
 
-dbt-build: dbt-deps ## Build staging -> intermediate -> marts -> semantic and run tests
+unit: setup ## Run ingestion/control-plane unit contracts
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
+	  python -m unittest discover -s tests -p 'test_*.py'
+
+raw-contracts: setup ## Validate current_objects references and candidate cycle scope
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
+	  python scripts/check_raw_contracts.py --root '$(RAW_ROOT_ABS)'
+
+cycle-regressions: setup ## Validate frozen/provisional warehouse cycle baselines
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
+	  python scripts/check_cycle_regressions.py \
+	  --db '$(DUCKDB_PATH_ABS)' \
+	  --contracts '$(abspath $(CYCLE_CONTRACTS))'
+
+prune-cache: setup ## Dry-run extracted raw cache pruning; use APPLY=1 to delete
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
+	  python scripts/prune_extracted_raw.py \
+	  --root '$(RAW_ROOT_ABS)/raw' \
+	  $(if $(filter 1 true yes,$(APPLY)),--apply,)
+
+production-gate: ## Production gate for selected dbt cycle plus warehouse regressions
+	$(MAKE) unit
+	$(MAKE) ingest
+	$(MAKE) raw-contracts
+	$(MAKE) dbt-build
+	$(MAKE) cycle-regressions
+
+dbt-build: raw-contracts dbt-deps ## Build staging -> intermediate -> marts -> semantic and run tests
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
 	  $(DBT) build --vars "$$vars"
@@ -291,8 +328,9 @@ clean: ## Remove dbt generated artifacts, preserving raw data and warehouse
 	  $(DBT_DIR)/dbt_packages \
 	  $(DBT_DIR)/logs
 
-clean-warehouse: ## Remove generated DuckDB warehouse only
+clean-warehouse: ## Remove generated DuckDB warehouse and orphan temp storage
 	rm -f '$(DUCKDB_PATH_ABS)'
+	rm -rf '$(DUCKDB_PATH_ABS).tmp'
 
 clean-all: ## DESTRUCTIVE: remove raw data, warehouse, candidate fact partitions, dbt artifacts and venv
 	rm -rf \

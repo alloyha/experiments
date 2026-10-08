@@ -90,7 +90,12 @@ def election_type_for_year(year: int, explicit: str | None = None) -> str:
 def election_scope_for_type(election_type: str) -> str:
     return "federal_state" if election_type == "general" else "municipal"
 
+CANDIDATE_HISTORY_PATTERN = (
+    r"(?i)historico[_\s-]*candidatura|hist[oó]rico\s+de\s+candidaturas"
+)
+
 DOMAIN_RULES = (
+    (CANDIDATE_HISTORY_PATTERN, "candidate_history"),
     (r"(?i)consulta[_\s-]*cand[_\s-]*complement", "candidate_complement"),
     (r"(?i)bem[_\s-]*candidato|bens?\s+de\s+candidatos", "candidate_assets"),
     (r"(?i)rede[_\s-]*social|redes?\s+sociais", "candidate_social"),
@@ -312,6 +317,21 @@ def dataset_family(dataset_id: str) -> str:
     return "other"
 
 
+def normalize_resource_domain(
+    domain: str,
+    *,
+    resource_name: str = "",
+    source_url: str = "",
+) -> str:
+    # Normalize semantic domains, including legacy control-plane state.
+    if domain != "candidate":
+        return domain
+    text = " ".join([resource_name or "", normalize_source_url(source_url or "")])
+    if re.search(CANDIDATE_HISTORY_PATTERN, text):
+        return "candidate_history"
+    return domain
+
+
 def infer_domain(package: dict, resource: dict) -> str:
     family = dataset_family(package.get("name") or "")
 
@@ -332,12 +352,20 @@ def infer_domain(package: dict, resource: dict) -> str:
     ])
     for pattern, domain in DOMAIN_RULES:
         if re.search(pattern, text):
-            return domain
+            return normalize_resource_domain(
+                domain,
+                resource_name=resource.get("name") or "",
+                source_url=resource.get("url") or "",
+            )
 
     # Known core families remain meaningful even when a historical resource name
     # does not match one of the fine-grained rules.
     if family == "candidates":
-        return "candidate"
+        return normalize_resource_domain(
+            "candidate",
+            resource_name=resource.get("name") or "",
+            source_url=resource.get("url") or "",
+        )
     if family in {"electorate", "turnout"}:
         return "electorate"
     return "other"
@@ -446,14 +474,15 @@ def resource_allowed(package: dict, resource: dict, profile: str, regex: re.Patt
     domain = infer_domain(package, resource)
 
     core_families = {"candidates", "electorate", "turnout", "results"}
-    core_domains = {
+    analytics_core_domains = {
         "candidate", "candidate_complement", "candidate_assets", "candidate_social",
         "coalition", "seats", "electorate", "electorate_disability",
         "polling_place", "electorate_section", "vote_result",
     }
+    extended_core_domains = analytics_core_domains | {"candidate_history"}
 
     if profile == "analytics":
-        if family not in core_families or domain not in core_domains:
+        if family not in core_families or domain not in analytics_core_domains:
             return False
         if matches_any(ANALYTICS_RESOURCE_DENY_PATTERNS, text):
             return False
@@ -469,7 +498,7 @@ def resource_allowed(package: dict, resource: dict, profile: str, regex: re.Patt
 
     if profile == "extended":
         return (
-            (family in core_families and domain in core_domains)
+            (family in core_families and domain in extended_core_domains)
             or family in {"campaign_finance", "polls", "complaints"}
         )
 
@@ -772,6 +801,11 @@ def load_state(root: Path) -> dict[str, dict]:
             **row,
             "election_type": election_type,
             "election_scope": row.get("election_scope") or election_scope_for_type(election_type),
+            "domain": normalize_resource_domain(
+                row.get("domain") or "other",
+                resource_name=row.get("resource_name") or "",
+                source_url=row.get("source_url") or "",
+            ),
         }
         key = state_key(
             year, election_type, row["resource_id"],
@@ -791,7 +825,17 @@ def save_state(root: Path, state: dict[str, dict]) -> None:
     with tmp.open("w", encoding="utf-8") as fh:
         for key in sorted(state):
             row = state[key]
+            source_obj = row.get("source_object") or ""
+            domain = normalize_resource_domain(
+                row.get("domain") or "other",
+                resource_name=row.get("resource_name") or "",
+                source_url=row.get("source_url") or "",
+            )
             for obj in row.get("extracted_objects") or []:
+                if not (root / obj).is_file():
+                    continue
+                if source_obj and not (root / source_obj).is_file():
+                    continue
                 fh.write(json.dumps({
                     "year": row["year"],
                     "election_type": row.get("election_type") or election_type_for_year(int(row["year"])),
@@ -801,7 +845,7 @@ def save_state(root: Path, state: dict[str, dict]) -> None:
                     "resource_id": row["resource_id"],
                     "resource_name": row.get("resource_name") or "",
                     "resource_format": row.get("resource_format") or "",
-                    "domain": row["domain"],
+                    "domain": domain,
                     "partition": row["partition"],
                     "source_sha256": row["source_sha256"],
                     "source_object": row.get("source_object") or "",
@@ -903,6 +947,59 @@ def download_resource_worker(
             selected_members=len(previous.get("selected_members") or previous.get("extracted_objects") or []),
         )
         return {"kind": "metadata-skip", "key": key, "state_row": updated, "profile": profile}
+
+    # Cache pruning may remove extracted objects while retaining immutable source.
+    # Rehydrate locally instead of downloading unchanged bytes.
+    if (
+        not force
+        and previous
+        and previous.get("resource_fingerprint") == fingerprint
+        and not local_state_complete(root, previous)
+    ):
+        source_rel = previous.get("source_object") or ""
+        source_target = root / source_rel if source_rel else None
+        if source_target and source_target.is_file():
+            source_sha256 = previous.get("source_sha256") or ""
+            source_size = int(
+                previous.get("source_size_bytes") or source_target.stat().st_size
+            )
+            rehydrate_hash_seconds = 0.0
+            if not source_sha256:
+                (
+                    source_sha256,
+                    source_size,
+                    rehydrate_hash_seconds,
+                ) = hash_file(source_target)
+
+            domain = infer_domain(package, resource)
+            version_dir = source_target.parent.parent
+            set_worker_status(key, label=label, phase="inspect-local-source")
+            if zipfile.is_zipfile(source_target):
+                selected_names, selected_bytes = inspect_selected_archive_members(
+                    source_target, granularity, uf
+                )
+            elif source_target.suffix.lower() in {".csv", ".txt"}:
+                selected_names = [source_target.name]
+                selected_bytes = int(source_target.stat().st_size)
+            else:
+                selected_names, selected_bytes = [], 0
+
+            pending = PendingPreparation(
+                root=root, key=key, label=label, started_at=started_at,
+                wall_start=wall_start, download_worker=worker_name, year=year,
+                election_type=election_type, mode=mode, package=package,
+                resource=resource, granularity=granularity, uf=uf,
+                checked_at=checked_at, fingerprint=fingerprint, domain=domain,
+                source_url=normalize_source_url(resource["url"]),
+                source_sha256=source_sha256, source_size_bytes=source_size,
+                source_target=source_target, version_dir=version_dir,
+                metadata_seconds=metadata_seconds, download_seconds=0.0,
+                hash_seconds=rehydrate_hash_seconds, materialize_seconds=0.0,
+                retry_seconds=0.0, attempts=0, resumed_bytes=0,
+                network_errors=0, selected_member_names=selected_names,
+                selected_uncompressed_bytes=selected_bytes,
+            )
+            return {"kind": "pending", "key": key, "pending": pending}
 
     with make_session() as session:
         source_url = normalize_source_url(resource["url"])
