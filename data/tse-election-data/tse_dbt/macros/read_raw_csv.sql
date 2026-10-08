@@ -2,7 +2,8 @@
     domain,
     resource_name_like=none,
     strict_mode=true,
-    null_padding=false
+    null_padding=false,
+    parallel=true
 ) %}
   {% if var('compile_only', false) %}
     {% set fixture = var('dbt_fixture_root', 'tse_dbt/fixtures') ~ '/' ~ domain ~ '.csv' %}
@@ -22,7 +23,8 @@
         encoding = 'utf-8',
         strict_mode = {{ 'true' if strict_mode else 'false' }},
         null_padding = {{ 'true' if null_padding else 'false' }},
-        ignore_errors = false
+        ignore_errors = false,
+        parallel = {{ 'true' if parallel else 'false' }}
       )
       where false
     )
@@ -61,7 +63,8 @@
   encoding = '{{ var("tse_csv_encoding", "latin-1") }}',
   strict_mode = {{ 'true' if strict_mode else 'false' }},
   null_padding = {{ 'true' if null_padding else 'false' }},
-  ignore_errors = false
+  ignore_errors = false,
+  parallel = {{ 'true' if parallel else 'false' }}
 )
       )
       select

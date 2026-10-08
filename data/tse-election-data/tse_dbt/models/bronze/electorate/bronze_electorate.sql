@@ -21,7 +21,8 @@ with src as (
            'electorate',
            'Eleitorado - %',
            strict_mode=false,
-           null_padding=true
+           null_padding=true,
+           parallel=false
        )
     }}
 )
