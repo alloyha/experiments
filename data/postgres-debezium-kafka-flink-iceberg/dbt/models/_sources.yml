@@ -56,6 +56,25 @@ sources:
           - name: price
             description: Current unit price
 
+      - name: order_items
+        description: |
+          Order line items -- links orders to products (quantity, unit_price
+          snapshotted at time of sale). Immutable once created (no update
+          path in the data generator), so no SCD2 needed downstream.
+        columns:
+          - name: id
+            description: Primary key
+          - name: order_id
+            description: Foreign key to orders
+          - name: product_id
+            description: Foreign key to products
+          - name: quantity
+            description: Units of this product in the order
+          - name: unit_price
+            description: Price at the moment of sale (snapshot, not a live product lookup)
+          - name: created_at
+            description: Record creation timestamp
+
   # Kafka CDC Topics
   - name: kafka
     description: Kafka topics from Debezium CDC connector
@@ -75,6 +94,11 @@ sources:
         meta:
           kafka_topic: products
 
+      - name: cdc_source_order_items
+        description: Order line item change events from Kafka
+        meta:
+          kafka_topic: order_items
+
   # Iceberg Bronze Layer -- read directly (full append-only history, not just
   # "latest") by the dim_*_history reconstruction models, via the same
   # dbt-duckdb "iceberg" plugin as iceberg_silver below.
@@ -91,6 +115,8 @@ sources:
         description: Raw order events
       - name: brz_products_cdc
         description: Raw product events
+      - name: brz_order_items_cdc
+        description: Raw order line item events
 
   # Iceberg Silver Layer -- read by Gold (duckdb target) via the "iceberg"
   # dbt-duckdb plugin (pyiceberg SqlCatalog against the same JDBC catalog
@@ -109,3 +135,5 @@ sources:
         description: Cleaned order data
       - name: slv_products
         description: Cleaned product data
+      - name: slv_order_items
+        description: Cleaned order line item data

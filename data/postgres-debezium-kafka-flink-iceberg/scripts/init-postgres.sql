@@ -48,10 +48,22 @@ CREATE TABLE IF NOT EXISTS cdc_source.products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Criar tabela de itens do pedido (liga orders a products; imutável --
+-- sem update_order_item no gerador, então nunca precisa de SCD2)
+CREATE TABLE IF NOT EXISTS cdc_source.order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES cdc_source.orders(id),
+    product_id INT REFERENCES cdc_source.products(id),
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Habilitar replica identity (necessário para Debezium capturar valores antigos)
 ALTER TABLE cdc_source.customers REPLICA IDENTITY FULL;
 ALTER TABLE cdc_source.orders REPLICA IDENTITY FULL;
 ALTER TABLE cdc_source.products REPLICA IDENTITY FULL;
+ALTER TABLE cdc_source.order_items REPLICA IDENTITY FULL;
 
 -- Inserir dados de teste
 INSERT INTO cdc_source.customers (name, email, phone, country) VALUES
@@ -68,3 +80,8 @@ INSERT INTO cdc_source.products (name, category, price) VALUES
 ('Widget Pro', 'Electronics', 49.90),
 ('Widget Lite', 'Electronics', 19.90),
 ('Comfy Chair', 'Furniture', 199.90);
+
+INSERT INTO cdc_source.order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 49.90),
+(2, 3, 1, 199.90),
+(3, 2, 2, 19.90);

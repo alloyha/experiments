@@ -91,3 +91,49 @@ models:
         description: Order total amount
       - name: status
         description: Order status
+
+  - name: brz_order_items_cdc
+    description: Raw order line item events from Debezium CDC
+    meta:
+      owner: data-eng
+      layer: bronze
+      source: kafka_cdc
+      materialization: stream
+      freshness: real-time
+    columns:
+      - name: order_item_id
+        description: Order item identifier from PostgreSQL
+      - name: order_id
+        description: Foreign key to orders
+      - name: product_id
+        description: Foreign key to products
+      - name: quantity
+        description: Units of this product in the order
+      - name: unit_price
+        description: Price at the moment of sale (snapshot)
+      - name: event_timestamp
+        description: CDC event timestamp
+
+  - name: slv_order_items
+    description: Cleaned order line item data (immutable, no update path -- one version per item)
+    meta:
+      owner: data-eng
+      layer: silver
+      materialization: table
+      freshness: real-time
+      keys:
+        - order_item_id
+    columns:
+      - name: order_item_id
+        description: Primary key
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: Foreign key to orders
+      - name: product_id
+        description: Foreign key to products
+      - name: quantity
+        description: Units of this product in the order
+      - name: unit_price
+        description: Price at the moment of sale

@@ -342,13 +342,52 @@ services:
       - /bin/bash
       - -c
     command:
-      - 'cd /app/dbt && while true; do echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t duckdb (historico + metricas + fct, le Iceberg Bronze/Silver)..."; dbt run -t duckdb -s dim_customers_attributes_history dim_products_history customer_metrics_current fct_orders; echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t postgres (SCD2 dims + diamond)..."; dbt run -t postgres -s dim_customers dim_products diamond; dbt test -t postgres -s gold diamond || true; echo "Proximo ciclo em $${DBT_RUN_INTERVAL}s..."; sleep "$${DBT_RUN_INTERVAL}"; done'
+      - 'cd /app/dbt && while true; do echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t duckdb (historico + metricas + fct, le Iceberg Bronze/Silver)..."; dbt run -t duckdb -s dim_customers_attributes_history dim_products_history customer_metrics_current product_metrics_current fct_orders; echo "[$(date "+%Y-%m-%d %H:%M:%S")] Executando dbt run -t postgres (SCD2 dims + diamond)..."; dbt run -t postgres -s dim_customers dim_products diamond; dbt test -t postgres -s gold diamond || true; echo "Proximo ciclo em $${DBT_RUN_INTERVAL}s..."; sleep "$${DBT_RUN_INTERVAL}"; done'
     healthcheck:
       test: ["CMD-SHELL", "bash /usr/local/bin/healthcheck-dbt.sh"]
       interval: 60s
       timeout: 20s
       start_period: 150s
       retries: 2
+    restart: unless-stopped
+
+  iceberg-maintenance:
+    container_name: cdc-iceberg-maintenance
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbt-duckdb
+    depends_on:
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - cdc_network
+    environment:
+      MINIO_ENDPOINT_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      ICEBERG_CATALOG_URI: "postgresql+psycopg2://postgres:postgres@postgres:5432/iceberg_catalog"
+      ICEBERG_WAREHOUSE: "s3://iceberg-warehouse/"
+      # Bronze commita a cada checkpoint (30s) e Silver faz INSERT OVERWRITE
+      # completo a cada ciclo (60s) -- sem expiracao, o numero de snapshots
+      # Iceberg cresce sem limite (ver scripts/iceberg_maintenance.py).
+      ICEBERG_SNAPSHOT_RETENTION_HOURS: "6"
+      ICEBERG_MAINTENANCE_INTERVAL: "3600"
+    volumes:
+      - ./scripts:/app/scripts
+      - ./logs:/app/logs
+    entrypoint:
+      - /bin/bash
+      - -c
+    command:
+      - 'bash /app/scripts/entrypoint-iceberg-maintenance.sh'
+    healthcheck:
+      test: ["CMD-SHELL", "find /app/logs/iceberg_maintenance_heartbeat -mmin -70 | grep -q heartbeat"]
+      interval: 300s
+      timeout: 10s
+      retries: 2
+      start_period: 60s
     restart: unless-stopped
 
 networks:

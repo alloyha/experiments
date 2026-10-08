@@ -263,6 +263,45 @@
     {% endset %}
     {% do run_query(register_bronze_products_pointer) %}
     {{ log("brz_products_cdc pointer registered in current Flink session", info=true) }}
+
+    {% do run_query('DROP TABLE IF EXISTS cdc_source_order_items') %}
+
+    {% set create_order_items_source %}
+      CREATE TABLE cdc_source_order_items (
+        `after` ROW<`id` INT, `order_id` INT, `product_id` INT, `quantity` INT, `unit_price` STRING, `created_at` BIGINT>,
+        `op` STRING,
+        `ts_ms` BIGINT
+      ) WITH (
+        'connector' = 'kafka',
+        'topic' = 'order_items',
+        'properties.bootstrap.servers' = 'kafka:29092',
+        'properties.group.id' = 'flink-bronze-order-items',
+        'format' = 'json',
+        'json.fail-on-missing-field' = 'false',
+        'json.ignore-parse-errors' = 'true',
+        'scan.startup.mode' = 'earliest-offset'
+      )
+    {% endset %}
+    {% do run_query(create_order_items_source) %}
+    {{ log("Kafka source table cdc_source_order_items (re)created", info=true) }}
+
+    {% set register_bronze_order_items_pointer %}
+      CREATE TABLE IF NOT EXISTS brz_order_items_cdc (
+        `order_item_id` INT,
+        `order_id` INT,
+        `product_id` INT,
+        `quantity` INT,
+        `unit_price` DECIMAL(10,2),
+        `created_at` BIGINT,
+        `operation` STRING,
+        `event_timestamp` TIMESTAMP(3) WITH LOCAL TIME ZONE,
+        `ingested_at` TIMESTAMP(3) WITH LOCAL TIME ZONE NOT NULL
+      ) WITH (
+        {{ iceberg_connector_with_clause('bronze', 'brz_order_items_cdc') }}
+      )
+    {% endset %}
+    {% do run_query(register_bronze_order_items_pointer) %}
+    {{ log("brz_order_items_cdc pointer registered in current Flink session", info=true) }}
   {% endif %}
 {% endmacro %}
 

@@ -135,12 +135,15 @@ models:
       
       **Grain**: One row per day + customer_segment
       **Volume**: ~7K-10K rows per year (365 days × 10-20 segments)
-      **Update Frequency**: 60 minutes (batch aggregation)
+      **Update Frequency**: 60 minutes (incremental -- only today + new days reprocessed)
       **Use Cases**: Executive dashboards, trend charts, KPI monitoring
       **Performance**: Sub-second queries guaranteed
-    
+      **Storage**: Incremental materialization -- closed past days are never
+      rewritten, only the current (still-accumulating) day is recomputed and
+      merged each cycle.
+
     config:
-      materialized: table
+      materialized: incremental
       schema: diamond
       owner: analytics-team
       tags: ['diamond', 'aggregation', 'metrics', 'dashboard']
@@ -221,3 +224,517 @@ models:
         data_type: numeric(6,2)
         meta:
           metric_type: 'percent'
+
+  - name: obt_customer_360
+    description: |
+      💎 DIAMOND LAYER - Customer 360 OBT (One Big Table)
+
+      Denormalized "as of right now" view, one row per customer -- identity
+      attributes from dim_customers (current SCD2 version) combined with
+      order-derived metrics from customer_metrics_current. Unlike
+      obt_customer_orders (order grain, point-in-time per order),
+      this is a CURRENT-STATE cube: always reflects "today", not a
+      historical snapshot.
+
+      **Grain**: One row per customer_id
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Customer-grain dashboards, segment analysis, CRM exports
+
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'olap', 'semantic', 'obt', 'customer-360']
+
+    columns:
+      - name: customer_id
+        description: Unique customer identifier (Primary Key)
+        data_type: bigint
+        tests:
+          - unique
+          - not_null
+
+      - name: customer_name
+        description: Customer full name (current)
+        data_type: varchar
+      - name: customer_email
+        description: Customer email address (PII - restricted access)
+        data_type: varchar
+        meta:
+          pii: true
+      - name: customer_phone
+        description: Customer phone (current)
+        data_type: varchar
+      - name: customer_country
+        description: Customer country (current)
+        data_type: varchar
+      - name: customer_region
+        description: Geographic region (current)
+        data_type: varchar
+
+      - name: customer_segment
+        description: Customer segment (VIP, Premium, Standard, Churned, New) -- current state
+        data_type: varchar
+        tests:
+          - accepted_values:
+              values: ['VIP', 'Premium', 'Standard', 'Churned', 'New']
+      - name: customer_status
+        description: Activity status (Active, At Risk, Inactive, Never Ordered)
+        data_type: varchar
+      - name: total_orders
+        description: Total number of orders placed to date
+        data_type: bigint
+      - name: customer_lifetime_value
+        description: Cumulative customer revenue (LTV) to date
+        data_type: numeric(18,2)
+      - name: avg_order_value
+        description: Average order amount for this customer
+        data_type: numeric(18,2)
+      - name: first_order_date
+        description: Date of the customer's first order
+        data_type: date
+      - name: last_order_date
+        description: Date of the customer's most recent order
+        data_type: date
+      - name: days_since_last_order
+        description: Days elapsed since the last order
+        data_type: integer
+
+      - name: customer_since
+        description: |
+          Timestamp the customer was first observed in Bronze's CDC history
+          (MIN(changed_at) over the full history, NOT dim_customers.valid_from
+          of the current row -- that would be the most recent attribute
+          change, not the first).
+        data_type: timestamp
+
+      - name: record_updated_at
+        description: When this OBT row was last recomputed
+        data_type: timestamp
+
+  - name: agg_customer_segment_summary
+    description: |
+      💎 DIAMOND LAYER - Customer Segment Summary (aggregate over obt_customer_360)
+
+      Pre-aggregated rollup of the customer_360 cube: customer counts and
+      revenue/LTV concentration per segment. Same pattern as
+      agg_daily_sales_by_segment, but at customer grain instead of order
+      grain.
+
+      **Grain**: One row per customer_segment
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Executive dashboards, segment concentration analysis
+
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'aggregation', 'metrics', 'dashboard', 'customer-360']
+
+    columns:
+      - name: customer_segment
+        description: Customer segment (e.g., VIP, Premium, Standard)
+        data_type: varchar
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['VIP', 'Premium', 'Standard', 'Churned', 'New']
+      - name: total_customers
+        description: Count of customers in this segment
+        data_type: bigint
+        meta:
+          metric_type: 'count'
+      - name: total_revenue
+        description: Sum of customer_lifetime_value for this segment
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'sum'
+      - name: avg_ltv
+        description: Average customer_lifetime_value for this segment
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'average'
+      - name: avg_order_value
+        description: Average order value across customers in this segment
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'average'
+      - name: total_orders
+        description: Sum of total_orders across customers in this segment
+        data_type: bigint
+        meta:
+          metric_type: 'sum'
+      - name: avg_days_since_last_order
+        description: Average recency across customers in this segment
+        data_type: numeric(6,1)
+        meta:
+          metric_type: 'average'
+      - name: pct_of_total_customers
+        description: This segment's share of the total customer count
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+      - name: pct_of_total_revenue
+        description: This segment's share of total LTV across all customers
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+
+  - name: obt_product_catalog
+    description: |
+      💎 DIAMOND LAYER - Product Catalog OBT
+
+      Denormalized "as of right now" view, one row per product -- current
+      identity (name/category/price) from dim_products plus a price-history
+      summary reconstructed from dim_products_history. This is a CATALOG
+      cube, not a sales cube: it has no units_sold/revenue, because orders
+      didn't reference products until order_items existed (see
+      obt_product_sales for that).
+
+      **Grain**: One row per product_id
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Catalog dashboards, price-change auditing
+
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'olap', 'semantic', 'obt', 'product-catalog']
+
+    columns:
+      - name: product_id
+        description: Unique product identifier (Primary Key)
+        data_type: bigint
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: Product name (current)
+        data_type: varchar
+      - name: category
+        description: Product category (current)
+        data_type: varchar
+      - name: current_price
+        description: Current unit price
+        data_type: numeric(10,2)
+      - name: price_changes_count
+        description: Number of real price changes since the product was created (excludes the initial snapshot)
+        data_type: integer
+      - name: min_price_ever
+        description: Lowest price ever recorded for this product
+        data_type: numeric(10,2)
+      - name: max_price_ever
+        description: Highest price ever recorded for this product
+        data_type: numeric(10,2)
+      - name: first_seen_at
+        description: Timestamp the product was first observed in Bronze's CDC history
+        data_type: timestamp
+      - name: last_changed_at
+        description: Timestamp of the most recent attribute change
+        data_type: timestamp
+      - name: record_updated_at
+        description: When this OBT row was last recomputed
+        data_type: timestamp
+
+  - name: obt_customer_change_log
+    description: |
+      💎 DIAMOND LAYER - Customer Change Log (audit view over dim_customers)
+
+      dim_customers already carries every SCD2 version + properties_diff;
+      this flattens it into an audit-friendly timeline -- a version number,
+      a human-readable change_summary string, and how long each version was
+      in effect -- for BI tools that would rather not parse JSONB directly.
+
+      **Grain**: One row per (customer_id, SCD2 version) -- same grain as
+      dim_customers itself
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Attribute-change auditing, "what changed and when" dashboards
+
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'olap', 'semantic', 'obt', 'audit', 'scd2']
+
+    columns:
+      - name: scd_key
+        description: Unique key of this SCD2 version (from dim_customers)
+        data_type: varchar
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Customer identifier
+        data_type: bigint
+        tests:
+          - not_null
+      - name: version_number
+        description: 1-based ordinal of this version for the customer (1 = first ever observed)
+        data_type: integer
+      - name: customer_name
+        description: Customer name as of this version (PII)
+        data_type: varchar
+        meta:
+          pii: true
+      - name: customer_email
+        description: Customer email as of this version (PII)
+        data_type: varchar
+        meta:
+          pii: true
+      - name: changed_fields
+        description: JSONB of just the keys that changed vs. the previous version (everything, on the first version)
+        data_type: jsonb
+      - name: change_summary
+        description: Human-readable "key:value, key:value" rendering of changed_fields
+        data_type: varchar
+      - name: valid_from
+        description: When this version became effective (-infinity for a customer's first version)
+        data_type: timestamptz
+      - name: valid_to
+        description: When this version was superseded (NULL if still current)
+        data_type: timestamptz
+      - name: is_current
+        description: Whether this is the customer's current version
+        data_type: boolean
+      - name: version_duration
+        description: How long this version was in effect (NULL for the first version and the current one)
+        data_type: interval
+
+  - name: obt_product_sales
+    description: |
+      💎 DIAMOND LAYER - Product Sales OBT
+
+      The product-grain sales cube obt_product_catalog couldn't provide --
+      real revenue/units sold -- now possible via order_items (which links
+      orders to products). Mirrors obt_customer_360's pattern exactly:
+      dim_products (current identity) + product_metrics_current (sales
+      aggregates, current-state).
+
+      **Grain**: One row per product_id
+      **Update Frequency**: Real-time (via dbt run cycle)
+      **Use Cases**: Top-products dashboards, revenue-by-category analysis
+
+    config:
+      materialized: table
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'olap', 'semantic', 'obt', 'product-sales']
+
+    columns:
+      - name: product_id
+        description: Unique product identifier (Primary Key)
+        data_type: bigint
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: Product name (current)
+        data_type: varchar
+      - name: category
+        description: Product category (current)
+        data_type: varchar
+      - name: current_price
+        description: Current unit price
+        data_type: numeric(10,2)
+      - name: orders_containing_product
+        description: Count of distinct orders that included this product
+        data_type: bigint
+      - name: units_sold
+        description: Total quantity sold across all order_items
+        data_type: bigint
+      - name: total_revenue
+        description: Sum of quantity * unit_price across all order_items
+        data_type: numeric(18,2)
+      - name: avg_sold_price
+        description: Average unit_price this product has actually sold for (may differ from current_price)
+        data_type: numeric(18,2)
+      - name: first_sold_at
+        description: Date of the first order containing this product
+        data_type: date
+      - name: last_sold_at
+        description: Date of the most recent order containing this product
+        data_type: date
+      - name: record_updated_at
+        description: When this OBT row was last recomputed
+
+  - name: agg_sales_by_category
+    description: |
+      💎 DIAMOND LAYER - Sales by Category (aggregate over obt_product_sales)
+
+      Revenue/units sold rolled up by product category -- ties the catalog to
+      real financial results.
+
+      **Grain**: One row per category
+      **Update Frequency**: Real-time -- materialized as a VIEW, not a table:
+      the source (obt_product_sales) is already small and indexed, so this
+      recomputes on every query instead of storing a separately-refreshed
+      copy of the same aggregation (storage-lean strategy).
+      **Use Cases**: Category performance dashboards
+
+    config:
+      materialized: view
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'aggregation', 'metrics', 'dashboard', 'product-sales']
+
+    columns:
+      - name: category
+        description: Product category
+        data_type: varchar
+        tests:
+          - not_null
+          - unique
+      - name: total_products
+        description: Count of products in this category
+        data_type: bigint
+        meta:
+          metric_type: 'count'
+      - name: total_units_sold
+        description: Sum of units_sold across all products in this category
+        data_type: bigint
+        meta:
+          metric_type: 'sum'
+      - name: total_revenue
+        description: Sum of total_revenue across all products in this category
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'sum'
+      - name: avg_price
+        description: Average current_price across products in this category
+        data_type: numeric(10,2)
+        meta:
+          metric_type: 'average'
+      - name: pct_of_total_revenue
+        description: This category's share of total revenue across all products
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+
+  - name: agg_customer_region_summary
+    description: |
+      💎 DIAMOND LAYER - Customer Region Summary (aggregate over obt_customer_360)
+
+      Mirrors agg_customer_segment_summary's shape, but by geography instead
+      of segment.
+
+      **Grain**: One row per customer_region
+      **Update Frequency**: Real-time -- materialized as a VIEW, not a table,
+      for the same storage-lean reason as agg_sales_by_category.
+      **Use Cases**: Geographic concentration analysis
+
+    config:
+      materialized: view
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'aggregation', 'metrics', 'dashboard', 'customer-360']
+
+    columns:
+      - name: customer_region
+        description: Geographic region
+        data_type: varchar
+        tests:
+          - not_null
+          - unique
+      - name: total_customers
+        description: Count of customers in this region
+        data_type: bigint
+        meta:
+          metric_type: 'count'
+      - name: total_revenue
+        description: Sum of customer_lifetime_value for this region
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'sum'
+      - name: avg_ltv
+        description: Average customer_lifetime_value for this region
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'average'
+      - name: avg_order_value
+        description: Average order value across customers in this region
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'average'
+      - name: total_orders
+        description: Sum of total_orders across customers in this region
+        data_type: bigint
+        meta:
+          metric_type: 'sum'
+      - name: pct_of_total_customers
+        description: This region's share of the total customer count
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+      - name: pct_of_total_revenue
+        description: This region's share of total LTV across all customers
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+
+  - name: agg_monthly_sales_by_region
+    description: |
+      💎 DIAMOND LAYER - Monthly Sales by Region (aggregate over obt_customer_orders)
+
+      **Grain**: One row per customer_region + month
+      **Update Frequency**: 60 minutes (incremental -- only the current month
+      + new months reprocessed)
+      **Use Cases**: Geographic + time-series trend dashboards
+      **Storage**: Incremental materialization -- closed past months are
+      never rewritten, only the current (still-accumulating) month is
+      recomputed and merged each cycle. This grain grows forever (new month
+      = new rows), so a full rebuild would rewrite the entire history every
+      cycle just to add the current month's numbers.
+
+    config:
+      materialized: incremental
+      schema: diamond
+      owner: analytics-team
+      tags: ['diamond', 'aggregation', 'metrics', 'dashboard', 'geography', 'time-series']
+
+    columns:
+      - name: month_date
+        description: First day of the month (aggregation grain)
+        data_type: date
+        tests:
+          - not_null
+      - name: year_num
+        description: Year number (YYYY)
+        data_type: integer
+      - name: quarter_num
+        description: Quarter number (1-4)
+        data_type: integer
+      - name: month_num
+        description: Month number (1-12)
+        data_type: integer
+      - name: customer_region
+        description: Geographic region
+        data_type: varchar
+        tests:
+          - not_null
+      - name: total_orders
+        description: Count of distinct orders for the region and month
+        data_type: bigint
+        meta:
+          metric_type: 'count'
+      - name: unique_customers
+        description: Count of distinct customers ordering in the region and month
+        data_type: bigint
+        meta:
+          metric_type: 'count_distinct'
+      - name: total_sales
+        description: Sum of order amounts (revenue)
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'sum'
+      - name: avg_order_value
+        description: Average order amount
+        data_type: numeric(18,2)
+        meta:
+          metric_type: 'average'
+      - name: region_pct_of_monthly_sales
+        description: This region's share of that month's total sales
+        data_type: numeric(6,2)
+        meta:
+          metric_type: 'percent'
+        data_type: timestamp

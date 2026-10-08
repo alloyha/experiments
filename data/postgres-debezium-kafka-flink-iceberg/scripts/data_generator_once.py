@@ -188,26 +188,64 @@ class DataGenerator:
             logger.info(f"💲 Product atualizado: ID={product_id}, Fator={factor:.2f}")
 
     def insert_order(self):
-        """Inserir novo order"""
-        if not self.customer_ids:
-            return
-        
-        customer_id = random.choice(self.customer_ids)
-        total_amount = round(Decimal(random.uniform(10, 999)), 2)
-        status = random.choice(['PENDING', 'PROCESSING', 'COMPLETED', 'SHIPPED', 'CANCELLED'])
-        
-        query = """
-            INSERT INTO cdc_source.orders (customer_id, total_amount, status)
-            VALUES (%s, %s, %s)
-            RETURNING id
+        """Inserir novo order + order_items (1-4 produtos distintos).
+
+        total_amount é derivado da soma dos itens (quantity * unit_price),
+        não mais um valor aleatório independente -- isso mantém orders e
+        order_items consistentes entre si, o que product_metrics_current e
+        obt_product_sales dependem para refletir receita real.
         """
-        
+        if not self.customer_ids or not self.product_ids:
+            return
+
+        customer_id = random.choice(self.customer_ids)
+        status = random.choice(['PENDING', 'PROCESSING', 'COMPLETED', 'SHIPPED', 'CANCELLED'])
+
+        num_items = random.randint(1, min(4, len(self.product_ids)))
+        chosen_products = random.sample(self.product_ids, num_items)
+
         try:
             with self.conn.cursor() as cursor:
-                cursor.execute(query, (customer_id, total_amount, status))
+                # Snapshot do preço atual de cada produto escolhido -- unit_price
+                # fica congelado no momento da venda, não é um lookup ao vivo.
+                cursor.execute(
+                    "SELECT id, price FROM cdc_source.products WHERE id = ANY(%s)",
+                    (chosen_products,)
+                )
+                prices = dict(cursor.fetchall())
+
+                items = []
+                total_amount = Decimal('0')
+                for product_id in chosen_products:
+                    quantity = random.randint(1, 5)
+                    unit_price = prices.get(product_id, Decimal('0'))
+                    items.append((product_id, quantity, unit_price))
+                    total_amount += unit_price * quantity
+
+                cursor.execute(
+                    """
+                    INSERT INTO cdc_source.orders (customer_id, total_amount, status)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                    """,
+                    (customer_id, total_amount, status)
+                )
                 order_id = cursor.fetchone()[0]
+
+                for product_id, quantity, unit_price in items:
+                    cursor.execute(
+                        """
+                        INSERT INTO cdc_source.order_items (order_id, product_id, quantity, unit_price)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (order_id, product_id, quantity, unit_price)
+                    )
+
                 self.conn.commit()
-                logger.info(f"🛒 Order inserido: ID={order_id}, Customer={customer_id}, Amount={total_amount}")
+                logger.info(
+                    f"🛒 Order inserido: ID={order_id}, Customer={customer_id}, "
+                    f"Amount={total_amount}, Items={len(items)}"
+                )
                 return order_id
         except Exception as e:
             self.conn.rollback()
@@ -220,11 +258,19 @@ class DataGenerator:
             return
         
         customer_id = random.choice(self.customer_ids)
-        
-        # Primeiro deletar orders
+
+        # order_items referencia orders via FK -- precisa sair primeiro, senão
+        # o DELETE de orders abaixo viola a constraint.
+        query_order_items = """
+            DELETE FROM cdc_source.order_items
+            WHERE order_id IN (SELECT id FROM cdc_source.orders WHERE customer_id = %s)
+        """
+        self.execute_query(query_order_items, (customer_id,))
+
+        # Depois deletar orders
         query_orders = "DELETE FROM cdc_source.orders WHERE customer_id = %s"
         self.execute_query(query_orders, (customer_id,))
-        
+
         # Depois deletar customer
         query_customer = "DELETE FROM cdc_source.customers WHERE id = %s"
         if self.execute_query(query_customer, (customer_id,)):
