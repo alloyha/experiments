@@ -1331,7 +1331,7 @@ def main() -> int:
                             log(
                                 f"[unchanged-content] {label} :: total={profile.total_seconds:.2f}s "
                                 f"download={profile.download_seconds:.2f}s hash={profile.hash_seconds:.2f}s "
-                                f"retries={profile.attempts - 1}"
+                                f"retries={max(0, profile.attempts - 1)}"
                             )
                         if not args.no_profile:
                             append_profile(args.root, profile)
@@ -1435,7 +1435,7 @@ def main() -> int:
                             f"{len(record.extracted_objects)} object(s) :: total={profile.total_seconds:.2f}s "
                             f"download={profile.download_seconds:.2f}s hash={profile.hash_seconds:.2f}s "
                             f"materialize={profile.materialize_seconds:.3f}s extract={profile.extract_seconds:.2f}s "
-                            f"extractor={profile.extractor} retries={profile.attempts - 1} "
+                            f"extractor={profile.extractor} retries={max(0, profile.attempts - 1)} "
                             f"retry_wait={profile.retry_seconds:.2f}s "
                             f"resumed={profile.resumed_bytes / (1024 * 1024):.1f}MiB"
                         )
