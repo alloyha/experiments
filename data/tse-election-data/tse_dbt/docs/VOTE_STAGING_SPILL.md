@@ -7,13 +7,13 @@ memory budget.
 
 The pipeline is now deliberately two-stage:
 
-1. `stg_candidate_votes_raw`
+1. `bronze_candidate_votes_raw`
    - reads the multi-GiB CSV once;
    - projects only keys/measures required downstream;
    - persists all source versions in DuckDB;
    - no global hash aggregation or sort.
 
-2. `stg_candidate_votes_munzona`
+2. `silver_candidate_votes_munzona`
    - reads the narrow persisted table;
    - uses `row_number()` by business grain ordered by generation timestamp;
    - DuckDB may spill the sort to `data/warehouse/.duckdb_tmp`;

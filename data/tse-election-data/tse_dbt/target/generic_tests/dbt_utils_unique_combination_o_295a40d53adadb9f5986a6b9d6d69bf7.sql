@@ -1,0 +1,1 @@
+{{ dbt_utils.test_unique_combination_of_columns(combination_of_columns=["election_year","election_type","uf","municipality_code"], model=get_where_subquery(ref('fact_electorate_municipality'))) }}

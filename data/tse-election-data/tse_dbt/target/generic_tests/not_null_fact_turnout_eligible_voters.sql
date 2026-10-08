@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="eligible_voters", model=get_where_subquery(ref('fact_turnout'))) }}

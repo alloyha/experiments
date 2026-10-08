@@ -1,6 +1,6 @@
 # Candidate vote staging test strategy
 
-`stg_candidate_votes_munzona` is a view over approximately 8.68 million rows.
+`silver_candidate_votes_munzona` is a view over approximately 8.68 million rows.
 
 Previously, generic dbt tests caused repeated complete Parquet scans, dominating
 development build time.

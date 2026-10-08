@@ -1,5 +1,5 @@
 select *
-from {{ ref('stg_electorate') }}
+from {{ ref('bronze_electorate') }}
 where municipality_code is not null
   and (
       length(municipality_code) <> 5

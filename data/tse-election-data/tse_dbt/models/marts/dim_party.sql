@@ -27,7 +27,7 @@ with versions as (
             partition by election_year, election_type, election_code, party_number
             order by generated_at desc nulls last, party desc, party_name desc
         ) as _rank
-    from {{ ref('stg_party_votes_munzona') }}
+    from {{ ref('silver_party_votes_munzona') }}
     {% if is_incremental() %}
     where {{ incremental_partition_predicate('election_year', 'election_type') }}
     {% endif %}

@@ -47,7 +47,7 @@ select
 
     generated_at,
     source_file
-from {{ ref('stg_party_votes_munzona') }}
+from {{ ref('silver_party_votes_munzona') }}
 {% if is_incremental() %}
 where {{ incremental_partition_predicate('election_year', 'election_type') }}
 {% endif %}

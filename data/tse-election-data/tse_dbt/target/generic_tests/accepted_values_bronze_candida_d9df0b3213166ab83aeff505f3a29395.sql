@@ -1,0 +1,1 @@
+{{ test_accepted_values(column_name="election_type", model=get_where_subquery(ref('bronze_candidates')), values=["general","municipal"]) }}

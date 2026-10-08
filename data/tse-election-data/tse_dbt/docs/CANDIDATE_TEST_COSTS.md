@@ -1,7 +1,7 @@
 # Candidate test cost profile
 
 On the 2018 candidate result branch (~8.68M rows), generic tests on
-`stg_candidate_votes_munzona` can dominate wall-clock time even though the model
+`silver_candidate_votes_munzona` can dominate wall-clock time even though the model
 itself is a view.
 
 Observed examples:

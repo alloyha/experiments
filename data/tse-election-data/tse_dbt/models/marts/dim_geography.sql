@@ -14,5 +14,5 @@ select distinct
     uf,
     municipality_code,
     municipality
-from {{ ref('int_electorate_municipality') }}
+from {{ ref('silver_electorate_municipality') }}
 {{ incremental_election_filter('election_year', 'election_type') }}

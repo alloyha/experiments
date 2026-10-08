@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="gap_reason", model=get_where_subquery(ref('candidate_tally_coverage_gaps'))) }}

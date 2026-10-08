@@ -10,7 +10,7 @@ Validated behavior:
 - legend measures never differ;
 - MAX-collapse reconciles nominal and legend totals to tally with zero mismatch.
 
-Therefore `stg_party_votes_munzona` uses measure-wise MAX at the analytical grain.
+Therefore `silver_party_votes_munzona` uses measure-wise MAX at the analytical grain.
 
 The model retains source multiplicity diagnostics:
 - source_row_count

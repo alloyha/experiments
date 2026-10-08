@@ -1,6 +1,6 @@
 # Raw candidate incremental idempotency
 
-`stg_candidate_votes_raw` is an authoritative snapshot partitioned by
+`bronze_candidate_votes_raw` is an authoritative snapshot partitioned by
 `(election_year, election_type)`.
 
 The previous incremental behavior accumulated complete copies of the same

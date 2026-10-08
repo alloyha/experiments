@@ -30,7 +30,7 @@ with violations as (
             then 1 else 0
         end) as invalid_office_scope
 
-    from {{ ref('stg_candidate_votes_munzona') }}
+    from {{ ref('silver_candidate_votes_munzona') }}
 )
 
 select *

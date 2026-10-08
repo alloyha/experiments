@@ -7,7 +7,7 @@ with source_rows as (
         municipality_code,
         municipality,
         electorate
-    from {{ ref('int_electorate_municipality') }}
+    from {{ ref('silver_electorate_municipality') }}
     where {{ selected_election_predicate() }}
 ),
 target_rows as (

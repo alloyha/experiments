@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="office_scope", model=get_where_subquery(ref('bronze_candidates'))) }}

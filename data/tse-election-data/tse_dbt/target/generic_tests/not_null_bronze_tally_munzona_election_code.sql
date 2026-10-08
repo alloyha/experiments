@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="election_code", model=get_where_subquery(ref('bronze_tally_munzona'))) }}

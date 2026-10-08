@@ -1,4 +1,9 @@
-{% macro read_raw_csv(domain, resource_name_like=none) %}
+{% macro read_raw_csv(
+    domain,
+    resource_name_like=none,
+    strict_mode=true,
+    null_padding=false
+) %}
   {% if var('compile_only', false) %}
     {% set fixture = var('dbt_fixture_root', 'tse_dbt/fixtures') ~ '/' ~ domain ~ '.csv' %}
     (
@@ -15,6 +20,8 @@
         filename = true,
         sample_size = 20480,
         encoding = 'utf-8',
+        strict_mode = {{ 'true' if strict_mode else 'false' }},
+        null_padding = {{ 'true' if null_padding else 'false' }},
         ignore_errors = false
       )
       where false
@@ -40,20 +47,22 @@
       _raw as (
         select *
         from read_csv(
-          [
-            {% for path in paths %}'{{ path | replace("'", "''") }}'{% if not loop.last %},{% endif %}{% endfor %}
-          ],
-          delim = ';',
-          quote = '"',
-          escape = '"',
-          header = true,
-          all_varchar = true,
-          union_by_name = true,
-          filename = true,
-          sample_size = 20480,
-          encoding = '{{ var("tse_csv_encoding", "latin-1") }}',
-          ignore_errors = false
-        )
+  [
+    {% for path in paths %}'{{ path | replace("'", "''") }}'{% if not loop.last %},{% endif %}{% endfor %}
+  ],
+  delim = ';',
+  quote = '"',
+  escape = '"',
+  header = true,
+  all_varchar = true,
+  union_by_name = true,
+  filename = true,
+  sample_size = 20480,
+  encoding = '{{ var("tse_csv_encoding", "latin-1") }}',
+  strict_mode = {{ 'true' if strict_mode else 'false' }},
+  null_padding = {{ 'true' if null_padding else 'false' }},
+  ignore_errors = false
+)
       )
       select
         _raw.*,

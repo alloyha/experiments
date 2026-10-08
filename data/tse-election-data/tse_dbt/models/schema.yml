@@ -29,7 +29,7 @@ seeds:
           - federal_state
           - municipal
 models:
-- name: stg_candidates
+- name: bronze_candidates
   tests:
   - dbt_utils.unique_combination_of_columns:
       arguments:
@@ -74,7 +74,7 @@ models:
   - name: candidate_name
     tests:
     - not_null
-- name: stg_candidate_assets
+- name: bronze_candidate_assets
   columns:
   - name: election_year
     tests:
@@ -167,7 +167,7 @@ models:
         - election_type
         - uf
         - municipality_code
-- name: stg_candidate_votes_munzona
+- name: silver_candidate_votes_munzona
   description: Latest TSE version of nominal candidate voting at municipality/zone grain.
   tests: []
   columns:
@@ -222,7 +222,7 @@ models:
   - name: nominal_votes
     tests:
     - not_null
-- name: stg_party_votes_munzona
+- name: silver_party_votes_munzona
   description: Latest TSE party-vote snapshot at municipality/zone/office/party grain.
   tests:
   - dbt_utils.unique_combination_of_columns:
@@ -343,7 +343,7 @@ models:
   - name: party_valid_votes
     tests:
     - not_null
-- name: stg_tally_munzona
+- name: bronze_tally_munzona
   description: Latest TSE tally snapshot by election, round, municipality, zone and office.
   tests:
   - dbt_utils.unique_combination_of_columns:

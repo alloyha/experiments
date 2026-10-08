@@ -17,7 +17,7 @@ For the 2018 general-election party resource:
 
 ## Decision
 
-`stg_party_votes_munzona` collapses alternate/repeated source representations
+`silver_party_votes_munzona` collapses alternate/repeated source representations
 with measure-wise `MAX()` at the analytical grain.
 
 Do not use arbitrary `row_number()` selection.

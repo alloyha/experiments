@@ -24,7 +24,7 @@ with party_grains as (
             filter (where total_legend_valid_votes <> 0)
             as distinct_nonzero_total_legend_values
 
-    from {{ ref('stg_party_votes_raw') }}
+    from {{ ref('bronze_party_votes_raw') }}
 
     group by
         election_year,

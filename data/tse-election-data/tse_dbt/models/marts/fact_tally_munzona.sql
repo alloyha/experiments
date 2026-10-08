@@ -60,7 +60,7 @@ select
     generated_at,
     last_totalization_at,
     source_file
-from {{ ref('stg_tally_munzona') }}
+from {{ ref('bronze_tally_munzona') }}
 {% if is_incremental() %}
 where {{ incremental_partition_predicate('election_year', 'election_type') }}
 {% endif %}

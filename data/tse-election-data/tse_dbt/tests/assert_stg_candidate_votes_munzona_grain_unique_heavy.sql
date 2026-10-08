@@ -15,7 +15,7 @@ select
     candidate_id,
     is_transit_vote,
     count(*) as copies
-from {{ ref('stg_candidate_votes_munzona') }}
+from {{ ref('silver_candidate_votes_munzona') }}
 group by
     election_year,
     election_type,

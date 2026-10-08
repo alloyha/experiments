@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="zone", model=get_where_subquery(ref('silver_party_votes_munzona'))) }}

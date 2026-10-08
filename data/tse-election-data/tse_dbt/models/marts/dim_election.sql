@@ -7,7 +7,7 @@ with election_sources as (
         election_type,
         election_code,
         election_scope
-    from {{ ref('stg_candidates') }}
+    from {{ ref('bronze_candidates') }}
 
     union all
 
@@ -16,7 +16,7 @@ with election_sources as (
         election_type,
         election_code,
         election_scope
-    from {{ ref('stg_party_votes_raw') }}
+    from {{ ref('bronze_party_votes_raw') }}
 
     union all
 
@@ -25,7 +25,7 @@ with election_sources as (
         election_type,
         election_code,
         election_scope
-    from {{ ref('stg_tally_munzona') }}
+    from {{ ref('bronze_tally_munzona') }}
 ),
 
 deduped as (

@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="election_year", model=get_where_subquery(ref('dim_candidate'))) }}

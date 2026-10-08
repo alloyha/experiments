@@ -5,7 +5,7 @@ with raw_counts as (
         election_year,
         election_type,
         count(*) as raw_rows
-    from {{ ref('stg_candidate_votes_raw') }}
+    from {{ ref('bronze_candidate_votes_raw') }}
     group by 1,2
 ),
 munzona_counts as (
@@ -13,7 +13,7 @@ munzona_counts as (
         election_year,
         election_type,
         count(*) as munzona_rows
-    from {{ ref('stg_candidate_votes_munzona') }}
+    from {{ ref('silver_candidate_votes_munzona') }}
     group by 1,2
 )
 select

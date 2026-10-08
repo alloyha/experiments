@@ -1,6 +1,6 @@
 # Candidate raw materialization
 
-`stg_candidate_votes_raw` is intentionally a **view** over the immutable
+`bronze_candidate_votes_raw` is intentionally a **view** over the immutable
 prepared Parquet object.
 
 Rationale:
@@ -12,14 +12,14 @@ Rationale:
 - semantic aggregation/deduplication belongs downstream.
 
 The first physical analytical materialization is
-`stg_candidate_votes_munzona`.
+`silver_candidate_votes_munzona`.
 
 Heavy physical-integrity checks against the prepared raw object are not part of
 the normal dbt build and must be enabled explicitly.
 
 ## Canonical municipality validation
 
-The full-data municipality canonicality assertion over `stg_candidate_votes_raw`
+The full-data municipality canonicality assertion over `bronze_candidate_votes_raw`
 is intentionally tagged `integrity_heavy` and disabled in normal builds because
 the model is a view over ~8.7M Parquet rows and a regex/length assertion forces a
 complete scan.

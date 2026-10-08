@@ -5,7 +5,7 @@ with source_keys as (
         election_year, election_type, election_code, round_number,
         uf, municipality_code, zone, office_code, candidate_id,
         is_transit_vote, nominal_votes
-    from {{ ref('int_candidate_votes') }}
+    from {{ ref('silver_candidate_votes') }}
     where {{ selected_election_predicate() }}
 ),
 target_keys as (

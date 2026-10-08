@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="nominal_valid_delta", model=get_where_subquery(ref('candidate_tally_reconciliation'))) }}

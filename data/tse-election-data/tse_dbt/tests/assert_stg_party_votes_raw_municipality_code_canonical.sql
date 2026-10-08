@@ -1,5 +1,5 @@
 select *
-from {{ ref('stg_party_votes_raw') }}
+from {{ ref('bronze_party_votes_raw') }}
 where municipality_code is not null
   and (
       length(municipality_code) <> 5

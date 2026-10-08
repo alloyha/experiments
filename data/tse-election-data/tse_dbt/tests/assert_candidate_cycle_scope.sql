@@ -1,5 +1,5 @@
 select *
-from {{ ref('stg_candidates') }}
+from {{ ref('bronze_candidates') }}
 where
     (election_type = 'municipal' and office_scope <> 'municipal')
     or

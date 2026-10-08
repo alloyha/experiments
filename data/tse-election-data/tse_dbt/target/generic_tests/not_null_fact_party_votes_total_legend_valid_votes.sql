@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="total_legend_valid_votes", model=get_where_subquery(ref('fact_party_votes'))) }}

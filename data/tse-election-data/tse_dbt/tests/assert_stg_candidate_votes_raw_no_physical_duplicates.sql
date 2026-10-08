@@ -17,7 +17,7 @@ with grouped as (
         totalization_status_code,
         source_file,
         count(*) as copies
-    from {{ ref('stg_candidate_votes_raw') }}
+    from {{ ref('bronze_candidate_votes_raw') }}
     group by
         election_year,
         election_type,

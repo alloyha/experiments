@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="municipality_code", model=get_where_subquery(ref('fact_electorate_municipality'))) }}

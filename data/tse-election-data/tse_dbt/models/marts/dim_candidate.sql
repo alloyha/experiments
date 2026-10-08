@@ -34,7 +34,7 @@ select
     c.race_color,
     coalesce(a.declared_assets_value, 0) as declared_assets_value,
     coalesce(a.declared_assets_count, 0) as declared_assets_count
-from {{ ref('stg_candidates') }} c
-left join {{ ref('int_candidate_assets') }} a
+from {{ ref('bronze_candidates') }} c
+left join {{ ref('silver_candidate_assets') }} a
   using (election_year, election_type, election_code, candidate_id)
 {{ incremental_election_filter('c.election_year', 'c.election_type') }}

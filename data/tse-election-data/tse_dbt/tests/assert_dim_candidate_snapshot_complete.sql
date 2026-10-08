@@ -1,7 +1,7 @@
 with source_keys as (
     select
         election_year, election_type, election_code, candidate_id
-    from {{ ref('stg_candidates') }}
+    from {{ ref('bronze_candidates') }}
     where {{ selected_election_predicate() }}
 ),
 target_keys as (

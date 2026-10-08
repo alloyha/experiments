@@ -2,7 +2,7 @@ with source_rows as (
     select distinct
         election_year, election_type, election_scope,
         uf, municipality_code, municipality
-    from {{ ref('int_electorate_municipality') }}
+    from {{ ref('silver_electorate_municipality') }}
     where {{ selected_election_predicate() }}
 ),
 target_rows as (

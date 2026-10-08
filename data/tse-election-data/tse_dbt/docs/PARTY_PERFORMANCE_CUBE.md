@@ -3,8 +3,8 @@
 Pipeline:
 
 `Votação em partido por município e zona`
-→ `stg_party_votes_raw`
-→ `stg_party_votes_munzona`
+→ `bronze_party_votes_raw`
+→ `silver_party_votes_munzona`
 → `dim_party` + `fact_party_votes`
 → `party_performance`
 

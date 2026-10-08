@@ -1,0 +1,1 @@
+{{ test_accepted_values(column_name="office_scope", model=get_where_subquery(ref('bronze_candidates')), values=["federal","state","municipal","other"]) }}

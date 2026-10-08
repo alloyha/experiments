@@ -17,9 +17,9 @@ unique at the analytical grain:
 The measured 2018 profile contains 8,680,108 rows and exactly 8,680,108 grains,
 with zero duplicate grains in every UF.
 
-Therefore `stg_candidate_votes_munzona` must not use `row_number()` or any
+Therefore `silver_candidate_votes_munzona` must not use `row_number()` or any
 other deduplication sort for this source. It is a direct projection from
-`stg_candidate_votes_raw`, restricted to selected incremental partitions.
+`bronze_candidate_votes_raw`, restricted to selected incremental partitions.
 
 If a future source year violates grain uniqueness, that must be treated as an
 explicit source-semantic change and modeled separately rather than silently
@@ -29,7 +29,7 @@ reintroducing arbitrary row selection.
 ## Materialization policy
 
 Because the prepared raw source is already unique at the candidate municipal-zone
-grain, `stg_candidate_votes_munzona` is a view rather than another physical copy.
+grain, `silver_candidate_votes_munzona` is a view rather than another physical copy.
 
 This avoids writing the same 8,680,108 rows twice:
 

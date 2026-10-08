@@ -5,7 +5,7 @@ with source_rows as (
         nominal_valid_votes, legend_valid_votes,
         nominal_converted_to_legend_votes, total_legend_valid_votes,
         nominal_annulled_subjudice_votes, legend_annulled_subjudice_votes
-    from {{ ref('stg_party_votes_munzona') }}
+    from {{ ref('silver_party_votes_munzona') }}
     where {{ selected_election_predicate() }}
 ),
 target_rows as (

@@ -4,7 +4,7 @@ with source_rows as (
         election_type,
         election_code,
         party_number
-    from {{ ref('stg_party_votes_munzona') }}
+    from {{ ref('silver_party_votes_munzona') }}
     where {{ selected_election_predicate() }}
 ),
 target_rows as (
