@@ -5,25 +5,49 @@ with src as (
     from 
   
     
+    
     (
-      select
-        *,
-        cast(null as varchar) as _election_type,
-        cast(null as varchar) as _election_scope
-      from read_csv(
-        '/home/pingu/github/experiments/data/tse-election-data/tse_dbt/fixtures/vote_result.csv',
-        delim = ',',
-        header = true,
-        all_varchar = true,
-        union_by_name = true,
-        filename = true,
-        sample_size = 20480,
-        encoding = 'utf-8',
-        strict_mode = true,
-        null_padding = false,
-        ignore_errors = false
+      with _index as (
+        select distinct
+          '/home/pingu/github/experiments/data/tse-election-data/data/tse' || '/' || object as object_path,
+          year as _index_year,
+          election_type as _election_type,
+          election_scope as _election_scope
+        from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+        where domain = 'vote_result'
+          and year in (2026)
+          and election_type in ('general')
+          
+          and resource_name ilike 'Votação nominal por município e zona%'
+          
+      ),
+      _raw as (
+        select *
+        from read_csv(
+  [
+    '/home/pingu/github/experiments/data/tse-election-data/data/tse/raw/election_type=general/year=2026/domain=vote_result/dataset=resultados_2026/resource=c807b826_21ff_4bcf_97ca_d86482656320/sha256=b5214219ca30bcaf3c31b6bd528d66175538d6a501d520c82c40708bcbba17e7/extracted/votacao_candidato_munzona_2026_BRASIL.csv'
+  ],
+  delim = ';',
+  quote = '"',
+  escape = '"',
+  header = true,
+  all_varchar = true,
+  union_by_name = true,
+  filename = true,
+  sample_size = 20480,
+  encoding = 'latin-1',
+  strict_mode = true,
+  null_padding = false,
+  ignore_errors = false
+)
       )
-      where false
+      select
+        _raw.*,
+        _index._election_type,
+        _index._election_scope
+      from _raw
+      left join _index
+        on replace(_raw.filename, '\\', '/') = replace(_index.object_path, '\\', '/')
     )
   
 

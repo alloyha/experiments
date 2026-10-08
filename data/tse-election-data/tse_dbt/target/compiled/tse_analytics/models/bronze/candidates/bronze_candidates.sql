@@ -2,25 +2,47 @@ with src as (
     select * from 
   
     
+    
     (
-      select
-        *,
-        cast(null as varchar) as _election_type,
-        cast(null as varchar) as _election_scope
-      from read_csv(
-        '/home/pingu/github/experiments/data/tse-election-data/tse_dbt/fixtures/candidate.csv',
-        delim = ',',
-        header = true,
-        all_varchar = true,
-        union_by_name = true,
-        filename = true,
-        sample_size = 20480,
-        encoding = 'utf-8',
-        strict_mode = true,
-        null_padding = false,
-        ignore_errors = false
+      with _index as (
+        select distinct
+          '/home/pingu/github/experiments/data/tse-election-data/data/tse' || '/' || object as object_path,
+          year as _index_year,
+          election_type as _election_type,
+          election_scope as _election_scope
+        from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+        where domain = 'candidate'
+          and year in (2026)
+          and election_type in ('general')
+          
+      ),
+      _raw as (
+        select *
+        from read_csv(
+  [
+    '/home/pingu/github/experiments/data/tse-election-data/data/tse/raw/election_type=general/year=2026/domain=candidate/dataset=candidatos_2026/resource=7748de82_a23b_47c4_9ec1_35535d945e5b/sha256=fd3589a80235942664bec6b135e9916e241b6010484bb837dfcdf077f83f6eab/extracted/consulta_cand_2026_BRASIL.csv'
+  ],
+  delim = ';',
+  quote = '"',
+  escape = '"',
+  header = true,
+  all_varchar = true,
+  union_by_name = true,
+  filename = true,
+  sample_size = 20480,
+  encoding = 'latin-1',
+  strict_mode = true,
+  null_padding = false,
+  ignore_errors = false
+)
       )
-      where false
+      select
+        _raw.*,
+        _index._election_type,
+        _index._election_scope
+      from _raw
+      left join _index
+        on replace(_raw.filename, '\\', '/') = replace(_index.object_path, '\\', '/')
     )
   
 

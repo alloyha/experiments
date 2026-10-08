@@ -1,15 +1,15 @@
--- created_at: 2026-10-08T18:10:35.015341481+00:00
--- finished_at: 2026-10-08T18:10:35.025457899+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:55.709904793+00:00
+-- finished_at: 2026-10-08T19:18:55.719615331+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: not available
 -- query_id: not available
 -- desc: list_relations_in_parallel
 SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema = 'main' AND lower(table_catalog) = lower('tse_analytics');
--- created_at: 2026-10-08T18:10:35.304226590+00:00
--- finished_at: 2026-10-08T18:10:35.306902476+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:18:55.941418514+00:00
+-- finished_at: 2026-10-08T19:18:55.943170515+00:00
+-- elapsed: 1ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: not available
@@ -25,8 +25,8 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
     
   
   ;
--- created_at: 2026-10-08T18:10:35.308386848+00:00
--- finished_at: 2026-10-08T18:10:35.311305614+00:00
+-- created_at: 2026-10-08T19:18:55.944930798+00:00
+-- finished_at: 2026-10-08T19:18:55.947021274+00:00
 -- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
@@ -41,9 +41,9 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
         and type='sqlite'
     
   ;
--- created_at: 2026-10-08T18:10:35.312078205+00:00
--- finished_at: 2026-10-08T18:10:35.312720474+00:00
--- elapsed: 642us
+-- created_at: 2026-10-08T19:18:55.947552717+00:00
+-- finished_at: 2026-10-08T19:18:55.948099942+00:00
+-- elapsed: 547us
 -- outcome: success
 -- dialect: duckdb
 -- node_id: not available
@@ -55,31 +55,9 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
     
         create schema if not exists "tse_analytics"."main"
     ;
--- created_at: 2026-10-08T18:10:35.322434496+00:00
--- finished_at: 2026-10-08T18:10:35.355737114+00:00
--- elapsed: 33ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_party_votes_raw
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select distinct object
-    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
-    where domain = 'vote_result'
-      and year in (2026)
-      and election_type in ('general')
-      
-      and resource_name ilike 'Votação em partido por município e zona%'
-      
-    order by election_type, year, resource_id, object
-  
-  ;
--- created_at: 2026-10-08T18:10:35.323254607+00:00
--- finished_at: 2026-10-08T18:10:35.355952920+00:00
--- elapsed: 32ms
+-- created_at: 2026-10-08T19:18:55.958851194+00:00
+-- finished_at: 2026-10-08T19:18:55.985382387+00:00
+-- elapsed: 26ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -99,12 +77,12 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
     order by election_type, year, resource_id, object
   
   ;
--- created_at: 2026-10-08T18:10:35.362999424+00:00
--- finished_at: 2026-10-08T18:10:35.374175761+00:00
--- elapsed: 11ms
+-- created_at: 2026-10-08T19:18:55.956884633+00:00
+-- finished_at: 2026-10-08T19:18:55.985432638+00:00
+-- elapsed: 28ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.bronze_candidates
+-- node_id: model.tse_analytics.bronze_party_votes_raw
 -- query_id: not available
 -- desc: execute adapter call
 /* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
@@ -112,58 +90,18 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
     
     select distinct object
     from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
-    where domain = 'candidate'
+    where domain = 'vote_result'
       and year in (2026)
       and election_type in ('general')
+      
+      and resource_name ilike 'Votação em partido por município e zona%'
       
     order by election_type, year, resource_id, object
   
   ;
--- created_at: 2026-10-08T18:10:35.362608332+00:00
--- finished_at: 2026-10-08T18:10:35.375462646+00:00
+-- created_at: 2026-10-08T19:18:55.992615852+00:00
+-- finished_at: 2026-10-08T19:18:56.005062116+00:00
 -- elapsed: 12ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_electorate
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select distinct object
-    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
-    where domain = 'electorate'
-      and year in (2026)
-      and election_type in ('general')
-      
-      and resource_name ilike 'Eleitorado - %'
-      
-    order by election_type, year, resource_id, object
-  
-  ;
--- created_at: 2026-10-08T18:10:35.383763910+00:00
--- finished_at: 2026-10-08T18:10:35.406618873+00:00
--- elapsed: 22ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_candidate_assets
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select distinct object
-    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
-    where domain = 'candidate_assets'
-      and year in (2026)
-      and election_type in ('general')
-      
-    order by election_type, year, resource_id, object
-  
-  ;
--- created_at: 2026-10-08T18:10:35.383979153+00:00
--- finished_at: 2026-10-08T18:10:35.407146757+00:00
--- elapsed: 23ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_votes_raw
@@ -183,9 +121,71 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
     order by election_type, year, resource_id, object
   
   ;
--- created_at: 2026-10-08T18:10:35.434360164+00:00
--- finished_at: 2026-10-08T18:10:35.458318802+00:00
--- elapsed: 23ms
+-- created_at: 2026-10-08T19:18:55.992810128+00:00
+-- finished_at: 2026-10-08T19:18:56.005745741+00:00
+-- elapsed: 12ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_candidates
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select distinct object
+    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+    where domain = 'candidate'
+      and year in (2026)
+      and election_type in ('general')
+      
+    order by election_type, year, resource_id, object
+  
+  ;
+-- created_at: 2026-10-08T19:18:56.012820895+00:00
+-- finished_at: 2026-10-08T19:18:56.026544244+00:00
+-- elapsed: 13ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_candidate_assets
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select distinct object
+    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+    where domain = 'candidate_assets'
+      and year in (2026)
+      and election_type in ('general')
+      
+    order by election_type, year, resource_id, object
+  
+  ;
+-- created_at: 2026-10-08T19:18:56.012381052+00:00
+-- finished_at: 2026-10-08T19:18:56.026574318+00:00
+-- elapsed: 14ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_electorate
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "connection_name": "", "dbt_version": "2.0.0", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select distinct object
+    from read_json_auto('/home/pingu/github/experiments/data/tse-election-data/data/tse/_metadata/current_objects.jsonl')
+    where domain = 'electorate'
+      and year in (2026)
+      and election_type in ('general')
+      
+      and resource_name ilike 'Eleitorado - %'
+      
+    order by election_type, year, resource_id, object
+  
+  ;
+-- created_at: 2026-10-08T19:18:56.041141917+00:00
+-- finished_at: 2026-10-08T19:18:56.062906665+00:00
+-- elapsed: 21ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: seed.tse_analytics.election_calendar
@@ -193,9 +193,9 @@ SELECT table_catalog, table_schema, table_name, table_type FROM information_sche
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "seed.tse_analytics.election_calendar", "profile_name": "tse_analytics", "target_name": "dev"} */
 truncate table "tse_analytics"."main"."election_calendar";
--- created_at: 2026-10-08T18:10:35.437637112+00:00
--- finished_at: 2026-10-08T18:10:35.499887040+00:00
--- elapsed: 62ms
+-- created_at: 2026-10-08T19:18:56.046125197+00:00
+-- finished_at: 2026-10-08T19:18:56.101788762+00:00
+-- elapsed: 55ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_candidate_votes
@@ -215,19 +215,9 @@ from read_parquet(
 )
   );
 ;
--- created_at: 2026-10-08T18:10:35.505810037+00:00
--- finished_at: 2026-10-08T18:10:35.512085328+00:00
--- elapsed: 6ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_candidate_votes
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."fact_candidate_votes" rename to "fact_candidate_votes__dbt_backup";
--- created_at: 2026-10-08T18:10:35.476156392+00:00
--- finished_at: 2026-10-08T18:10:35.520896252+00:00
--- elapsed: 44ms
+-- created_at: 2026-10-08T19:18:56.077743154+00:00
+-- finished_at: 2026-10-08T19:18:56.108910748+00:00
+-- elapsed: 31ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: seed.tse_analytics.election_calendar
@@ -236,18 +226,18 @@ alter view "tse_analytics"."main"."fact_candidate_votes" rename to "fact_candida
 
           COPY "tse_analytics"."main"."election_calendar" FROM '/home/pingu/github/experiments/data/tse-election-data/tse_dbt/seeds/election_calendar.csv' (FORMAT CSV, HEADER TRUE, DELIMITER ',')
         ;
--- created_at: 2026-10-08T18:10:35.516731430+00:00
--- finished_at: 2026-10-08T18:10:35.527021811+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:56.106286736+00:00
+-- finished_at: 2026-10-08T19:18:56.113612631+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_candidate_votes
 -- query_id: not available
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."fact_candidate_votes__dbt_tmp" rename to "fact_candidate_votes";
--- created_at: 2026-10-08T18:10:35.536664679+00:00
--- finished_at: 2026-10-08T18:10:35.545591295+00:00
+alter view "tse_analytics"."main"."fact_candidate_votes" rename to "fact_candidate_votes__dbt_backup";
+-- created_at: 2026-10-08T19:18:56.118829840+00:00
+-- finished_at: 2026-10-08T19:18:56.127194484+00:00
 -- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
@@ -255,12 +245,10 @@ alter view "tse_analytics"."main"."fact_candidate_votes__dbt_tmp" rename to "fac
 -- query_id: not available
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-      drop view if exists "tse_analytics"."main"."fact_candidate_votes__dbt_backup" cascade
-    ;
--- created_at: 2026-10-08T18:10:35.542593558+00:00
--- finished_at: 2026-10-08T18:10:35.559879606+00:00
--- elapsed: 17ms
+alter view "tse_analytics"."main"."fact_candidate_votes__dbt_tmp" rename to "fact_candidate_votes";
+-- created_at: 2026-10-08T19:18:56.126328885+00:00
+-- finished_at: 2026-10-08T19:18:56.135161456+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_normalize_municipality_code_examples
@@ -307,9 +295,21 @@ where actual_value is distinct from expected_value
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:35.573972405+00:00
--- finished_at: 2026-10-08T18:10:35.966178958+00:00
--- elapsed: 392ms
+-- created_at: 2026-10-08T19:18:56.133318289+00:00
+-- finished_at: 2026-10-08T19:18:56.143030497+00:00
+-- elapsed: 9ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_candidate_votes
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+      drop view if exists "tse_analytics"."main"."fact_candidate_votes__dbt_backup" cascade
+    ;
+-- created_at: 2026-10-08T19:18:56.157897773+00:00
+-- finished_at: 2026-10-08T19:18:56.467733633+00:00
+-- elapsed: 309ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_assets
@@ -384,9 +384,9 @@ select
 from src
   );
 ;
--- created_at: 2026-10-08T18:10:35.974368951+00:00
--- finished_at: 2026-10-08T18:10:35.983638834+00:00
--- elapsed: 9ms
+-- created_at: 2026-10-08T19:18:56.473571302+00:00
+-- finished_at: 2026-10-08T19:18:56.479755221+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_assets
@@ -394,9 +394,9 @@ from src
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidate_assets" rename to "bronze_candidate_assets__dbt_backup";
--- created_at: 2026-10-08T18:10:35.991193221+00:00
--- finished_at: 2026-10-08T18:10:36.000776078+00:00
--- elapsed: 9ms
+-- created_at: 2026-10-08T19:18:56.483652128+00:00
+-- finished_at: 2026-10-08T19:18:56.489723953+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_assets
@@ -404,9 +404,9 @@ alter view "tse_analytics"."main"."bronze_candidate_assets" rename to "bronze_ca
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidate_assets__dbt_tmp" rename to "bronze_candidate_assets";
--- created_at: 2026-10-08T18:10:36.009866176+00:00
--- finished_at: 2026-10-08T18:10:36.020009977+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:56.495744542+00:00
+-- finished_at: 2026-10-08T19:18:56.502126344+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_assets
@@ -416,9 +416,9 @@ alter view "tse_analytics"."main"."bronze_candidate_assets__dbt_tmp" rename to "
 
       drop view if exists "tse_analytics"."main"."bronze_candidate_assets__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:10:36.044218250+00:00
--- finished_at: 2026-10-08T18:10:36.304104877+00:00
--- elapsed: 259ms
+-- created_at: 2026-10-08T19:18:56.516530466+00:00
+-- finished_at: 2026-10-08T19:18:56.709483082+00:00
+-- elapsed: 192ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidates
@@ -521,8 +521,8 @@ end
 select * from renamed
   );
 ;
--- created_at: 2026-10-08T18:10:36.310622624+00:00
--- finished_at: 2026-10-08T18:10:36.319115884+00:00
+-- created_at: 2026-10-08T19:18:56.715998105+00:00
+-- finished_at: 2026-10-08T19:18:56.724350981+00:00
 -- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
@@ -531,9 +531,9 @@ select * from renamed
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidates", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidates" rename to "bronze_candidates__dbt_backup";
--- created_at: 2026-10-08T18:10:36.325118973+00:00
--- finished_at: 2026-10-08T18:10:36.334969272+00:00
--- elapsed: 9ms
+-- created_at: 2026-10-08T19:18:56.730256894+00:00
+-- finished_at: 2026-10-08T19:18:56.737682298+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidates
@@ -541,9 +541,9 @@ alter view "tse_analytics"."main"."bronze_candidates" rename to "bronze_candidat
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidates", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidates__dbt_tmp" rename to "bronze_candidates";
--- created_at: 2026-10-08T18:10:36.343354264+00:00
--- finished_at: 2026-10-08T18:10:36.350892205+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:18:56.744342695+00:00
+-- finished_at: 2026-10-08T19:18:56.750484498+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidates
@@ -553,9 +553,9 @@ alter view "tse_analytics"."main"."bronze_candidates__dbt_tmp" rename to "bronze
 
       drop view if exists "tse_analytics"."main"."bronze_candidates__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:10:36.370801883+00:00
--- finished_at: 2026-10-08T18:10:36.473181819+00:00
--- elapsed: 102ms
+-- created_at: 2026-10-08T19:18:56.770033655+00:00
+-- finished_at: 2026-10-08T19:18:56.851252613+00:00
+-- elapsed: 81ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -576,9 +576,9 @@ alter view "tse_analytics"."main"."bronze_candidates__dbt_tmp" rename to "bronze
             
         )
       ;
--- created_at: 2026-10-08T18:10:35.560666059+00:00
--- finished_at: 2026-10-08T18:10:36.546326761+00:00
--- elapsed: 985ms
+-- created_at: 2026-10-08T19:18:56.144562047+00:00
+-- finished_at: 2026-10-08T19:18:56.879153812+00:00
+-- elapsed: 734ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_electorate
@@ -670,9 +670,9 @@ end
 from src
   );
 ;
--- created_at: 2026-10-08T18:10:36.552750619+00:00
--- finished_at: 2026-10-08T18:10:36.562836828+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:56.884583462+00:00
+-- finished_at: 2026-10-08T19:18:56.892160942+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_electorate
@@ -680,9 +680,9 @@ from src
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_electorate", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_electorate" rename to "bronze_electorate__dbt_backup";
--- created_at: 2026-10-08T18:10:36.569283528+00:00
--- finished_at: 2026-10-08T18:10:36.579752467+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:56.898038525+00:00
+-- finished_at: 2026-10-08T19:18:56.905884563+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_electorate
@@ -690,9 +690,9 @@ alter view "tse_analytics"."main"."bronze_electorate" rename to "bronze_electora
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_electorate", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_electorate__dbt_tmp" rename to "bronze_electorate";
--- created_at: 2026-10-08T18:10:36.587303460+00:00
--- finished_at: 2026-10-08T18:10:36.596013189+00:00
--- elapsed: 8ms
+-- created_at: 2026-10-08T19:18:56.911514045+00:00
+-- finished_at: 2026-10-08T19:18:56.921958613+00:00
+-- elapsed: 10ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_electorate
@@ -702,9 +702,9 @@ alter view "tse_analytics"."main"."bronze_electorate__dbt_tmp" rename to "bronze
 
       drop view if exists "tse_analytics"."main"."bronze_electorate__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:10:36.613069307+00:00
--- finished_at: 2026-10-08T18:10:37.417678589+00:00
--- elapsed: 804ms
+-- created_at: 2026-10-08T19:18:56.938405171+00:00
+-- finished_at: 2026-10-08T19:18:57.468696980+00:00
+-- elapsed: 530ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_votes_raw
@@ -829,9 +829,9 @@ from typed
 
   );
 ;
--- created_at: 2026-10-08T18:10:37.423625072+00:00
--- finished_at: 2026-10-08T18:10:37.437902908+00:00
--- elapsed: 14ms
+-- created_at: 2026-10-08T19:18:57.473908193+00:00
+-- finished_at: 2026-10-08T19:18:57.497434821+00:00
+-- elapsed: 23ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_votes_raw
@@ -839,9 +839,9 @@ from typed
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidate_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidate_votes_raw" rename to "bronze_candidate_votes_raw__dbt_backup";
--- created_at: 2026-10-08T18:10:37.445222039+00:00
--- finished_at: 2026-10-08T18:10:37.455592994+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:18:57.501546916+00:00
+-- finished_at: 2026-10-08T19:18:57.509384832+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_votes_raw
@@ -849,9 +849,9 @@ alter view "tse_analytics"."main"."bronze_candidate_votes_raw" rename to "bronze
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_candidate_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."bronze_candidate_votes_raw__dbt_tmp" rename to "bronze_candidate_votes_raw";
--- created_at: 2026-10-08T18:10:37.463193739+00:00
--- finished_at: 2026-10-08T18:10:37.483599598+00:00
--- elapsed: 20ms
+-- created_at: 2026-10-08T19:18:57.517339803+00:00
+-- finished_at: 2026-10-08T19:18:57.525689812+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_candidate_votes_raw
@@ -861,9 +861,9 @@ alter view "tse_analytics"."main"."bronze_candidate_votes_raw__dbt_tmp" rename t
 
       drop view if exists "tse_analytics"."main"."bronze_candidate_votes_raw__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:10:36.480003670+00:00
--- finished_at: 2026-10-08T18:10:37.573612231+00:00
--- elapsed: 1.1s
+-- created_at: 2026-10-08T19:18:56.858491062+00:00
+-- finished_at: 2026-10-08T19:18:57.732087479+00:00
+-- elapsed: 873ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1009,9 +1009,9 @@ where election_year in (2026) and election_type in ('general')
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:10:37.577995293+00:00
--- finished_at: 2026-10-08T18:10:37.628370795+00:00
--- elapsed: 50ms
+-- created_at: 2026-10-08T19:18:57.736814581+00:00
+-- finished_at: 2026-10-08T19:18:57.793653629+00:00
+-- elapsed: 56ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1039,9 +1039,9 @@ where election_year in (2026) and election_type in ('general')
 
     
   ;
--- created_at: 2026-10-08T18:10:37.650212855+00:00
--- finished_at: 2026-10-08T18:10:37.713972549+00:00
--- elapsed: 63ms
+-- created_at: 2026-10-08T19:18:57.809060104+00:00
+-- finished_at: 2026-10-08T19:18:57.849500603+00:00
+-- elapsed: 40ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1054,9 +1054,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "election_year" cascade;
     alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "election_year__dbt_alter" to "election_year"
   ;
--- created_at: 2026-10-08T18:10:37.721967670+00:00
--- finished_at: 2026-10-08T18:10:37.777813961+00:00
--- elapsed: 55ms
+-- created_at: 2026-10-08T19:18:57.855930368+00:00
+-- finished_at: 2026-10-08T19:18:57.900658875+00:00
+-- elapsed: 44ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1069,24 +1069,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "round_number" cascade;
     alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "round_number__dbt_alter" to "round_number"
   ;
--- created_at: 2026-10-08T18:10:37.783428285+00:00
--- finished_at: 2026-10-08T18:10:37.830658974+00:00
--- elapsed: 47ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_party_votes_raw
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "generated_at__dbt_alter" datetime;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "generated_at__dbt_alter" = "generated_at";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "generated_at" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "generated_at__dbt_alter" to "generated_at"
-  ;
--- created_at: 2026-10-08T18:10:37.502281924+00:00
--- finished_at: 2026-10-08T18:10:37.831412740+00:00
--- elapsed: 329ms
+-- created_at: 2026-10-08T19:18:57.548939062+00:00
+-- finished_at: 2026-10-08T19:18:57.900856169+00:00
+-- elapsed: 351ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1269,9 +1254,9 @@ where _version_rank = 1
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:10:37.841834308+00:00
--- finished_at: 2026-10-08T18:10:37.864706723+00:00
--- elapsed: 22ms
+-- created_at: 2026-10-08T19:18:57.913244226+00:00
+-- finished_at: 2026-10-08T19:18:57.929093967+00:00
+-- elapsed: 15ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1299,9 +1284,9 @@ where _version_rank = 1
 
     
   ;
--- created_at: 2026-10-08T18:10:37.839636655+00:00
--- finished_at: 2026-10-08T18:10:37.894470586+00:00
--- elapsed: 54ms
+-- created_at: 2026-10-08T19:18:57.910329928+00:00
+-- finished_at: 2026-10-08T19:18:57.959182117+00:00
+-- elapsed: 48ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1309,29 +1294,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "zone__dbt_alter" integer;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "zone__dbt_alter" = "zone";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "zone" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "zone__dbt_alter" to "zone"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "generated_at__dbt_alter" datetime;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "generated_at__dbt_alter" = "generated_at";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "generated_at" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:10:37.901315792+00:00
--- finished_at: 2026-10-08T18:10:37.972659179+00:00
--- elapsed: 71ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_party_votes_raw
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "is_transit_vote__dbt_alter" boolean;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "is_transit_vote__dbt_alter" = "is_transit_vote";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "is_transit_vote" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
-  ;
--- created_at: 2026-10-08T18:10:37.879850836+00:00
--- finished_at: 2026-10-08T18:10:38.007059340+00:00
--- elapsed: 127ms
+-- created_at: 2026-10-08T19:18:57.947247419+00:00
+-- finished_at: 2026-10-08T19:18:58.012991708+00:00
+-- elapsed: 65ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1344,9 +1314,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "election_year" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "election_year__dbt_alter" to "election_year"
   ;
--- created_at: 2026-10-08T18:10:37.980469741+00:00
--- finished_at: 2026-10-08T18:10:38.066896870+00:00
--- elapsed: 86ms
+-- created_at: 2026-10-08T19:18:57.965313035+00:00
+-- finished_at: 2026-10-08T19:18:58.024475308+00:00
+-- elapsed: 59ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1354,14 +1324,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "legend_valid_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "legend_valid_votes__dbt_alter" = "legend_valid_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "legend_valid_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "zone__dbt_alter" integer;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "zone__dbt_alter" = "zone";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "zone" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "zone__dbt_alter" to "zone"
   ;
--- created_at: 2026-10-08T18:10:38.018930062+00:00
--- finished_at: 2026-10-08T18:10:38.108142515+00:00
--- elapsed: 89ms
+-- created_at: 2026-10-08T19:18:58.022817732+00:00
+-- finished_at: 2026-10-08T19:18:58.070961260+00:00
+-- elapsed: 48ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1374,9 +1344,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "round_number" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "round_number__dbt_alter" to "round_number"
   ;
--- created_at: 2026-10-08T18:10:38.072526329+00:00
--- finished_at: 2026-10-08T18:10:38.153318529+00:00
--- elapsed: 80ms
+-- created_at: 2026-10-08T19:18:58.030512848+00:00
+-- finished_at: 2026-10-08T19:18:58.085333772+00:00
+-- elapsed: 54ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1384,14 +1354,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_converted_to_legend_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_converted_to_legend_votes__dbt_alter" = "nominal_converted_to_legend_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_converted_to_legend_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_converted_to_legend_votes__dbt_alter" to "nominal_converted_to_legend_votes"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "is_transit_vote__dbt_alter" boolean;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "is_transit_vote__dbt_alter" = "is_transit_vote";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "is_transit_vote" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
   ;
--- created_at: 2026-10-08T18:10:38.120131921+00:00
--- finished_at: 2026-10-08T18:10:38.440754967+00:00
--- elapsed: 320ms
+-- created_at: 2026-10-08T19:18:58.081626139+00:00
+-- finished_at: 2026-10-08T19:18:58.138677498+00:00
+-- elapsed: 57ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1404,9 +1374,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "generated_at" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:10:38.161042606+00:00
--- finished_at: 2026-10-08T18:10:38.668825323+00:00
--- elapsed: 507ms
+-- created_at: 2026-10-08T19:18:58.090997858+00:00
+-- finished_at: 2026-10-08T19:18:58.151511213+00:00
+-- elapsed: 60ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1414,29 +1384,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "total_legend_valid_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "total_legend_valid_votes__dbt_alter" = "total_legend_valid_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "total_legend_valid_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "legend_valid_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "legend_valid_votes__dbt_alter" = "legend_valid_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "legend_valid_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:38.673411480+00:00
--- finished_at: 2026-10-08T18:10:39.875998589+00:00
--- elapsed: 1.2s
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.bronze_party_votes_raw
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_valid_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_valid_votes__dbt_alter" = "nominal_valid_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_valid_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
-  ;
--- created_at: 2026-10-08T18:10:38.450211124+00:00
--- finished_at: 2026-10-08T18:10:40.044591055+00:00
--- elapsed: 1.6s
+-- created_at: 2026-10-08T19:18:58.151423675+00:00
+-- finished_at: 2026-10-08T19:18:58.228794855+00:00
+-- elapsed: 77ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1449,9 +1404,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "zone" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "zone__dbt_alter" to "zone"
   ;
--- created_at: 2026-10-08T18:10:39.879931280+00:00
--- finished_at: 2026-10-08T18:10:40.118799375+00:00
--- elapsed: 238ms
+-- created_at: 2026-10-08T19:18:58.158158383+00:00
+-- finished_at: 2026-10-08T19:18:58.235832257+00:00
+-- elapsed: 77ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1459,14 +1414,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "legend_annulled_subjudice_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "legend_annulled_subjudice_votes__dbt_alter" = "legend_annulled_subjudice_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "legend_annulled_subjudice_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_converted_to_legend_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_converted_to_legend_votes__dbt_alter" = "nominal_converted_to_legend_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_converted_to_legend_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_converted_to_legend_votes__dbt_alter" to "nominal_converted_to_legend_votes"
   ;
--- created_at: 2026-10-08T18:10:40.051686843+00:00
--- finished_at: 2026-10-08T18:10:40.128417979+00:00
--- elapsed: 76ms
+-- created_at: 2026-10-08T19:18:58.240142492+00:00
+-- finished_at: 2026-10-08T19:18:58.288769540+00:00
+-- elapsed: 48ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1479,9 +1434,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "is_transit_vote" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
   ;
--- created_at: 2026-10-08T18:10:40.121485420+00:00
--- finished_at: 2026-10-08T18:10:40.225729254+00:00
--- elapsed: 104ms
+-- created_at: 2026-10-08T19:18:58.241524281+00:00
+-- finished_at: 2026-10-08T19:18:58.305656351+00:00
+-- elapsed: 64ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -1489,14 +1444,14 @@ where _version_rank = 1
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_annulled_subjudice_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_annulled_subjudice_votes__dbt_alter" = "nominal_annulled_subjudice_votes";
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_annulled_subjudice_votes" cascade;
-    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "total_legend_valid_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "total_legend_valid_votes__dbt_alter" = "total_legend_valid_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "total_legend_valid_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:40.132784730+00:00
--- finished_at: 2026-10-08T18:10:40.254668382+00:00
--- elapsed: 121ms
+-- created_at: 2026-10-08T19:18:58.298166873+00:00
+-- finished_at: 2026-10-08T19:18:58.363322731+00:00
+-- elapsed: 65ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1509,9 +1464,24 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "eligible_voters" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "eligible_voters__dbt_alter" to "eligible_voters"
   ;
--- created_at: 2026-10-08T18:10:40.258911067+00:00
--- finished_at: 2026-10-08T18:10:40.303680149+00:00
--- elapsed: 44ms
+-- created_at: 2026-10-08T19:18:58.311662407+00:00
+-- finished_at: 2026-10-08T19:18:58.377081090+00:00
+-- elapsed: 65ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_party_votes_raw
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_valid_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_valid_votes__dbt_alter" = "nominal_valid_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_valid_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
+  ;
+-- created_at: 2026-10-08T19:18:58.374101332+00:00
+-- finished_at: 2026-10-08T19:18:58.433148797+00:00
+-- elapsed: 59ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1524,9 +1494,24 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "main_sections" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "main_sections__dbt_alter" to "main_sections"
   ;
--- created_at: 2026-10-08T18:10:40.308329804+00:00
--- finished_at: 2026-10-08T18:10:40.359138566+00:00
--- elapsed: 50ms
+-- created_at: 2026-10-08T19:18:58.382354654+00:00
+-- finished_at: 2026-10-08T19:18:58.456590679+00:00
+-- elapsed: 74ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_party_votes_raw
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "legend_annulled_subjudice_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "legend_annulled_subjudice_votes__dbt_alter" = "legend_annulled_subjudice_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "legend_annulled_subjudice_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
+  ;
+-- created_at: 2026-10-08T19:18:58.459648561+00:00
+-- finished_at: 2026-10-08T19:18:58.570411949+00:00
+-- elapsed: 110ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1539,9 +1524,24 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "aggregated_sections" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "aggregated_sections__dbt_alter" to "aggregated_sections"
   ;
--- created_at: 2026-10-08T18:10:40.363443889+00:00
--- finished_at: 2026-10-08T18:10:40.407821524+00:00
--- elapsed: 44ms
+-- created_at: 2026-10-08T19:18:58.473705555+00:00
+-- finished_at: 2026-10-08T19:18:58.590605599+00:00
+-- elapsed: 116ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.bronze_party_votes_raw
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.bronze_party_votes_raw", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" add column "nominal_annulled_subjudice_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."bronze_party_votes_raw" set "nominal_annulled_subjudice_votes__dbt_alter" = "nominal_annulled_subjudice_votes";
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" drop column "nominal_annulled_subjudice_votes" cascade;
+    alter table "tse_analytics"."main"."bronze_party_votes_raw" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
+  ;
+-- created_at: 2026-10-08T19:18:58.595043359+00:00
+-- finished_at: 2026-10-08T19:18:58.655802053+00:00
+-- elapsed: 60ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1554,9 +1554,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "uninstalled_sections" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "uninstalled_sections__dbt_alter" to "uninstalled_sections"
   ;
--- created_at: 2026-10-08T18:10:40.413127931+00:00
--- finished_at: 2026-10-08T18:10:40.470710592+00:00
--- elapsed: 57ms
+-- created_at: 2026-10-08T19:18:58.671082215+00:00
+-- finished_at: 2026-10-08T19:18:58.770959005+00:00
+-- elapsed: 99ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1569,9 +1569,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "total_sections" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "total_sections__dbt_alter" to "total_sections"
   ;
--- created_at: 2026-10-08T18:10:40.475228812+00:00
--- finished_at: 2026-10-08T18:10:40.523418626+00:00
--- elapsed: 48ms
+-- created_at: 2026-10-08T19:18:58.797632569+00:00
+-- finished_at: 2026-10-08T19:18:58.873105196+00:00
+-- elapsed: 75ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1584,9 +1584,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "turnout" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "turnout__dbt_alter" to "turnout"
   ;
--- created_at: 2026-10-08T18:10:40.528671778+00:00
--- finished_at: 2026-10-08T18:10:40.578176593+00:00
--- elapsed: 49ms
+-- created_at: 2026-10-08T19:18:58.909495485+00:00
+-- finished_at: 2026-10-08T19:18:59.044573683+00:00
+-- elapsed: 135ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1599,9 +1599,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "voters_uninstalled_sections" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "voters_uninstalled_sections__dbt_alter" to "voters_uninstalled_sections"
   ;
--- created_at: 2026-10-08T18:10:40.582702374+00:00
--- finished_at: 2026-10-08T18:10:40.647489943+00:00
--- elapsed: 64ms
+-- created_at: 2026-10-08T19:18:59.097109651+00:00
+-- finished_at: 2026-10-08T19:18:59.231881455+00:00
+-- elapsed: 134ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1614,9 +1614,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "abstentions" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "abstentions__dbt_alter" to "abstentions"
   ;
--- created_at: 2026-10-08T18:10:40.655045362+00:00
--- finished_at: 2026-10-08T18:10:40.730563016+00:00
--- elapsed: 75ms
+-- created_at: 2026-10-08T19:18:59.270548516+00:00
+-- finished_at: 2026-10-08T19:18:59.443498397+00:00
+-- elapsed: 172ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1629,9 +1629,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "total_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "total_votes__dbt_alter" to "total_votes"
   ;
--- created_at: 2026-10-08T18:10:40.736686380+00:00
--- finished_at: 2026-10-08T18:10:40.841817467+00:00
--- elapsed: 105ms
+-- created_at: 2026-10-08T19:18:59.482926816+00:00
+-- finished_at: 2026-10-08T19:18:59.660837126+00:00
+-- elapsed: 177ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1644,9 +1644,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "competing_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "competing_votes__dbt_alter" to "competing_votes"
   ;
--- created_at: 2026-10-08T18:10:40.847324627+00:00
--- finished_at: 2026-10-08T18:10:40.947448018+00:00
--- elapsed: 100ms
+-- created_at: 2026-10-08T19:18:59.685350360+00:00
+-- finished_at: 2026-10-08T19:18:59.773159749+00:00
+-- elapsed: 87ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1659,9 +1659,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "valid_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "valid_votes__dbt_alter" to "valid_votes"
   ;
--- created_at: 2026-10-08T18:10:40.953188619+00:00
--- finished_at: 2026-10-08T18:10:41.027967381+00:00
--- elapsed: 74ms
+-- created_at: 2026-10-08T19:18:59.791278880+00:00
+-- finished_at: 2026-10-08T19:18:59.851696032+00:00
+-- elapsed: 60ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1674,9 +1674,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "nominal_valid_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:41.033927433+00:00
--- finished_at: 2026-10-08T18:10:41.080851337+00:00
--- elapsed: 46ms
+-- created_at: 2026-10-08T19:18:59.865131199+00:00
+-- finished_at: 2026-10-08T19:18:59.916468606+00:00
+-- elapsed: 51ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1689,9 +1689,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "total_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:41.087472072+00:00
--- finished_at: 2026-10-08T18:10:41.142165983+00:00
--- elapsed: 54ms
+-- created_at: 2026-10-08T19:18:59.927756821+00:00
+-- finished_at: 2026-10-08T19:18:59.998887012+00:00
+-- elapsed: 71ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1704,9 +1704,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:41.149880828+00:00
--- finished_at: 2026-10-08T18:10:41.223798335+00:00
--- elapsed: 73ms
+-- created_at: 2026-10-08T19:19:00.011410358+00:00
+-- finished_at: 2026-10-08T19:19:00.062925643+00:00
+-- elapsed: 51ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1719,9 +1719,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "nominal_converted_to_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "nominal_converted_to_legend_valid_votes__dbt_alter" to "nominal_converted_to_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:10:41.230278660+00:00
--- finished_at: 2026-10-08T18:10:41.299338816+00:00
--- elapsed: 69ms
+-- created_at: 2026-10-08T19:19:00.078680968+00:00
+-- finished_at: 2026-10-08T19:19:00.129887509+00:00
+-- elapsed: 51ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1734,9 +1734,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "annulled_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "annulled_votes__dbt_alter" to "annulled_votes"
   ;
--- created_at: 2026-10-08T18:10:41.305680896+00:00
--- finished_at: 2026-10-08T18:10:41.368566337+00:00
--- elapsed: 62ms
+-- created_at: 2026-10-08T19:19:00.141962693+00:00
+-- finished_at: 2026-10-08T19:19:00.215278357+00:00
+-- elapsed: 73ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1749,9 +1749,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "nominal_annulled_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "nominal_annulled_votes__dbt_alter" to "nominal_annulled_votes"
   ;
--- created_at: 2026-10-08T18:10:41.376114679+00:00
--- finished_at: 2026-10-08T18:10:41.430915905+00:00
--- elapsed: 54ms
+-- created_at: 2026-10-08T19:19:00.237859261+00:00
+-- finished_at: 2026-10-08T19:19:00.309348271+00:00
+-- elapsed: 71ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1764,9 +1764,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "legend_annulled_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "legend_annulled_votes__dbt_alter" to "legend_annulled_votes"
   ;
--- created_at: 2026-10-08T18:10:41.439259115+00:00
--- finished_at: 2026-10-08T18:10:41.493695837+00:00
--- elapsed: 54ms
+-- created_at: 2026-10-08T19:19:00.328624253+00:00
+-- finished_at: 2026-10-08T19:19:00.396489832+00:00
+-- elapsed: 67ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1779,9 +1779,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "annulled_subjudice_votes__dbt_alter" to "annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:10:41.500571370+00:00
--- finished_at: 2026-10-08T18:10:41.570919597+00:00
--- elapsed: 70ms
+-- created_at: 2026-10-08T19:19:00.414503266+00:00
+-- finished_at: 2026-10-08T19:19:00.484415785+00:00
+-- elapsed: 69ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1794,8 +1794,8 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "nominal_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:10:41.577951009+00:00
--- finished_at: 2026-10-08T18:10:41.647517975+00:00
+-- created_at: 2026-10-08T19:19:00.498808077+00:00
+-- finished_at: 2026-10-08T19:19:00.568517872+00:00
 -- elapsed: 69ms
 -- outcome: success
 -- dialect: duckdb
@@ -1809,9 +1809,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "legend_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:10:41.655621231+00:00
--- finished_at: 2026-10-08T18:10:41.734509512+00:00
--- elapsed: 78ms
+-- created_at: 2026-10-08T19:19:00.581422455+00:00
+-- finished_at: 2026-10-08T19:19:00.633055735+00:00
+-- elapsed: 51ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1824,9 +1824,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "blank_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "blank_votes__dbt_alter" to "blank_votes"
   ;
--- created_at: 2026-10-08T18:10:41.743513802+00:00
--- finished_at: 2026-10-08T18:10:41.802396821+00:00
--- elapsed: 58ms
+-- created_at: 2026-10-08T19:19:00.646193404+00:00
+-- finished_at: 2026-10-08T19:19:00.707507387+00:00
+-- elapsed: 61ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1839,9 +1839,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "total_null_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "total_null_votes__dbt_alter" to "total_null_votes"
   ;
--- created_at: 2026-10-08T18:10:41.810230304+00:00
--- finished_at: 2026-10-08T18:10:41.870926570+00:00
--- elapsed: 60ms
+-- created_at: 2026-10-08T19:19:00.718345964+00:00
+-- finished_at: 2026-10-08T19:19:00.802169417+00:00
+-- elapsed: 83ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1854,9 +1854,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "null_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "null_votes__dbt_alter" to "null_votes"
   ;
--- created_at: 2026-10-08T18:10:41.882066853+00:00
--- finished_at: 2026-10-08T18:10:41.955939760+00:00
--- elapsed: 73ms
+-- created_at: 2026-10-08T19:19:00.811776517+00:00
+-- finished_at: 2026-10-08T19:19:00.864409808+00:00
+-- elapsed: 52ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1869,9 +1869,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "technical_null_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "technical_null_votes__dbt_alter" to "technical_null_votes"
   ;
--- created_at: 2026-10-08T18:10:41.964636326+00:00
--- finished_at: 2026-10-08T18:10:42.051338908+00:00
--- elapsed: 86ms
+-- created_at: 2026-10-08T19:19:00.875161105+00:00
+-- finished_at: 2026-10-08T19:19:00.923048494+00:00
+-- elapsed: 47ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1884,9 +1884,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "separately_counted_annulled_votes" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "separately_counted_annulled_votes__dbt_alter" to "separately_counted_annulled_votes"
   ;
--- created_at: 2026-10-08T18:10:42.063939226+00:00
--- finished_at: 2026-10-08T18:10:42.144790813+00:00
--- elapsed: 80ms
+-- created_at: 2026-10-08T19:19:00.935850180+00:00
+-- finished_at: 2026-10-08T19:19:00.995216773+00:00
+-- elapsed: 59ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1899,9 +1899,9 @@ where _version_rank = 1
     alter table "tse_analytics"."main"."bronze_tally_munzona" drop column "last_totalization_at" cascade;
     alter table "tse_analytics"."main"."bronze_tally_munzona" rename column "last_totalization_at__dbt_alter" to "last_totalization_at"
   ;
--- created_at: 2026-10-08T18:10:42.188933267+00:00
--- finished_at: 2026-10-08T18:10:44.660913069+00:00
--- elapsed: 2.5s
+-- created_at: 2026-10-08T19:19:01.034423591+00:00
+-- finished_at: 2026-10-08T19:19:02.362692958+00:00
+-- elapsed: 1.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_tally_munzona
@@ -1913,7 +1913,7 @@ where _version_rank = 1
     
     
     create temporary table
-      "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a"
+      "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be"
   
     as (
       
@@ -2094,34 +2094,34 @@ where _version_rank = 1
 
         
             delete from "tse_analytics"."main"."bronze_tally_munzona" as DBT_INCREMENTAL_TARGET
-            using "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a"
+            using "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be"
             where (
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".uf = DBT_INCREMENTAL_TARGET.uf
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".zone = DBT_INCREMENTAL_TARGET.zone
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -2132,46 +2132,12 @@ where _version_rank = 1
     insert into "tse_analytics"."main"."bronze_tally_munzona" ("election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "main_sections", "aggregated_sections", "uninstalled_sections", "total_sections", "turnout", "voters_uninstalled_sections", "abstentions", "total_votes", "competing_votes", "valid_votes", "nominal_valid_votes", "total_legend_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_valid_votes", "annulled_votes", "nominal_annulled_votes", "legend_annulled_votes", "annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "blank_votes", "total_null_votes", "null_votes", "technical_null_votes", "separately_counted_annulled_votes", "last_totalization_at", "source_file")
     (
         select "election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "main_sections", "aggregated_sections", "uninstalled_sections", "total_sections", "turnout", "voters_uninstalled_sections", "abstentions", "total_votes", "competing_votes", "valid_votes", "nominal_valid_votes", "total_legend_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_valid_votes", "annulled_votes", "nominal_annulled_votes", "legend_annulled_votes", "annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "blank_votes", "total_null_votes", "null_votes", "technical_null_votes", "separately_counted_annulled_votes", "last_totalization_at", "source_file"
-        from "bronze_tally_munzona__dbt_tmp_f4037138_9ef0_4f4a_8a83_d8eefd2f427a"
+        from "bronze_tally_munzona__dbt_tmp_f7afb445_935b_40e3_9558_d1f6762d77be"
     )
   ;
--- created_at: 2026-10-08T18:10:44.699437615+00:00
--- finished_at: 2026-10-08T18:10:44.703527229+00:00
--- elapsed: 4ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_election_calendar_election_year.02aac0fd03
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_election_calendar_election_year.02aac0fd03", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_year
-from "tse_analytics"."main"."election_calendar"
-where election_year is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.722151390+00:00
--- finished_at: 2026-10-08T18:10:44.727009002+00:00
--- elapsed: 4ms
+-- created_at: 2026-10-08T19:19:02.384503297+00:00
+-- finished_at: 2026-10-08T19:19:02.392671023+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_election_calendar_election_scope.6bc74c69c8
@@ -2203,9 +2169,43 @@ where election_scope is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.747807182+00:00
--- finished_at: 2026-10-08T18:10:44.752344892+00:00
--- elapsed: 4ms
+-- created_at: 2026-10-08T19:19:02.401434041+00:00
+-- finished_at: 2026-10-08T19:19:02.403495199+00:00
+-- elapsed: 2ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_election_calendar_election_year.02aac0fd03
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_election_calendar_election_year.02aac0fd03", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."election_calendar"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:02.413865201+00:00
+-- finished_at: 2026-10-08T19:19:02.416844531+00:00
+-- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_election_calendar_election_type.af3ca8570a
@@ -2237,9 +2237,9 @@ where election_type is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.782236303+00:00
--- finished_at: 2026-10-08T18:10:44.792591438+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:19:02.428288935+00:00
+-- finished_at: 2026-10-08T19:19:02.432476793+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.accepted_values_election_calendar_election_type__general__municipal.dcfd7d280f
@@ -2282,9 +2282,9 @@ where value_field not in (
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.832869686+00:00
--- finished_at: 2026-10-08T18:10:44.839981374+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:19:02.442031541+00:00
+-- finished_at: 2026-10-08T19:19:02.445523565+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.accepted_values_election_calendar_election_scope__federal_state__municipal.ecdad16a31
@@ -2327,9 +2327,9 @@ where value_field not in (
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.868454001+00:00
--- finished_at: 2026-10-08T18:10:44.881933116+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:19:02.454010193+00:00
+-- finished_at: 2026-10-08T19:19:02.461566153+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_election_calendar_election_year__election_type.cd859d6ff1
@@ -2370,77 +2370,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:44.926917974+00:00
--- finished_at: 2026-10-08T18:10:45.099379485+00:00
--- elapsed: 172ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_year.327834c39b
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_year.327834c39b", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_year
-from "tse_analytics"."main"."fact_candidate_votes"
-where election_year is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.126739355+00:00
--- finished_at: 2026-10-08T18:10:45.241151418+00:00
--- elapsed: 114ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_round_number.16d23c0f0c
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_round_number.16d23c0f0c", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select round_number
-from "tse_analytics"."main"."fact_candidate_votes"
-where round_number is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.260256811+00:00
--- finished_at: 2026-10-08T18:10:45.369455639+00:00
--- elapsed: 109ms
+-- created_at: 2026-10-08T19:19:02.470966819+00:00
+-- finished_at: 2026-10-08T19:19:02.535376186+00:00
+-- elapsed: 64ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_id.4ca494eb67
@@ -2472,170 +2404,9 @@ where election_id is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.390025529+00:00
--- finished_at: 2026-10-08T18:10:45.486945611+00:00
--- elapsed: 96ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_nonnegative_candidate_votes
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."fact_candidate_votes"
-where nominal_votes < 0
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.513546386+00:00
--- finished_at: 2026-10-08T18:10:45.622596543+00:00
--- elapsed: 109ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_nominal_votes.3a44b55974
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_nominal_votes.3a44b55974", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select nominal_votes
-from "tse_analytics"."main"."fact_candidate_votes"
-where nominal_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.639258289+00:00
--- finished_at: 2026-10-08T18:10:45.761682091+00:00
--- elapsed: 122ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_code.b2bf8f6b82
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_code.b2bf8f6b82", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_code
-from "tse_analytics"."main"."fact_candidate_votes"
-where election_code is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.774277134+00:00
--- finished_at: 2026-10-08T18:10:45.865769394+00:00
--- elapsed: 91ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_candidate_id.3747010aa1
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_candidate_id.3747010aa1", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select candidate_id
-from "tse_analytics"."main"."fact_candidate_votes"
-where candidate_id is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.882544985+00:00
--- finished_at: 2026-10-08T18:10:45.947330037+00:00
--- elapsed: 64ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_type.3e7e08b6c8
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_type.3e7e08b6c8", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_type
-from "tse_analytics"."main"."fact_candidate_votes"
-where election_type is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:40.234135908+00:00
--- finished_at: 2026-10-08T18:11:00.926887052+00:00
--- elapsed: 20.7s
+-- created_at: 2026-10-08T19:18:58.616653547+00:00
+-- finished_at: 2026-10-08T19:19:16.083740826+00:00
+-- elapsed: 17.5s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.bronze_party_votes_raw
@@ -2647,7 +2418,7 @@ where election_type is null
     
     
     create temporary table
-      "bronze_party_votes_raw__dbt_tmp_7da37efd_6ad4_4071_b5c8_1f3927fa8fb6"
+      "bronze_party_votes_raw__dbt_tmp_a944d3a9_a06a_41bf_8bcf_df7dc945f019"
   
     as (
       
@@ -2791,14 +2562,175 @@ where election_year in (2026) and election_type in ('general')
 insert into "tse_analytics"."main"."bronze_party_votes_raw" ("election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_group_type", "party_number", "party", "party_name", "federation_number", "federation_name", "federation", "federation_composition", "coalition_id", "coalition_name", "coalition_composition", "is_transit_vote", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_valid_votes", "legend_annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "source_file")
     (
         select "election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_group_type", "party_number", "party", "party_name", "federation_number", "federation_name", "federation", "federation_composition", "coalition_id", "coalition_name", "coalition_composition", "is_transit_vote", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_valid_votes", "legend_annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "source_file"
-        from "bronze_party_votes_raw__dbt_tmp_7da37efd_6ad4_4071_b5c8_1f3927fa8fb6"
+        from "bronze_party_votes_raw__dbt_tmp_a944d3a9_a06a_41bf_8bcf_df7dc945f019"
     )
 
 
   ;
--- created_at: 2026-10-08T18:11:01.360508379+00:00
--- finished_at: 2026-10-08T18:11:15.439747078+00:00
--- elapsed: 14.1s
+-- created_at: 2026-10-08T19:19:16.169208946+00:00
+-- finished_at: 2026-10-08T19:19:16.236980854+00:00
+-- elapsed: 67ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_year.327834c39b
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_year.327834c39b", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."fact_candidate_votes"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:16.248832134+00:00
+-- finished_at: 2026-10-08T19:19:16.301334210+00:00
+-- elapsed: 52ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_code.b2bf8f6b82
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_code.b2bf8f6b82", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_code
+from "tse_analytics"."main"."fact_candidate_votes"
+where election_code is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:16.313031304+00:00
+-- finished_at: 2026-10-08T19:19:16.378849685+00:00
+-- elapsed: 65ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_nonnegative_candidate_votes
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."fact_candidate_votes"
+where nominal_votes < 0
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:16.391231332+00:00
+-- finished_at: 2026-10-08T19:19:16.451623191+00:00
+-- elapsed: 60ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_candidate_id.3747010aa1
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_candidate_id.3747010aa1", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select candidate_id
+from "tse_analytics"."main"."fact_candidate_votes"
+where candidate_id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:16.462575265+00:00
+-- finished_at: 2026-10-08T19:19:16.516912746+00:00
+-- elapsed: 54ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_round_number.16d23c0f0c
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_round_number.16d23c0f0c", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select round_number
+from "tse_analytics"."main"."fact_candidate_votes"
+where round_number is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:16.527351660+00:00
+-- finished_at: 2026-10-08T19:19:22.512067310+00:00
+-- elapsed: 6.0s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_fact_candidate_votes_municipality_code_canonical
@@ -2824,9 +2756,77 @@ limit 1
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:15.451663849+00:00
--- finished_at: 2026-10-08T18:11:16.407937685+00:00
--- elapsed: 956ms
+-- created_at: 2026-10-08T19:19:22.522561726+00:00
+-- finished_at: 2026-10-08T19:19:22.613791084+00:00
+-- elapsed: 91ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_election_type.3e7e08b6c8
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_election_type.3e7e08b6c8", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_type
+from "tse_analytics"."main"."fact_candidate_votes"
+where election_type is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:22.626060883+00:00
+-- finished_at: 2026-10-08T19:19:22.770033816+00:00
+-- elapsed: 143ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_candidate_votes_nominal_votes.3a44b55974
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_candidate_votes_nominal_votes.3a44b55974", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select nominal_votes
+from "tse_analytics"."main"."fact_candidate_votes"
+where nominal_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:22.781886253+00:00
+-- finished_at: 2026-10-08T19:19:24.109574243+00:00
+-- elapsed: 1.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_candidate_votes_cycle_scope
@@ -2851,9 +2851,9 @@ where
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:16.446972735+00:00
--- finished_at: 2026-10-08T18:11:17.469345218+00:00
--- elapsed: 1.0s
+-- created_at: 2026-10-08T19:19:24.125673919+00:00
+-- finished_at: 2026-10-08T19:19:25.927711572+00:00
+-- elapsed: 1.8s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_candidate_assets_election_year.858bb93deb
@@ -2885,43 +2885,9 @@ where election_year is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:17.480789339+00:00
--- finished_at: 2026-10-08T18:11:18.248537810+00:00
--- elapsed: 767ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidate_assets_candidate_id.924275fa98
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidate_assets_candidate_id.924275fa98", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select candidate_id
-from "tse_analytics"."main"."bronze_candidate_assets"
-where candidate_id is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:18.259719125+00:00
--- finished_at: 2026-10-08T18:11:19.005316287+00:00
--- elapsed: 745ms
+-- created_at: 2026-10-08T19:19:25.949244863+00:00
+-- finished_at: 2026-10-08T19:19:27.315321316+00:00
+-- elapsed: 1.4s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_candidate_assets_election_type.b76d8a86d3
@@ -2953,303 +2919,15 @@ where election_type is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:19.016450712+00:00
--- finished_at: 2026-10-08T18:11:19.700311423+00:00
--- elapsed: 683ms
+-- created_at: 2026-10-08T19:19:27.333016838+00:00
+-- finished_at: 2026-10-08T19:19:28.872268600+00:00
+-- elapsed: 1.5s
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_election_type.1eb9b3e5ac
+-- node_id: test.tse_analytics.not_null_bronze_candidate_assets_candidate_id.924275fa98
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_type.1eb9b3e5ac", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_type
-from "tse_analytics"."main"."bronze_candidates"
-where election_type is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:19.713718796+00:00
--- finished_at: 2026-10-08T18:11:20.217810802+00:00
--- elapsed: 504ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_office_scope.197db8c6ce
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_office_scope.197db8c6ce", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select office_scope
-from "tse_analytics"."main"."bronze_candidates"
-where office_scope is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:20.229289161+00:00
--- finished_at: 2026-10-08T18:11:20.842995352+00:00
--- elapsed: 613ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_election_scope_matches_type
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_election_scope_matches_type", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."bronze_candidates"
-where election_scope <> case
-    when election_type = 'general' then 'federal_state'
-    when election_type = 'municipal' then 'municipal'
-end
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:20.861117036+00:00
--- finished_at: 2026-10-08T18:11:21.538134541+00:00
--- elapsed: 677ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.accepted_values_bronze_candidates_election_scope__federal_state__municipal.9a5ced23eb
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.accepted_values_bronze_candidates_election_scope__federal_state__municipal.9a5ced23eb", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-with all_values as (
-
-    select
-        election_scope as value_field,
-        count(*) as n_records
-
-    from "tse_analytics"."main"."bronze_candidates"
-    group by election_scope
-
-)
-
-select *
-from all_values
-where value_field not in (
-    'federal_state','municipal'
-)
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:21.548733395+00:00
--- finished_at: 2026-10-08T18:11:22.223185863+00:00
--- elapsed: 674ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_election_year.8a99824dac
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_year.8a99824dac", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_year
-from "tse_analytics"."main"."bronze_candidates"
-where election_year is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:22.231731537+00:00
--- finished_at: 2026-10-08T18:11:22.889110629+00:00
--- elapsed: 657ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_election_scope.c20470e33a
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_scope.c20470e33a", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_scope
-from "tse_analytics"."main"."bronze_candidates"
-where election_scope is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:22.901789914+00:00
--- finished_at: 2026-10-08T18:11:23.843581060+00:00
--- elapsed: 941ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_candidate_name.e2ed96fd17
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_candidate_name.e2ed96fd17", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select candidate_name
-from "tse_analytics"."main"."bronze_candidates"
-where candidate_name is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:23.855140615+00:00
--- finished_at: 2026-10-08T18:11:24.810060953+00:00
--- elapsed: 954ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.accepted_values_bronze_candidates_office_scope__federal__state__municipal__other.1593038c12
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.accepted_values_bronze_candidates_office_scope__federal__state__municipal__other.1593038c12", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-with all_values as (
-
-    select
-        office_scope as value_field,
-        count(*) as n_records
-
-    from "tse_analytics"."main"."bronze_candidates"
-    group by office_scope
-
-)
-
-select *
-from all_values
-where value_field not in (
-    'federal','state','municipal','other'
-)
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:24.824705824+00:00
--- finished_at: 2026-10-08T18:11:25.423156807+00:00
--- elapsed: 598ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_candidates_candidate_id.39929d3582
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_candidate_id.39929d3582", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidate_assets_candidate_id.924275fa98", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -3266,7 +2944,7 @@ where value_field not in (
 
 
 select candidate_id
-from "tse_analytics"."main"."bronze_candidates"
+from "tse_analytics"."main"."bronze_candidate_assets"
 where candidate_id is null
 
 
@@ -3275,9 +2953,9 @@ where candidate_id is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:25.435296013+00:00
--- finished_at: 2026-10-08T18:11:26.220057395+00:00
--- elapsed: 784ms
+-- created_at: 2026-10-08T19:19:28.896376856+00:00
+-- finished_at: 2026-10-08T19:19:30.378899681+00:00
+-- elapsed: 1.5s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_bronze_candidates_election_year__election_type__election_code__candidate_id.72aa2ca911
@@ -3318,9 +2996,43 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:26.232396033+00:00
--- finished_at: 2026-10-08T18:11:27.313079352+00:00
--- elapsed: 1.1s
+-- created_at: 2026-10-08T19:19:30.405647385+00:00
+-- finished_at: 2026-10-08T19:19:31.614951986+00:00
+-- elapsed: 1.2s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_election_type.1eb9b3e5ac
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_type.1eb9b3e5ac", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_type
+from "tse_analytics"."main"."bronze_candidates"
+where election_type is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:31.634468609+00:00
+-- finished_at: 2026-10-08T19:19:33.622329587+00:00
+-- elapsed: 2.0s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_candidate_cycle_scope
@@ -3346,9 +3058,9 @@ where
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:11:27.323467940+00:00
--- finished_at: 2026-10-08T18:11:27.873353099+00:00
--- elapsed: 549ms
+-- created_at: 2026-10-08T19:19:33.638783633+00:00
+-- finished_at: 2026-10-08T19:19:34.260923936+00:00
+-- elapsed: 622ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.accepted_values_bronze_candidates_election_type__general__municipal.e791b1ecd3
@@ -3391,9 +3103,297 @@ where value_field not in (
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:10:45.964255817+00:00
--- finished_at: 2026-10-08T18:12:15.144761825+00:00
--- elapsed: 1m 29s
+-- created_at: 2026-10-08T19:19:34.276707987+00:00
+-- finished_at: 2026-10-08T19:19:35.221100663+00:00
+-- elapsed: 944ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_candidate_name.e2ed96fd17
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_candidate_name.e2ed96fd17", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select candidate_name
+from "tse_analytics"."main"."bronze_candidates"
+where candidate_name is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:35.246279648+00:00
+-- finished_at: 2026-10-08T19:19:36.573175514+00:00
+-- elapsed: 1.3s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_election_scope_matches_type
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_election_scope_matches_type", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."bronze_candidates"
+where election_scope <> case
+    when election_type = 'general' then 'federal_state'
+    when election_type = 'municipal' then 'municipal'
+end
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:36.595397024+00:00
+-- finished_at: 2026-10-08T19:19:37.623936141+00:00
+-- elapsed: 1.0s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_election_scope.c20470e33a
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_scope.c20470e33a", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_scope
+from "tse_analytics"."main"."bronze_candidates"
+where election_scope is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:37.640693356+00:00
+-- finished_at: 2026-10-08T19:19:38.807631494+00:00
+-- elapsed: 1.2s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_candidate_id.39929d3582
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_candidate_id.39929d3582", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select candidate_id
+from "tse_analytics"."main"."bronze_candidates"
+where candidate_id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:38.828282306+00:00
+-- finished_at: 2026-10-08T19:19:41.086873175+00:00
+-- elapsed: 2.3s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.accepted_values_bronze_candidates_office_scope__federal__state__municipal__other.1593038c12
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.accepted_values_bronze_candidates_office_scope__federal__state__municipal__other.1593038c12", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+with all_values as (
+
+    select
+        office_scope as value_field,
+        count(*) as n_records
+
+    from "tse_analytics"."main"."bronze_candidates"
+    group by office_scope
+
+)
+
+select *
+from all_values
+where value_field not in (
+    'federal','state','municipal','other'
+)
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:41.110411918+00:00
+-- finished_at: 2026-10-08T19:19:42.532538166+00:00
+-- elapsed: 1.4s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_election_year.8a99824dac
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_election_year.8a99824dac", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."bronze_candidates"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:42.556734726+00:00
+-- finished_at: 2026-10-08T19:19:43.628280180+00:00
+-- elapsed: 1.1s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_candidates_office_scope.197db8c6ce
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_candidates_office_scope.197db8c6ce", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select office_scope
+from "tse_analytics"."main"."bronze_candidates"
+where office_scope is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:43.650597704+00:00
+-- finished_at: 2026-10-08T19:19:44.526675970+00:00
+-- elapsed: 876ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.accepted_values_bronze_candidates_election_scope__federal_state__municipal.9a5ced23eb
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.accepted_values_bronze_candidates_election_scope__federal_state__municipal.9a5ced23eb", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+with all_values as (
+
+    select
+        election_scope as value_field,
+        count(*) as n_records
+
+    from "tse_analytics"."main"."bronze_candidates"
+    group by election_scope
+
+)
+
+select *
+from all_values
+where value_field not in (
+    'federal_state','municipal'
+)
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:19:02.545985047+00:00
+-- finished_at: 2026-10-08T19:20:28.800638678+00:00
+-- elapsed: 1m 26s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_candidate_votes_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__candidate_id__is_transit_vote.14434b774a
@@ -3434,9 +3434,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.167990416+00:00
--- finished_at: 2026-10-08T18:12:15.642875615+00:00
--- elapsed: 474ms
+-- created_at: 2026-10-08T19:20:28.826126591+00:00
+-- finished_at: 2026-10-08T19:20:29.375223599+00:00
+-- elapsed: 549ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes_munzona
@@ -3452,9 +3452,9 @@ select *
 from "tse_analytics"."main"."bronze_candidate_votes_raw"
   );
 ;
--- created_at: 2026-10-08T18:12:15.649652024+00:00
--- finished_at: 2026-10-08T18:12:15.656205+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:29.395157839+00:00
+-- finished_at: 2026-10-08T19:20:29.406116561+00:00
+-- elapsed: 10ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes_munzona
@@ -3462,9 +3462,9 @@ from "tse_analytics"."main"."bronze_candidate_votes_raw"
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_votes_munzona", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_votes_munzona" rename to "silver_candidate_votes_munzona__dbt_backup";
--- created_at: 2026-10-08T18:12:15.663499564+00:00
--- finished_at: 2026-10-08T18:12:15.670023318+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:29.422996850+00:00
+-- finished_at: 2026-10-08T19:20:29.432549551+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes_munzona
@@ -3472,9 +3472,9 @@ alter view "tse_analytics"."main"."silver_candidate_votes_munzona" rename to "si
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_votes_munzona", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_votes_munzona__dbt_tmp" rename to "silver_candidate_votes_munzona";
--- created_at: 2026-10-08T18:12:15.677832889+00:00
--- finished_at: 2026-10-08T18:12:15.685625725+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:20:29.451010518+00:00
+-- finished_at: 2026-10-08T19:20:29.460681911+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes_munzona
@@ -3484,9 +3484,106 @@ alter view "tse_analytics"."main"."silver_candidate_votes_munzona__dbt_tmp" rena
 
       drop view if exists "tse_analytics"."main"."silver_candidate_votes_munzona__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:12:15.698424809+00:00
--- finished_at: 2026-10-08T18:12:15.700625521+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:20:29.489837157+00:00
+-- finished_at: 2026-10-08T19:20:29.511682130+00:00
+-- elapsed: 21ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_stg_tally_munzona_municipality_code_canonical
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_stg_tally_munzona_municipality_code_canonical", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."bronze_tally_munzona"
+where municipality_code is not null
+  and (
+      length(municipality_code) <> 5
+      or not regexp_matches(municipality_code, '^[0-9]{5}$')
+  )
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:20:29.531485038+00:00
+-- finished_at: 2026-10-08T19:20:29.537359462+00:00
+-- elapsed: 5ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_tally_munzona_election_code.f5dac92844
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_election_code.f5dac92844", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_code
+from "tse_analytics"."main"."bronze_tally_munzona"
+where election_code is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:20:29.556184728+00:00
+-- finished_at: 2026-10-08T19:20:29.561923782+00:00
+-- elapsed: 5ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_bronze_tally_munzona_zone.2c13d6d2a0
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_zone.2c13d6d2a0", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select zone
+from "tse_analytics"."main"."bronze_tally_munzona"
+where zone is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:20:29.594010691+00:00
+-- finished_at: 2026-10-08T19:20:29.602000419+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_tally_munzona_municipality_code.1ace8c4db2
@@ -3518,15 +3615,15 @@ where municipality_code is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.706323074+00:00
--- finished_at: 2026-10-08T18:12:15.708981732+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:20:29.623627544+00:00
+-- finished_at: 2026-10-08T19:20:29.628701239+00:00
+-- elapsed: 5ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_tally_munzona_turnout.30d5511ea0
+-- node_id: test.tse_analytics.not_null_bronze_tally_munzona_election_year.c6a4ad850f
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_turnout.30d5511ea0", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_election_year.c6a4ad850f", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -3542,9 +3639,9 @@ where municipality_code is null
 
 
 
-select turnout
+select election_year
 from "tse_analytics"."main"."bronze_tally_munzona"
-where turnout is null
+where election_year is null
 
 
 
@@ -3552,38 +3649,9 @@ where turnout is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.715399790+00:00
--- finished_at: 2026-10-08T18:12:15.722299467+00:00
--- elapsed: 6ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_stg_tally_munzona_municipality_code_canonical
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_stg_tally_munzona_municipality_code_canonical", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."bronze_tally_munzona"
-where municipality_code is not null
-  and (
-      length(municipality_code) <> 5
-      or not regexp_matches(municipality_code, '^[0-9]{5}$')
-  )
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.728391832+00:00
--- finished_at: 2026-10-08T18:12:15.743368961+00:00
--- elapsed: 14ms
+-- created_at: 2026-10-08T19:20:29.649116033+00:00
+-- finished_at: 2026-10-08T19:20:29.689224380+00:00
+-- elapsed: 40ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_bronze_tally_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.7257dffa85
@@ -3624,9 +3692,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.749442585+00:00
--- finished_at: 2026-10-08T18:12:15.751228321+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:20:29.705047273+00:00
+-- finished_at: 2026-10-08T19:20:29.709596955+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_tally_munzona_abstentions.042a8ed6c9
@@ -3658,9 +3726,9 @@ where abstentions is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.758577213+00:00
--- finished_at: 2026-10-08T18:12:15.760853538+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:20:29.726457439+00:00
+-- finished_at: 2026-10-08T19:20:29.729884725+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_tally_munzona_round_number.33899e6566
@@ -3692,15 +3760,15 @@ where round_number is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.768239502+00:00
--- finished_at: 2026-10-08T18:12:15.769851726+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:20:29.743795879+00:00
+-- finished_at: 2026-10-08T19:20:29.748143031+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_tally_munzona_election_code.f5dac92844
+-- node_id: test.tse_analytics.not_null_bronze_tally_munzona_turnout.30d5511ea0
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_election_code.f5dac92844", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_turnout.30d5511ea0", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -3716,9 +3784,9 @@ where round_number is null
 
 
 
-select election_code
+select turnout
 from "tse_analytics"."main"."bronze_tally_munzona"
-where election_code is null
+where turnout is null
 
 
 
@@ -3726,77 +3794,9 @@ where election_code is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.775957022+00:00
--- finished_at: 2026-10-08T18:12:15.777338870+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_tally_munzona_office_code.f00d8c30dc
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_office_code.f00d8c30dc", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select office_code
-from "tse_analytics"."main"."bronze_tally_munzona"
-where office_code is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.782652882+00:00
--- finished_at: 2026-10-08T18:12:15.784222911+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_tally_munzona_zone.2c13d6d2a0
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_zone.2c13d6d2a0", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select zone
-from "tse_analytics"."main"."bronze_tally_munzona"
-where zone is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.790153593+00:00
--- finished_at: 2026-10-08T18:12:15.792081961+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:20:29.764302121+00:00
+-- finished_at: 2026-10-08T19:20:29.768580738+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_bronze_tally_munzona_eligible_voters.b432787c71
@@ -3828,15 +3828,15 @@ where eligible_voters is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.798626818+00:00
--- finished_at: 2026-10-08T18:12:15.800887023+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:20:29.784845688+00:00
+-- finished_at: 2026-10-08T19:20:29.787956178+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_bronze_tally_munzona_election_year.c6a4ad850f
+-- node_id: test.tse_analytics.not_null_bronze_tally_munzona_office_code.f00d8c30dc
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_election_year.c6a4ad850f", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_bronze_tally_munzona_office_code.f00d8c30dc", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -3852,9 +3852,9 @@ where eligible_voters is null
 
 
 
-select election_year
+select office_code
 from "tse_analytics"."main"."bronze_tally_munzona"
-where election_year is null
+where office_code is null
 
 
 
@@ -3862,9 +3862,9 @@ where election_year is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.811628874+00:00
--- finished_at: 2026-10-08T18:12:15.884482874+00:00
--- elapsed: 72ms
+-- created_at: 2026-10-08T19:20:29.816639056+00:00
+-- finished_at: 2026-10-08T19:20:30.062662732+00:00
+-- elapsed: 246ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_stg_party_votes_raw_municipality_code_canonical
@@ -3891,9 +3891,9 @@ where municipality_code is not null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:15.891735707+00:00
--- finished_at: 2026-10-08T18:12:16.699057692+00:00
--- elapsed: 807ms
+-- created_at: 2026-10-08T19:20:30.080463849+00:00
+-- finished_at: 2026-10-08T19:20:33.469236501+00:00
+-- elapsed: 3.4s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_party_measurewise_max_semantics
@@ -3959,9 +3959,9 @@ where distinct_nonzero_nominal_values > 1
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:16.711169860+00:00
--- finished_at: 2026-10-08T18:12:16.900768089+00:00
--- elapsed: 189ms
+-- created_at: 2026-10-08T19:20:33.485589671+00:00
+-- finished_at: 2026-10-08T19:20:33.767304056+00:00
+-- elapsed: 281ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_assets
@@ -3982,9 +3982,9 @@ from "tse_analytics"."main"."bronze_candidate_assets"
 group by 1,2,3,4
   );
 ;
--- created_at: 2026-10-08T18:12:16.904219142+00:00
--- finished_at: 2026-10-08T18:12:16.910152257+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:20:33.772296081+00:00
+-- finished_at: 2026-10-08T19:20:33.780900987+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_assets
@@ -3992,9 +3992,9 @@ group by 1,2,3,4
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_assets" rename to "silver_candidate_assets__dbt_backup";
--- created_at: 2026-10-08T18:12:16.914157002+00:00
--- finished_at: 2026-10-08T18:12:16.920313495+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:33.787245149+00:00
+-- finished_at: 2026-10-08T19:20:33.795818141+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_assets
@@ -4002,9 +4002,9 @@ alter view "tse_analytics"."main"."silver_candidate_assets" rename to "silver_ca
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_assets__dbt_tmp" rename to "silver_candidate_assets";
--- created_at: 2026-10-08T18:12:16.925729948+00:00
--- finished_at: 2026-10-08T18:12:16.932147808+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:33.802823770+00:00
+-- finished_at: 2026-10-08T19:20:33.810474475+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_assets
@@ -4014,18 +4014,18 @@ alter view "tse_analytics"."main"."silver_candidate_assets__dbt_tmp" rename to "
 
       drop view if exists "tse_analytics"."main"."silver_candidate_assets__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:12:16.943299196+00:00
--- finished_at: 2026-10-08T18:12:16.962785230+00:00
--- elapsed: 19ms
+-- created_at: 2026-10-08T19:20:33.825549444+00:00
+-- finished_at: 2026-10-08T19:20:33.858978651+00:00
+-- elapsed: 33ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.silver_candidate_result_coverage
+-- node_id: model.tse_analytics.candidate_result_coverage
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
 
   
-  create view "tse_analytics"."main"."silver_candidate_result_coverage__dbt_tmp" as (
+  create view "tse_analytics"."main"."candidate_result_coverage__dbt_tmp" as (
     
 
 select distinct
@@ -4041,41 +4041,41 @@ select distinct
 from "tse_analytics"."main"."fact_candidate_votes"
   );
 ;
--- created_at: 2026-10-08T18:12:16.966589870+00:00
--- finished_at: 2026-10-08T18:12:16.972839951+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:33.867451553+00:00
+-- finished_at: 2026-10-08T19:20:33.877019687+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.silver_candidate_result_coverage
+-- node_id: model.tse_analytics.candidate_result_coverage
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."silver_candidate_result_coverage" rename to "silver_candidate_result_coverage__dbt_backup";
--- created_at: 2026-10-08T18:12:16.977262439+00:00
--- finished_at: 2026-10-08T18:12:16.985356997+00:00
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_result_coverage" rename to "candidate_result_coverage__dbt_backup";
+-- created_at: 2026-10-08T19:20:33.881666870+00:00
+-- finished_at: 2026-10-08T19:20:33.890652180+00:00
 -- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.silver_candidate_result_coverage
+-- node_id: model.tse_analytics.candidate_result_coverage
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."silver_candidate_result_coverage__dbt_tmp" rename to "silver_candidate_result_coverage";
--- created_at: 2026-10-08T18:12:16.990128678+00:00
--- finished_at: 2026-10-08T18:12:16.997631392+00:00
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_result_coverage__dbt_tmp" rename to "candidate_result_coverage";
+-- created_at: 2026-10-08T19:20:33.901069003+00:00
+-- finished_at: 2026-10-08T19:20:33.908622075+00:00
 -- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.silver_candidate_result_coverage
+-- node_id: model.tse_analytics.candidate_result_coverage
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_result_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-      drop view if exists "tse_analytics"."main"."silver_candidate_result_coverage__dbt_backup" cascade
+      drop view if exists "tse_analytics"."main"."candidate_result_coverage__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:12:17.006400691+00:00
--- finished_at: 2026-10-08T18:12:17.253946166+00:00
--- elapsed: 247ms
+-- created_at: 2026-10-08T19:20:33.921063699+00:00
+-- finished_at: 2026-10-08T19:20:34.480476002+00:00
+-- elapsed: 559ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes
@@ -4112,9 +4112,9 @@ alter view "tse_analytics"."main"."silver_candidate_result_coverage__dbt_tmp" re
 from "tse_analytics"."main"."silver_candidate_votes_munzona"
   );
 ;
--- created_at: 2026-10-08T18:12:17.259115269+00:00
--- finished_at: 2026-10-08T18:12:17.266148863+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:20:34.493681334+00:00
+-- finished_at: 2026-10-08T19:20:34.504723849+00:00
+-- elapsed: 11ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes
@@ -4122,9 +4122,9 @@ from "tse_analytics"."main"."silver_candidate_votes_munzona"
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_votes" rename to "silver_candidate_votes__dbt_backup";
--- created_at: 2026-10-08T18:12:17.271564609+00:00
--- finished_at: 2026-10-08T18:12:17.279022985+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:20:34.523570183+00:00
+-- finished_at: 2026-10-08T19:20:34.537643886+00:00
+-- elapsed: 14ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes
@@ -4132,9 +4132,9 @@ alter view "tse_analytics"."main"."silver_candidate_votes" rename to "silver_can
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_candidate_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."silver_candidate_votes__dbt_tmp" rename to "silver_candidate_votes";
--- created_at: 2026-10-08T18:12:17.285184840+00:00
--- finished_at: 2026-10-08T18:12:17.291515794+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:20:34.558463893+00:00
+-- finished_at: 2026-10-08T19:20:34.569832609+00:00
+-- elapsed: 11ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_candidate_votes
@@ -4144,9 +4144,9 @@ alter view "tse_analytics"."main"."silver_candidate_votes__dbt_tmp" rename to "s
 
       drop view if exists "tse_analytics"."main"."silver_candidate_votes__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:12:17.306674752+00:00
--- finished_at: 2026-10-08T18:12:17.323102851+00:00
--- elapsed: 16ms
+-- created_at: 2026-10-08T19:20:34.598439358+00:00
+-- finished_at: 2026-10-08T19:20:34.604480791+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4210,9 +4210,9 @@ where election_year in (2026) and election_type in ('general')
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:12:17.328362939+00:00
--- finished_at: 2026-10-08T18:12:17.349294995+00:00
--- elapsed: 20ms
+-- created_at: 2026-10-08T19:20:34.622916576+00:00
+-- finished_at: 2026-10-08T19:20:34.683428371+00:00
+-- elapsed: 60ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4240,9 +4240,9 @@ where election_year in (2026) and election_type in ('general')
 
     
   ;
--- created_at: 2026-10-08T18:12:17.368816988+00:00
--- finished_at: 2026-10-08T18:12:17.473805909+00:00
--- elapsed: 104ms
+-- created_at: 2026-10-08T19:20:34.707949300+00:00
+-- finished_at: 2026-10-08T19:20:34.888504269+00:00
+-- elapsed: 180ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4255,9 +4255,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "election_year" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "election_year__dbt_alter" to "election_year"
   ;
--- created_at: 2026-10-08T18:12:17.479094841+00:00
--- finished_at: 2026-10-08T18:12:17.584450068+00:00
--- elapsed: 105ms
+-- created_at: 2026-10-08T19:20:34.899680837+00:00
+-- finished_at: 2026-10-08T19:20:35.040838979+00:00
+-- elapsed: 141ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4270,9 +4270,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "round_number" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "round_number__dbt_alter" to "round_number"
   ;
--- created_at: 2026-10-08T18:12:17.589593280+00:00
--- finished_at: 2026-10-08T18:12:17.678052024+00:00
--- elapsed: 88ms
+-- created_at: 2026-10-08T19:20:35.048811252+00:00
+-- finished_at: 2026-10-08T19:20:35.198181591+00:00
+-- elapsed: 149ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4285,9 +4285,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "zone" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "zone__dbt_alter" to "zone"
   ;
--- created_at: 2026-10-08T18:12:17.682733272+00:00
--- finished_at: 2026-10-08T18:12:17.759523521+00:00
--- elapsed: 76ms
+-- created_at: 2026-10-08T19:20:35.207961678+00:00
+-- finished_at: 2026-10-08T19:20:35.376233822+00:00
+-- elapsed: 168ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4300,9 +4300,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "is_transit_vote" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
   ;
--- created_at: 2026-10-08T18:12:17.765480843+00:00
--- finished_at: 2026-10-08T18:12:17.839268912+00:00
--- elapsed: 73ms
+-- created_at: 2026-10-08T19:20:35.387139863+00:00
+-- finished_at: 2026-10-08T19:20:35.613170879+00:00
+-- elapsed: 226ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4315,9 +4315,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "eligible_voters" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "eligible_voters__dbt_alter" to "eligible_voters"
   ;
--- created_at: 2026-10-08T18:12:17.843605644+00:00
--- finished_at: 2026-10-08T18:12:17.921467369+00:00
--- elapsed: 77ms
+-- created_at: 2026-10-08T19:20:35.623466739+00:00
+-- finished_at: 2026-10-08T19:20:35.801888323+00:00
+-- elapsed: 178ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4330,9 +4330,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "voters_uninstalled_sections" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "voters_uninstalled_sections__dbt_alter" to "voters_uninstalled_sections"
   ;
--- created_at: 2026-10-08T18:12:17.925535358+00:00
--- finished_at: 2026-10-08T18:12:18.005075813+00:00
--- elapsed: 79ms
+-- created_at: 2026-10-08T19:20:35.812358748+00:00
+-- finished_at: 2026-10-08T19:20:36.004939957+00:00
+-- elapsed: 192ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4345,9 +4345,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "turnout" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "turnout__dbt_alter" to "turnout"
   ;
--- created_at: 2026-10-08T18:12:18.008931172+00:00
--- finished_at: 2026-10-08T18:12:18.098352151+00:00
--- elapsed: 89ms
+-- created_at: 2026-10-08T19:20:36.012794732+00:00
+-- finished_at: 2026-10-08T19:20:36.223138247+00:00
+-- elapsed: 210ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4360,9 +4360,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "abstentions" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "abstentions__dbt_alter" to "abstentions"
   ;
--- created_at: 2026-10-08T18:12:18.102489542+00:00
--- finished_at: 2026-10-08T18:12:18.173679342+00:00
--- elapsed: 71ms
+-- created_at: 2026-10-08T19:20:36.232634118+00:00
+-- finished_at: 2026-10-08T19:20:36.425860418+00:00
+-- elapsed: 193ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4375,9 +4375,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "total_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "total_votes__dbt_alter" to "total_votes"
   ;
--- created_at: 2026-10-08T18:12:18.178370724+00:00
--- finished_at: 2026-10-08T18:12:18.264313228+00:00
--- elapsed: 85ms
+-- created_at: 2026-10-08T19:20:36.437914177+00:00
+-- finished_at: 2026-10-08T19:20:36.722455214+00:00
+-- elapsed: 284ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4390,9 +4390,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "competing_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "competing_votes__dbt_alter" to "competing_votes"
   ;
--- created_at: 2026-10-08T18:12:18.268430162+00:00
--- finished_at: 2026-10-08T18:12:18.351319591+00:00
--- elapsed: 82ms
+-- created_at: 2026-10-08T19:20:36.762053522+00:00
+-- finished_at: 2026-10-08T19:20:37.154087870+00:00
+-- elapsed: 392ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4405,9 +4405,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "valid_votes__dbt_alter" to "valid_votes"
   ;
--- created_at: 2026-10-08T18:12:18.355660866+00:00
--- finished_at: 2026-10-08T18:12:18.492262992+00:00
--- elapsed: 136ms
+-- created_at: 2026-10-08T19:20:37.189611216+00:00
+-- finished_at: 2026-10-08T19:20:37.412339669+00:00
+-- elapsed: 222ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4420,9 +4420,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "nominal_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:18.495746584+00:00
--- finished_at: 2026-10-08T18:12:18.618135870+00:00
--- elapsed: 122ms
+-- created_at: 2026-10-08T19:20:37.426435554+00:00
+-- finished_at: 2026-10-08T19:20:37.675809221+00:00
+-- elapsed: 249ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4435,9 +4435,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "total_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:18.623932051+00:00
--- finished_at: 2026-10-08T18:12:18.752653588+00:00
--- elapsed: 128ms
+-- created_at: 2026-10-08T19:20:37.696726344+00:00
+-- finished_at: 2026-10-08T19:20:37.893544041+00:00
+-- elapsed: 196ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4450,9 +4450,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:18.758869433+00:00
--- finished_at: 2026-10-08T18:12:20.347911891+00:00
--- elapsed: 1.6s
+-- created_at: 2026-10-08T19:20:37.905745419+00:00
+-- finished_at: 2026-10-08T19:20:38.113428154+00:00
+-- elapsed: 207ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4465,9 +4465,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "nominal_converted_to_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "nominal_converted_to_legend_valid_votes__dbt_alter" to "nominal_converted_to_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:20.353560109+00:00
--- finished_at: 2026-10-08T18:12:23.561051631+00:00
--- elapsed: 3.2s
+-- created_at: 2026-10-08T19:20:38.132770595+00:00
+-- finished_at: 2026-10-08T19:20:38.420707972+00:00
+-- elapsed: 287ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4480,9 +4480,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "annulled_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "annulled_votes__dbt_alter" to "annulled_votes"
   ;
--- created_at: 2026-10-08T18:12:23.563015399+00:00
--- finished_at: 2026-10-08T18:12:26.491259288+00:00
--- elapsed: 2.9s
+-- created_at: 2026-10-08T19:20:38.435242609+00:00
+-- finished_at: 2026-10-08T19:20:38.693462276+00:00
+-- elapsed: 258ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4495,9 +4495,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "nominal_annulled_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "nominal_annulled_votes__dbt_alter" to "nominal_annulled_votes"
   ;
--- created_at: 2026-10-08T18:12:26.493975007+00:00
--- finished_at: 2026-10-08T18:12:26.651183493+00:00
--- elapsed: 157ms
+-- created_at: 2026-10-08T19:20:38.716491159+00:00
+-- finished_at: 2026-10-08T19:20:39.048702391+00:00
+-- elapsed: 332ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4510,9 +4510,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "legend_annulled_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "legend_annulled_votes__dbt_alter" to "legend_annulled_votes"
   ;
--- created_at: 2026-10-08T18:12:26.653918684+00:00
--- finished_at: 2026-10-08T18:12:26.774506257+00:00
--- elapsed: 120ms
+-- created_at: 2026-10-08T19:20:39.090637672+00:00
+-- finished_at: 2026-10-08T19:20:39.530668694+00:00
+-- elapsed: 440ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4525,9 +4525,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "annulled_subjudice_votes__dbt_alter" to "annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:12:26.776450913+00:00
--- finished_at: 2026-10-08T18:12:26.920074363+00:00
--- elapsed: 143ms
+-- created_at: 2026-10-08T19:20:39.585149282+00:00
+-- finished_at: 2026-10-08T19:20:39.896630744+00:00
+-- elapsed: 311ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4540,9 +4540,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "nominal_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:12:26.922964955+00:00
--- finished_at: 2026-10-08T18:12:27.055247712+00:00
--- elapsed: 132ms
+-- created_at: 2026-10-08T19:20:39.915970880+00:00
+-- finished_at: 2026-10-08T19:20:40.114965017+00:00
+-- elapsed: 198ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4555,9 +4555,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "legend_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:12:27.057623498+00:00
--- finished_at: 2026-10-08T18:12:27.267464001+00:00
--- elapsed: 209ms
+-- created_at: 2026-10-08T19:20:40.135352520+00:00
+-- finished_at: 2026-10-08T19:20:40.466492450+00:00
+-- elapsed: 331ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4570,9 +4570,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "blank_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "blank_votes__dbt_alter" to "blank_votes"
   ;
--- created_at: 2026-10-08T18:12:27.269368042+00:00
--- finished_at: 2026-10-08T18:12:27.406250922+00:00
--- elapsed: 136ms
+-- created_at: 2026-10-08T19:20:40.485857419+00:00
+-- finished_at: 2026-10-08T19:20:40.709545386+00:00
+-- elapsed: 223ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4585,9 +4585,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "total_null_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "total_null_votes__dbt_alter" to "total_null_votes"
   ;
--- created_at: 2026-10-08T18:12:27.408264264+00:00
--- finished_at: 2026-10-08T18:12:27.523992870+00:00
--- elapsed: 115ms
+-- created_at: 2026-10-08T19:20:40.725809194+00:00
+-- finished_at: 2026-10-08T19:20:40.905727409+00:00
+-- elapsed: 179ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4600,9 +4600,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "null_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "null_votes__dbt_alter" to "null_votes"
   ;
--- created_at: 2026-10-08T18:12:27.526165743+00:00
--- finished_at: 2026-10-08T18:12:27.662668887+00:00
--- elapsed: 136ms
+-- created_at: 2026-10-08T19:20:40.918285534+00:00
+-- finished_at: 2026-10-08T19:20:41.125241631+00:00
+-- elapsed: 206ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4615,9 +4615,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "technical_null_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "technical_null_votes__dbt_alter" to "technical_null_votes"
   ;
--- created_at: 2026-10-08T18:12:27.664699139+00:00
--- finished_at: 2026-10-08T18:12:27.911209996+00:00
--- elapsed: 246ms
+-- created_at: 2026-10-08T19:20:41.137359430+00:00
+-- finished_at: 2026-10-08T19:20:41.306567368+00:00
+-- elapsed: 169ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4630,9 +4630,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "separately_counted_annulled_votes" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "separately_counted_annulled_votes__dbt_alter" to "separately_counted_annulled_votes"
   ;
--- created_at: 2026-10-08T18:12:27.913978698+00:00
--- finished_at: 2026-10-08T18:12:28.030037224+00:00
--- elapsed: 116ms
+-- created_at: 2026-10-08T19:20:41.317830612+00:00
+-- finished_at: 2026-10-08T19:20:41.487971668+00:00
+-- elapsed: 170ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4645,9 +4645,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "generated_at" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:12:28.032413140+00:00
--- finished_at: 2026-10-08T18:12:28.182136418+00:00
--- elapsed: 149ms
+-- created_at: 2026-10-08T19:20:41.500531246+00:00
+-- finished_at: 2026-10-08T19:20:41.676320337+00:00
+-- elapsed: 175ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4660,9 +4660,9 @@ where election_year in (2026) and election_type in ('general')
     alter table "tse_analytics"."main"."fact_tally_munzona" drop column "last_totalization_at" cascade;
     alter table "tse_analytics"."main"."fact_tally_munzona" rename column "last_totalization_at__dbt_alter" to "last_totalization_at"
   ;
--- created_at: 2026-10-08T18:12:28.190775775+00:00
--- finished_at: 2026-10-08T18:12:28.872493057+00:00
--- elapsed: 681ms
+-- created_at: 2026-10-08T19:20:41.716607902+00:00
+-- finished_at: 2026-10-08T19:20:42.716263434+00:00
+-- elapsed: 999ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_tally_munzona
@@ -4674,7 +4674,7 @@ where election_year in (2026) and election_type in ('general')
     
     
     create temporary table
-      "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff"
+      "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090"
   
     as (
       
@@ -4736,34 +4736,34 @@ where election_year in (2026) and election_type in ('general')
 
         
             delete from "tse_analytics"."main"."fact_tally_munzona" as DBT_INCREMENTAL_TARGET
-            using "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff"
+            using "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090"
             where (
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".uf = DBT_INCREMENTAL_TARGET.uf
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".zone = DBT_INCREMENTAL_TARGET.zone
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -4774,12 +4774,12 @@ where election_year in (2026) and election_type in ('general')
     insert into "tse_analytics"."main"."fact_tally_munzona" ("election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "voters_uninstalled_sections", "turnout", "abstentions", "total_votes", "competing_votes", "valid_votes", "nominal_valid_votes", "total_legend_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_valid_votes", "annulled_votes", "nominal_annulled_votes", "legend_annulled_votes", "annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "blank_votes", "total_null_votes", "null_votes", "technical_null_votes", "separately_counted_annulled_votes", "generated_at", "last_totalization_at", "source_file")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "voters_uninstalled_sections", "turnout", "abstentions", "total_votes", "competing_votes", "valid_votes", "nominal_valid_votes", "total_legend_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_valid_votes", "annulled_votes", "nominal_annulled_votes", "legend_annulled_votes", "annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "blank_votes", "total_null_votes", "null_votes", "technical_null_votes", "separately_counted_annulled_votes", "generated_at", "last_totalization_at", "source_file"
-        from "fact_tally_munzona__dbt_tmp_abcd273b_66c1_4b3c_bb67_5ea17dcf62ff"
+        from "fact_tally_munzona__dbt_tmp_02e106fc_b941_4f91_85cd_2b9671753090"
     )
   ;
--- created_at: 2026-10-08T18:12:28.891377031+00:00
--- finished_at: 2026-10-08T18:12:28.894865990+00:00
--- elapsed: 3ms
+-- created_at: 2026-10-08T19:20:42.801110779+00:00
+-- finished_at: 2026-10-08T19:20:42.821944026+00:00
+-- elapsed: 20ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4856,9 +4856,9 @@ from collapsed
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:12:28.900867342+00:00
--- finished_at: 2026-10-08T18:12:28.908631973+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:20:42.855095661+00:00
+-- finished_at: 2026-10-08T19:20:42.903619473+00:00
+-- elapsed: 48ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4886,9 +4886,9 @@ from collapsed
 
     
   ;
--- created_at: 2026-10-08T18:12:28.917761527+00:00
--- finished_at: 2026-10-08T18:12:29.632799671+00:00
--- elapsed: 715ms
+-- created_at: 2026-10-08T19:20:42.938302655+00:00
+-- finished_at: 2026-10-08T19:20:43.475955842+00:00
+-- elapsed: 537ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4901,9 +4901,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "election_year" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "election_year__dbt_alter" to "election_year"
   ;
--- created_at: 2026-10-08T18:12:29.636438467+00:00
--- finished_at: 2026-10-08T18:12:30.008860515+00:00
--- elapsed: 372ms
+-- created_at: 2026-10-08T19:20:43.502164652+00:00
+-- finished_at: 2026-10-08T19:20:44.117887058+00:00
+-- elapsed: 615ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4916,9 +4916,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "round_number" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "round_number__dbt_alter" to "round_number"
   ;
--- created_at: 2026-10-08T18:12:30.012310997+00:00
--- finished_at: 2026-10-08T18:12:30.336564994+00:00
--- elapsed: 324ms
+-- created_at: 2026-10-08T19:20:44.136660964+00:00
+-- finished_at: 2026-10-08T19:20:44.632521246+00:00
+-- elapsed: 495ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4931,9 +4931,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "zone" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "zone__dbt_alter" to "zone"
   ;
--- created_at: 2026-10-08T18:12:30.340923217+00:00
--- finished_at: 2026-10-08T18:12:30.656784755+00:00
--- elapsed: 315ms
+-- created_at: 2026-10-08T19:20:44.649053143+00:00
+-- finished_at: 2026-10-08T19:20:45.061175829+00:00
+-- elapsed: 412ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4946,9 +4946,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "is_transit_vote" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
   ;
--- created_at: 2026-10-08T18:12:30.662372734+00:00
--- finished_at: 2026-10-08T18:12:31.005823710+00:00
--- elapsed: 343ms
+-- created_at: 2026-10-08T19:20:45.086114224+00:00
+-- finished_at: 2026-10-08T19:20:45.587964531+00:00
+-- elapsed: 501ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4961,9 +4961,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "nominal_valid_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:31.011198882+00:00
--- finished_at: 2026-10-08T18:12:31.380740419+00:00
--- elapsed: 369ms
+-- created_at: 2026-10-08T19:20:45.602390630+00:00
+-- finished_at: 2026-10-08T19:20:46.219466584+00:00
+-- elapsed: 617ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4976,9 +4976,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:31.385263271+00:00
--- finished_at: 2026-10-08T18:12:31.777102323+00:00
--- elapsed: 391ms
+-- created_at: 2026-10-08T19:20:46.231202564+00:00
+-- finished_at: 2026-10-08T19:20:46.695319298+00:00
+-- elapsed: 464ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -4991,9 +4991,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "nominal_converted_to_legend_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "nominal_converted_to_legend_votes__dbt_alter" to "nominal_converted_to_legend_votes"
   ;
--- created_at: 2026-10-08T18:12:31.781959479+00:00
--- finished_at: 2026-10-08T18:12:32.150474835+00:00
--- elapsed: 368ms
+-- created_at: 2026-10-08T19:20:46.707069411+00:00
+-- finished_at: 2026-10-08T19:20:47.270775025+00:00
+-- elapsed: 563ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5006,9 +5006,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "total_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:32.155329390+00:00
--- finished_at: 2026-10-08T18:12:32.516337906+00:00
--- elapsed: 361ms
+-- created_at: 2026-10-08T19:20:47.279556804+00:00
+-- finished_at: 2026-10-08T19:20:47.693375202+00:00
+-- elapsed: 413ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5021,9 +5021,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "nominal_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:12:32.520688670+00:00
--- finished_at: 2026-10-08T18:12:33.005588261+00:00
--- elapsed: 484ms
+-- created_at: 2026-10-08T19:20:47.701607399+00:00
+-- finished_at: 2026-10-08T19:20:48.160325018+00:00
+-- elapsed: 458ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5036,9 +5036,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "legend_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:12:33.010515239+00:00
--- finished_at: 2026-10-08T18:12:33.442693675+00:00
--- elapsed: 432ms
+-- created_at: 2026-10-08T19:20:48.168392681+00:00
+-- finished_at: 2026-10-08T19:20:48.675195803+00:00
+-- elapsed: 506ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5051,9 +5051,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "generated_at" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:12:33.448253747+00:00
--- finished_at: 2026-10-08T18:12:33.869656304+00:00
--- elapsed: 421ms
+-- created_at: 2026-10-08T19:20:48.684491950+00:00
+-- finished_at: 2026-10-08T19:20:49.104100041+00:00
+-- elapsed: 419ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5066,9 +5066,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "source_row_count" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "source_row_count__dbt_alter" to "source_row_count"
   ;
--- created_at: 2026-10-08T18:12:33.876166486+00:00
--- finished_at: 2026-10-08T18:12:34.284631325+00:00
--- elapsed: 408ms
+-- created_at: 2026-10-08T19:20:49.112684025+00:00
+-- finished_at: 2026-10-08T19:20:49.679291517+00:00
+-- elapsed: 566ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5081,9 +5081,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "source_party_group_types" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "source_party_group_types__dbt_alter" to "source_party_group_types"
   ;
--- created_at: 2026-10-08T18:12:34.291417829+00:00
--- finished_at: 2026-10-08T18:12:34.715149816+00:00
--- elapsed: 423ms
+-- created_at: 2026-10-08T19:20:49.688819587+00:00
+-- finished_at: 2026-10-08T19:20:50.177543696+00:00
+-- elapsed: 488ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5096,9 +5096,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "source_coalitions" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "source_coalitions__dbt_alter" to "source_coalitions"
   ;
--- created_at: 2026-10-08T18:12:34.720564792+00:00
--- finished_at: 2026-10-08T18:12:35.114016897+00:00
--- elapsed: 393ms
+-- created_at: 2026-10-08T19:20:50.191312422+00:00
+-- finished_at: 2026-10-08T19:20:50.767766686+00:00
+-- elapsed: 576ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5111,9 +5111,9 @@ from collapsed
     alter table "tse_analytics"."main"."silver_party_votes_munzona" drop column "source_federations" cascade;
     alter table "tse_analytics"."main"."silver_party_votes_munzona" rename column "source_federations__dbt_alter" to "source_federations"
   ;
--- created_at: 2026-10-08T18:12:35.133150434+00:00
--- finished_at: 2026-10-08T18:12:44.131412523+00:00
--- elapsed: 9.0s
+-- created_at: 2026-10-08T19:20:50.822246509+00:00
+-- finished_at: 2026-10-08T19:21:08.148518708+00:00
+-- elapsed: 17.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.silver_party_votes_munzona
@@ -5125,7 +5125,7 @@ from collapsed
     
     
     create temporary table
-      "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+      "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
   
     as (
       
@@ -5200,37 +5200,37 @@ from collapsed
 
         
             delete from "tse_analytics"."main"."silver_party_votes_munzona" as DBT_INCREMENTAL_TARGET
-            using "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+            using "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
             where (
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".uf = DBT_INCREMENTAL_TARGET.uf
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".zone = DBT_INCREMENTAL_TARGET.zone
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".party_number = DBT_INCREMENTAL_TARGET.party_number
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".party_number = DBT_INCREMENTAL_TARGET.party_number
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -5241,12 +5241,12 @@ from collapsed
     insert into "tse_analytics"."main"."silver_party_votes_munzona" ("election_year", "election_type", "election_scope", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "party", "party_name", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file", "source_row_count", "source_party_group_types", "source_coalitions", "source_federations")
     (
         select "election_year", "election_type", "election_scope", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "party", "party_name", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file", "source_row_count", "source_party_group_types", "source_coalitions", "source_federations"
-        from "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+        from "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
     )
   ;
--- created_at: 2026-10-08T18:12:44.144339280+00:00
--- finished_at: 2026-10-08T18:12:44.907376079+00:00
--- elapsed: 763ms
+-- created_at: 2026-10-08T19:21:08.272153644+00:00
+-- finished_at: 2026-10-08T19:21:09.431276097+00:00
+-- elapsed: 1.2s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5323,9 +5323,9 @@ from deduped
   
     
   ;
--- created_at: 2026-10-08T18:12:44.909820580+00:00
--- finished_at: 2026-10-08T18:12:44.911102857+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:21:09.435421320+00:00
+-- finished_at: 2026-10-08T19:21:09.438176045+00:00
+-- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5338,9 +5338,9 @@ from deduped
     WHERE schema_name = 'main'
       AND table_name = 'dim_election'
   ;
--- created_at: 2026-10-08T18:12:44.911982291+00:00
--- finished_at: 2026-10-08T18:12:44.912581744+00:00
--- elapsed: 599us
+-- created_at: 2026-10-08T19:21:09.440912429+00:00
+-- finished_at: 2026-10-08T19:21:09.443048825+00:00
+-- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5353,9 +5353,9 @@ from deduped
     WHERE schema_name = 'main'
       AND table_name = 'dim_election'
   ;
--- created_at: 2026-10-08T18:12:44.913849928+00:00
--- finished_at: 2026-10-08T18:12:45.274465197+00:00
--- elapsed: 360ms
+-- created_at: 2026-10-08T19:21:09.449531792+00:00
+-- finished_at: 2026-10-08T19:21:09.457060126+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5363,9 +5363,9 @@ from deduped
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_election", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter table "tse_analytics"."main"."dim_election" rename to "dim_election__dbt_backup";
--- created_at: 2026-10-08T18:12:45.279816953+00:00
--- finished_at: 2026-10-08T18:12:45.289902336+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:21:09.462570405+00:00
+-- finished_at: 2026-10-08T19:21:09.470355272+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5373,9 +5373,9 @@ alter table "tse_analytics"."main"."dim_election" rename to "dim_election__dbt_b
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_election", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter table "tse_analytics"."main"."dim_election__dbt_tmp" rename to "dim_election";
--- created_at: 2026-10-08T18:12:45.293628901+00:00
--- finished_at: 2026-10-08T18:12:45.298378807+00:00
--- elapsed: 4ms
+-- created_at: 2026-10-08T19:21:09.485016459+00:00
+-- finished_at: 2026-10-08T19:21:09.498808512+00:00
+-- elapsed: 13ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_election
@@ -5385,50 +5385,15 @@ alter table "tse_analytics"."main"."dim_election__dbt_tmp" rename to "dim_electi
 
       drop table if exists "tse_analytics"."main"."dim_election__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:12:45.308747256+00:00
--- finished_at: 2026-10-08T18:12:45.325282517+00:00
--- elapsed: 16ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_nonnegative_tally
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_tally", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."fact_tally_munzona"
-where eligible_voters < 0
-   or turnout < 0
-   or abstentions < 0
-   or total_votes < 0
-   or valid_votes < 0
-   or nominal_valid_votes < 0
-   or total_legend_valid_votes < 0
-   or blank_votes < 0
-   or total_null_votes < 0
-   or annulled_votes < 0
-   or annulled_subjudice_votes < 0
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.330328915+00:00
--- finished_at: 2026-10-08T18:12:45.341348163+00:00
+-- created_at: 2026-10-08T19:21:09.531913075+00:00
+-- finished_at: 2026-10-08T19:21:09.543815410+00:00
 -- elapsed: 11ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.assert_tally_vote_balance
+-- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_election_election_year__election_type__election_code.acb4acaa61
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_tally_vote_balance", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_election_election_year__election_type__election_code.acb4acaa61", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -5438,21 +5403,34 @@ where eligible_voters < 0
     from (
       
     
-  select *
-from "tse_analytics"."main"."fact_tally_munzona"
-where total_votes <> valid_votes
-                   + blank_votes
-                   + total_null_votes
-                   + annulled_votes
-                   + annulled_subjudice_votes
-                   + separately_counted_annulled_votes
+  
+
+
+
+
+
+with validation_errors as (
+
+    select
+        election_year, election_type, election_code
+    from "tse_analytics"."main"."dim_election"
+    group by election_year, election_type, election_code
+    having count(*) > 1
+
+)
+
+select *
+from validation_errors
+
+
+
   
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.346717436+00:00
--- finished_at: 2026-10-08T18:12:45.400766960+00:00
--- elapsed: 54ms
+-- created_at: 2026-10-08T19:21:09.575742204+00:00
+-- finished_at: 2026-10-08T19:21:09.767869594+00:00
+-- elapsed: 192ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_tally_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.77bc49bd4e
@@ -5493,9 +5471,74 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.405998811+00:00
--- finished_at: 2026-10-08T18:12:45.412066850+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:21:09.787176330+00:00
+-- finished_at: 2026-10-08T19:21:09.903702864+00:00
+-- elapsed: 116ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_nonnegative_tally
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_tally", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."fact_tally_munzona"
+where eligible_voters < 0
+   or turnout < 0
+   or abstentions < 0
+   or total_votes < 0
+   or valid_votes < 0
+   or nominal_valid_votes < 0
+   or total_legend_valid_votes < 0
+   or blank_votes < 0
+   or total_null_votes < 0
+   or annulled_votes < 0
+   or annulled_subjudice_votes < 0
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:09.922519096+00:00
+-- finished_at: 2026-10-08T19:21:09.974139491+00:00
+-- elapsed: 51ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_tally_vote_balance
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_tally_vote_balance", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."fact_tally_munzona"
+where total_votes <> valid_votes
+                   + blank_votes
+                   + total_null_votes
+                   + annulled_votes
+                   + annulled_subjudice_votes
+                   + separately_counted_annulled_votes
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:09.996255618+00:00
+-- finished_at: 2026-10-08T19:21:10.024697242+00:00
+-- elapsed: 28ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_tally_electorate_balance
@@ -5521,9 +5564,9 @@ where eligible_voters
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.418416581+00:00
--- finished_at: 2026-10-08T18:12:45.503099913+00:00
--- elapsed: 84ms
+-- created_at: 2026-10-08T19:21:10.057238822+00:00
+-- finished_at: 2026-10-08T19:21:10.380162159+00:00
+-- elapsed: 322ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_fact_tally_snapshot_complete
@@ -5577,43 +5620,9 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.516051902+00:00
--- finished_at: 2026-10-08T18:12:45.520311169+00:00
--- elapsed: 4ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_total_legend_valid_votes.949adbe8f5
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_total_legend_valid_votes.949adbe8f5", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select total_legend_valid_votes
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where total_legend_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.526238958+00:00
--- finished_at: 2026-10-08T18:12:45.527603722+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:21:10.417274613+00:00
+-- finished_at: 2026-10-08T19:21:10.420702995+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_office_code.ffa812b222
@@ -5645,247 +5654,9 @@ where office_code is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.532952764+00:00
--- finished_at: 2026-10-08T18:12:45.534653059+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_municipality_code.0a2a5d5c53
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_municipality_code.0a2a5d5c53", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select municipality_code
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where municipality_code is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.544690259+00:00
--- finished_at: 2026-10-08T18:12:45.546262783+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_type.fb15f66ea5
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_type.fb15f66ea5", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_type
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where election_type is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.553123316+00:00
--- finished_at: 2026-10-08T18:12:45.556947441+00:00
--- elapsed: 3ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_year.e41ec20be5
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_year.e41ec20be5", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_year
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where election_year is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.563276881+00:00
--- finished_at: 2026-10-08T18:12:45.567036234+00:00
--- elapsed: 3ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_zone.6a7d695ebf
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_zone.6a7d695ebf", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select zone
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where zone is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.574580492+00:00
--- finished_at: 2026-10-08T18:12:45.578459549+00:00
--- elapsed: 3ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_legend_valid_votes.90f9dbadae
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_legend_valid_votes.90f9dbadae", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select legend_valid_votes
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where legend_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.583249567+00:00
--- finished_at: 2026-10-08T18:12:45.584508322+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_party_number.97b9b16dd1
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_party_number.97b9b16dd1", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select party_number
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where party_number is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.589816474+00:00
--- finished_at: 2026-10-08T18:12:45.591103768+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_code.9ade8d9a04
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_code.9ade8d9a04", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_code
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where election_code is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.595703572+00:00
--- finished_at: 2026-10-08T18:12:45.598500110+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:21:10.436648150+00:00
+-- finished_at: 2026-10-08T19:21:10.448616981+00:00
+-- elapsed: 11ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_round_number.930786b7cc
@@ -5917,9 +5688,349 @@ where round_number is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.603312320+00:00
--- finished_at: 2026-10-08T18:12:45.835198026+00:00
--- elapsed: 231ms
+-- created_at: 2026-10-08T19:21:10.463858965+00:00
+-- finished_at: 2026-10-08T19:21:10.474256123+00:00
+-- elapsed: 10ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_legend_valid_votes.90f9dbadae
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_legend_valid_votes.90f9dbadae", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select legend_valid_votes
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where legend_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.487752009+00:00
+-- finished_at: 2026-10-08T19:21:10.495238121+00:00
+-- elapsed: 7ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_nominal_valid_votes.7060501af1
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_nominal_valid_votes.7060501af1", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select nominal_valid_votes
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where nominal_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.512210024+00:00
+-- finished_at: 2026-10-08T19:21:10.515269635+00:00
+-- elapsed: 3ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_municipality_code.0a2a5d5c53
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_municipality_code.0a2a5d5c53", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select municipality_code
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where municipality_code is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.528361800+00:00
+-- finished_at: 2026-10-08T19:21:10.530865636+00:00
+-- elapsed: 2ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_party_number.97b9b16dd1
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_party_number.97b9b16dd1", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select party_number
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where party_number is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.552401032+00:00
+-- finished_at: 2026-10-08T19:21:10.564580431+00:00
+-- elapsed: 12ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_total_legend_valid_votes.949adbe8f5
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_total_legend_valid_votes.949adbe8f5", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select total_legend_valid_votes
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where total_legend_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.581641551+00:00
+-- finished_at: 2026-10-08T19:21:10.585779649+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_code.9ade8d9a04
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_code.9ade8d9a04", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_code
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where election_code is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.624841472+00:00
+-- finished_at: 2026-10-08T19:21:10.632381149+00:00
+-- elapsed: 7ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_type.fb15f66ea5
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_type.fb15f66ea5", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_type
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where election_type is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.684837018+00:00
+-- finished_at: 2026-10-08T19:21:10.690138040+00:00
+-- elapsed: 5ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_uf.ec64c0f307
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_uf.ec64c0f307", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select uf
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where uf is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.732569254+00:00
+-- finished_at: 2026-10-08T19:21:10.771757155+00:00
+-- elapsed: 39ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_zone.6a7d695ebf
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_zone.6a7d695ebf", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select zone
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where zone is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.818340877+00:00
+-- finished_at: 2026-10-08T19:21:10.856232144+00:00
+-- elapsed: 37ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_election_year.e41ec20be5
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_year.e41ec20be5", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."silver_party_votes_munzona"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:10.936990500+00:00
+-- finished_at: 2026-10-08T19:21:12.566044640+00:00
+-- elapsed: 1.6s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_silver_party_votes_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__party_number__is_transit_vote.864fb87931
@@ -5960,114 +6071,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.841303149+00:00
--- finished_at: 2026-10-08T18:12:45.842963537+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_uf.ec64c0f307
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_uf.ec64c0f307", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select uf
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where uf is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.853692204+00:00
--- finished_at: 2026-10-08T18:12:45.858512873+00:00
+-- created_at: 2026-10-08T19:21:12.585754369+00:00
+-- finished_at: 2026-10-08T19:21:12.590586521+00:00
 -- elapsed: 4ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_silver_party_votes_munzona_nominal_valid_votes.7060501af1
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_silver_party_votes_munzona_nominal_valid_votes.7060501af1", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select nominal_valid_votes
-from "tse_analytics"."main"."silver_party_votes_munzona"
-where nominal_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.867880574+00:00
--- finished_at: 2026-10-08T18:12:45.875456456+00:00
--- elapsed: 7ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.unique_dim_election_election_id.c93f13d88d
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.unique_dim_election_election_id.c93f13d88d", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-select
-    election_id as unique_field,
-    count(*) as n_records
-
-from "tse_analytics"."main"."dim_election"
-where election_id is not null
-group by election_id
-having count(*) > 1
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.883385901+00:00
--- finished_at: 2026-10-08T18:12:45.885275372+00:00
--- elapsed: 1ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_dim_election_election_id.b977e96806
@@ -6099,9 +6105,9 @@ where election_id is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.892721627+00:00
--- finished_at: 2026-10-08T18:12:45.895422761+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:21:12.613760243+00:00
+-- finished_at: 2026-10-08T19:21:12.621379449+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.accepted_values_dim_election_election_type__general__municipal.dbd4ee5830
@@ -6144,15 +6150,15 @@ where value_field not in (
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.901088505+00:00
--- finished_at: 2026-10-08T18:12:45.907525620+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:21:12.652542049+00:00
+-- finished_at: 2026-10-08T19:21:12.673522597+00:00
+-- elapsed: 20ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_election_election_year__election_type__election_code.acb4acaa61
+-- node_id: test.tse_analytics.unique_dim_election_election_id.c93f13d88d
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_election_election_year__election_type__election_code.acb4acaa61", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.unique_dim_election_election_id.c93f13d88d", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -6163,23 +6169,17 @@ where value_field not in (
       
     
   
+    
+    
 
+select
+    election_id as unique_field,
+    count(*) as n_records
 
-
-
-
-with validation_errors as (
-
-    select
-        election_year, election_type, election_code
-    from "tse_analytics"."main"."dim_election"
-    group by election_year, election_type, election_code
-    having count(*) > 1
-
-)
-
-select *
-from validation_errors
+from "tse_analytics"."main"."dim_election"
+where election_id is not null
+group by election_id
+having count(*) > 1
 
 
 
@@ -6187,9 +6187,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:45.920263371+00:00
--- finished_at: 2026-10-08T18:12:46.457353497+00:00
--- elapsed: 537ms
+-- created_at: 2026-10-08T19:21:12.715500410+00:00
+-- finished_at: 2026-10-08T19:21:14.400321759+00:00
+-- elapsed: 1.7s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6238,9 +6238,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:12:46.463774991+00:00
--- finished_at: 2026-10-08T18:12:46.472968752+00:00
--- elapsed: 9ms
+-- created_at: 2026-10-08T19:21:14.414950458+00:00
+-- finished_at: 2026-10-08T19:21:14.448363086+00:00
+-- elapsed: 33ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6268,9 +6268,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
 
     
   ;
--- created_at: 2026-10-08T18:12:46.482408196+00:00
--- finished_at: 2026-10-08T18:12:47.405319495+00:00
--- elapsed: 922ms
+-- created_at: 2026-10-08T19:21:14.474942884+00:00
+-- finished_at: 2026-10-08T19:21:17.574288048+00:00
+-- elapsed: 3.1s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6283,9 +6283,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     alter table "tse_analytics"."main"."dim_candidate" drop column "election_year" cascade;
     alter table "tse_analytics"."main"."dim_candidate" rename column "election_year__dbt_alter" to "election_year"
   ;
--- created_at: 2026-10-08T18:12:47.409686123+00:00
--- finished_at: 2026-10-08T18:12:48.160467584+00:00
--- elapsed: 750ms
+-- created_at: 2026-10-08T19:21:17.590295045+00:00
+-- finished_at: 2026-10-08T19:21:20.899624099+00:00
+-- elapsed: 3.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6298,9 +6298,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     alter table "tse_analytics"."main"."dim_candidate" drop column "round_number" cascade;
     alter table "tse_analytics"."main"."dim_candidate" rename column "round_number__dbt_alter" to "round_number"
   ;
--- created_at: 2026-10-08T18:12:48.164915878+00:00
--- finished_at: 2026-10-08T18:12:49.272592478+00:00
--- elapsed: 1.1s
+-- created_at: 2026-10-08T19:21:20.910316449+00:00
+-- finished_at: 2026-10-08T19:21:22.321603820+00:00
+-- elapsed: 1.4s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6313,9 +6313,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     alter table "tse_analytics"."main"."dim_candidate" drop column "declared_assets_value" cascade;
     alter table "tse_analytics"."main"."dim_candidate" rename column "declared_assets_value__dbt_alter" to "declared_assets_value"
   ;
--- created_at: 2026-10-08T18:12:49.276242618+00:00
--- finished_at: 2026-10-08T18:12:50.103645563+00:00
--- elapsed: 827ms
+-- created_at: 2026-10-08T19:21:22.335616970+00:00
+-- finished_at: 2026-10-08T19:21:23.187308459+00:00
+-- elapsed: 851ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6328,9 +6328,9 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     alter table "tse_analytics"."main"."dim_candidate" drop column "declared_assets_count" cascade;
     alter table "tse_analytics"."main"."dim_candidate" rename column "declared_assets_count__dbt_alter" to "declared_assets_count"
   ;
--- created_at: 2026-10-08T18:12:50.113715610+00:00
--- finished_at: 2026-10-08T18:12:51.248048575+00:00
--- elapsed: 1.1s
+-- created_at: 2026-10-08T19:21:23.217045199+00:00
+-- finished_at: 2026-10-08T19:21:25.179870627+00:00
+-- elapsed: 2.0s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_candidate
@@ -6342,7 +6342,7 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     
     
     create temporary table
-      "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+      "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
   
     as (
       
@@ -6389,19 +6389,19 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
 
         
             delete from "tse_analytics"."main"."dim_candidate" as DBT_INCREMENTAL_TARGET
-            using "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+            using "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
             where (
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".candidate_id = DBT_INCREMENTAL_TARGET.candidate_id
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".candidate_id = DBT_INCREMENTAL_TARGET.candidate_id
                     
                 
                 
@@ -6412,180 +6412,107 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     insert into "tse_analytics"."main"."dim_candidate" ("election_year", "election_type", "election_scope", "election_id", "election_code", "election_description", "round_number", "electoral_unit", "office_scope", "candidate_id", "uf", "office_code", "office", "candidate_number", "candidate_name", "ballot_name", "party_number", "party", "party_name", "candidacy_status", "gender", "education", "occupation", "race_color", "declared_assets_value", "declared_assets_count")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "election_description", "round_number", "electoral_unit", "office_scope", "candidate_id", "uf", "office_code", "office", "candidate_number", "candidate_name", "ballot_name", "party_number", "party", "party_name", "candidacy_status", "gender", "education", "occupation", "race_color", "declared_assets_value", "declared_assets_count"
-        from "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+        from "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
     )
   ;
--- created_at: 2026-10-08T18:12:51.267914863+00:00
--- finished_at: 2026-10-08T18:12:51.272776260+00:00
--- elapsed: 4ms
+-- created_at: 2026-10-08T19:21:25.199514779+00:00
+-- finished_at: 2026-10-08T19:21:25.241743963+00:00
+-- elapsed: 42ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
+-- node_id: model.tse_analytics.candidate_tally_coverage_gaps
 -- query_id: not available
--- desc: get_column_schema_from_query adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-select * from (
-        
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+  
+  create view "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_tmp" as (
+    
+
+with coverage as (
+
+    select *
+    from "tse_analytics"."main"."candidate_result_coverage"
+
+),
+
+tally as (
+
+    select
+        election_year,
+        election_type,
+        election_code,
+        round_number,
+        uf,
+        municipality_code,
+        zone,
+        office_code,
+        is_transit_vote,
+        nominal_valid_votes,
+        valid_votes,
+        total_votes,
+        generated_at
+
+    from "tse_analytics"."main"."fact_tally_munzona"
+
+)
 
 select
-    election_year,
-    election_type,
-    election_scope,
-    election_id,
-    election_code,
-    round_number,
-    uf,
-    municipality_code,
-    zone,
-    office_code,
-    office_scope,
-    is_transit_vote,
+    t.*,
+    'missing_candidate_result_coverage' as gap_reason
 
-    eligible_voters,
-    voters_uninstalled_sections,
-    eligible_voters - turnout - abstentions as uncounted_voters,
-    turnout,
-    abstentions,
+from tally t
 
-    case when eligible_voters > 0
-         then turnout::double / eligible_voters
-    end as turnout_rate,
+left join coverage c
+  on c.election_year = t.election_year
+ and c.election_type = t.election_type
+ and c.election_code = t.election_code
+ and c.round_number = t.round_number
+ and c.uf = t.uf
+ and c.municipality_code = t.municipality_code
+ and c.zone = t.zone
+ and c.office_code = t.office_code
+ and c.is_transit_vote = t.is_transit_vote
 
-    case when eligible_voters > 0
-         then abstentions::double / eligible_voters
-    end as abstention_rate,
-
-    generated_at
-from "tse_analytics"."main"."fact_tally_munzona"
-
-where election_year in (2026) and election_type in ('general')
-
-    ) as __dbt_sbq
-    where false
-    limit 0
+where c.election_year is null
+  and t.nominal_valid_votes > 0
+  );
 ;
--- created_at: 2026-10-08T18:12:51.278046090+00:00
--- finished_at: 2026-10-08T18:12:51.291208431+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:21:25.246455552+00:00
+-- finished_at: 2026-10-08T19:21:25.253496446+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
+-- node_id: model.tse_analytics.candidate_tally_coverage_gaps
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-      select
-          column_name,
-          data_type,
-          character_maximum_length,
-          numeric_precision,
-          numeric_scale
-
-      from system.information_schema.columns
-      where table_name = 'fact_turnout'
-      
-      and lower(table_schema) = 'main'
-      
-      
-      and lower(table_catalog) = 'tse_analytics'
-      
-      order by ordinal_position
-
-    
-  ;
--- created_at: 2026-10-08T18:12:51.301369700+00:00
--- finished_at: 2026-10-08T18:12:51.491596550+00:00
--- elapsed: 190ms
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_tally_coverage_gaps" rename to "candidate_tally_coverage_gaps__dbt_backup";
+-- created_at: 2026-10-08T19:21:25.257937856+00:00
+-- finished_at: 2026-10-08T19:21:25.264494339+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
+-- node_id: model.tse_analytics.candidate_tally_coverage_gaps
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_turnout" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:12:51.502588553+00:00
--- finished_at: 2026-10-08T18:12:51.673166547+00:00
--- elapsed: 170ms
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_tmp" rename to "candidate_tally_coverage_gaps";
+-- created_at: 2026-10-08T19:21:25.270407504+00:00
+-- finished_at: 2026-10-08T19:21:25.277110946+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
+-- node_id: model.tse_analytics.candidate_tally_coverage_gaps
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."fact_turnout" add column "round_number__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_turnout" set "round_number__dbt_alter" = "round_number";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "round_number" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "round_number__dbt_alter" to "round_number"
-  ;
--- created_at: 2026-10-08T18:12:51.682061334+00:00
--- finished_at: 2026-10-08T18:12:51.992939471+00:00
--- elapsed: 310ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "zone__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_turnout" set "zone__dbt_alter" = "zone";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "zone" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "zone__dbt_alter" to "zone"
-  ;
--- created_at: 2026-10-08T18:12:51.999366634+00:00
--- finished_at: 2026-10-08T18:12:52.119152963+00:00
--- elapsed: 119ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "is_transit_vote__dbt_alter" boolean;
-    update "tse_analytics"."main"."fact_turnout" set "is_transit_vote__dbt_alter" = "is_transit_vote";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "is_transit_vote" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
-  ;
--- created_at: 2026-10-08T18:11:27.911260408+00:00
--- finished_at: 2026-10-08T18:12:52.362236528+00:00
--- elapsed: 1m 24s
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_stg_electorate_municipality_code_canonical
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_stg_electorate_municipality_code_canonical", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."bronze_electorate"
-where municipality_code is not null
-  and (
-      length(municipality_code) <> 5
-      or not regexp_matches(municipality_code, '^[0-9]{5}$')
-  )
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:52.378720131+00:00
--- finished_at: 2026-10-08T18:12:54.782385139+00:00
--- elapsed: 2.4s
+      drop view if exists "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_backup" cascade
+    ;
+-- created_at: 2026-10-08T19:21:25.289596643+00:00
+-- finished_at: 2026-10-08T19:21:25.408072202+00:00
+-- elapsed: 118ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_tally_reconciliation
@@ -6599,7 +6526,7 @@ where municipality_code is not null
 
 with coverage as (
     select *
-    from "tse_analytics"."main"."silver_candidate_result_coverage"
+    from "tse_analytics"."main"."candidate_result_coverage"
 ),
 
 candidate as (
@@ -6671,9 +6598,180 @@ left join candidate c
  and c.is_transit_vote is not distinct from t.is_transit_vote
   );
 ;
--- created_at: 2026-10-08T18:12:52.127573762+00:00
--- finished_at: 2026-10-08T18:12:54.787576590+00:00
--- elapsed: 2.7s
+-- created_at: 2026-10-08T19:21:25.413245298+00:00
+-- finished_at: 2026-10-08T19:21:25.420636525+00:00
+-- elapsed: 7ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.candidate_tally_reconciliation
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_tally_reconciliation" rename to "candidate_tally_reconciliation__dbt_backup";
+-- created_at: 2026-10-08T19:21:25.424994682+00:00
+-- finished_at: 2026-10-08T19:21:25.433018638+00:00
+-- elapsed: 8ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.candidate_tally_reconciliation
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."candidate_tally_reconciliation__dbt_tmp" rename to "candidate_tally_reconciliation";
+-- created_at: 2026-10-08T19:21:25.439155425+00:00
+-- finished_at: 2026-10-08T19:21:25.447845910+00:00
+-- elapsed: 8ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.candidate_tally_reconciliation
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+      drop view if exists "tse_analytics"."main"."candidate_tally_reconciliation__dbt_backup" cascade
+    ;
+-- created_at: 2026-10-08T19:21:25.463190245+00:00
+-- finished_at: 2026-10-08T19:21:25.467376909+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: get_column_schema_from_query adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+select * from (
+        
+
+select
+    election_year,
+    election_type,
+    election_scope,
+    election_id,
+    election_code,
+    round_number,
+    uf,
+    municipality_code,
+    zone,
+    office_code,
+    office_scope,
+    is_transit_vote,
+
+    eligible_voters,
+    voters_uninstalled_sections,
+    eligible_voters - turnout - abstentions as uncounted_voters,
+    turnout,
+    abstentions,
+
+    case when eligible_voters > 0
+         then turnout::double / eligible_voters
+    end as turnout_rate,
+
+    case when eligible_voters > 0
+         then abstentions::double / eligible_voters
+    end as abstention_rate,
+
+    generated_at
+from "tse_analytics"."main"."fact_tally_munzona"
+
+where election_year in (2026) and election_type in ('general')
+
+    ) as __dbt_sbq
+    where false
+    limit 0
+;
+-- created_at: 2026-10-08T19:21:25.472351681+00:00
+-- finished_at: 2026-10-08T19:21:25.484609287+00:00
+-- elapsed: 12ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+      select
+          column_name,
+          data_type,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale
+
+      from system.information_schema.columns
+      where table_name = 'fact_turnout'
+      
+      and lower(table_schema) = 'main'
+      
+      
+      and lower(table_catalog) = 'tse_analytics'
+      
+      order by ordinal_position
+
+    
+  ;
+-- created_at: 2026-10-08T19:21:25.493936701+00:00
+-- finished_at: 2026-10-08T19:21:25.632268656+00:00
+-- elapsed: 138ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_turnout" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:21:25.639055434+00:00
+-- finished_at: 2026-10-08T19:21:25.764926767+00:00
+-- elapsed: 125ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "round_number__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_turnout" set "round_number__dbt_alter" = "round_number";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "round_number" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "round_number__dbt_alter" to "round_number"
+  ;
+-- created_at: 2026-10-08T19:21:25.775074818+00:00
+-- finished_at: 2026-10-08T19:21:25.905852090+00:00
+-- elapsed: 130ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "zone__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_turnout" set "zone__dbt_alter" = "zone";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "zone" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "zone__dbt_alter" to "zone"
+  ;
+-- created_at: 2026-10-08T19:21:25.917077298+00:00
+-- finished_at: 2026-10-08T19:21:26.024864465+00:00
+-- elapsed: 107ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "is_transit_vote__dbt_alter" boolean;
+    update "tse_analytics"."main"."fact_turnout" set "is_transit_vote__dbt_alter" = "is_transit_vote";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "is_transit_vote" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
+  ;
+-- created_at: 2026-10-08T19:21:26.033700558+00:00
+-- finished_at: 2026-10-08T19:21:26.275247504+00:00
+-- elapsed: 241ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -6686,41 +6784,9 @@ left join candidate c
     alter table "tse_analytics"."main"."fact_turnout" drop column "eligible_voters" cascade;
     alter table "tse_analytics"."main"."fact_turnout" rename column "eligible_voters__dbt_alter" to "eligible_voters"
   ;
--- created_at: 2026-10-08T18:12:54.786778746+00:00
--- finished_at: 2026-10-08T18:12:54.793784674+00:00
--- elapsed: 7ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_reconciliation
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."candidate_tally_reconciliation" rename to "candidate_tally_reconciliation__dbt_backup";
--- created_at: 2026-10-08T18:12:54.797238826+00:00
--- finished_at: 2026-10-08T18:12:54.814367957+00:00
--- elapsed: 17ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_reconciliation
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."candidate_tally_reconciliation__dbt_tmp" rename to "candidate_tally_reconciliation";
--- created_at: 2026-10-08T18:12:54.820599520+00:00
--- finished_at: 2026-10-08T18:12:54.827034574+00:00
--- elapsed: 6ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_reconciliation
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-      drop view if exists "tse_analytics"."main"."candidate_tally_reconciliation__dbt_backup" cascade
-    ;
--- created_at: 2026-10-08T18:12:54.794472207+00:00
--- finished_at: 2026-10-08T18:12:54.985697937+00:00
--- elapsed: 191ms
+-- created_at: 2026-10-08T19:21:26.284416250+00:00
+-- finished_at: 2026-10-08T19:21:26.427422808+00:00
+-- elapsed: 143ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -6733,9 +6799,9 @@ alter view "tse_analytics"."main"."candidate_tally_reconciliation__dbt_tmp" rena
     alter table "tse_analytics"."main"."fact_turnout" drop column "voters_uninstalled_sections" cascade;
     alter table "tse_analytics"."main"."fact_turnout" rename column "voters_uninstalled_sections__dbt_alter" to "voters_uninstalled_sections"
   ;
--- created_at: 2026-10-08T18:12:54.990082074+00:00
--- finished_at: 2026-10-08T18:12:55.206920475+00:00
--- elapsed: 216ms
+-- created_at: 2026-10-08T19:21:26.435705908+00:00
+-- finished_at: 2026-10-08T19:21:26.571053549+00:00
+-- elapsed: 135ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -6748,92 +6814,9 @@ alter view "tse_analytics"."main"."candidate_tally_reconciliation__dbt_tmp" rena
     alter table "tse_analytics"."main"."fact_turnout" drop column "uncounted_voters" cascade;
     alter table "tse_analytics"."main"."fact_turnout" rename column "uncounted_voters__dbt_alter" to "uncounted_voters"
   ;
--- created_at: 2026-10-08T18:12:54.857023070+00:00
--- finished_at: 2026-10-08T18:12:55.214226590+00:00
--- elapsed: 357ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_coverage_gaps
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-  
-  create view "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_tmp" as (
-    
-
-with coverage as (
-
-    select *
-    from "tse_analytics"."main"."silver_candidate_result_coverage"
-
-),
-
-tally as (
-
-    select
-        election_year,
-        election_type,
-        election_code,
-        round_number,
-        uf,
-        municipality_code,
-        zone,
-        office_code,
-        is_transit_vote,
-        nominal_valid_votes,
-        valid_votes,
-        total_votes,
-        generated_at
-
-    from "tse_analytics"."main"."fact_tally_munzona"
-
-)
-
-select
-    t.*,
-    'missing_candidate_result_coverage' as gap_reason
-
-from tally t
-
-left join coverage c
-  on c.election_year = t.election_year
- and c.election_type = t.election_type
- and c.election_code = t.election_code
- and c.round_number = t.round_number
- and c.uf = t.uf
- and c.municipality_code = t.municipality_code
- and c.zone = t.zone
- and c.office_code = t.office_code
- and c.is_transit_vote = t.is_transit_vote
-
-where c.election_year is null
-  and t.nominal_valid_votes > 0
-  );
-;
--- created_at: 2026-10-08T18:12:55.217833860+00:00
--- finished_at: 2026-10-08T18:12:55.227383277+00:00
--- elapsed: 9ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_coverage_gaps
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."candidate_tally_coverage_gaps" rename to "candidate_tally_coverage_gaps__dbt_backup";
--- created_at: 2026-10-08T18:12:55.230210042+00:00
--- finished_at: 2026-10-08T18:12:55.316228982+00:00
--- elapsed: 86ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_coverage_gaps
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_tmp" rename to "candidate_tally_coverage_gaps";
--- created_at: 2026-10-08T18:12:55.211012166+00:00
--- finished_at: 2026-10-08T18:12:55.327123870+00:00
--- elapsed: 116ms
+-- created_at: 2026-10-08T19:21:26.579897561+00:00
+-- finished_at: 2026-10-08T19:21:26.714241915+00:00
+-- elapsed: 134ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -6846,21 +6829,83 @@ alter view "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_tmp" renam
     alter table "tse_analytics"."main"."fact_turnout" drop column "turnout" cascade;
     alter table "tse_analytics"."main"."fact_turnout" rename column "turnout__dbt_alter" to "turnout"
   ;
--- created_at: 2026-10-08T18:12:55.320146922+00:00
--- finished_at: 2026-10-08T18:12:55.333398476+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:21:26.722630835+00:00
+-- finished_at: 2026-10-08T19:21:26.865578483+00:00
+-- elapsed: 142ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.candidate_tally_coverage_gaps
+-- node_id: model.tse_analytics.fact_turnout
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-      drop view if exists "tse_analytics"."main"."candidate_tally_coverage_gaps__dbt_backup" cascade
-    ;
--- created_at: 2026-10-08T18:12:55.342710009+00:00
--- finished_at: 2026-10-08T18:12:55.351333647+00:00
--- elapsed: 8ms
+    alter table "tse_analytics"."main"."fact_turnout" add column "abstentions__dbt_alter" bigint;
+    update "tse_analytics"."main"."fact_turnout" set "abstentions__dbt_alter" = "abstentions";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "abstentions" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "abstentions__dbt_alter" to "abstentions"
+  ;
+-- created_at: 2026-10-08T19:21:26.877361454+00:00
+-- finished_at: 2026-10-08T19:21:27.036723463+00:00
+-- elapsed: 159ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "turnout_rate__dbt_alter" double;
+    update "tse_analytics"."main"."fact_turnout" set "turnout_rate__dbt_alter" = "turnout_rate";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "turnout_rate" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "turnout_rate__dbt_alter" to "turnout_rate"
+  ;
+-- created_at: 2026-10-08T19:21:27.046559905+00:00
+-- finished_at: 2026-10-08T19:21:27.188729479+00:00
+-- elapsed: 142ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_turnout
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_turnout" add column "abstention_rate__dbt_alter" double;
+    update "tse_analytics"."main"."fact_turnout" set "abstention_rate__dbt_alter" = "abstention_rate";
+    alter table "tse_analytics"."main"."fact_turnout" drop column "abstention_rate" cascade;
+    alter table "tse_analytics"."main"."fact_turnout" rename column "abstention_rate__dbt_alter" to "abstention_rate"
+  ;
+-- created_at: 2026-10-08T19:19:44.558668860+00:00
+-- finished_at: 2026-10-08T19:21:27.387385854+00:00
+-- elapsed: 1m 43s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_stg_electorate_municipality_code_canonical
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_stg_electorate_municipality_code_canonical", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."bronze_electorate"
+where municipality_code is not null
+  and (
+      length(municipality_code) <> 5
+      or not regexp_matches(municipality_code, '^[0-9]{5}$')
+  )
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:27.405126013+00:00
+-- finished_at: 2026-10-08T19:21:27.411074990+00:00
+-- elapsed: 5ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_party
@@ -6908,9 +6953,9 @@ where _rank = 1
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:12:55.355554518+00:00
--- finished_at: 2026-10-08T18:12:55.433234672+00:00
--- elapsed: 77ms
+-- created_at: 2026-10-08T19:21:27.418599399+00:00
+-- finished_at: 2026-10-08T19:21:27.430757680+00:00
+-- elapsed: 12ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_party
@@ -6938,69 +6983,9 @@ where _rank = 1
 
     
   ;
--- created_at: 2026-10-08T18:12:55.331016148+00:00
--- finished_at: 2026-10-08T18:12:55.442874149+00:00
--- elapsed: 111ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "abstentions__dbt_alter" bigint;
-    update "tse_analytics"."main"."fact_turnout" set "abstentions__dbt_alter" = "abstentions";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "abstentions" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "abstentions__dbt_alter" to "abstentions"
-  ;
--- created_at: 2026-10-08T18:12:55.438977226+00:00
--- finished_at: 2026-10-08T18:12:55.470792726+00:00
--- elapsed: 31ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.dim_party
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_party", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."dim_party" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."dim_party" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."dim_party" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."dim_party" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:12:55.446456302+00:00
--- finished_at: 2026-10-08T18:12:55.591059981+00:00
--- elapsed: 144ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "turnout_rate__dbt_alter" double;
-    update "tse_analytics"."main"."fact_turnout" set "turnout_rate__dbt_alter" = "turnout_rate";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "turnout_rate" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "turnout_rate__dbt_alter" to "turnout_rate"
-  ;
--- created_at: 2026-10-08T18:12:55.594965462+00:00
--- finished_at: 2026-10-08T18:12:55.725472009+00:00
--- elapsed: 130ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_turnout
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_turnout", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_turnout" add column "abstention_rate__dbt_alter" double;
-    update "tse_analytics"."main"."fact_turnout" set "abstention_rate__dbt_alter" = "abstention_rate";
-    alter table "tse_analytics"."main"."fact_turnout" drop column "abstention_rate" cascade;
-    alter table "tse_analytics"."main"."fact_turnout" rename column "abstention_rate__dbt_alter" to "abstention_rate"
-  ;
--- created_at: 2026-10-08T18:12:55.729391905+00:00
--- finished_at: 2026-10-08T18:12:55.844443596+00:00
--- elapsed: 115ms
+-- created_at: 2026-10-08T19:21:27.196706761+00:00
+-- finished_at: 2026-10-08T19:21:29.744862385+00:00
+-- elapsed: 2.5s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -7013,9 +6998,24 @@ where _rank = 1
     alter table "tse_analytics"."main"."fact_turnout" drop column "generated_at" cascade;
     alter table "tse_analytics"."main"."fact_turnout" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:12:55.858224508+00:00
--- finished_at: 2026-10-08T18:12:56.140879914+00:00
--- elapsed: 282ms
+-- created_at: 2026-10-08T19:21:27.440765400+00:00
+-- finished_at: 2026-10-08T19:21:29.771254027+00:00
+-- elapsed: 2.3s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.dim_party
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_party", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."dim_party" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."dim_party" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."dim_party" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."dim_party" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:21:29.755683804+00:00
+-- finished_at: 2026-10-08T19:21:30.032457272+00:00
+-- elapsed: 276ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_turnout
@@ -7027,7 +7027,7 @@ where _rank = 1
     
     
     create temporary table
-      "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318"
+      "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47"
   
     as (
       
@@ -7072,34 +7072,34 @@ where election_year in (2026) and election_type in ('general')
 
         
             delete from "tse_analytics"."main"."fact_turnout" as DBT_INCREMENTAL_TARGET
-            using "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318"
+            using "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47"
             where (
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".uf = DBT_INCREMENTAL_TARGET.uf
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".zone = DBT_INCREMENTAL_TARGET.zone
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -7110,11 +7110,11 @@ where election_year in (2026) and election_type in ('general')
     insert into "tse_analytics"."main"."fact_turnout" ("election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "voters_uninstalled_sections", "uncounted_voters", "turnout", "abstentions", "turnout_rate", "abstention_rate", "generated_at")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "is_transit_vote", "eligible_voters", "voters_uninstalled_sections", "uncounted_voters", "turnout", "abstentions", "turnout_rate", "abstention_rate", "generated_at"
-        from "fact_turnout__dbt_tmp_dd4eecdc_c21b_4148_8dce_62459cb49318"
+        from "fact_turnout__dbt_tmp_cdf1bc9b_8977_4953_8c6b_562789d1ec47"
     )
   ;
--- created_at: 2026-10-08T18:12:56.159463566+00:00
--- finished_at: 2026-10-08T18:12:56.162037461+00:00
+-- created_at: 2026-10-08T19:21:30.053694319+00:00
+-- finished_at: 2026-10-08T19:21:30.056314697+00:00
 -- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
@@ -7165,9 +7165,9 @@ where election_year in (2026) and election_type in ('general')
     where false
     limit 0
 ;
--- created_at: 2026-10-08T18:12:56.166016816+00:00
--- finished_at: 2026-10-08T18:12:56.172781741+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:21:30.062981467+00:00
+-- finished_at: 2026-10-08T19:21:30.073803542+00:00
+-- elapsed: 10ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7195,9 +7195,9 @@ where election_year in (2026) and election_type in ('general')
 
     
   ;
--- created_at: 2026-10-08T18:12:55.482153062+00:00
--- finished_at: 2026-10-08T18:12:56.590057755+00:00
--- elapsed: 1.1s
+-- created_at: 2026-10-08T19:21:29.779996462+00:00
+-- finished_at: 2026-10-08T19:21:31.441088132+00:00
+-- elapsed: 1.7s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.dim_party
@@ -7209,7 +7209,7 @@ where election_year in (2026) and election_type in ('general')
     
     
     create temporary table
-      "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+      "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
   
     as (
       
@@ -7255,19 +7255,19 @@ where _rank = 1
 
         
             delete from "tse_analytics"."main"."dim_party" as DBT_INCREMENTAL_TARGET
-            using "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+            using "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
             where (
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".party_number = DBT_INCREMENTAL_TARGET.party_number
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".party_number = DBT_INCREMENTAL_TARGET.party_number
                     
                 
                 
@@ -7278,18 +7278,33 @@ where _rank = 1
     insert into "tse_analytics"."main"."dim_party" ("election_year", "election_type", "election_scope", "election_id", "election_code", "party_number", "party", "party_name", "party_id")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "party_number", "party", "party_name", "party_id"
-        from "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+        from "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
     )
   ;
--- created_at: 2026-10-08T18:12:56.605145097+00:00
--- finished_at: 2026-10-08T18:12:56.613507226+00:00
--- elapsed: 8ms
+-- created_at: 2026-10-08T19:21:30.082464885+00:00
+-- finished_at: 2026-10-08T19:21:31.664486759+00:00
+-- elapsed: 1.6s
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_candidate_election_code.72b3ba2d00
+-- node_id: model.tse_analytics.fact_party_votes
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_election_code.72b3ba2d00", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_party_votes" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_party_votes" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."fact_party_votes" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."fact_party_votes" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:21:31.450928184+00:00
+-- finished_at: 2026-10-08T19:21:32.999390288+00:00
+-- elapsed: 1.5s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_candidate_election_year__election_type__election_code__candidate_id.46c4e45e30
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_candidate_election_year__election_type__election_code__candidate_id.46c4e45e30", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -7300,14 +7315,23 @@ where _rank = 1
       
     
   
-    
-    
 
 
 
-select election_code
-from "tse_analytics"."main"."dim_candidate"
-where election_code is null
+
+
+with validation_errors as (
+
+    select
+        election_year, election_type, election_code, candidate_id
+    from "tse_analytics"."main"."dim_candidate"
+    group by election_year, election_type, election_code, candidate_id
+    having count(*) > 1
+
+)
+
+select *
+from validation_errors
 
 
 
@@ -7315,8 +7339,33 @@ where election_code is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:56.619941998+00:00
--- finished_at: 2026-10-08T18:12:56.621359306+00:00
+-- created_at: 2026-10-08T19:21:33.005036346+00:00
+-- finished_at: 2026-10-08T19:21:33.009477375+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_nonnegative_candidate_assets
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."dim_candidate"
+where declared_assets_value < 0
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:33.015336516+00:00
+-- finished_at: 2026-10-08T19:21:33.016890203+00:00
 -- elapsed: 1ms
 -- outcome: success
 -- dialect: duckdb
@@ -7349,77 +7398,24 @@ where election_id is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:56.627085472+00:00
--- finished_at: 2026-10-08T18:12:56.628495848+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:21:31.669867668+00:00
+-- finished_at: 2026-10-08T19:21:33.191162270+00:00
+-- elapsed: 1.5s
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_candidate_candidate_id.882821f01b
+-- node_id: model.tse_analytics.fact_party_votes
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_candidate_id.882821f01b", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select candidate_id
-from "tse_analytics"."main"."dim_candidate"
-where candidate_id is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:56.634094090+00:00
--- finished_at: 2026-10-08T18:12:56.635535970+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_candidate_election_type.aff628686e
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_election_type.aff628686e", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_type
-from "tse_analytics"."main"."dim_candidate"
-where election_type is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:56.642317153+00:00
--- finished_at: 2026-10-08T18:12:57.549644267+00:00
--- elapsed: 907ms
+    alter table "tse_analytics"."main"."fact_party_votes" add column "round_number__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_party_votes" set "round_number__dbt_alter" = "round_number";
+    alter table "tse_analytics"."main"."fact_party_votes" drop column "round_number" cascade;
+    alter table "tse_analytics"."main"."fact_party_votes" rename column "round_number__dbt_alter" to "round_number"
+  ;
+-- created_at: 2026-10-08T19:21:33.023291466+00:00
+-- finished_at: 2026-10-08T19:21:33.387077431+00:00
+-- elapsed: 363ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_dim_candidate_snapshot_complete
@@ -7461,9 +7457,9 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:57.555377034+00:00
--- finished_at: 2026-10-08T18:12:57.573069343+00:00
--- elapsed: 17ms
+-- created_at: 2026-10-08T19:21:33.393562455+00:00
+-- finished_at: 2026-10-08T19:21:33.399749740+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_dim_candidate_election_year.fb77fb8393
@@ -7495,15 +7491,15 @@ where election_year is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:57.578132451+00:00
--- finished_at: 2026-10-08T18:12:57.580820741+00:00
+-- created_at: 2026-10-08T19:21:33.410466834+00:00
+-- finished_at: 2026-10-08T19:21:33.412650310+00:00
 -- elapsed: 2ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.assert_nonnegative_candidate_assets
+-- node_id: test.tse_analytics.not_null_dim_candidate_candidate_id.882821f01b
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_candidate_assets", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_candidate_id.882821f01b", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -7513,37 +7509,31 @@ where election_year is null
     from (
       
     
-  select *
+  
+    
+    
+
+
+
+select candidate_id
 from "tse_analytics"."main"."dim_candidate"
-where declared_assets_value < 0
+where candidate_id is null
+
+
+
   
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:56.180549459+00:00
--- finished_at: 2026-10-08T18:12:57.737382328+00:00
--- elapsed: 1.6s
+-- created_at: 2026-10-08T19:21:33.419845880+00:00
+-- finished_at: 2026-10-08T19:21:33.422899014+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_party_votes
+-- node_id: test.tse_analytics.not_null_dim_candidate_election_code.72b3ba2d00
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_party_votes" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_party_votes" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."fact_party_votes" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."fact_party_votes" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:12:57.585119669+00:00
--- finished_at: 2026-10-08T18:12:58.610836021+00:00
--- elapsed: 1.0s
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_candidate_election_year__election_type__election_code__candidate_id.46c4e45e30
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_candidate_election_year__election_type__election_code__candidate_id.46c4e45e30", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_election_code.72b3ba2d00", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -7554,23 +7544,14 @@ where declared_assets_value < 0
       
     
   
+    
+    
 
 
 
-
-
-with validation_errors as (
-
-    select
-        election_year, election_type, election_code, candidate_id
-    from "tse_analytics"."main"."dim_candidate"
-    group by election_year, election_type, election_code, candidate_id
-    having count(*) > 1
-
-)
-
-select *
-from validation_errors
+select election_code
+from "tse_analytics"."main"."dim_candidate"
+where election_code is null
 
 
 
@@ -7578,24 +7559,43 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:12:57.741799604+00:00
--- finished_at: 2026-10-08T18:12:58.613227380+00:00
--- elapsed: 871ms
+-- created_at: 2026-10-08T19:21:33.431076800+00:00
+-- finished_at: 2026-10-08T19:21:33.432759881+00:00
+-- elapsed: 1ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.fact_party_votes
+-- node_id: test.tse_analytics.not_null_dim_candidate_election_type.aff628686e
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_candidate_election_type.aff628686e", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."fact_party_votes" add column "round_number__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_party_votes" set "round_number__dbt_alter" = "round_number";
-    alter table "tse_analytics"."main"."fact_party_votes" drop column "round_number" cascade;
-    alter table "tse_analytics"."main"."fact_party_votes" rename column "round_number__dbt_alter" to "round_number"
-  ;
--- created_at: 2026-10-08T18:12:58.616900676+00:00
--- finished_at: 2026-10-08T18:13:01.317666703+00:00
--- elapsed: 2.7s
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_type
+from "tse_analytics"."main"."dim_candidate"
+where election_type is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:33.197414931+00:00
+-- finished_at: 2026-10-08T19:21:34.291688755+00:00
+-- elapsed: 1.1s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7608,9 +7608,9 @@ from validation_errors
     alter table "tse_analytics"."main"."fact_party_votes" drop column "zone" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "zone__dbt_alter" to "zone"
   ;
--- created_at: 2026-10-08T18:13:01.320158870+00:00
--- finished_at: 2026-10-08T18:13:02.013350674+00:00
--- elapsed: 693ms
+-- created_at: 2026-10-08T19:21:34.299466006+00:00
+-- finished_at: 2026-10-08T19:21:35.089212130+00:00
+-- elapsed: 789ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7623,9 +7623,9 @@ from validation_errors
     alter table "tse_analytics"."main"."fact_party_votes" drop column "is_transit_vote" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "is_transit_vote__dbt_alter" to "is_transit_vote"
   ;
--- created_at: 2026-10-08T18:13:02.017731814+00:00
--- finished_at: 2026-10-08T18:13:03.009062142+00:00
--- elapsed: 991ms
+-- created_at: 2026-10-08T19:21:35.097343229+00:00
+-- finished_at: 2026-10-08T19:21:36.671667063+00:00
+-- elapsed: 1.6s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7638,9 +7638,24 @@ from validation_errors
     alter table "tse_analytics"."main"."fact_party_votes" drop column "nominal_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "nominal_valid_votes__dbt_alter" to "nominal_valid_votes"
   ;
--- created_at: 2026-10-08T18:12:58.614606459+00:00
--- finished_at: 2026-10-08T18:13:03.149021985+00:00
--- elapsed: 4.5s
+-- created_at: 2026-10-08T19:21:36.684359970+00:00
+-- finished_at: 2026-10-08T19:21:39.359355755+00:00
+-- elapsed: 2.7s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_party_votes
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_party_votes" add column "legend_valid_votes__dbt_alter" bigint;
+    update "tse_analytics"."main"."fact_party_votes" set "legend_valid_votes__dbt_alter" = "legend_valid_votes";
+    alter table "tse_analytics"."main"."fact_party_votes" drop column "legend_valid_votes" cascade;
+    alter table "tse_analytics"."main"."fact_party_votes" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
+  ;
+-- created_at: 2026-10-08T19:21:33.438899692+00:00
+-- finished_at: 2026-10-08T19:21:42.580600489+00:00
+-- elapsed: 9.1s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_candidate_votes_candidate_fk
@@ -7674,98 +7689,43 @@ group by 1,2,3,4
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:03.157935+00:00
--- finished_at: 2026-10-08T18:13:05.415438099+00:00
--- elapsed: 2.3s
+-- created_at: 2026-10-08T19:21:42.593304443+00:00
+-- finished_at: 2026-10-08T19:21:42.670150386+00:00
+-- elapsed: 76ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.silver_electorate_municipality
--- query_id: not available
--- desc: get_column_schema_from_query adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-select * from (
-        
-
-select
-    election_year,
-    election_type,
-    election_scope,
-    uf,
-    municipality_code,
-    municipality,
-    sum(electorate) as electorate
-from "tse_analytics"."main"."bronze_electorate"
-
-where election_year in (2026) and election_type in ('general')
-
-group by 1,2,3,4,5,6
-    ) as __dbt_sbq
-    where false
-    limit 0
-;
--- created_at: 2026-10-08T18:13:05.418644451+00:00
--- finished_at: 2026-10-08T18:13:05.423721932+00:00
--- elapsed: 5ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.silver_electorate_municipality
+-- node_id: test.tse_analytics.not_null_candidate_tally_coverage_gaps_gap_reason.a9dee62b38
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_candidate_tally_coverage_gaps_gap_reason.a9dee62b38", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
-      select
-          column_name,
-          data_type,
-          character_maximum_length,
-          numeric_precision,
-          numeric_scale
-
-      from system.information_schema.columns
-      where table_name = 'silver_electorate_municipality'
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
       
-      and lower(table_schema) = 'main'
-      
-      
-      and lower(table_catalog) = 'tse_analytics'
-      
-      order by ordinal_position
-
     
-  ;
--- created_at: 2026-10-08T18:13:03.014105885+00:00
--- finished_at: 2026-10-08T18:13:07.741103455+00:00
--- elapsed: 4.7s
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_party_votes
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+  
+    
+    
 
-    alter table "tse_analytics"."main"."fact_party_votes" add column "legend_valid_votes__dbt_alter" bigint;
-    update "tse_analytics"."main"."fact_party_votes" set "legend_valid_votes__dbt_alter" = "legend_valid_votes";
-    alter table "tse_analytics"."main"."fact_party_votes" drop column "legend_valid_votes" cascade;
-    alter table "tse_analytics"."main"."fact_party_votes" rename column "legend_valid_votes__dbt_alter" to "legend_valid_votes"
-  ;
--- created_at: 2026-10-08T18:13:05.426197222+00:00
--- finished_at: 2026-10-08T18:13:11.217362194+00:00
--- elapsed: 5.8s
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.silver_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-    alter table "tse_analytics"."main"."silver_electorate_municipality" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."silver_electorate_municipality" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."silver_electorate_municipality" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."silver_electorate_municipality" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:13:07.744294798+00:00
--- finished_at: 2026-10-08T18:13:11.365424993+00:00
--- elapsed: 3.6s
+
+select gap_reason
+from "tse_analytics"."main"."candidate_tally_coverage_gaps"
+where gap_reason is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:21:39.379646637+00:00
+-- finished_at: 2026-10-08T19:21:43.809283398+00:00
+-- elapsed: 4.4s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7778,24 +7738,9 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "nominal_converted_to_legend_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "nominal_converted_to_legend_votes__dbt_alter" to "nominal_converted_to_legend_votes"
   ;
--- created_at: 2026-10-08T18:13:11.222163962+00:00
--- finished_at: 2026-10-08T18:13:11.508998785+00:00
--- elapsed: 286ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.silver_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."silver_electorate_municipality" add column "electorate__dbt_alter" decimal(38, 0);
-    update "tse_analytics"."main"."silver_electorate_municipality" set "electorate__dbt_alter" = "electorate";
-    alter table "tse_analytics"."main"."silver_electorate_municipality" drop column "electorate" cascade;
-    alter table "tse_analytics"."main"."silver_electorate_municipality" rename column "electorate__dbt_alter" to "electorate"
-  ;
--- created_at: 2026-10-08T18:13:11.368167387+00:00
--- finished_at: 2026-10-08T18:13:12.796052696+00:00
--- elapsed: 1.4s
+-- created_at: 2026-10-08T19:21:43.829159289+00:00
+-- finished_at: 2026-10-08T19:21:45.659614295+00:00
+-- elapsed: 1.8s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7808,9 +7753,9 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "total_legend_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "total_legend_valid_votes__dbt_alter" to "total_legend_valid_votes"
   ;
--- created_at: 2026-10-08T18:13:12.800912109+00:00
--- finished_at: 2026-10-08T18:13:14.250141369+00:00
--- elapsed: 1.4s
+-- created_at: 2026-10-08T19:21:45.677325874+00:00
+-- finished_at: 2026-10-08T19:21:48.532710071+00:00
+-- elapsed: 2.9s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7823,8 +7768,8 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "party_valid_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "party_valid_votes__dbt_alter" to "party_valid_votes"
   ;
--- created_at: 2026-10-08T18:13:14.256168299+00:00
--- finished_at: 2026-10-08T18:13:15.886425020+00:00
+-- created_at: 2026-10-08T19:21:48.544808929+00:00
+-- finished_at: 2026-10-08T19:21:50.111273589+00:00
 -- elapsed: 1.6s
 -- outcome: success
 -- dialect: duckdb
@@ -7838,9 +7783,9 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "nominal_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "nominal_annulled_subjudice_votes__dbt_alter" to "nominal_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:13:15.894051948+00:00
--- finished_at: 2026-10-08T18:13:17.384308804+00:00
--- elapsed: 1.5s
+-- created_at: 2026-10-08T19:21:50.163370742+00:00
+-- finished_at: 2026-10-08T19:21:52.430138614+00:00
+-- elapsed: 2.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7853,9 +7798,9 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "legend_annulled_subjudice_votes" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "legend_annulled_subjudice_votes__dbt_alter" to "legend_annulled_subjudice_votes"
   ;
--- created_at: 2026-10-08T18:13:17.390065683+00:00
--- finished_at: 2026-10-08T18:13:18.671382655+00:00
--- elapsed: 1.3s
+-- created_at: 2026-10-08T19:21:52.491257636+00:00
+-- finished_at: 2026-10-08T19:21:53.936921968+00:00
+-- elapsed: 1.4s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7868,9 +7813,9 @@ group by 1,2,3,4,5,6
     alter table "tse_analytics"."main"."fact_party_votes" drop column "generated_at" cascade;
     alter table "tse_analytics"."main"."fact_party_votes" rename column "generated_at__dbt_alter" to "generated_at"
   ;
--- created_at: 2026-10-08T18:13:18.683371921+00:00
--- finished_at: 2026-10-08T18:13:22.468279056+00:00
--- elapsed: 3.8s
+-- created_at: 2026-10-08T19:21:53.971853235+00:00
+-- finished_at: 2026-10-08T19:22:01.092313057+00:00
+-- elapsed: 7.1s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.fact_party_votes
@@ -7882,7 +7827,7 @@ group by 1,2,3,4,5,6
     
     
     create temporary table
-      "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d"
+      "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3"
   
     as (
       
@@ -7930,37 +7875,37 @@ where election_year in (2026) and election_type in ('general')
 
         
             delete from "tse_analytics"."main"."fact_party_votes" as DBT_INCREMENTAL_TARGET
-            using "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d"
+            using "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3"
             where (
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".uf = DBT_INCREMENTAL_TARGET.uf
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".zone = DBT_INCREMENTAL_TARGET.zone
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".party_number = DBT_INCREMENTAL_TARGET.party_number
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".party_number = DBT_INCREMENTAL_TARGET.party_number
                     and 
                 
-                    "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -7971,12 +7916,12 @@ where election_year in (2026) and election_type in ('general')
     insert into "tse_analytics"."main"."fact_party_votes" ("election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "party_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "party_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file"
-        from "fact_party_votes__dbt_tmp_f8ab31b5_76dd_4ab8_abdc_c77b45369e0d"
+        from "fact_party_votes__dbt_tmp_312bb563_1e9c_41ce_8a62_a1d88e3b8ee3"
     )
   ;
--- created_at: 2026-10-08T18:13:22.517948450+00:00
--- finished_at: 2026-10-08T18:13:31.265243330+00:00
--- elapsed: 8.7s
+-- created_at: 2026-10-08T19:21:42.683872738+00:00
+-- finished_at: 2026-10-08T19:22:03.576791484+00:00
+-- elapsed: 20.9s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_candidate_nominal_votes_reconcile_tally
@@ -7999,9 +7944,98 @@ where nominal_valid_delta <> 0
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:31.272100373+00:00
--- finished_at: 2026-10-08T18:13:38.616100031+00:00
--- elapsed: 7.3s
+-- created_at: 2026-10-08T19:22:03.606002490+00:00
+-- finished_at: 2026-10-08T19:22:04.417869039+00:00
+-- elapsed: 811ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.silver_electorate_municipality
+-- query_id: not available
+-- desc: get_column_schema_from_query adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+select * from (
+        
+
+select
+    election_year,
+    election_type,
+    election_scope,
+    uf,
+    municipality_code,
+    municipality,
+    sum(electorate) as electorate
+from "tse_analytics"."main"."bronze_electorate"
+
+where election_year in (2026) and election_type in ('general')
+
+group by 1,2,3,4,5,6
+    ) as __dbt_sbq
+    where false
+    limit 0
+;
+-- created_at: 2026-10-08T19:22:04.423314578+00:00
+-- finished_at: 2026-10-08T19:22:04.443233006+00:00
+-- elapsed: 19ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.silver_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+      select
+          column_name,
+          data_type,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale
+
+      from system.information_schema.columns
+      where table_name = 'silver_electorate_municipality'
+      
+      and lower(table_schema) = 'main'
+      
+      
+      and lower(table_catalog) = 'tse_analytics'
+      
+      order by ordinal_position
+
+    
+  ;
+-- created_at: 2026-10-08T19:22:04.453562008+00:00
+-- finished_at: 2026-10-08T19:22:04.497047151+00:00
+-- elapsed: 43ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.silver_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."silver_electorate_municipality" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."silver_electorate_municipality" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."silver_electorate_municipality" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."silver_electorate_municipality" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:22:04.506633011+00:00
+-- finished_at: 2026-10-08T19:22:04.555895602+00:00
+-- elapsed: 49ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.silver_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."silver_electorate_municipality" add column "electorate__dbt_alter" decimal(38, 0);
+    update "tse_analytics"."main"."silver_electorate_municipality" set "electorate__dbt_alter" = "electorate";
+    alter table "tse_analytics"."main"."silver_electorate_municipality" drop column "electorate" cascade;
+    alter table "tse_analytics"."main"."silver_electorate_municipality" rename column "electorate__dbt_alter" to "electorate"
+  ;
+-- created_at: 2026-10-08T19:22:01.264118489+00:00
+-- finished_at: 2026-10-08T19:22:15.550301281+00:00
+-- elapsed: 14.3s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_candidate_tally_reconciliation_nominal_valid_delta.6562cea092
@@ -8033,15 +8067,15 @@ where nominal_valid_delta is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.624843991+00:00
--- finished_at: 2026-10-08T18:13:38.650824130+00:00
--- elapsed: 25ms
+-- created_at: 2026-10-08T19:22:15.567060094+00:00
+-- finished_at: 2026-10-08T19:22:15.571281563+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_candidate_tally_coverage_gaps_gap_reason.a9dee62b38
+-- node_id: test.tse_analytics.not_null_fact_turnout_abstentions.99322c759a
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_candidate_tally_coverage_gaps_gap_reason.a9dee62b38", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_turnout_abstentions.99322c759a", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8057,9 +8091,9 @@ where nominal_valid_delta is null
 
 
 
-select gap_reason
-from "tse_analytics"."main"."candidate_tally_coverage_gaps"
-where gap_reason is null
+select abstentions
+from "tse_analytics"."main"."fact_turnout"
+where abstentions is null
 
 
 
@@ -8067,9 +8101,43 @@ where gap_reason is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.656854207+00:00
--- finished_at: 2026-10-08T18:13:38.658877833+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:22:15.587032034+00:00
+-- finished_at: 2026-10-08T19:22:15.591491544+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_turnout_turnout.2919d6e02e
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_turnout_turnout.2919d6e02e", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select turnout
+from "tse_analytics"."main"."fact_turnout"
+where turnout is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:15.606841998+00:00
+-- finished_at: 2026-10-08T19:22:15.610736665+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_fact_turnout_eligible_voters.b0ad909ef2
@@ -8101,35 +8169,9 @@ where eligible_voters is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.664695448+00:00
--- finished_at: 2026-10-08T18:13:38.670260963+00:00
--- elapsed: 5ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_turnout_rates_bounds
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_turnout_rates_bounds", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."fact_turnout"
-where turnout_rate < 0 or turnout_rate > 1
-   or abstention_rate < 0 or abstention_rate > 1
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.675760373+00:00
--- finished_at: 2026-10-08T18:13:38.714924859+00:00
--- elapsed: 39ms
+-- created_at: 2026-10-08T19:22:15.629211968+00:00
+-- finished_at: 2026-10-08T19:22:15.727152153+00:00
+-- elapsed: 97ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_turnout_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.6ce3bd8520
@@ -8170,15 +8212,15 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.720937359+00:00
--- finished_at: 2026-10-08T18:13:38.722945150+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:22:15.744635685+00:00
+-- finished_at: 2026-10-08T19:22:15.750762402+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_turnout_turnout.2919d6e02e
+-- node_id: test.tse_analytics.assert_turnout_rates_bounds
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_turnout_turnout.2919d6e02e", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_turnout_rates_bounds", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8188,127 +8230,17 @@ from validation_errors
     from (
       
     
-  
-    
-    
-
-
-
-select turnout
+  select *
 from "tse_analytics"."main"."fact_turnout"
-where turnout is null
-
-
-
+where turnout_rate < 0 or turnout_rate > 1
+   or abstention_rate < 0 or abstention_rate > 1
   
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.728773734+00:00
--- finished_at: 2026-10-08T18:13:38.732767108+00:00
--- elapsed: 3ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_turnout_abstentions.99322c759a
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_turnout_abstentions.99322c759a", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select abstentions
-from "tse_analytics"."main"."fact_turnout"
-where abstentions is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.742063084+00:00
--- finished_at: 2026-10-08T18:13:38.743446753+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_party_party_number.76c8820921
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party_number.76c8820921", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select party_number
-from "tse_analytics"."main"."dim_party"
-where party_number is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.747772976+00:00
--- finished_at: 2026-10-08T18:13:38.748966309+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_party_party.a4ef69c28d
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party.a4ef69c28d", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select party
-from "tse_analytics"."main"."dim_party"
-where party is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.753617460+00:00
--- finished_at: 2026-10-08T18:13:38.754728743+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:22:15.766291144+00:00
+-- finished_at: 2026-10-08T19:22:15.771406054+00:00
+-- elapsed: 5ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_dim_party_party_id.0287c6f11e
@@ -8340,15 +8272,15 @@ where party_id is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.759422402+00:00
--- finished_at: 2026-10-08T18:13:38.760574796+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:22:15.789255071+00:00
+-- finished_at: 2026-10-08T19:22:15.793322764+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_dim_party_party_name.fadfb15c18
+-- node_id: test.tse_analytics.not_null_dim_party_party.a4ef69c28d
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party_name.fadfb15c18", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party.a4ef69c28d", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8364,9 +8296,9 @@ where party_id is null
 
 
 
-select party_name
+select party
 from "tse_analytics"."main"."dim_party"
-where party_name is null
+where party is null
 
 
 
@@ -8374,15 +8306,15 @@ where party_name is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.765691006+00:00
--- finished_at: 2026-10-08T18:13:38.768292683+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:22:15.814288311+00:00
+-- finished_at: 2026-10-08T19:22:15.818333861+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_party_election_year__election_type__election_code__party_number.cdcd63b462
+-- node_id: test.tse_analytics.not_null_dim_party_party_number.76c8820921
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_party_election_year__election_type__election_code__party_number.cdcd63b462", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party_number.76c8820921", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8393,23 +8325,14 @@ where party_name is null
       
     
   
+    
+    
 
 
 
-
-
-with validation_errors as (
-
-    select
-        election_year, election_type, election_code, party_number
-    from "tse_analytics"."main"."dim_party"
-    group by election_year, election_type, election_code, party_number
-    having count(*) > 1
-
-)
-
-select *
-from validation_errors
+select party_number
+from "tse_analytics"."main"."dim_party"
+where party_number is null
 
 
 
@@ -8417,9 +8340,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.774838319+00:00
--- finished_at: 2026-10-08T18:13:38.820101177+00:00
--- elapsed: 45ms
+-- created_at: 2026-10-08T19:22:15.835763513+00:00
+-- finished_at: 2026-10-08T19:22:15.935229508+00:00
+-- elapsed: 99ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_dim_party_snapshot_complete
@@ -8467,9 +8390,86 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.825993581+00:00
--- finished_at: 2026-10-08T18:13:38.828741387+00:00
--- elapsed: 2ms
+-- created_at: 2026-10-08T19:22:15.953169316+00:00
+-- finished_at: 2026-10-08T19:22:15.957053108+00:00
+-- elapsed: 3ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_dim_party_party_name.fadfb15c18
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_dim_party_party_name.fadfb15c18", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select party_name
+from "tse_analytics"."main"."dim_party"
+where party_name is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:15.973902354+00:00
+-- finished_at: 2026-10-08T19:22:15.980953840+00:00
+-- elapsed: 7ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_party_election_year__election_type__election_code__party_number.cdcd63b462
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_party_election_year__election_type__election_code__party_number.cdcd63b462", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+
+
+
+
+
+with validation_errors as (
+
+    select
+        election_year, election_type, election_code, party_number
+    from "tse_analytics"."main"."dim_party"
+    group by election_year, election_type, election_code, party_number
+    having count(*) > 1
+
+)
+
+select *
+from validation_errors
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:15.997306181+00:00
+-- finished_at: 2026-10-08T19:22:16.002181784+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.unique_dim_party_party_id.9da298a6ce
@@ -8504,9 +8504,9 @@ having count(*) > 1
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.837062757+00:00
--- finished_at: 2026-10-08T18:13:38.856269901+00:00
--- elapsed: 19ms
+-- created_at: 2026-10-08T19:22:16.024088973+00:00
+-- finished_at: 2026-10-08T19:22:17.222315839+00:00
+-- elapsed: 1.2s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_summary
@@ -8530,9 +8530,9 @@ from "tse_analytics"."main"."dim_candidate"
 group by 1,2,3,4,5,6
   );
 ;
--- created_at: 2026-10-08T18:13:38.858961618+00:00
--- finished_at: 2026-10-08T18:13:38.865381713+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:22:17.229736598+00:00
+-- finished_at: 2026-10-08T19:22:17.240472138+00:00
+-- elapsed: 10ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_summary
@@ -8540,9 +8540,9 @@ group by 1,2,3,4,5,6
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_summary", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."candidate_summary" rename to "candidate_summary__dbt_backup";
--- created_at: 2026-10-08T18:13:38.867922590+00:00
--- finished_at: 2026-10-08T18:13:38.874770919+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:22:17.247069074+00:00
+-- finished_at: 2026-10-08T19:22:17.259285641+00:00
+-- elapsed: 12ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_summary
@@ -8550,9 +8550,9 @@ alter view "tse_analytics"."main"."candidate_summary" rename to "candidate_summa
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_summary", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."candidate_summary__dbt_tmp" rename to "candidate_summary";
--- created_at: 2026-10-08T18:13:38.877958909+00:00
--- finished_at: 2026-10-08T18:13:38.883504713+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:22:17.272333758+00:00
+-- finished_at: 2026-10-08T19:22:17.284532513+00:00
+-- elapsed: 12ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_summary
@@ -8562,9 +8562,9 @@ alter view "tse_analytics"."main"."candidate_summary__dbt_tmp" rename to "candid
 
       drop view if exists "tse_analytics"."main"."candidate_summary__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:13:38.890492137+00:00
--- finished_at: 2026-10-08T18:13:38.907881159+00:00
--- elapsed: 17ms
+-- created_at: 2026-10-08T19:22:17.303915852+00:00
+-- finished_at: 2026-10-08T19:22:17.356275678+00:00
+-- elapsed: 52ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_vote_summary
@@ -8618,9 +8618,9 @@ group by
     d.party_name
   );
 ;
--- created_at: 2026-10-08T18:13:38.910658899+00:00
--- finished_at: 2026-10-08T18:13:38.917137968+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:22:17.365267558+00:00
+-- finished_at: 2026-10-08T19:22:17.375282708+00:00
+-- elapsed: 10ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_vote_summary
@@ -8628,9 +8628,9 @@ group by
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_vote_summary", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."candidate_vote_summary" rename to "candidate_vote_summary__dbt_backup";
--- created_at: 2026-10-08T18:13:38.919573514+00:00
--- finished_at: 2026-10-08T18:13:38.933089672+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:22:17.382943442+00:00
+-- finished_at: 2026-10-08T19:22:17.395569402+00:00
+-- elapsed: 12ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_vote_summary
@@ -8638,9 +8638,9 @@ alter view "tse_analytics"."main"."candidate_vote_summary" rename to "candidate_
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.candidate_vote_summary", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."candidate_vote_summary__dbt_tmp" rename to "candidate_vote_summary";
--- created_at: 2026-10-08T18:13:38.936639874+00:00
--- finished_at: 2026-10-08T18:13:38.942329131+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:22:17.405586520+00:00
+-- finished_at: 2026-10-08T19:22:17.414433225+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.candidate_vote_summary
@@ -8650,15 +8650,15 @@ alter view "tse_analytics"."main"."candidate_vote_summary__dbt_tmp" rename to "c
 
       drop view if exists "tse_analytics"."main"."candidate_vote_summary__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:13:38.947519685+00:00
--- finished_at: 2026-10-08T18:13:38.948941300+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:22:17.430322115+00:00
+-- finished_at: 2026-10-08T19:22:17.433905466+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_round_number.50bdb5d12f
+-- node_id: test.tse_analytics.not_null_fact_party_votes_election_type.f488bb9e82
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_round_number.50bdb5d12f", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_election_type.f488bb9e82", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8674,9 +8674,9 @@ alter view "tse_analytics"."main"."candidate_vote_summary__dbt_tmp" rename to "c
 
 
 
-select round_number
+select election_type
 from "tse_analytics"."main"."fact_party_votes"
-where round_number is null
+where election_type is null
 
 
 
@@ -8684,15 +8684,15 @@ where round_number is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.954869624+00:00
--- finished_at: 2026-10-08T18:13:38.956311237+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:22:17.448815149+00:00
+-- finished_at: 2026-10-08T19:22:17.452117947+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_election_year.051ecd245d
+-- node_id: test.tse_analytics.not_null_fact_party_votes_total_legend_valid_votes.ad59122f30
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_election_year.051ecd245d", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_total_legend_valid_votes.ad59122f30", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -8708,9 +8708,9 @@ where round_number is null
 
 
 
-select election_year
+select total_legend_valid_votes
 from "tse_analytics"."main"."fact_party_votes"
-where election_year is null
+where total_legend_valid_votes is null
 
 
 
@@ -8718,104 +8718,9 @@ where election_year is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.960984164+00:00
--- finished_at: 2026-10-08T18:13:38.962177545+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_party_number.708e410565
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_party_number.708e410565", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select party_number
-from "tse_analytics"."main"."fact_party_votes"
-where party_number is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:38.967782751+00:00
--- finished_at: 2026-10-08T18:13:39.092140752+00:00
--- elapsed: 124ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_party_votes_cycle_scope
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_party_votes_cycle_scope", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."fact_party_votes"
-where
-      (election_type = 'general' and office_scope = 'municipal')
-   or (election_type = 'municipal' and office_scope in ('federal', 'state'))
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:39.100788349+00:00
--- finished_at: 2026-10-08T18:13:39.102824105+00:00
--- elapsed: 2ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_legend_valid_votes.1363bff419
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_legend_valid_votes.1363bff419", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select legend_valid_votes
-from "tse_analytics"."main"."fact_party_votes"
-where legend_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:39.109873582+00:00
--- finished_at: 2026-10-08T18:13:40.393807004+00:00
--- elapsed: 1.3s
+-- created_at: 2026-10-08T19:22:17.466927431+00:00
+-- finished_at: 2026-10-08T19:22:19.602541960+00:00
+-- elapsed: 2.1s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_fact_party_votes_snapshot_complete
@@ -8865,9 +8770,9 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:40.399559434+00:00
--- finished_at: 2026-10-08T18:13:41.873525020+00:00
--- elapsed: 1.5s
+-- created_at: 2026-10-08T19:22:19.614234966+00:00
+-- finished_at: 2026-10-08T19:22:22.286283214+00:00
+-- elapsed: 2.7s
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_party_votes_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__party_number__is_transit_vote.5522d87bb6
@@ -8908,77 +8813,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:41.884532073+00:00
--- finished_at: 2026-10-08T18:13:41.920986954+00:00
--- elapsed: 36ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_party_valid_votes.7983795722
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_party_valid_votes.7983795722", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select party_valid_votes
-from "tse_analytics"."main"."fact_party_votes"
-where party_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:41.929904432+00:00
--- finished_at: 2026-10-08T18:13:41.931676057+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_nominal_valid_votes.496725c01b
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_nominal_valid_votes.496725c01b", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select nominal_valid_votes
-from "tse_analytics"."main"."fact_party_votes"
-where nominal_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:41.941128253+00:00
--- finished_at: 2026-10-08T18:13:41.942891651+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:22:22.326777386+00:00
+-- finished_at: 2026-10-08T19:22:22.333848084+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_fact_party_votes_election_code.ca5e6fa4a3
@@ -9010,9 +8847,270 @@ where election_code is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:41.950014724+00:00
--- finished_at: 2026-10-08T18:13:42.097516070+00:00
--- elapsed: 147ms
+-- created_at: 2026-10-08T19:22:22.373803970+00:00
+-- finished_at: 2026-10-08T19:22:22.383339185+00:00
+-- elapsed: 9ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_party_valid_votes.7983795722
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_party_valid_votes.7983795722", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select party_valid_votes
+from "tse_analytics"."main"."fact_party_votes"
+where party_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.412623639+00:00
+-- finished_at: 2026-10-08T19:22:22.419053589+00:00
+-- elapsed: 6ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_party_number.708e410565
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_party_number.708e410565", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select party_number
+from "tse_analytics"."main"."fact_party_votes"
+where party_number is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.446210724+00:00
+-- finished_at: 2026-10-08T19:22:22.455864778+00:00
+-- elapsed: 9ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_nonnegative_party_votes
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."fact_party_votes"
+where nominal_valid_votes < 0
+   or legend_valid_votes < 0
+   or total_legend_valid_votes < 0
+   or party_valid_votes < 0
+   or nominal_annulled_subjudice_votes < 0
+   or legend_annulled_subjudice_votes < 0
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.478889051+00:00
+-- finished_at: 2026-10-08T19:22:22.893343410+00:00
+-- elapsed: 414ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_party_votes_cycle_scope
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_party_votes_cycle_scope", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."fact_party_votes"
+where
+      (election_type = 'general' and office_scope = 'municipal')
+   or (election_type = 'municipal' and office_scope in ('federal', 'state'))
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.917873497+00:00
+-- finished_at: 2026-10-08T19:22:22.922465818+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_legend_valid_votes.1363bff419
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_legend_valid_votes.1363bff419", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select legend_valid_votes
+from "tse_analytics"."main"."fact_party_votes"
+where legend_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.947841929+00:00
+-- finished_at: 2026-10-08T19:22:22.953321524+00:00
+-- elapsed: 5ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_election_year.051ecd245d
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_election_year.051ecd245d", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."fact_party_votes"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:22.973224088+00:00
+-- finished_at: 2026-10-08T19:22:22.978616788+00:00
+-- elapsed: 5ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_round_number.50bdb5d12f
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_round_number.50bdb5d12f", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select round_number
+from "tse_analytics"."main"."fact_party_votes"
+where round_number is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:23.001894108+00:00
+-- finished_at: 2026-10-08T19:22:23.006512716+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_party_votes_nominal_valid_votes.496725c01b
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_nominal_valid_votes.496725c01b", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select nominal_valid_votes
+from "tse_analytics"."main"."fact_party_votes"
+where nominal_valid_votes is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:23.027845371+00:00
+-- finished_at: 2026-10-08T19:22:23.487343637+00:00
+-- elapsed: 459ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_party_votes_party_fk
@@ -9046,15 +9144,15 @@ group by 1,2,3,4
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:42.106614265+00:00
--- finished_at: 2026-10-08T18:13:42.243856913+00:00
--- elapsed: 137ms
+-- created_at: 2026-10-08T19:22:23.506282481+00:00
+-- finished_at: 2026-10-08T19:23:04.056741047+00:00
+-- elapsed: 40.6s
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.assert_nonnegative_party_votes
+-- node_id: test.tse_analytics.assert_candidate_party_reconcile_within_coverage
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_nonnegative_party_votes", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_candidate_party_reconcile_within_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -9064,154 +9162,74 @@ group by 1,2,3,4
     from (
       
     
-  select *
-from "tse_analytics"."main"."fact_party_votes"
-where nominal_valid_votes < 0
-   or legend_valid_votes < 0
-   or total_legend_valid_votes < 0
-   or party_valid_votes < 0
-   or nominal_annulled_subjudice_votes < 0
-   or legend_annulled_subjudice_votes < 0
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:42.250947114+00:00
--- finished_at: 2026-10-08T18:13:42.252687769+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_election_type.f488bb9e82
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_election_type.f488bb9e82", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
+  with candidate as (
     select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
+        election_year,
+        election_type,
+        election_code,
+        round_number,
+        uf,
+        municipality_code,
+        zone,
+        office_code,
+        is_transit_vote,
+        sum(nominal_valid_votes) as candidate_nominal_valid_votes
+    from "tse_analytics"."main"."fact_candidate_votes"
+    group by 1,2,3,4,5,6,7,8,9
+),
 
-
-
-select election_type
-from "tse_analytics"."main"."fact_party_votes"
-where election_type is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:42.261907008+00:00
--- finished_at: 2026-10-08T18:13:42.291770066+00:00
--- elapsed: 29ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_party_votes_total_legend_valid_votes.ad59122f30
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_party_votes_total_legend_valid_votes.ad59122f30", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
+party as (
     select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
+        election_year,
+        election_type,
+        election_code,
+        round_number,
+        uf,
+        municipality_code,
+        zone,
+        office_code,
+        is_transit_vote,
+        sum(nominal_valid_votes) as party_nominal_valid_votes
+    from "tse_analytics"."main"."fact_party_votes"
+    group by 1,2,3,4,5,6,7,8,9
+),
 
-
-
-select total_legend_valid_votes
-from "tse_analytics"."main"."fact_party_votes"
-where total_legend_valid_votes is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:11.513558011+00:00
--- finished_at: 2026-10-08T18:13:47.165852929+00:00
--- elapsed: 35.7s
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.silver_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-  
-    
-    
-    create temporary table
-      "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830"
-  
-    as (
-      
+coverage as (
+    select *
+    from "tse_analytics"."main"."candidate_result_coverage"
+)
 
 select
-    election_year,
-    election_type,
-    election_scope,
-    uf,
-    municipality_code,
-    municipality,
-    sum(electorate) as electorate
-from "tse_analytics"."main"."bronze_electorate"
-
-where election_year in (2026) and election_type in ('general')
-
-group by 1,2,3,4,5,6
-    );
+    p.*,
+    coalesce(c.candidate_nominal_valid_votes, 0) as candidate_nominal_valid_votes,
+    coalesce(c.candidate_nominal_valid_votes, 0) - p.party_nominal_valid_votes
+        as nominal_valid_delta
+from party p
+join coverage cv
+  on cv.election_year = p.election_year
+ and cv.election_type = p.election_type
+ and cv.election_code = p.election_code
+ and cv.round_number = p.round_number
+ and cv.uf = p.uf
+ and cv.office_code = p.office_code
+left join candidate c
+  on c.election_year = p.election_year
+ and c.election_type = p.election_type
+ and c.election_code = p.election_code
+ and c.round_number = p.round_number
+ and c.uf = p.uf
+ and c.municipality_code = p.municipality_code
+ and c.zone = p.zone
+ and c.office_code = p.office_code
+ and c.is_transit_vote is not distinct from p.is_transit_vote
+where coalesce(c.candidate_nominal_valid_votes, 0) <> p.party_nominal_valid_votes
   
-    
-  ;
-
-        
-            delete from "tse_analytics"."main"."silver_electorate_municipality" as DBT_INCREMENTAL_TARGET
-            using "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830"
-            where (
-                
-                    "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830".election_year = DBT_INCREMENTAL_TARGET.election_year
-                    and 
-                
-                    "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830".election_type = DBT_INCREMENTAL_TARGET.election_type
-                    and 
-                
-                    "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830".uf = DBT_INCREMENTAL_TARGET.uf
-                    and 
-                
-                    "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
-                    
-                
-                
-            );
-        
-    
-
-    insert into "tse_analytics"."main"."silver_electorate_municipality" ("election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality", "electorate")
-    (
-        select "election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality", "electorate"
-        from "silver_electorate_municipality__dbt_tmp_0d4e4d21_4d3c_4f22_9a2a_266173685830"
-    )
-  ;
--- created_at: 2026-10-08T18:13:47.175224258+00:00
--- finished_at: 2026-10-08T18:13:47.181702379+00:00
--- elapsed: 6ms
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:04.069445441+00:00
+-- finished_at: 2026-10-08T19:23:04.078037529+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.electoral_participation
@@ -9246,8 +9264,8 @@ group by 1,2,3,4,5,6
 from "tse_analytics"."main"."fact_turnout"
   );
 ;
--- created_at: 2026-10-08T18:13:47.184406621+00:00
--- finished_at: 2026-10-08T18:13:47.191567253+00:00
+-- created_at: 2026-10-08T19:23:04.083137552+00:00
+-- finished_at: 2026-10-08T19:23:04.091100840+00:00
 -- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
@@ -9256,9 +9274,9 @@ from "tse_analytics"."main"."fact_turnout"
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.electoral_participation", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."electoral_participation" rename to "electoral_participation__dbt_backup";
--- created_at: 2026-10-08T18:13:47.194157009+00:00
--- finished_at: 2026-10-08T18:13:47.201330255+00:00
--- elapsed: 7ms
+-- created_at: 2026-10-08T19:23:04.096271999+00:00
+-- finished_at: 2026-10-08T19:23:04.102547113+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.electoral_participation
@@ -9266,9 +9284,9 @@ alter view "tse_analytics"."main"."electoral_participation" rename to "electoral
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.electoral_participation", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."electoral_participation__dbt_tmp" rename to "electoral_participation";
--- created_at: 2026-10-08T18:13:47.204587501+00:00
--- finished_at: 2026-10-08T18:13:47.209920372+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:23:04.107473252+00:00
+-- finished_at: 2026-10-08T19:23:04.113814936+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.electoral_participation
@@ -9278,156 +9296,9 @@ alter view "tse_analytics"."main"."electoral_participation__dbt_tmp" rename to "
 
       drop view if exists "tse_analytics"."main"."electoral_participation__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:13:47.216573847+00:00
--- finished_at: 2026-10-08T18:13:47.233876010+00:00
--- elapsed: 17ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.party_performance
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-  
-  create view "tse_analytics"."main"."party_performance__dbt_tmp" as (
-    with candidate_by_party as (
-    select
-        f.election_year,
-        f.election_type,
-        f.election_code,
-        f.round_number,
-        f.uf,
-        f.municipality_code,
-        f.zone,
-        f.office_code,
-        d.party_number,
-        f.is_transit_vote,
-        sum(f.nominal_valid_votes) as candidate_nominal_valid_votes
-    from "tse_analytics"."main"."fact_candidate_votes" f
-    inner join "tse_analytics"."main"."dim_candidate" d
-      on d.election_year = f.election_year
-     and d.election_type = f.election_type
-     and d.election_code = f.election_code
-     and d.candidate_id = f.candidate_id
-    group by 1,2,3,4,5,6,7,8,9,10
-)
-
-select
-    p.election_year,
-    p.election_type,
-    p.election_scope,
-    p.election_id,
-    p.election_code,
-    p.round_number,
-
-    p.uf,
-    p.municipality_code,
-    p.zone,
-
-    p.office_code,
-    p.office_scope,
-
-    p.party_number,
-    d.party,
-    d.party_name,
-    d.party_id,
-
-    p.is_transit_vote,
-
-    p.nominal_valid_votes as party_reported_nominal_valid_votes,
-    coalesce(c.candidate_nominal_valid_votes, 0) as candidate_nominal_valid_votes,
-    p.nominal_valid_votes - coalesce(c.candidate_nominal_valid_votes, 0) as nominal_reconciliation_delta,
-
-    p.legend_valid_votes,
-    p.party_valid_votes,
-
-    t.nominal_valid_votes as tally_nominal_valid_votes,
-    p.nominal_valid_votes - t.nominal_valid_votes as nominal_tally_delta,
-
-    t.valid_votes,
-    t.turnout,
-    t.eligible_voters,
-    t.abstentions,
-
-    case when t.valid_votes > 0
-         then p.party_valid_votes::double / t.valid_votes
-    end as vote_share,
-
-    case when t.eligible_voters > 0
-         then t.turnout::double / t.eligible_voters
-    end as turnout_rate,
-
-    case when t.eligible_voters > 0
-         then t.abstentions::double / t.eligible_voters
-    end as abstention_rate,
-
-    p.generated_at
-from "tse_analytics"."main"."fact_party_votes" p
-left join candidate_by_party c
-  using (
-    election_year,
-    election_type,
-    election_code,
-    round_number,
-    uf,
-    municipality_code,
-    zone,
-    office_code,
-    party_number,
-    is_transit_vote
-  )
-left join "tse_analytics"."main"."dim_party" d
-  on d.election_year = p.election_year
- and d.election_type = p.election_type
- and d.election_code = p.election_code
- and d.party_number = p.party_number
-left join "tse_analytics"."main"."fact_tally_munzona" t
-  on t.election_year = p.election_year
- and t.election_type = p.election_type
- and t.election_code = p.election_code
- and t.round_number = p.round_number
- and t.uf = p.uf
- and t.municipality_code = p.municipality_code
- and t.zone = p.zone
- and t.office_code = p.office_code
- and t.is_transit_vote is not distinct from p.is_transit_vote
-  );
-;
--- created_at: 2026-10-08T18:13:47.236689213+00:00
--- finished_at: 2026-10-08T18:13:47.243045658+00:00
--- elapsed: 6ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.party_performance
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."party_performance" rename to "party_performance__dbt_backup";
--- created_at: 2026-10-08T18:13:47.245792912+00:00
--- finished_at: 2026-10-08T18:13:47.256736197+00:00
--- elapsed: 10ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.party_performance
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
-alter view "tse_analytics"."main"."party_performance__dbt_tmp" rename to "party_performance";
--- created_at: 2026-10-08T18:13:47.260298205+00:00
--- finished_at: 2026-10-08T18:13:47.265504283+00:00
--- elapsed: 5ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.party_performance
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-      drop view if exists "tse_analytics"."main"."party_performance__dbt_backup" cascade
-    ;
--- created_at: 2026-10-08T18:13:47.272528233+00:00
--- finished_at: 2026-10-08T18:13:47.281704768+00:00
--- elapsed: 9ms
+-- created_at: 2026-10-08T19:23:04.123911337+00:00
+-- finished_at: 2026-10-08T19:23:04.137260180+00:00
+-- elapsed: 13ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_coverage_gaps
@@ -9557,8 +9428,8 @@ where gap_reason is not null
 
   );
 ;
--- created_at: 2026-10-08T18:13:47.284525821+00:00
--- finished_at: 2026-10-08T18:13:47.290679784+00:00
+-- created_at: 2026-10-08T19:23:04.141580260+00:00
+-- finished_at: 2026-10-08T19:23:04.148283851+00:00
 -- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
@@ -9567,9 +9438,9 @@ where gap_reason is not null
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."party_tally_coverage_gaps" rename to "party_tally_coverage_gaps__dbt_backup";
--- created_at: 2026-10-08T18:13:47.293200820+00:00
--- finished_at: 2026-10-08T18:13:47.300111281+00:00
--- elapsed: 6ms
+-- created_at: 2026-10-08T19:23:04.153589997+00:00
+-- finished_at: 2026-10-08T19:23:04.162037572+00:00
+-- elapsed: 8ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_coverage_gaps
@@ -9577,9 +9448,9 @@ alter view "tse_analytics"."main"."party_tally_coverage_gaps" rename to "party_t
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_tally_coverage_gaps", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."party_tally_coverage_gaps__dbt_tmp" rename to "party_tally_coverage_gaps";
--- created_at: 2026-10-08T18:13:47.303896205+00:00
--- finished_at: 2026-10-08T18:13:47.308786411+00:00
--- elapsed: 4ms
+-- created_at: 2026-10-08T19:23:04.167514235+00:00
+-- finished_at: 2026-10-08T19:23:04.174314542+00:00
+-- elapsed: 6ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_coverage_gaps
@@ -9589,290 +9460,156 @@ alter view "tse_analytics"."main"."party_tally_coverage_gaps__dbt_tmp" rename to
 
       drop view if exists "tse_analytics"."main"."party_tally_coverage_gaps__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:13:47.326148770+00:00
--- finished_at: 2026-10-08T18:13:47.327784351+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:23:04.188225524+00:00
+-- finished_at: 2026-10-08T19:23:04.225978050+00:00
+-- elapsed: 37ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.dim_geography
+-- node_id: model.tse_analytics.party_performance
 -- query_id: not available
--- desc: get_column_schema_from_query adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
-select * from (
-        
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-select distinct
+  
+  create view "tse_analytics"."main"."party_performance__dbt_tmp" as (
+    with candidate_by_party as (
+    select
+        f.election_year,
+        f.election_type,
+        f.election_code,
+        f.round_number,
+        f.uf,
+        f.municipality_code,
+        f.zone,
+        f.office_code,
+        d.party_number,
+        f.is_transit_vote,
+        sum(f.nominal_valid_votes) as candidate_nominal_valid_votes
+    from "tse_analytics"."main"."fact_candidate_votes" f
+    inner join "tse_analytics"."main"."dim_candidate" d
+      on d.election_year = f.election_year
+     and d.election_type = f.election_type
+     and d.election_code = f.election_code
+     and d.candidate_id = f.candidate_id
+    group by 1,2,3,4,5,6,7,8,9,10
+)
+
+select
+    p.election_year,
+    p.election_type,
+    p.election_scope,
+    p.election_id,
+    p.election_code,
+    p.round_number,
+
+    p.uf,
+    p.municipality_code,
+    p.zone,
+
+    p.office_code,
+    p.office_scope,
+
+    p.party_number,
+    d.party,
+    d.party_name,
+    d.party_id,
+
+    p.is_transit_vote,
+
+    p.nominal_valid_votes as party_reported_nominal_valid_votes,
+    coalesce(c.candidate_nominal_valid_votes, 0) as candidate_nominal_valid_votes,
+    p.nominal_valid_votes - coalesce(c.candidate_nominal_valid_votes, 0) as nominal_reconciliation_delta,
+
+    p.legend_valid_votes,
+    p.party_valid_votes,
+
+    t.nominal_valid_votes as tally_nominal_valid_votes,
+    p.nominal_valid_votes - t.nominal_valid_votes as nominal_tally_delta,
+
+    t.valid_votes,
+    t.turnout,
+    t.eligible_voters,
+    t.abstentions,
+
+    case when t.valid_votes > 0
+         then p.party_valid_votes::double / t.valid_votes
+    end as vote_share,
+
+    case when t.eligible_voters > 0
+         then t.turnout::double / t.eligible_voters
+    end as turnout_rate,
+
+    case when t.eligible_voters > 0
+         then t.abstentions::double / t.eligible_voters
+    end as abstention_rate,
+
+    p.generated_at
+from "tse_analytics"."main"."fact_party_votes" p
+left join candidate_by_party c
+  using (
     election_year,
     election_type,
-    election_scope,
+    election_code,
+    round_number,
     uf,
     municipality_code,
-    municipality
-from "tse_analytics"."main"."silver_electorate_municipality"
-
-  
-    where election_year in (2026) and election_type in ('general')
-  
-
-    ) as __dbt_sbq
-    where false
-    limit 0
+    zone,
+    office_code,
+    party_number,
+    is_transit_vote
+  )
+left join "tse_analytics"."main"."dim_party" d
+  on d.election_year = p.election_year
+ and d.election_type = p.election_type
+ and d.election_code = p.election_code
+ and d.party_number = p.party_number
+left join "tse_analytics"."main"."fact_tally_munzona" t
+  on t.election_year = p.election_year
+ and t.election_type = p.election_type
+ and t.election_code = p.election_code
+ and t.round_number = p.round_number
+ and t.uf = p.uf
+ and t.municipality_code = p.municipality_code
+ and t.zone = p.zone
+ and t.office_code = p.office_code
+ and t.is_transit_vote is not distinct from p.is_transit_vote
+  );
 ;
--- created_at: 2026-10-08T18:13:47.331464485+00:00
--- finished_at: 2026-10-08T18:13:47.342192974+00:00
--- elapsed: 10ms
+-- created_at: 2026-10-08T19:23:04.230403764+00:00
+-- finished_at: 2026-10-08T19:23:04.238188176+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.dim_geography
+-- node_id: model.tse_analytics.party_performance
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-      select
-          column_name,
-          data_type,
-          character_maximum_length,
-          numeric_precision,
-          numeric_scale
-
-      from system.information_schema.columns
-      where table_name = 'dim_geography'
-      
-      and lower(table_schema) = 'main'
-      
-      
-      and lower(table_catalog) = 'tse_analytics'
-      
-      order by ordinal_position
-
-    
-  ;
--- created_at: 2026-10-08T18:13:47.348799315+00:00
--- finished_at: 2026-10-08T18:13:47.419609967+00:00
--- elapsed: 70ms
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."party_performance" rename to "party_performance__dbt_backup";
+-- created_at: 2026-10-08T19:23:04.242255017+00:00
+-- finished_at: 2026-10-08T19:23:04.251743063+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.dim_geography
+-- node_id: model.tse_analytics.party_performance
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."dim_geography" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."dim_geography" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."dim_geography" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."dim_geography" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:13:47.425724331+00:00
--- finished_at: 2026-10-08T18:13:47.467431948+00:00
--- elapsed: 41ms
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
+alter view "tse_analytics"."main"."party_performance__dbt_tmp" rename to "party_performance";
+-- created_at: 2026-10-08T19:23:04.258530159+00:00
+-- finished_at: 2026-10-08T19:23:04.268517134+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: model.tse_analytics.dim_geography
+-- node_id: model.tse_analytics.party_performance
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_performance", "profile_name": "tse_analytics", "target_name": "dev"} */
 
-  
-    
-    
-    create temporary table
-      "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627"
-  
-    as (
-      
-
-select distinct
-    election_year,
-    election_type,
-    election_scope,
-    uf,
-    municipality_code,
-    municipality
-from "tse_analytics"."main"."silver_electorate_municipality"
-
-  
-    where election_year in (2026) and election_type in ('general')
-  
-
-    );
-  
-    
-  ;
-
-        
-            delete from "tse_analytics"."main"."dim_geography" as DBT_INCREMENTAL_TARGET
-            using "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627"
-            where (
-                
-                    "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627".election_year = DBT_INCREMENTAL_TARGET.election_year
-                    and 
-                
-                    "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627".election_type = DBT_INCREMENTAL_TARGET.election_type
-                    and 
-                
-                    "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627".uf = DBT_INCREMENTAL_TARGET.uf
-                    and 
-                
-                    "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
-                    
-                
-                
-            );
-        
-    
-
-    insert into "tse_analytics"."main"."dim_geography" ("election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality")
-    (
-        select "election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality"
-        from "dim_geography__dbt_tmp_6e6af3ef_fc67_4fad_b4b2_820197dea627"
-    )
-  ;
--- created_at: 2026-10-08T18:13:47.479123651+00:00
--- finished_at: 2026-10-08T18:13:47.480581740+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_electorate_municipality
--- query_id: not available
--- desc: get_column_schema_from_query adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-select * from (
-        
-
-select *
-from "tse_analytics"."main"."silver_electorate_municipality"
-
-  
-    where election_year in (2026) and election_type in ('general')
-  
-
-    ) as __dbt_sbq
-    where false
-    limit 0
-;
--- created_at: 2026-10-08T18:13:47.483540452+00:00
--- finished_at: 2026-10-08T18:13:47.544775204+00:00
--- elapsed: 61ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-      select
-          column_name,
-          data_type,
-          character_maximum_length,
-          numeric_precision,
-          numeric_scale
-
-      from system.information_schema.columns
-      where table_name = 'fact_electorate_municipality'
-      
-      and lower(table_schema) = 'main'
-      
-      
-      and lower(table_catalog) = 'tse_analytics'
-      
-      order by ordinal_position
-
-    
-  ;
--- created_at: 2026-10-08T18:13:47.550833648+00:00
--- finished_at: 2026-10-08T18:13:47.601391510+00:00
--- elapsed: 50ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_electorate_municipality" add column "election_year__dbt_alter" integer;
-    update "tse_analytics"."main"."fact_electorate_municipality" set "election_year__dbt_alter" = "election_year";
-    alter table "tse_analytics"."main"."fact_electorate_municipality" drop column "election_year" cascade;
-    alter table "tse_analytics"."main"."fact_electorate_municipality" rename column "election_year__dbt_alter" to "election_year"
-  ;
--- created_at: 2026-10-08T18:13:47.608996951+00:00
--- finished_at: 2026-10-08T18:13:47.675047732+00:00
--- elapsed: 66ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    alter table "tse_analytics"."main"."fact_electorate_municipality" add column "electorate__dbt_alter" decimal(38, 0);
-    update "tse_analytics"."main"."fact_electorate_municipality" set "electorate__dbt_alter" = "electorate";
-    alter table "tse_analytics"."main"."fact_electorate_municipality" drop column "electorate" cascade;
-    alter table "tse_analytics"."main"."fact_electorate_municipality" rename column "electorate__dbt_alter" to "electorate"
-  ;
--- created_at: 2026-10-08T18:13:47.682749943+00:00
--- finished_at: 2026-10-08T18:13:47.727953990+00:00
--- elapsed: 45ms
--- outcome: success
--- dialect: duckdb
--- node_id: model.tse_analytics.fact_electorate_municipality
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-  
-    
-    
-    create temporary table
-      "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
-  
-    as (
-      
-
-select *
-from "tse_analytics"."main"."silver_electorate_municipality"
-
-  
-    where election_year in (2026) and election_type in ('general')
-  
-
-    );
-  
-    
-  ;
-
-        
-            delete from "tse_analytics"."main"."fact_electorate_municipality" as DBT_INCREMENTAL_TARGET
-            using "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
-            where (
-                
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".election_year = DBT_INCREMENTAL_TARGET.election_year
-                    and 
-                
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".election_type = DBT_INCREMENTAL_TARGET.election_type
-                    and 
-                
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".uf = DBT_INCREMENTAL_TARGET.uf
-                    and 
-                
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
-                    
-                
-                
-            );
-        
-    
-
-    insert into "tse_analytics"."main"."fact_electorate_municipality" ("election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate")
-    (
-        select "election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate"
-        from "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
-    )
-  ;
--- created_at: 2026-10-08T18:13:47.739374324+00:00
--- finished_at: 2026-10-08T18:13:47.759158244+00:00
--- elapsed: 19ms
+      drop view if exists "tse_analytics"."main"."party_performance__dbt_backup" cascade
+    ;
+-- created_at: 2026-10-08T19:23:04.283728227+00:00
+-- finished_at: 2026-10-08T19:23:04.307905672+00:00
+-- elapsed: 24ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_reconciliation
@@ -9954,9 +9691,9 @@ where not exists (
 )
   );
 ;
--- created_at: 2026-10-08T18:13:47.762762283+00:00
--- finished_at: 2026-10-08T18:13:47.776222129+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:23:04.312640517+00:00
+-- finished_at: 2026-10-08T19:23:04.322442216+00:00
+-- elapsed: 9ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_reconciliation
@@ -9964,9 +9701,9 @@ where not exists (
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."party_tally_reconciliation" rename to "party_tally_reconciliation__dbt_backup";
--- created_at: 2026-10-08T18:13:47.779193201+00:00
--- finished_at: 2026-10-08T18:13:47.785043017+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:23:04.326855730+00:00
+-- finished_at: 2026-10-08T19:23:04.334156239+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_reconciliation
@@ -9974,9 +9711,9 @@ alter view "tse_analytics"."main"."party_tally_reconciliation" rename to "party_
 -- desc: execute adapter call
 /* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.party_tally_reconciliation", "profile_name": "tse_analytics", "target_name": "dev"} */
 alter view "tse_analytics"."main"."party_tally_reconciliation__dbt_tmp" rename to "party_tally_reconciliation";
--- created_at: 2026-10-08T18:13:47.789074854+00:00
--- finished_at: 2026-10-08T18:13:47.794731258+00:00
--- elapsed: 5ms
+-- created_at: 2026-10-08T19:23:04.340820247+00:00
+-- finished_at: 2026-10-08T19:23:04.347857484+00:00
+-- elapsed: 7ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: model.tse_analytics.party_tally_reconciliation
@@ -9986,9 +9723,493 @@ alter view "tse_analytics"."main"."party_tally_reconciliation__dbt_tmp" rename t
 
       drop view if exists "tse_analytics"."main"."party_tally_reconciliation__dbt_backup" cascade
     ;
--- created_at: 2026-10-08T18:13:47.801752039+00:00
--- finished_at: 2026-10-08T18:13:47.825307099+00:00
--- elapsed: 23ms
+-- created_at: 2026-10-08T19:23:04.366564116+00:00
+-- finished_at: 2026-10-08T19:23:05.860864866+00:00
+-- elapsed: 1.5s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_party_tally_reconciliation_total_valid_delta.26b6bc9108
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_valid_delta.26b6bc9108", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select total_valid_delta
+from "tse_analytics"."main"."party_tally_reconciliation"
+where total_valid_delta is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:05.875245286+00:00
+-- finished_at: 2026-10-08T19:23:07.506900921+00:00
+-- elapsed: 1.6s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.assert_party_valid_votes_reconcile_tally
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_party_valid_votes_reconcile_tally", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  select *
+from "tse_analytics"."main"."party_tally_reconciliation"
+where nominal_valid_delta <> 0
+   or total_legend_valid_delta <> 0
+   or total_valid_delta <> 0
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:22:04.567952350+00:00
+-- finished_at: 2026-10-08T19:23:08.044433125+00:00
+-- elapsed: 1m 3s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.silver_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.silver_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+  
+    
+    
+    create temporary table
+      "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578"
+  
+    as (
+      
+
+select
+    election_year,
+    election_type,
+    election_scope,
+    uf,
+    municipality_code,
+    municipality,
+    sum(electorate) as electorate
+from "tse_analytics"."main"."bronze_electorate"
+
+where election_year in (2026) and election_type in ('general')
+
+group by 1,2,3,4,5,6
+    );
+  
+    
+  ;
+
+        
+            delete from "tse_analytics"."main"."silver_electorate_municipality" as DBT_INCREMENTAL_TARGET
+            using "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578"
+            where (
+                
+                    "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    and 
+                
+                    "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    and 
+                
+                    "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578".uf = DBT_INCREMENTAL_TARGET.uf
+                    and 
+                
+                    "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    
+                
+                
+            );
+        
+    
+
+    insert into "tse_analytics"."main"."silver_electorate_municipality" ("election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality", "electorate")
+    (
+        select "election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality", "electorate"
+        from "silver_electorate_municipality__dbt_tmp_74ba7fa1_61f8_438f_8130_5ffa5bd37578"
+    )
+  ;
+-- created_at: 2026-10-08T19:23:07.518989004+00:00
+-- finished_at: 2026-10-08T19:23:09.195410369+00:00
+-- elapsed: 1.7s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_party_tally_reconciliation_nominal_valid_delta.4f6b3ef4ef
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_nominal_valid_delta.4f6b3ef4ef", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select nominal_valid_delta
+from "tse_analytics"."main"."party_tally_reconciliation"
+where nominal_valid_delta is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:09.237471690+00:00
+-- finished_at: 2026-10-08T19:23:09.241709881+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.dim_geography
+-- query_id: not available
+-- desc: get_column_schema_from_query adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
+select * from (
+        
+
+select distinct
+    election_year,
+    election_type,
+    election_scope,
+    uf,
+    municipality_code,
+    municipality
+from "tse_analytics"."main"."silver_electorate_municipality"
+
+  
+    where election_year in (2026) and election_type in ('general')
+  
+
+    ) as __dbt_sbq
+    where false
+    limit 0
+;
+-- created_at: 2026-10-08T19:23:09.250277874+00:00
+-- finished_at: 2026-10-08T19:23:09.267956809+00:00
+-- elapsed: 17ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.dim_geography
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+      select
+          column_name,
+          data_type,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale
+
+      from system.information_schema.columns
+      where table_name = 'dim_geography'
+      
+      and lower(table_schema) = 'main'
+      
+      
+      and lower(table_catalog) = 'tse_analytics'
+      
+      order by ordinal_position
+
+    
+  ;
+-- created_at: 2026-10-08T19:23:09.279370973+00:00
+-- finished_at: 2026-10-08T19:23:09.346528403+00:00
+-- elapsed: 67ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.dim_geography
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."dim_geography" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."dim_geography" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."dim_geography" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."dim_geography" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:23:09.365929441+00:00
+-- finished_at: 2026-10-08T19:23:09.473814007+00:00
+-- elapsed: 107ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.dim_geography
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.dim_geography", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+  
+    
+    
+    create temporary table
+      "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918"
+  
+    as (
+      
+
+select distinct
+    election_year,
+    election_type,
+    election_scope,
+    uf,
+    municipality_code,
+    municipality
+from "tse_analytics"."main"."silver_electorate_municipality"
+
+  
+    where election_year in (2026) and election_type in ('general')
+  
+
+    );
+  
+    
+  ;
+
+        
+            delete from "tse_analytics"."main"."dim_geography" as DBT_INCREMENTAL_TARGET
+            using "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918"
+            where (
+                
+                    "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    and 
+                
+                    "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    and 
+                
+                    "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918".uf = DBT_INCREMENTAL_TARGET.uf
+                    and 
+                
+                    "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    
+                
+                
+            );
+        
+    
+
+    insert into "tse_analytics"."main"."dim_geography" ("election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality")
+    (
+        select "election_year", "election_type", "election_scope", "uf", "municipality_code", "municipality"
+        from "dim_geography__dbt_tmp_38e7e2ac_9793_45ae_8b1f_322e512c4918"
+    )
+  ;
+-- created_at: 2026-10-08T19:23:09.508918574+00:00
+-- finished_at: 2026-10-08T19:23:09.512150524+00:00
+-- elapsed: 3ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_electorate_municipality
+-- query_id: not available
+-- desc: get_column_schema_from_query adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+select * from (
+        
+
+select *
+from "tse_analytics"."main"."silver_electorate_municipality"
+
+  
+    where election_year in (2026) and election_type in ('general')
+  
+
+    ) as __dbt_sbq
+    where false
+    limit 0
+;
+-- created_at: 2026-10-08T19:23:09.521751849+00:00
+-- finished_at: 2026-10-08T19:23:09.542384736+00:00
+-- elapsed: 20ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+      select
+          column_name,
+          data_type,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale
+
+      from system.information_schema.columns
+      where table_name = 'fact_electorate_municipality'
+      
+      and lower(table_schema) = 'main'
+      
+      
+      and lower(table_catalog) = 'tse_analytics'
+      
+      order by ordinal_position
+
+    
+  ;
+-- created_at: 2026-10-08T19:23:09.558833508+00:00
+-- finished_at: 2026-10-08T19:23:09.663270298+00:00
+-- elapsed: 104ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_electorate_municipality" add column "election_year__dbt_alter" integer;
+    update "tse_analytics"."main"."fact_electorate_municipality" set "election_year__dbt_alter" = "election_year";
+    alter table "tse_analytics"."main"."fact_electorate_municipality" drop column "election_year" cascade;
+    alter table "tse_analytics"."main"."fact_electorate_municipality" rename column "election_year__dbt_alter" to "election_year"
+  ;
+-- created_at: 2026-10-08T19:23:09.678496218+00:00
+-- finished_at: 2026-10-08T19:23:09.841263046+00:00
+-- elapsed: 162ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    alter table "tse_analytics"."main"."fact_electorate_municipality" add column "electorate__dbt_alter" decimal(38, 0);
+    update "tse_analytics"."main"."fact_electorate_municipality" set "electorate__dbt_alter" = "electorate";
+    alter table "tse_analytics"."main"."fact_electorate_municipality" drop column "electorate" cascade;
+    alter table "tse_analytics"."main"."fact_electorate_municipality" rename column "electorate__dbt_alter" to "electorate"
+  ;
+-- created_at: 2026-10-08T19:23:09.861676485+00:00
+-- finished_at: 2026-10-08T19:23:09.942542472+00:00
+-- elapsed: 80ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: model.tse_analytics.fact_electorate_municipality
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "model.tse_analytics.fact_electorate_municipality", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+  
+    
+    
+    create temporary table
+      "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
+  
+    as (
+      
+
+select *
+from "tse_analytics"."main"."silver_electorate_municipality"
+
+  
+    where election_year in (2026) and election_type in ('general')
+  
+
+    );
+  
+    
+  ;
+
+        
+            delete from "tse_analytics"."main"."fact_electorate_municipality" as DBT_INCREMENTAL_TARGET
+            using "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
+            where (
+                
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    and 
+                
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    and 
+                
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".uf = DBT_INCREMENTAL_TARGET.uf
+                    and 
+                
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    
+                
+                
+            );
+        
+    
+
+    insert into "tse_analytics"."main"."fact_electorate_municipality" ("election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate")
+    (
+        select "election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate"
+        from "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
+    )
+  ;
+-- created_at: 2026-10-08T19:23:09.965572270+00:00
+-- finished_at: 2026-10-08T19:23:09.997240466+00:00
+-- elapsed: 31ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_geography_election_year__election_type__uf__municipality_code.132ccfbd61
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_geography_election_year__election_type__uf__municipality_code.132ccfbd61", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+
+
+
+
+
+with validation_errors as (
+
+    select
+        election_year, election_type, uf, municipality_code
+    from "tse_analytics"."main"."dim_geography"
+    group by election_year, election_type, uf, municipality_code
+    having count(*) > 1
+
+)
+
+select *
+from validation_errors
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:10.011650264+00:00
+-- finished_at: 2026-10-08T19:23:10.051301586+00:00
+-- elapsed: 39ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_dim_geography_snapshot_complete
@@ -10032,15 +10253,15 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.831742339+00:00
--- finished_at: 2026-10-08T18:13:47.847596746+00:00
--- elapsed: 15ms
+-- created_at: 2026-10-08T19:23:10.067379927+00:00
+-- finished_at: 2026-10-08T19:23:10.071034455+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_geography_election_year__election_type__uf__municipality_code.132ccfbd61
+-- node_id: test.tse_analytics.not_null_fact_electorate_municipality_uf.e9271f96e4
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_geography_election_year__election_type__uf__municipality_code.132ccfbd61", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_uf.e9271f96e4", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -10051,23 +10272,14 @@ select * from diff
       
     
   
+    
+    
 
 
 
-
-
-with validation_errors as (
-
-    select
-        election_year, election_type, uf, municipality_code
-    from "tse_analytics"."main"."dim_geography"
-    group by election_year, election_type, uf, municipality_code
-    having count(*) > 1
-
-)
-
-select *
-from validation_errors
+select uf
+from "tse_analytics"."main"."fact_electorate_municipality"
+where uf is null
 
 
 
@@ -10075,9 +10287,111 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.853743012+00:00
--- finished_at: 2026-10-08T18:13:47.866952713+00:00
--- elapsed: 13ms
+-- created_at: 2026-10-08T19:23:10.084344888+00:00
+-- finished_at: 2026-10-08T19:23:10.086927399+00:00
+-- elapsed: 2ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_electorate_municipality_election_scope.5a27d36766
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_scope.5a27d36766", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_scope
+from "tse_analytics"."main"."fact_electorate_municipality"
+where election_scope is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:10.101663749+00:00
+-- finished_at: 2026-10-08T19:23:10.105780084+00:00
+-- elapsed: 4ms
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_fact_electorate_municipality_election_year.4966e96aad
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_year.4966e96aad", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select election_year
+from "tse_analytics"."main"."fact_electorate_municipality"
+where election_year is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:08.059625215+00:00
+-- finished_at: 2026-10-08T19:23:10.106613885+00:00
+-- elapsed: 2.0s
+-- outcome: success
+-- dialect: duckdb
+-- node_id: test.tse_analytics.not_null_party_tally_reconciliation_total_legend_valid_delta.7a778b57fe
+-- query_id: not available
+-- desc: execute adapter call
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_legend_valid_delta.7a778b57fe", "profile_name": "tse_analytics", "target_name": "dev"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select total_legend_valid_delta
+from "tse_analytics"."main"."party_tally_reconciliation"
+where total_legend_valid_delta is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test;
+-- created_at: 2026-10-08T19:23:10.120797734+00:00
+-- finished_at: 2026-10-08T19:23:10.144686792+00:00
+-- elapsed: 23ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_electorate_municipality_election_year__election_type__uf__municipality_code.fd8fe21802
@@ -10118,77 +10432,9 @@ from validation_errors
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.872512131+00:00
--- finished_at: 2026-10-08T18:13:47.873998176+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_electorate_municipality_municipality_code.e47ac5da0f
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_municipality_code.e47ac5da0f", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select municipality_code
-from "tse_analytics"."main"."fact_electorate_municipality"
-where municipality_code is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.881016474+00:00
--- finished_at: 2026-10-08T18:13:47.883931422+00:00
--- elapsed: 2ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_electorate_municipality_election_year.4966e96aad
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_year.4966e96aad", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_year
-from "tse_analytics"."main"."fact_electorate_municipality"
-where election_year is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.889683803+00:00
--- finished_at: 2026-10-08T18:13:47.910139030+00:00
--- elapsed: 20ms
+-- created_at: 2026-10-08T19:23:10.121120367+00:00
+-- finished_at: 2026-10-08T19:23:10.151758250+00:00
+-- elapsed: 30ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.assert_fact_electorate_snapshot_complete
@@ -10242,15 +10488,15 @@ select * from diff
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.917194946+00:00
--- finished_at: 2026-10-08T18:13:47.918691637+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:23:10.160161642+00:00
+-- finished_at: 2026-10-08T19:23:10.163914134+00:00
+-- elapsed: 3ms
 -- outcome: success
 -- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_electorate_municipality_uf.e9271f96e4
+-- node_id: test.tse_analytics.not_null_fact_electorate_municipality_municipality_code.e47ac5da0f
 -- query_id: not available
 -- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_uf.e9271f96e4", "profile_name": "tse_analytics", "target_name": "dev"} */
+/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_municipality_code.e47ac5da0f", "profile_name": "tse_analytics", "target_name": "dev"} */
 
     
     select
@@ -10266,9 +10512,9 @@ select * from diff
 
 
 
-select uf
+select municipality_code
 from "tse_analytics"."main"."fact_electorate_municipality"
-where uf is null
+where municipality_code is null
 
 
 
@@ -10276,43 +10522,9 @@ where uf is null
   
       
     ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.923607834+00:00
--- finished_at: 2026-10-08T18:13:47.924869931+00:00
--- elapsed: 1ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_fact_electorate_municipality_election_scope.5a27d36766
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_scope.5a27d36766", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select election_scope
-from "tse_analytics"."main"."fact_electorate_municipality"
-where election_scope is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.929847699+00:00
--- finished_at: 2026-10-08T18:13:47.931061818+00:00
--- elapsed: 1ms
+-- created_at: 2026-10-08T19:23:10.167187112+00:00
+-- finished_at: 2026-10-08T19:23:10.171490163+00:00
+-- elapsed: 4ms
 -- outcome: success
 -- dialect: duckdb
 -- node_id: test.tse_analytics.not_null_fact_electorate_municipality_election_type.95b5da7ded
@@ -10340,218 +10552,6 @@ where election_type is null
 
 
 
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:47.936285459+00:00
--- finished_at: 2026-10-08T18:13:48.803024593+00:00
--- elapsed: 866ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_party_tally_reconciliation_total_valid_delta.26b6bc9108
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_valid_delta.26b6bc9108", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select total_valid_delta
-from "tse_analytics"."main"."party_tally_reconciliation"
-where total_valid_delta is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:48.807953717+00:00
--- finished_at: 2026-10-08T18:13:49.813216678+00:00
--- elapsed: 1.0s
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_party_valid_votes_reconcile_tally
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_party_valid_votes_reconcile_tally", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  select *
-from "tse_analytics"."main"."party_tally_reconciliation"
-where nominal_valid_delta <> 0
-   or total_legend_valid_delta <> 0
-   or total_valid_delta <> 0
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:49.819886546+00:00
--- finished_at: 2026-10-08T18:13:50.721447123+00:00
--- elapsed: 901ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_party_tally_reconciliation_total_legend_valid_delta.7a778b57fe
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_legend_valid_delta.7a778b57fe", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select total_legend_valid_delta
-from "tse_analytics"."main"."party_tally_reconciliation"
-where total_legend_valid_delta is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:50.727291947+00:00
--- finished_at: 2026-10-08T18:13:51.506738204+00:00
--- elapsed: 779ms
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.not_null_party_tally_reconciliation_nominal_valid_delta.4f6b3ef4ef
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.not_null_party_tally_reconciliation_nominal_valid_delta.4f6b3ef4ef", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  
-    
-    
-
-
-
-select nominal_valid_delta
-from "tse_analytics"."main"."party_tally_reconciliation"
-where nominal_valid_delta is null
-
-
-
-  
-  
-      
-    ) dbt_internal_test;
--- created_at: 2026-10-08T18:13:42.301106699+00:00
--- finished_at: 2026-10-08T18:13:58.816737436+00:00
--- elapsed: 16.5s
--- outcome: success
--- dialect: duckdb
--- node_id: test.tse_analytics.assert_candidate_party_reconcile_within_coverage
--- query_id: not available
--- desc: execute adapter call
-/* {"app": "dbt", "dbt_version": "2.0.0", "node_id": "test.tse_analytics.assert_candidate_party_reconcile_within_coverage", "profile_name": "tse_analytics", "target_name": "dev"} */
-
-    
-    select
-      count(*) as failures,
-      count(*) != 0 as should_warn,
-      count(*) != 0 as should_error
-    from (
-      
-    
-  with candidate as (
-    select
-        election_year,
-        election_type,
-        election_code,
-        round_number,
-        uf,
-        municipality_code,
-        zone,
-        office_code,
-        is_transit_vote,
-        sum(nominal_valid_votes) as candidate_nominal_valid_votes
-    from "tse_analytics"."main"."fact_candidate_votes"
-    group by 1,2,3,4,5,6,7,8,9
-),
-
-party as (
-    select
-        election_year,
-        election_type,
-        election_code,
-        round_number,
-        uf,
-        municipality_code,
-        zone,
-        office_code,
-        is_transit_vote,
-        sum(nominal_valid_votes) as party_nominal_valid_votes
-    from "tse_analytics"."main"."fact_party_votes"
-    group by 1,2,3,4,5,6,7,8,9
-),
-
-coverage as (
-    select *
-    from "tse_analytics"."main"."silver_candidate_result_coverage"
-)
-
-select
-    p.*,
-    coalesce(c.candidate_nominal_valid_votes, 0) as candidate_nominal_valid_votes,
-    coalesce(c.candidate_nominal_valid_votes, 0) - p.party_nominal_valid_votes
-        as nominal_valid_delta
-from party p
-join coverage cv
-  on cv.election_year = p.election_year
- and cv.election_type = p.election_type
- and cv.election_code = p.election_code
- and cv.round_number = p.round_number
- and cv.uf = p.uf
- and cv.office_code = p.office_code
-left join candidate c
-  on c.election_year = p.election_year
- and c.election_type = p.election_type
- and c.election_code = p.election_code
- and c.round_number = p.round_number
- and c.uf = p.uf
- and c.municipality_code = p.municipality_code
- and c.zone = p.zone
- and c.office_code = p.office_code
- and c.is_transit_vote is not distinct from p.is_transit_vote
-where coalesce(c.candidate_nominal_valid_votes, 0) <> p.party_nominal_valid_votes
   
   
       

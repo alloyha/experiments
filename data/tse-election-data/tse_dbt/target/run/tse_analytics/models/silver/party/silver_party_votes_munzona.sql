@@ -3,7 +3,7 @@
     
     
     create temporary table
-      "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+      "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
   
     as (
       
@@ -78,37 +78,37 @@ from collapsed
 
         
             delete from "tse_analytics"."main"."silver_party_votes_munzona" as DBT_INCREMENTAL_TARGET
-            using "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+            using "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
             where (
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".round_number = DBT_INCREMENTAL_TARGET.round_number
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".round_number = DBT_INCREMENTAL_TARGET.round_number
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".uf = DBT_INCREMENTAL_TARGET.uf
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".zone = DBT_INCREMENTAL_TARGET.zone
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".zone = DBT_INCREMENTAL_TARGET.zone
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".office_code = DBT_INCREMENTAL_TARGET.office_code
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".office_code = DBT_INCREMENTAL_TARGET.office_code
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".party_number = DBT_INCREMENTAL_TARGET.party_number
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".party_number = DBT_INCREMENTAL_TARGET.party_number
                     and 
                 
-                    "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
+                    "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8".is_transit_vote = DBT_INCREMENTAL_TARGET.is_transit_vote
                     
                 
                 
@@ -119,6 +119,6 @@ from collapsed
     insert into "tse_analytics"."main"."silver_party_votes_munzona" ("election_year", "election_type", "election_scope", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "party", "party_name", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file", "source_row_count", "source_party_group_types", "source_coalitions", "source_federations")
     (
         select "election_year", "election_type", "election_scope", "election_code", "round_number", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_number", "is_transit_vote", "party", "party_name", "nominal_valid_votes", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_annulled_subjudice_votes", "legend_annulled_subjudice_votes", "generated_at", "source_file", "source_row_count", "source_party_group_types", "source_coalitions", "source_federations"
-        from "silver_party_votes_munzona__dbt_tmp_32389b65_fe99_46bb_8cb2_31b31ccb4d6d"
+        from "silver_party_votes_munzona__dbt_tmp_67e9c10f_7ad5_4204_8c67_bc755c82f2f8"
     )
   

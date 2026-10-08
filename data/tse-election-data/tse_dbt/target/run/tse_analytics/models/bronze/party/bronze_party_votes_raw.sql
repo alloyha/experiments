@@ -3,7 +3,7 @@
     
     
     create temporary table
-      "bronze_party_votes_raw__dbt_tmp_7da37efd_6ad4_4071_b5c8_1f3927fa8fb6"
+      "bronze_party_votes_raw__dbt_tmp_a944d3a9_a06a_41bf_8bcf_df7dc945f019"
   
     as (
       
@@ -147,7 +147,7 @@ where election_year in (2026) and election_type in ('general')
 insert into "tse_analytics"."main"."bronze_party_votes_raw" ("election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_group_type", "party_number", "party", "party_name", "federation_number", "federation_name", "federation", "federation_composition", "coalition_id", "coalition_name", "coalition_composition", "is_transit_vote", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_valid_votes", "legend_annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "source_file")
     (
         select "election_year", "election_type", "election_scope", "election_code", "round_number", "generated_at", "uf", "municipality_code", "zone", "office_code", "office_scope", "party_group_type", "party_number", "party", "party_name", "federation_number", "federation_name", "federation", "federation_composition", "coalition_id", "coalition_name", "coalition_composition", "is_transit_vote", "legend_valid_votes", "nominal_converted_to_legend_votes", "total_legend_valid_votes", "nominal_valid_votes", "legend_annulled_subjudice_votes", "nominal_annulled_subjudice_votes", "source_file"
-        from "bronze_party_votes_raw__dbt_tmp_7da37efd_6ad4_4071_b5c8_1f3927fa8fb6"
+        from "bronze_party_votes_raw__dbt_tmp_a944d3a9_a06a_41bf_8bcf_df7dc945f019"
     )
 
 

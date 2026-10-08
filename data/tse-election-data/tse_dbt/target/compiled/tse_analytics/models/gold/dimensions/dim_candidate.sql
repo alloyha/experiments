@@ -32,5 +32,5 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
   using (election_year, election_type, election_code, candidate_id)
 
   
-    where c.election_year in (2018) and c.election_type in ('general')
+    where c.election_year in (2026) and c.election_type in ('general')
   

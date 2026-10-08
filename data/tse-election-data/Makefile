@@ -115,6 +115,11 @@ DBT_VARS_CMD = \
 	unit \
 	raw-contracts \
 	cycle-regressions \
+	medallion-contracts \
+	dbt-bronze \
+	dbt-silver \
+	dbt-gold \
+	dbt-semantic-layer \
 	prune-cache \
 	production-gate \
 	semantic \
@@ -264,6 +269,21 @@ cycle-regressions: setup ## Validate frozen/provisional warehouse cycle baseline
 	  --db '$(DUCKDB_PATH_ABS)' \
 	  --contracts '$(abspath $(CYCLE_CONTRACTS))'
 
+medallion-contracts: setup ## Validate medallion dependency direction
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' python scripts/check_medallion_dag.py
+
+dbt-bronze: dbt-deps ## Build/test Bronze only
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select 'tag:bronze' --vars "$$vars"
+
+dbt-silver: dbt-deps ## Build/test Silver with upstreams
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:silver' --vars "$$vars"
+
+dbt-gold: dbt-deps ## Build/test Gold with upstreams
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:gold' --vars "$$vars"
+
+dbt-semantic-layer: dbt-deps ## Build/test Semantic with upstreams
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:semantic' --vars "$$vars"
+
 prune-cache: setup ## Dry-run extracted raw cache pruning; use APPLY=1 to delete
 	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
 	  python scripts/prune_extracted_raw.py \
@@ -274,6 +294,7 @@ production-gate: ## Production gate for selected dbt cycle plus warehouse regres
 	$(MAKE) unit
 	$(MAKE) ingest
 	$(MAKE) raw-contracts
+	$(MAKE) medallion-contracts
 	$(MAKE) dbt-build
 	$(MAKE) cycle-regressions
 

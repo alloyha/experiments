@@ -3,7 +3,7 @@
     
     
     create temporary table
-      "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+      "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
   
     as (
       
@@ -50,19 +50,19 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
 
         
             delete from "tse_analytics"."main"."dim_candidate" as DBT_INCREMENTAL_TARGET
-            using "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+            using "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
             where (
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479".candidate_id = DBT_INCREMENTAL_TARGET.candidate_id
+                    "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599".candidate_id = DBT_INCREMENTAL_TARGET.candidate_id
                     
                 
                 
@@ -73,6 +73,6 @@ left join "tse_analytics"."main"."silver_candidate_assets" a
     insert into "tse_analytics"."main"."dim_candidate" ("election_year", "election_type", "election_scope", "election_id", "election_code", "election_description", "round_number", "electoral_unit", "office_scope", "candidate_id", "uf", "office_code", "office", "candidate_number", "candidate_name", "ballot_name", "party_number", "party", "party_name", "candidacy_status", "gender", "education", "occupation", "race_color", "declared_assets_value", "declared_assets_count")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "election_description", "round_number", "electoral_unit", "office_scope", "candidate_id", "uf", "office_code", "office", "candidate_number", "candidate_name", "ballot_name", "party_number", "party", "party_name", "candidacy_status", "gender", "education", "occupation", "race_color", "declared_assets_value", "declared_assets_count"
-        from "dim_candidate__dbt_tmp_8b91cc73_855d_48b3_a4dc_217e1617c479"
+        from "dim_candidate__dbt_tmp_5d0c2a87_a6ce_4cf6_bfdb_ee0652289599"
     )
   

@@ -3,7 +3,7 @@
 with coverage as (
 
     select *
-    from "tse_analytics"."main"."silver_candidate_result_coverage"
+    from "tse_analytics"."main"."candidate_result_coverage"
 
 ),
 

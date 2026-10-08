@@ -3,7 +3,7 @@
     
     
     create temporary table
-      "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+      "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
   
     as (
       
@@ -49,19 +49,19 @@ where _rank = 1
 
         
             delete from "tse_analytics"."main"."dim_party" as DBT_INCREMENTAL_TARGET
-            using "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+            using "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
             where (
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".election_code = DBT_INCREMENTAL_TARGET.election_code
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".election_code = DBT_INCREMENTAL_TARGET.election_code
                     and 
                 
-                    "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c".party_number = DBT_INCREMENTAL_TARGET.party_number
+                    "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40".party_number = DBT_INCREMENTAL_TARGET.party_number
                     
                 
                 
@@ -72,6 +72,6 @@ where _rank = 1
     insert into "tse_analytics"."main"."dim_party" ("election_year", "election_type", "election_scope", "election_id", "election_code", "party_number", "party", "party_name", "party_id")
     (
         select "election_year", "election_type", "election_scope", "election_id", "election_code", "party_number", "party", "party_name", "party_id"
-        from "dim_party__dbt_tmp_5ecf6b8c_93d0_482a_81e3_62ea7c225a7c"
+        from "dim_party__dbt_tmp_7cdb0152_fb3d_4baf_982f_baac63da0c40"
     )
   

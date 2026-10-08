@@ -48,4 +48,4 @@ select
     source_file
 from "tse_analytics"."main"."bronze_tally_munzona"
 
-where election_year in (2018) and election_type in ('general')
+where election_year in (2026) and election_type in ('general')

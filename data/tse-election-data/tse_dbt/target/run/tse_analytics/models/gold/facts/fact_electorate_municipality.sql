@@ -3,7 +3,7 @@
     
     
     create temporary table
-      "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
+      "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
   
     as (
       
@@ -22,19 +22,19 @@ from "tse_analytics"."main"."silver_electorate_municipality"
 
         
             delete from "tse_analytics"."main"."fact_electorate_municipality" as DBT_INCREMENTAL_TARGET
-            using "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
+            using "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
             where (
                 
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".election_year = DBT_INCREMENTAL_TARGET.election_year
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".election_year = DBT_INCREMENTAL_TARGET.election_year
                     and 
                 
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".election_type = DBT_INCREMENTAL_TARGET.election_type
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".election_type = DBT_INCREMENTAL_TARGET.election_type
                     and 
                 
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".uf = DBT_INCREMENTAL_TARGET.uf
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".uf = DBT_INCREMENTAL_TARGET.uf
                     and 
                 
-                    "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
+                    "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2".municipality_code = DBT_INCREMENTAL_TARGET.municipality_code
                     
                 
                 
@@ -45,6 +45,6 @@ from "tse_analytics"."main"."silver_electorate_municipality"
     insert into "tse_analytics"."main"."fact_electorate_municipality" ("election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate")
     (
         select "election_type", "election_scope", "uf", "municipality_code", "municipality", "election_year", "electorate"
-        from "fact_electorate_municipality__dbt_tmp_1253276f_6945_49a6_ba34_1c53c7db1b83"
+        from "fact_electorate_municipality__dbt_tmp_3c51f20a_2c0b_4424_807e_f09936fe2bd2"
     )
   

@@ -3,7 +3,7 @@
 with coverage as (
 
     select *
-    from {{ ref('silver_candidate_result_coverage') }}
+    from {{ ref('candidate_result_coverage') }}
 
 ),
 
