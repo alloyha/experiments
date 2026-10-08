@@ -1,5 +1,5 @@
 select *
-from {{ ref('bronze_tally_munzona') }}
+from {{ ref('silver_tally_munzona') }}
 where municipality_code is not null
   and (
       length(municipality_code) <> 5

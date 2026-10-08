@@ -7,7 +7,7 @@ with source_rows as (
         nominal_valid_votes, total_legend_valid_votes,
         blank_votes, total_null_votes,
         annulled_votes, annulled_subjudice_votes
-    from {{ ref('bronze_tally_munzona') }}
+    from {{ ref('silver_tally_munzona') }}
     where {{ selected_election_predicate() }}
 ),
 target_rows as (

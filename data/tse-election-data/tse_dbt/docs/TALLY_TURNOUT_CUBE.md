@@ -1,7 +1,7 @@
 # Tally and turnout slice
 
 `Detalhe da apuração por município e zona`
-→ `bronze_tally_munzona`
+→ `silver_tally_munzona`
 → `fact_tally_munzona`
 → `fact_turnout`
 → `electoral_participation`

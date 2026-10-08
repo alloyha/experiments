@@ -25,7 +25,7 @@ with election_sources as (
         election_type,
         election_code,
         election_scope
-    from {{ ref('bronze_tally_munzona') }}
+    from {{ ref('silver_tally_munzona') }}
 ),
 
 deduped as (

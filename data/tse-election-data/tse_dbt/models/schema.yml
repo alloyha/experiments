@@ -343,7 +343,7 @@ models:
   - name: party_valid_votes
     tests:
     - not_null
-- name: bronze_tally_munzona
+- name: silver_tally_munzona
   description: Latest TSE tally snapshot by election, round, municipality, zone and office.
   tests:
   - dbt_utils.unique_combination_of_columns:
