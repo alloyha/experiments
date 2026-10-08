@@ -17,6 +17,8 @@ See:
 - `docs/source-coverage-and-gaps.md`
 - `docs/raw-storage-policy.md`
 - `docs/operational-contracts.md`
+- `docs/adr/001-medallion-architecture.md`
+- `docs/model-dag.md`
 
 ## Main commands
 
