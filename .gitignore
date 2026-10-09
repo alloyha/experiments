@@ -4,3 +4,7 @@ node_modules
 *.pyc
 */__pycache__/*
 .env
+
+tse_dbt/target/
+tse_dbt/dbt_packages/
+tse_dbt/logs/
