@@ -1,30 +1,22 @@
 {% set selected_years = var('election_years', []) %}
-
-{% set electorate_year_column =
-    'AA_ELEICAO'
-    if selected_years and selected_years[0] >= 2022
-    else 'ANO_ELEICAO'
-%}
-
-{% set electorate_count_column =
-    'QT_ELEITORES'
-    if selected_years and selected_years[0] >= 2022
-    else 'QT_ELEITORES_PERFIL'
-%}
+{% set electorate_year_column = 'AA_ELEICAO' if selected_years and selected_years[0] >= 2022 else 'ANO_ELEICAO' %}
+{% set electorate_count_column = 'QT_ELEITORES' if selected_years and selected_years[0] >= 2022 else 'QT_ELEITORES_PERFIL' %}
 
 with src as (
-    -- The ingestion domain also contains temporary-transfer resources.
-    -- Only the canonical electorate profile belongs in this staging model.
-    select * 
-    from {{
-       read_raw_csv(
-           'electorate',
-           'Eleitorado - %',
-           strict_mode=false,
-           null_padding=true,
-           parallel=false
-       )
-    }}
+    {% if var('compile_only', false) %}
+    select * from {{ read_raw_csv('electorate','Eleitorado - %',strict_mode=false,null_padding=true,parallel=false) }}
+    {% elif var('use_prepared_electorate', false) %}
+    select *
+    from read_parquet(
+        '{{ var("electorate_prepared_root", var("tse_raw_root") ~ "/../warehouse/prepared/electorate") }}/election_type=*/year=*/data.parquet',
+        hive_partitioning=true,
+        union_by_name=true
+    )
+    where year in ({{ election_year_list() | join(', ') }})
+      and election_type in ({{ quoted_sql_list(election_type_list()) }})
+    {% else %}
+    select * from {{ read_raw_csv('electorate','Eleitorado - %',strict_mode=false,null_padding=true,parallel=false) }}
+    {% endif %}
 )
 select
     try_cast("{{ electorate_year_column }}" as integer) as election_year,
@@ -38,5 +30,5 @@ select
     "DS_ESTADO_CIVIL" as marital_status,
     "DS_FAIXA_ETARIA" as age_band,
     "DS_GRAU_ESCOLARIDADE" as schooling,
-    filename as source_file
+    source_file
 from src

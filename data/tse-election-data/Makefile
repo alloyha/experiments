@@ -10,6 +10,7 @@ DBT_DIR ?= tse_dbt
 DATA_ROOT ?= ./data/tse
 DUCKDB_PATH ?= ./data/warehouse/tse_analytics.duckdb
 CANDIDATE_FACT_ROOT ?= ./data/warehouse/fact_candidate_votes
+ELECTORATE_PREPARED_ROOT ?= ./data/warehouse/prepared/electorate
 CYCLE_CONTRACTS ?= ./contracts/election_cycles.json
 
 # ----------------------------------------------------------------------
@@ -33,6 +34,7 @@ UF ?=
 RAW_ROOT_ABS := $(abspath $(DATA_ROOT))
 DUCKDB_PATH_ABS := $(abspath $(DUCKDB_PATH))
 CANDIDATE_FACT_ROOT_ABS := $(abspath $(CANDIDATE_FACT_ROOT))
+ELECTORATE_PREPARED_ROOT_ABS := $(abspath $(ELECTORATE_PREPARED_ROOT))
 
 # ----------------------------------------------------------------------
 # Executables
@@ -84,6 +86,7 @@ INCREMENTAL_YEAR_ARGS := $(foreach year,$(INCREMENTAL_YEARS),--year $(year))
 DBT_VARS_CMD = \
 	RAW_ROOT='$(RAW_ROOT_ABS)' \
 	CANDIDATE_FACT_ROOT='$(CANDIDATE_FACT_ROOT_ABS)' \
+	ELECTORATE_PREPARED_ROOT='$(ELECTORATE_PREPARED_ROOT_ABS)' \
 	YEARS='$(YEARS)' \
 	ELECTION_TYPES='$(ELECTION_TYPES)' \
 	INCREMENTAL_YEARS='$(INCREMENTAL_YEARS)' \
@@ -91,6 +94,8 @@ DBT_VARS_CMD = \
 	$(PYTHON) -c 'import json, os; print(json.dumps({ \
 		"tse_raw_root": os.environ["RAW_ROOT"], \
 		"candidate_fact_root": os.environ["CANDIDATE_FACT_ROOT"], \
+		"electorate_prepared_root": os.environ["ELECTORATE_PREPARED_ROOT"], \
+		"use_prepared_electorate": True, \
 		"election_years": [int(x) for x in os.environ["YEARS"].split()], \
 		"election_types": os.environ["ELECTION_TYPES"].split(), \
 		"incremental_years": [int(x) for x in os.environ["INCREMENTAL_YEARS"].split()], \
@@ -109,6 +114,7 @@ DBT_VARS_CMD = \
 	list \
 	ingest \
 	backfill \
+	electorate-prepared \
 	candidate-fact-partition \
 	dbt-build \
 	dbt-full-refresh \
@@ -235,6 +241,13 @@ backfill: setup ## Ingest all missing immutable resource versions for YEARS
 #   enabled=var('build_candidate_fact_partition', false)
 #
 # so ordinary dbt builds never execute its expensive CTAS.
+electorate-prepared: setup ## Build one prepared electorate Parquet partition from immutable raw CSV
+	@test "$(words $(INCREMENTAL_YEARS))" -eq 1 || { echo "electorate-prepared requires exactly one incremental year"; exit 1; }
+	@test "$(words $(INCREMENTAL_ELECTION_TYPES))" -eq 1 || { echo "electorate-prepared requires exactly one incremental election type"; exit 1; }
+	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' python scripts/write_electorate_prepared_partition.py \
+	  --raw-root '$(RAW_ROOT_ABS)' --root '$(ELECTORATE_PREPARED_ROOT_ABS)' \
+	  --year '$(INCREMENTAL_YEARS)' --election-type '$(INCREMENTAL_ELECTION_TYPES)'
+
 candidate-fact-partition: dbt-deps ## Build and atomically replace one candidate fact partition
 	@test "$(words $(INCREMENTAL_YEARS))" -eq 1 || \
 	  { echo "candidate-fact-partition requires exactly one incremental year"; exit 1; }
@@ -296,6 +309,7 @@ production-gate: ## Production gate for selected dbt cycle plus warehouse regres
 	$(MAKE) unit
 	$(MAKE) ingest
 	$(MAKE) raw-contracts
+	$(MAKE) electorate-prepared
 	$(MAKE) medallion-contracts
 	$(MAKE) dbt-build
 	$(MAKE) cycle-regressions
