@@ -1,0 +1,4 @@
+project:
+    name: airflow-dbt
+postgres:
+    port: 15432
