@@ -454,22 +454,52 @@ models:
   - name: gap_reason
     tests:
     - not_null
-- name: municipality_election_results
-  description: Candidate-level municipal result with rank, vote share, turnout and margin.
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns: [election_year, election_type, election_code, round_number, uf, municipality_code, office_code, candidate_id]
 - name: candidate_ranking
-  description: Contest-level candidate ranking with vote share and municipalities won.
+  description: >
+    One row per candidate and election contest with nominal-vote rank.
+    Rank 1 means top-ranked by candidate nominal valid votes; it does not
+    imply elected status.
   tests:
   - dbt_utils.unique_combination_of_columns:
       arguments:
-        combination_of_columns: [election_year, election_type, election_code, round_number, electoral_unit, office_code, candidate_id]
-- name: election_results
-  description: One row per contest with winner, runner-up and winning margin.
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns: [election_year, election_type, election_code, round_number, electoral_unit, office_code]
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - electoral_unit
+        - office_code
+        - candidate_id
+  columns:
+  - name: candidate_rank
+    tests:
+    - not_null
+  - name: nominal_valid_votes
+    tests:
+    - not_null
+  - name: is_top_ranked
+    tests:
+    - not_null
 
+- name: election_results
+  description: >
+    One row per election contest exposing the top-ranked and second-ranked
+    candidates by candidate nominal valid votes plus their lead margin.
+    This model does not infer elected status.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - electoral_unit
+        - office_code
+  columns:
+  - name: top_candidate_id
+    tests:
+    - not_null
+  - name: top_nominal_valid_votes
+    tests:
+    - not_null
