@@ -1,0 +1,17 @@
+[project]
+name = "pharmacology"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=1.5.5",
+    "duwhal>=0.2.0",
+    "pandas>=3.0.5",
+    "sqlfluff>=4.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
