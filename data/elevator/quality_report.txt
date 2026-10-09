@@ -1,0 +1,206 @@
+⚠️  radon hal: path does not exist: /mnt/c/Users/bruno/Documents/elevator/sagaz
+
+════════════════════════════════════════════════════════════════════════════════
+  COVERAGE DISTRIBUTION HISTOGRAM
+════════════════════════════════════════════════════════════════════════════════
+  Files: 10   Project coverage: 73.4%
+
+    0.0–10.0 % │████████████████████████                2 (20.0%)
+   10.0–20.0 % │                                        0 ( 0.0%)
+   20.0–30.0 % │                                        0 ( 0.0%)
+   30.0–40.0 % │                                        0 ( 0.0%)
+   40.0–50.0 % │                                        0 ( 0.0%)
+   50.0–60.0 % │                                        0 ( 0.0%)
+   60.0–70.0 % │                                        0 ( 0.0%)
+   70.0–80.0 % │████████████████████████████████████    3 (30.0%)
+   80.0–90.0 % │████████████████████████                2 (20.0%)
+   90.0–100.0% │████████████████████████████████████    3 (30.0%)
+
+────────────────────────────────────────────────────────────────────────────────
+  PERCENTILES
+────────────────────────────────────────────────────────────────────────────────
+  Q1         70.3%
+  Q2/med     79.2%
+  Q3         89.0%
+  p90        92.1%
+  p95        92.1%
+  p99        92.1%
+  avg        68.1%
+  min         0.0%
+  max        93.2%
+  not-100% 10 files (100.0%)
+  <80%     5 files (50.0%)
+  <60%     2 files (20.0%)
+
+────────────────────────────────────────────────────────────────────────────────
+  MISSING LINES DISTRIBUTION  (non-100% files: 10)
+  [linear scale, 10 bins]
+
+      0–10    lines │████████████████████████████████████    4 (40.0%)
+     10–20    lines │██████████████████                      2 (20.0%)
+     20–30    lines │                                        0 ( 0.0%)
+     30–40    lines │█████████                               1 (10.0%)
+     40–50    lines │                                        0 ( 0.0%)
+     50–60    lines │                                        0 ( 0.0%)
+     60–70    lines │█████████                               1 (10.0%)
+     70–80    lines │█████████                               1 (10.0%)
+     80–90    lines │                                        0 ( 0.0%)
+     90–101   lines │█████████                               1 (10.0%)
+
+  p50: 15     p75: 31     p90: 71     p99: 71    
+  avg: 33.5   max: 101    total missing: 335 lines
+
+────────────────────────────────────────────────────────────────────────────────
+  QUALITY BLAME — below 70.3% (Q1=70.3%)   2
+────────────────────────────────────────────────────────────────────────────────
+    0.0%    69 lines missing  elevator/async_interface/loop.py
+         📍 23-28, 30-32, 34, 37-40, 43, 57, 63-69, 73, 75-76, 79-80, 82, 84-86, 88, 90-94, 96-98, 102, 104-105, 107-110, 112-114, 118, 123, 125, 127-128, 134, 137-148
+    0.0%   101 lines missing  elevator/config/loader.py
+         📍 65-69, 72-73, 75-81, 83-84, 96-97, 105, 111, 113, 119, 121-122, 125, 127-129, 139, 141-143, 153-155, 159-160, 163-164, 166-167, 169-170, 172-175, 177-178, 180, 183-194, 200-202, 205-208, 211-219, 222-237, 241-242, 247-248, 254-256
+
+════════════════════════════════════════════════════════════════════════════════
+
+
+════════════════════════════════════════════════════════════════════════════════
+  TEST DURATION ANALYSIS
+════════════════════════════════════════════════════════════════════════════════
+  Tests: 45   Total: 547ms (19.66s wall time)   passed: 45
+           (includes ~19.12s collection/overhead)
+
+  PHASE: SETUP
+  [linear scale, 10 bins, slow >= 1.00s]
+
+      0ms–1ms │██                                      1 ( 2.2%)  ░
+      1ms–1ms │████████████████████████████████████   18 (40.0%)  ░
+      1ms–2ms │██████████████████████████             13 (28.9%)  ░
+      2ms–3ms │████████████                            6 (13.3%)  ░
+      3ms–3ms │████████                                4 ( 8.9%)  ░  ← p90
+      3ms–4ms │██                                      1 ( 2.2%)  ░
+      4ms–5ms │                                        0 ( 0.0%)  ░
+      5ms–5ms │                                        0 ( 0.0%)  ░
+      5ms–6ms │██                                      1 ( 2.2%)  ░
+      6ms–7ms │██                                      1 ( 2.2%)  ░
+
+  p50: 1ms       p75: 2ms       p90: 3ms       p95: 3ms       p99: 6ms     
+  avg: 2ms       max: 7ms       total: 82ms      slow: 0      n: 45
+
+  ----------------------------------------------------------------------------
+
+  PHASE: CALL
+  [linear scale, 10 bins, slow >= 1.00s]
+
+      0ms–8ms  │████████████████████████████████████   36 (80.0%)  ░
+      8ms–16ms │███                                     3 ( 6.7%)  ░
+     16ms–23ms │█                                       1 ( 2.2%)  ░  ← p90
+     23ms–31ms │█                                       1 ( 2.2%)  ░
+     31ms–39ms │██                                      2 ( 4.4%)  ░
+     39ms–47ms │                                        0 ( 0.0%)  ░
+     47ms–55ms │                                        0 ( 0.0%)  ░
+     55ms–62ms │                                        0 ( 0.0%)  ░
+     62ms–70ms │█                                       1 ( 2.2%)  ░
+     70ms–78ms │█                                       1 ( 2.2%)  ░
+
+  p50: 3ms       p75: 5ms       p90: 20ms      p95: 32ms      p99: 68ms    
+  avg: 9ms       max: 78ms      total: 383ms     slow: 0      n: 45
+
+  ----------------------------------------------------------------------------
+
+  PHASE: TEARDOWN
+  [linear scale, 10 bins, slow >= 1.00s]
+
+      0ms–1ms  │████████████████████████████████████   27 (60.0%)  ░
+      1ms–2ms  │█████████████████                      13 (28.9%)  ░  ← p90
+      2ms–4ms  │███                                     2 ( 4.4%)  ░
+      4ms–5ms  │                                        0 ( 0.0%)  ░
+      5ms–6ms  │                                        0 ( 0.0%)  ░
+      6ms–7ms  │█                                       1 ( 2.2%)  ░
+      7ms–9ms  │                                        0 ( 0.0%)  ░
+      9ms–10ms │█                                       1 ( 2.2%)  ░
+     10ms–11ms │                                        0 ( 0.0%)  ░
+     11ms–12ms │█                                       1 ( 2.2%)  ░
+
+  p50: 1ms       p75: 2ms       p90: 2ms       p95: 3ms       p99: 9ms     
+  avg: 2ms       max: 12ms      total: 82ms      slow: 0      n: 45
+
+  ----------------------------------------------------------------------------
+
+  AGGREGATE: TOTAL DURATION
+  [linear scale, 10 bins, slow >= 1.00s]
+
+      0ms–8ms  │████████████████████████████████████   30 (66.7%)  ░
+      8ms–17ms │███████████                             9 (20.0%)  ░
+     17ms–25ms │                                        0 ( 0.0%)  ░
+     25ms–33ms │██                                      2 ( 4.4%)  ░  ← p90
+     33ms–42ms │██                                      2 ( 4.4%)  ░
+     42ms–50ms │                                        0 ( 0.0%)  ░
+     50ms–58ms │                                        0 ( 0.0%)  ░
+     58ms–67ms │                                        0 ( 0.0%)  ░
+     67ms–75ms │█                                       1 ( 2.2%)  ░
+     75ms–83ms │█                                       1 ( 2.2%)  ░
+
+  p50: 6ms       p75: 10ms      p90: 32ms      p95: 36ms      p99: 72ms    
+  avg: 12ms      max: 83ms      total: 547ms     slow: 0      n: 45
+
+────────────────────────────────────────────────────────────────────────────────
+  QUALITY BLAME — duration outliers  Q3 + 1.5×IQR > 18ms   6
+────────────────────────────────────────────────────────────────────────────────
+  ✅     83ms (s:3ms c:78ms)  …or.py::TestRouteProjector::test_single_passenger_total_time
+  ✅     72ms (s:3ms c:68ms)  …st_elevator.py::TestSimulator::test_deterministic_with_seed
+  ✅     36ms (s:1ms c:33ms)  …/test_elevator.py::TestSimulator::test_convergence_tracking
+  ✅     36ms (s:3ms c:32ms)  …t_elevator.py::TestSimulator::test_all_passengers_delivered
+  ✅     33ms (s:1ms c:20ms)  …st_elevator.py::TestSimulator::test_no_duplicate_deliveries
+  ✅     32ms (s:2ms c:29ms)  …/test_elevator.py::TestHeuristics::test_simulated_annealing
+
+════════════════════════════════════════════════════════════════════════════════
+No .py files found under 'sagaz'
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  LOW COVERAGE (< 90%) — sorted: priority↓
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+Found 7 files   (showing 7)
+
+#    Prio   Coverage   Missing              Layer           File
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1    🔴 70      0.0%      69 (100.0%)       Other            elevator/async_interface/loop.py
+2    🔴 70      0.0%     101 (100.0%)       Other            elevator/config/loader.py
+3    🟡 40     70.3%      71 ( 29.7%)       Other            elevator/constraints/builtin.py
+4    🟡 30     88.7%      31 ( 11.3%)       Other            elevator/heuristics/heuristics.py
+5    🟡 20     76.3%       9 ( 23.7%)       Other            elevator/constraints/base.py
+6    🟡 20     89.0%       8 ( 11.0%)       Other            elevator/fleet/coordinator.py
+7    🟡 20     79.2%      16 ( 20.8%)       Other            elevator/pipeline/pipeline.py
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+📊 SUMMARY
+────────────────────────────────────────────────────────────────────────────────────────────────────
+   Files                : 7
+   Coverage P25/P50/P75 : 0.0% | 76.3% | 88.7%
+   Total missing lines  : 305  (35.0% of their statements)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+🚀 COVERAGE PROJECTION (if these files reach 100%)
+────────────────────────────────────────────────────────────────────────────────────────────────────
+   Current  : 73.4%
+   Projected: 97.6%  (+24.2pp)
+   Lines to cover: 305 / 1,261 total
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+🎯 TOP 5 BY PRIORITY
+────────────────────────────────────────────────────────────────────────────────────────────────────
+   1. [Other] elevator/async_interface/loop.py
+      → 69 lines (100.0%) | Impact: HIGH | Effort: HARD
+   2. [Other] elevator/config/loader.py
+      → 101 lines (100.0%) | Impact: HIGH | Effort: HARD
+   3. [Other] elevator/constraints/builtin.py
+      → 71 lines (29.7%) | Impact: HIGH | Effort: HARD
+   4. [Other] elevator/heuristics/heuristics.py
+      → 31 lines (11.3%) | Impact: HIGH | Effort: MOD
+   5. [Other] elevator/constraints/base.py
+      → 9 lines (23.7%) | Impact: LOW | Effort: EASY
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+⚠️  No CC data — run with --radon-root <dir>
+⚠️  No MI data — run with --radon-root <dir>
+⚠️  No raw metrics data — run with --radon-root <dir>
+⚠️  No Halstead data — run with --radon-root <dir>
+⚠️  No directories found under /mnt/c/Users/bruno/Documents/elevator/sagaz

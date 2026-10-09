@@ -1,0 +1,59 @@
+# elevator.toml — default pipeline configuration
+
+[elevator]
+id          = "E1"
+start_floor = 1
+tau         = 1.0        # seconds per floor
+
+[logging]
+level  = "INFO"
+format = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+
+[pipeline]
+fallback = "nearest_neighbour"
+
+[[pipeline.heuristics]]
+type       = "beam_search"
+beam_width = 20
+
+[[pipeline.heuristics]]
+type         = "simulated_annealing"
+max_iter     = 1500
+initial_temp = 80.0
+cooling_rate = 0.995
+
+[[pipeline.heuristics]]
+type = "incremental"
+
+[pipeline.objective]
+type = "composite"
+
+[[pipeline.objective.terms]]
+type     = "iqr"
+weight   = 1.0
+fallback = "range"
+
+[[pipeline.objective.terms]]
+type   = "mean"
+weight = 0.1
+
+[[pipeline.constraints]]
+type   = "weight_capacity"
+max_kg = 400.0
+
+[[pipeline.constraints]]
+type    = "passenger_capacity"
+max_pax = 8
+
+[[pipeline.constraints]]
+type      = "floor_range"
+min_floor = 1
+max_floor = 10
+
+[[pipeline.constraints]]
+type          = "no_reverse"
+reversal_cost = 0.5
+
+[[pipeline.constraints]]
+type             = "time_window"
+default_max_wait = 300.0    # 5 minutes
