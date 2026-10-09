@@ -1,0 +1,7 @@
+selectors:
+  - name: finance
+    description: Finance-related analytical models
+
+    definition:
+      method: tag
+      value: finance

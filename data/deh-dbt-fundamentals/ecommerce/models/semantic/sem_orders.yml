@@ -1,0 +1,80 @@
+semantic_models:
+  - name: orders
+    description: Semantic model for analytical order metrics.
+
+    model: ref('fct_orders')
+
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+
+      - name: customer
+        type: foreign
+        expr: customer_id
+
+    dimensions:
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+
+      - name: status
+        type: categorical
+
+    measures:
+      - name: order_count
+        agg: count_distinct
+        expr: order_id
+
+      - name: recognized_revenue
+        agg: sum
+        expr: recognized_revenue
+
+      - name: refunded_amount
+        agg: sum
+        expr: refunded_amount
+
+      - name: paid_order_count
+        agg: sum
+        expr: is_paid
+
+metrics:
+  - name: revenue
+    description: Total recognized revenue from paid orders.
+    type: simple
+    type_params:
+      measure: recognized_revenue
+
+  - name: paid_orders
+    description: Number of paid orders.
+    type: simple
+    type_params:
+      measure: paid_order_count
+
+  - name: average_order_value
+    description: Average revenue per paid order.
+    type: derived
+    type_params:
+      expr: revenue / paid_orders
+      metrics:
+        - name: revenue
+        - name: paid_orders
+
+  - name: refund_rate
+    description: Refunded amount as a proportion of recognized revenue.
+    type: derived
+    type_params:
+      expr: refunded_amount / revenue
+      metrics:
+        - name: refunded_amount_metric
+        - name: revenue
+
+  - name: refunded_amount_metric
+    description: Total refunded amount.
+    type: simple
+    type_params:
+      measure: refunded_amount
