@@ -126,6 +126,8 @@ DBT_VARS_CMD = \
 	test \
 	test-only \
 	compile \
+	performance-report \
+	performance-baseline \
 	pipeline \
 	pipeline-backfill \
 	clean \
@@ -324,6 +326,16 @@ test-only: dbt-deps ## Run tests only against an already-built warehouse
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
 	  $(DBT) test --vars "$$vars"
+
+performance-report: ## Report dbt node execution costs from the latest run
+	$(PROJECT_PYTHON) scripts/report_build_performance.py \
+	  --run-results $(DBT_DIR)/target/run_results.json \
+	  --output data/warehouse/performance/latest.json
+
+performance-baseline: ## Persist latest dbt performance report as a baseline
+	$(PROJECT_PYTHON) scripts/report_build_performance.py \
+	  --run-results $(DBT_DIR)/target/run_results.json \
+	  --write-baseline contracts/performance/2026-general.json
 
 compile: dbt-deps ## Compile entire dbt graph using schema fixtures
 	@vars="$$($(DBT_VARS_CMD))"; \
