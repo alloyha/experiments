@@ -454,3 +454,22 @@ models:
   - name: gap_reason
     tests:
     - not_null
+- name: municipality_election_results
+  description: Candidate-level municipal result with rank, vote share, turnout and margin.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns: [election_year, election_type, election_code, round_number, uf, municipality_code, office_code, candidate_id]
+- name: candidate_ranking
+  description: Contest-level candidate ranking with vote share and municipalities won.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns: [election_year, election_type, election_code, round_number, electoral_unit, office_code, candidate_id]
+- name: election_results
+  description: One row per contest with winner, runner-up and winning margin.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns: [election_year, election_type, election_code, round_number, electoral_unit, office_code]
+
