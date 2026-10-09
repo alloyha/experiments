@@ -121,6 +121,7 @@ DBT_VARS_CMD = \
 	dbt-gold \
 	dbt-semantic-layer \
 	prune-cache \
+	pr-gate \
 	production-gate \
 	semantic \
 	test \
@@ -291,6 +292,9 @@ prune-cache: setup ## Dry-run extracted raw cache pruning; use APPLY=1 to delete
 	  python scripts/prune_extracted_raw.py \
 	  --root '$(RAW_ROOT_ABS)/raw' \
 	  $(if $(filter 1 true yes,$(APPLY)),--apply,)
+
+pr-gate: unit medallion-contracts dbt-deps ## Fast PR gate; authoritative expensive scans remain in production-gate
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --exclude 'tag:expensive' --vars "$$vars"
 
 production-gate: ## Production gate for selected dbt cycle plus warehouse regressions
 	$(MAKE) unit

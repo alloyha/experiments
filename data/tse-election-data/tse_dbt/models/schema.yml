@@ -200,6 +200,8 @@ models:
         - office_code
         - candidate_id
         - is_transit_vote
+      config:
+        tags: ['expensive']
   columns:
   - name: election_year
     tests:

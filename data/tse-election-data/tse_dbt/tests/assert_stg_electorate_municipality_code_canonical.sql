@@ -1,3 +1,5 @@
+{{ config(tags=['expensive']) }}
+
 select *
 from {{ ref('bronze_electorate') }}
 where municipality_code is not null
