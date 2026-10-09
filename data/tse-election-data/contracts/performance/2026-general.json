@@ -1,0 +1,1070 @@
+{
+  "schema_version": 1,
+  "total_node_seconds": 3138.415125,
+  "nodes": [
+    {
+      "unique_id": "model.tse_analytics.silver_electorate_municipality",
+      "name": "silver_electorate_municipality",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 587.559926
+    },
+    {
+      "unique_id": "model.tse_analytics.fact_party_votes",
+      "name": "fact_party_votes",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 251.406496
+    },
+    {
+      "unique_id": "model.tse_analytics.silver_candidate_votes_munzona",
+      "name": "silver_candidate_votes_munzona",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 196.26773
+    },
+    {
+      "unique_id": "model.tse_analytics.candidate_vote_summary",
+      "name": "candidate_vote_summary",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 196.168541
+    },
+    {
+      "unique_id": "model.tse_analytics.candidate_summary",
+      "name": "candidate_summary",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 195.899916
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_candidate_votes_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__candidate_id__is_transit_vote.14434b774a",
+      "name": "14434b774a",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 187.87275
+    },
+    {
+      "unique_id": "model.tse_analytics.silver_candidate_assets",
+      "name": "silver_candidate_assets",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 184.304457
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_stg_electorate_municipality_code_canonical",
+      "name": "assert_stg_electorate_municipality_code_canonical",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 184.059614
+    },
+    {
+      "unique_id": "model.tse_analytics.candidate_tally_reconciliation",
+      "name": "candidate_tally_reconciliation",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 134.763769
+    },
+    {
+      "unique_id": "model.tse_analytics.fact_turnout",
+      "name": "fact_turnout",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 134.455431
+    },
+    {
+      "unique_id": "model.tse_analytics.candidate_tally_coverage_gaps",
+      "name": "candidate_tally_coverage_gaps",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 127.99533
+    },
+    {
+      "unique_id": "model.tse_analytics.dim_candidate",
+      "name": "dim_candidate",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 84.37027
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_candidate_party_reconcile_within_coverage",
+      "name": "assert_candidate_party_reconcile_within_coverage",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 83.363841
+    },
+    {
+      "unique_id": "model.tse_analytics.fact_tally_munzona",
+      "name": "fact_tally_munzona",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 82.094492
+    },
+    {
+      "unique_id": "model.tse_analytics.dim_party",
+      "name": "dim_party",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 63.459075
+    },
+    {
+      "unique_id": "model.tse_analytics.dim_election",
+      "name": "dim_election",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 62.943485
+    },
+    {
+      "unique_id": "model.tse_analytics.silver_party_votes_munzona",
+      "name": "silver_party_votes_munzona",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 45.103624
+    },
+    {
+      "unique_id": "model.tse_analytics.party_tally_reconciliation",
+      "name": "party_tally_reconciliation",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 38.533058
+    },
+    {
+      "unique_id": "model.tse_analytics.electoral_participation",
+      "name": "electoral_participation",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 38.097645
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_candidate_votes_candidate_fk",
+      "name": "assert_candidate_votes_candidate_fk",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 37.554933
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_candidate_nominal_votes_reconcile_tally",
+      "name": "assert_candidate_nominal_votes_reconcile_tally",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 29.849579
+    },
+    {
+      "unique_id": "model.tse_analytics.silver_tally_munzona",
+      "name": "silver_tally_munzona",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 29.738719
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_valid_delta.26b6bc9108",
+      "name": "26b6bc9108",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 29.397871
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_party_votes_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__party_number__is_transit_vote.5522d87bb6",
+      "name": "5522d87bb6",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 21.371128
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_fact_party_votes_snapshot_complete",
+      "name": "assert_fact_party_votes_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 15.018831
+    },
+    {
+      "unique_id": "model.tse_analytics.candidate_result_coverage",
+      "name": "candidate_result_coverage",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 8.261785
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_candidate_tally_reconciliation_nominal_valid_delta.6562cea092",
+      "name": "6562cea092",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 8.075475
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_party_votes_raw",
+      "name": "bronze_party_votes_raw",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 7.756011
+    },
+    {
+      "unique_id": "model.tse_analytics.party_performance",
+      "name": "party_performance",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 7.090386
+    },
+    {
+      "unique_id": "model.tse_analytics.party_tally_coverage_gaps",
+      "name": "party_tally_coverage_gaps",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 6.938929
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_party_tally_reconciliation_total_legend_valid_delta.7a778b57fe",
+      "name": "7a778b57fe",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 4.527346
+    },
+    {
+      "unique_id": "model.tse_analytics.silver_candidate_votes",
+      "name": "silver_candidate_votes",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 4.387743
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidate_assets_election_year.858bb93deb",
+      "name": "858bb93deb",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 4.032241
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_tally_raw",
+      "name": "bronze_tally_raw",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 3.633813
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_fact_candidate_votes_municipality_code_canonical",
+      "name": "assert_fact_candidate_votes_municipality_code_canonical",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 3.411142
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_party_measurewise_max_semantics",
+      "name": "assert_party_measurewise_max_semantics",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 3.233228
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_zone.9e869d9d13",
+      "name": "9e869d9d13",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 2.352859
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_tally_vote_balance",
+      "name": "assert_tally_vote_balance",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 2.252076
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_nonnegative_party_votes",
+      "name": "assert_nonnegative_party_votes",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.992219
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_candidate_election_year__election_type__election_code__candidate_id.46c4e45e30",
+      "name": "46c4e45e30",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.804089
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_tally_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.77bc49bd4e",
+      "name": "77bc49bd4e",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.710652
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_party_tally_reconciliation_nominal_valid_delta.4f6b3ef4ef",
+      "name": "4f6b3ef4ef",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.578249
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_round_number.50bdb5d12f",
+      "name": "50bdb5d12f",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.44338
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_dim_candidate_snapshot_complete",
+      "name": "assert_dim_candidate_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.367693
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_party_valid_votes_reconcile_tally",
+      "name": "assert_party_valid_votes_reconcile_tally",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.290919
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_candidate_votes_cycle_scope",
+      "name": "assert_candidate_votes_cycle_scope",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.248731
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_tally_electorate_balance",
+      "name": "assert_tally_electorate_balance",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.154656
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_election_year.051ecd245d",
+      "name": "051ecd245d",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.124979
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_office_code.bfcdece950",
+      "name": "bfcdece950",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.036075
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_party_votes_party_fk",
+      "name": "assert_party_votes_party_fk",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.012639
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_nominal_valid_votes.496725c01b",
+      "name": "496725c01b",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 1.010061
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_silver_party_votes_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__party_number__is_transit_vote.864fb87931",
+      "name": "864fb87931",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.932603
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_candidate_votes_raw",
+      "name": "bronze_candidate_votes_raw",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.765453
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidate_assets_candidate_id.924275fa98",
+      "name": "924275fa98",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.736906
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_bronze_candidates_election_scope__federal_state__municipal.9a5ced23eb",
+      "name": "9a5ced23eb",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.581942
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_fact_tally_snapshot_complete",
+      "name": "assert_fact_tally_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.541137
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_candidate_cycle_scope",
+      "name": "assert_candidate_cycle_scope",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.499774
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_electorate",
+      "name": "bronze_electorate",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.456049
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_election_scope.c20470e33a",
+      "name": "c20470e33a",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.418975
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_candidates",
+      "name": "bronze_candidates",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.392112
+    },
+    {
+      "unique_id": "model.tse_analytics.fact_electorate_municipality",
+      "name": "fact_electorate_municipality",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.382732
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidate_assets_election_type.b76d8a86d3",
+      "name": "b76d8a86d3",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.371055
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_bronze_candidates_election_type__general__municipal.e791b1ecd3",
+      "name": "e791b1ecd3",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.316404
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_nonnegative_tally",
+      "name": "assert_nonnegative_tally",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.30056
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_round_number.3c64959771",
+      "name": "3c64959771",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.276217
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_turnout_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.6ce3bd8520",
+      "name": "6ce3bd8520",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.256481
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_bronze_candidates_office_scope__federal__state__municipal__other.1593038c12",
+      "name": "1593038c12",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.25578
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_candidate_name.e2ed96fd17",
+      "name": "e2ed96fd17",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.255307
+    },
+    {
+      "unique_id": "model.tse_analytics.dim_geography",
+      "name": "dim_geography",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.236614
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_election_year.8a99824dac",
+      "name": "8a99824dac",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.23602
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_party_votes_cycle_scope",
+      "name": "assert_party_votes_cycle_scope",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.235784
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_election_type.1eb9b3e5ac",
+      "name": "1eb9b3e5ac",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.229698
+    },
+    {
+      "unique_id": "model.tse_analytics.bronze_candidate_assets",
+      "name": "bronze_candidate_assets",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.22309
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_office_scope.197db8c6ce",
+      "name": "197db8c6ce",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.195742
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_bronze_candidates_candidate_id.39929d3582",
+      "name": "39929d3582",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.191768
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_stg_tally_munzona_municipality_code_canonical",
+      "name": "assert_stg_tally_munzona_municipality_code_canonical",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.190049
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_bronze_candidates_election_year__election_type__election_code__candidate_id.72aa2ca911",
+      "name": "72aa2ca911",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.186282
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_election_code.4bfe99cebb",
+      "name": "4bfe99cebb",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.185856
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_eligible_voters.468bd3a817",
+      "name": "468bd3a817",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.163347
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_legend_valid_votes.1363bff419",
+      "name": "1363bff419",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.16192
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_election_scope_matches_type",
+      "name": "assert_election_scope_matches_type",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.158518
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_dim_party_snapshot_complete",
+      "name": "assert_dim_party_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.155584
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_party_valid_votes.7983795722",
+      "name": "7983795722",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.153004
+    },
+    {
+      "unique_id": "seed.tse_analytics.election_calendar",
+      "name": "election_calendar",
+      "resource_type": "seed",
+      "status": "success",
+      "seconds": 0.133032
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_silver_tally_munzona_election_year__election_type__election_code__round_number__uf__municipality_code__zone__office_code__is_transit_vote.79300321a0",
+      "name": "79300321a0",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.121338
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_stg_party_votes_raw_municipality_code_canonical",
+      "name": "assert_stg_party_votes_raw_municipality_code_canonical",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.107622
+    },
+    {
+      "unique_id": "model.tse_analytics.fact_candidate_votes",
+      "name": "fact_candidate_votes",
+      "resource_type": "model",
+      "status": "success",
+      "seconds": 0.103644
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_total_legend_valid_votes.ad59122f30",
+      "name": "ad59122f30",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.091701
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_candidate_tally_coverage_gaps_gap_reason.a9dee62b38",
+      "name": "a9dee62b38",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.086652
+    },
+    {
+      "unique_id": "test.tse_analytics.unique_dim_election_election_id.c93f13d88d",
+      "name": "c93f13d88d",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.085916
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_geography_election_year__election_type__uf__municipality_code.132ccfbd61",
+      "name": "132ccfbd61",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.069735
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_election_election_year__election_type__election_code.acb4acaa61",
+      "name": "acb4acaa61",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.066567
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_nominal_votes.3a44b55974",
+      "name": "3a44b55974",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.059619
+    },
+    {
+      "unique_id": "test.tse_analytics.unique_dim_party_party_id.9da298a6ce",
+      "name": "9da298a6ce",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.054917
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_election_year.327834c39b",
+      "name": "327834c39b",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.053223
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_type.fb15f66ea5",
+      "name": "fb15f66ea5",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.04569
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_dim_geography_snapshot_complete",
+      "name": "assert_dim_geography_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.042801
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_candidate_candidate_id.882821f01b",
+      "name": "882821f01b",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.042494
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_candidate_election_year.fb77fb8393",
+      "name": "fb77fb8393",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.041989
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_party_party_name.fadfb15c18",
+      "name": "fadfb15c18",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.039762
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_round_number.930786b7cc",
+      "name": "930786b7cc",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.039354
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_election_election_id.b977e96806",
+      "name": "b977e96806",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.039351
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_party_party.a4ef69c28d",
+      "name": "a4ef69c28d",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.037916
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_code.9ade8d9a04",
+      "name": "9ade8d9a04",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.037793
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_party_number.97b9b16dd1",
+      "name": "97b9b16dd1",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.037688
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_candidate_id.3747010aa1",
+      "name": "3747010aa1",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.037453
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_nominal_valid_votes.7060501af1",
+      "name": "7060501af1",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.036371
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_zone.6a7d695ebf",
+      "name": "6a7d695ebf",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.035951
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_candidate_election_type.aff628686e",
+      "name": "aff628686e",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.035806
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_party_number.708e410565",
+      "name": "708e410565",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.035749
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_fact_electorate_snapshot_complete",
+      "name": "assert_fact_electorate_snapshot_complete",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.035583
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_legend_valid_votes.90f9dbadae",
+      "name": "90f9dbadae",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.035299
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_total_legend_valid_votes.949adbe8f5",
+      "name": "949adbe8f5",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.034956
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_dim_election_election_type__general__municipal.dbd4ee5830",
+      "name": "dbd4ee5830",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.033188
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_dim_party_election_year__election_type__election_code__party_number.cdcd63b462",
+      "name": "cdcd63b462",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.031642
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_election_id.4ca494eb67",
+      "name": "4ca494eb67",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.030475
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_election_calendar_election_year__election_type.cd859d6ff1",
+      "name": "cd859d6ff1",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.02997
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_candidate_election_code.72b3ba2d00",
+      "name": "72b3ba2d00",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.029143
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_election_year.e41ec20be5",
+      "name": "e41ec20be5",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.028189
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_municipality_code.0a2a5d5c53",
+      "name": "0a2a5d5c53",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.02752
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_candidate_election_id.e7655e0fda",
+      "name": "e7655e0fda",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.025606
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_uf.ec64c0f307",
+      "name": "ec64c0f307",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.025535
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_party_votes_munzona_office_code.ffa812b222",
+      "name": "ffa812b222",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.025168
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_round_number.16d23c0f0c",
+      "name": "16d23c0f0c",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.023545
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_nonnegative_candidate_votes",
+      "name": "assert_nonnegative_candidate_votes",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.022982
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_municipality_code.36ff1516dd",
+      "name": "36ff1516dd",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.02202
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_party_party_number.76c8820921",
+      "name": "76c8820921",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.021147
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_election_type.3e7e08b6c8",
+      "name": "3e7e08b6c8",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.020795
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_candidate_votes_election_code.b2bf8f6b82",
+      "name": "b2bf8f6b82",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.020253
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_turnout_rates_bounds",
+      "name": "assert_turnout_rates_bounds",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.020136
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_nonnegative_candidate_assets",
+      "name": "assert_nonnegative_candidate_assets",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.019926
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_turnout_eligible_voters.b0ad909ef2",
+      "name": "b0ad909ef2",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.019653
+    },
+    {
+      "unique_id": "test.tse_analytics.assert_normalize_municipality_code_examples",
+      "name": "assert_normalize_municipality_code_examples",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.019378
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_dim_party_party_id.0287c6f11e",
+      "name": "0287c6f11e",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.017572
+    },
+    {
+      "unique_id": "test.tse_analytics.dbt_utils_unique_combination_of_columns_fact_electorate_municipality_election_year__election_type__uf__municipality_code.fd8fe21802",
+      "name": "fd8fe21802",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.016847
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_election_type.f488bb9e82",
+      "name": "f488bb9e82",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.016338
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_turnout_abstentions.99322c759a",
+      "name": "99322c759a",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.013678
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_party_votes_election_code.ca5e6fa4a3",
+      "name": "ca5e6fa4a3",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.013414
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_turnout_turnout.2919d6e02e",
+      "name": "2919d6e02e",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.013379
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_election_year.08fe2011bc",
+      "name": "08fe2011bc",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.010174
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_type.95b5da7ded",
+      "name": "95b5da7ded",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.009778
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_election_calendar_election_year.02aac0fd03",
+      "name": "02aac0fd03",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.00836
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_scope.5a27d36766",
+      "name": "5a27d36766",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.007227
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_electorate_municipality_election_year.4966e96aad",
+      "name": "4966e96aad",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.007193
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_electorate_municipality_uf.e9271f96e4",
+      "name": "e9271f96e4",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.007052
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_fact_electorate_municipality_municipality_code.e47ac5da0f",
+      "name": "e47ac5da0f",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.005961
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_abstentions.7c009d3110",
+      "name": "7c009d3110",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.005301
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_election_calendar_election_type__general__municipal.dcfd7d280f",
+      "name": "dcfd7d280f",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.004923
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_election_calendar_election_type.af3ca8570a",
+      "name": "af3ca8570a",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.004144
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_election_calendar_election_scope.6bc74c69c8",
+      "name": "6bc74c69c8",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.003892
+    },
+    {
+      "unique_id": "test.tse_analytics.accepted_values_election_calendar_election_scope__federal_state__municipal.ecdad16a31",
+      "name": "ecdad16a31",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.003772
+    },
+    {
+      "unique_id": "test.tse_analytics.not_null_silver_tally_munzona_turnout.6da34d16ff",
+      "name": "6da34d16ff",
+      "resource_type": "test",
+      "status": "pass",
+      "seconds": 0.003227
+    }
+  ]
+}
