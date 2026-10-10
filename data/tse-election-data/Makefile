@@ -27,6 +27,7 @@ UF ?=
 
 INGEST_WORKERS ?= 8
 CHECKPOINT_EVERY ?= 10
+PRUNE_DOMAINS ?=
 
 PROJECT_ROOT_ABS := $(abspath .)
 RAW_ROOT_ABS := $(abspath $(DATA_ROOT))
@@ -66,6 +67,7 @@ BACKFILL_YEAR_ARGS := \
 
 INCREMENTAL_YEAR_ARGS := \
 	$(foreach year,$(INCREMENTAL_YEARS),--year $(year))
+PRUNE_DOMAIN_ARGS := $(foreach domain,$(PRUNE_DOMAINS),--domain $(domain))
 
 DBT_VARS_CMD = \
 	RAW_ROOT='$(RAW_ROOT_ABS)' \
@@ -241,6 +243,7 @@ dbt-semantic-layer: semantic ## Compatibility alias for semantic
 prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
 	$(PY) scripts/prune_extracted_raw.py \
 	  --root '$(RAW_ROOT_ABS)/raw' \
+	  $(PRUNE_DOMAIN_ARGS) \
 	  $(if $(filter 1 true yes,$(APPLY)),--apply,)
 
 pr-gate: scope-contracts unit medallion-contracts dbt-deps ## Fast PR gate
