@@ -193,7 +193,17 @@
       select
         election_year,
         election_type,
-        max({{ snapshot_column }}) as source_snapshot_id
+
+        count(*) as row_count,
+
+        count(distinct {{ snapshot_column }})
+          as distinct_snapshot_count,
+
+        min({{ snapshot_column }})
+          as min_source_snapshot_id,
+
+        max({{ snapshot_column }})
+          as max_source_snapshot_id
 
       from {{ this }}
 
@@ -215,10 +225,23 @@
 
       sum(
         case
-          when existing_snapshot.source_snapshot_id is null
-            or existing_snapshot.source_snapshot_id
+          when existing_snapshot.row_count is null
+          then 1
+
+          when existing_snapshot.distinct_snapshot_count <> 1
+          then 1
+
+          when existing_snapshot.min_source_snapshot_id is null
+          then 1
+
+          when existing_snapshot.min_source_snapshot_id
                <> current_snapshot.source_snapshot_id
           then 1
+
+          when existing_snapshot.max_source_snapshot_id
+               <> current_snapshot.source_snapshot_id
+          then 1
+
           else 0
         end
       ) as changed_count

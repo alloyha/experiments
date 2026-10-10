@@ -96,7 +96,15 @@ class SourceAwareElectorateContractTests(unittest.TestCase):
             self.dbt_test,
         )
         self.assertIn(
-            "actual_source_snapshot_id",
+            "actual_min_source_snapshot_id",
+            self.dbt_test,
+        )
+        self.assertIn(
+            "actual_max_source_snapshot_id",
+            self.dbt_test,
+        )
+        self.assertIn(
+            "distinct_snapshot_count",
             self.dbt_test,
         )
 

@@ -15,7 +15,17 @@ stored_snapshot as (
   select
     election_year,
     election_type,
-    max(source_snapshot_id) as source_snapshot_id
+
+    count(*) as row_count,
+
+    count(distinct source_snapshot_id)
+      as distinct_snapshot_count,
+
+    min(source_snapshot_id)
+      as min_source_snapshot_id,
+
+    max(source_snapshot_id)
+      as max_source_snapshot_id
 
   from {{ ref('silver_electorate_municipality') }}
 
