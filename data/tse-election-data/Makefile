@@ -43,7 +43,9 @@ DBT := \
 	TSE_DUCKDB_PATH='$(DUCKDB_PATH_ABS)' \
 	env -u VIRTUAL_ENV \
 	$(UV) run --python '$(PROJECT_PYTHON)' \
-	dbt \
+	dbt
+
+DBT_PROJECT_ARGS := \
 	--project-dir $(DBT_DIR) \
 	--profiles-dir $(DBT_DIR)
 
@@ -190,7 +192,7 @@ setup: ## Create local environment and install ingestion/dbt dependencies
 	@mkdir -p '$(CANDIDATE_FACT_ROOT_ABS)'
 	@test -d .venv || env -u VIRTUAL_ENV $(UV) venv .venv
 	@if test -f pyproject.toml; then \
-	  env -u VIRTUAL_ENV $(UV) sync; \
+	  env -u VIRTUAL_ENV $(UV) sync --inexact; \
 	else \
 	  env -u VIRTUAL_ENV $(UV) pip install \
 	    --python '$(PROJECT_PYTHON)' \
@@ -202,7 +204,7 @@ setup: ## Create local environment and install ingestion/dbt dependencies
 
 # dbt_utils is intentionally fetched separately from Python dependencies.
 dbt-deps: setup ## Install dbt package dependencies
-	$(DBT) deps
+	$(DBT) deps $(DBT_PROJECT_ARGS)
 
 print-dbt-vars: ## Print normal dbt --vars JSON
 	@$(DBT_VARS_CMD)
@@ -251,7 +253,7 @@ candidate-fact-partition: dbt-deps ## Build and atomically replace one candidate
 	@echo "  election type: $(INCREMENTAL_ELECTION_TYPES)"
 	@echo "  root:          $(CANDIDATE_FACT_ROOT_ABS)"
 
-	$(DBT) run \
+	$(DBT) run $(DBT_PROJECT_ARGS) \
 	  --select +int_candidate_fact_partition \
 	  --vars '{"tse_raw_root":"$(RAW_ROOT_ABS)","candidate_fact_root":"$(CANDIDATE_FACT_ROOT_ABS)","election_years":[$(INCREMENTAL_YEARS)],"election_types":["$(INCREMENTAL_ELECTION_TYPES)"],"incremental_years":[$(INCREMENTAL_YEARS)],"incremental_election_types":["$(INCREMENTAL_ELECTION_TYPES)"],"use_prepared_candidate_votes":true,"build_candidate_fact_partition":true}'
 
@@ -280,16 +282,16 @@ medallion-contracts: setup ## Validate medallion dependency direction
 	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' python scripts/check_medallion_dag.py
 
 dbt-bronze: dbt-deps ## Build/test Bronze only
-	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select 'tag:bronze' --vars "$$vars"
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build $(DBT_PROJECT_ARGS) --select 'tag:bronze' --vars "$$vars"
 
 dbt-silver: dbt-deps ## Build/test Silver with upstreams
-	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:silver' --vars "$$vars"
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build $(DBT_PROJECT_ARGS) --select '+tag:silver' --vars "$$vars"
 
 dbt-gold: dbt-deps ## Build/test Gold with upstreams
-	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:gold' --vars "$$vars"
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build $(DBT_PROJECT_ARGS) --select '+tag:gold' --vars "$$vars"
 
 dbt-semantic-layer: dbt-deps ## Build/test Semantic with upstreams
-	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --select '+tag:semantic' --vars "$$vars"
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build $(DBT_PROJECT_ARGS) --select '+tag:semantic' --vars "$$vars"
 
 prune-cache: setup ## Dry-run extracted raw cache pruning; use APPLY=1 to delete
 	env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)' \
@@ -298,7 +300,7 @@ prune-cache: setup ## Dry-run extracted raw cache pruning; use APPLY=1 to delete
 	  $(if $(filter 1 true yes,$(APPLY)),--apply,)
 
 pr-gate: unit medallion-contracts dbt-deps ## Fast PR gate; authoritative expensive scans remain in production-gate
-	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build --exclude 'tag:expensive' --vars "$$vars"
+	@vars="$$($(DBT_VARS_CMD))"; $(DBT) build $(DBT_PROJECT_ARGS) --exclude 'tag:expensive' --vars "$$vars"
 
 production-gate: ## Production gate for selected dbt cycle plus warehouse regressions
 	$(MAKE) unit
@@ -311,29 +313,29 @@ production-gate: ## Production gate for selected dbt cycle plus warehouse regres
 dbt-build: raw-contracts dbt-deps ## Build staging -> intermediate -> marts -> semantic and run tests
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
-	  $(DBT) build --vars "$$vars"
+	  $(DBT) build $(DBT_PROJECT_ARGS) --vars "$$vars"
 
 dbt-full-refresh: dbt-deps ## Full-refresh dbt incremental marts and semantic layer
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
-	  $(DBT) build --full-refresh --vars "$$vars"
+	  $(DBT) build $(DBT_PROJECT_ARGS) --full-refresh --vars "$$vars"
 
 semantic: dbt-deps ## Build semantic models plus upstream dependencies/tests
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
-	  $(DBT) build \
+	  $(DBT) build $(DBT_PROJECT_ARGS) \
 	    --select '+path:models/semantic' \
 	    --vars "$$vars"
 
 test: ingest dbt-deps ## Self-contained validation: ingest current data and run dbt build/tests
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
-	  $(DBT) build --vars "$$vars"
+	  $(DBT) build $(DBT_PROJECT_ARGS) --vars "$$vars"
 
 test-only: dbt-deps ## Run tests only against an already-built warehouse
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  echo "dbt vars: $$vars"; \
-	  $(DBT) test --vars "$$vars"
+	  $(DBT) test $(DBT_PROJECT_ARGS) --vars "$$vars"
 
 performance-report: ## Report dbt node execution costs from the latest run
 	$(PROJECT_PYTHON) scripts/report_build_performance.py \
@@ -351,7 +353,7 @@ compile: dbt-deps ## Compile entire dbt graph using schema fixtures
 	    'import json,sys; d=json.loads(sys.argv[1]); d["compile_only"]=True; d["dbt_fixture_root"]="$(abspath $(DBT_DIR)/fixtures)"; print(json.dumps(d))' \
 	    "$$vars")"; \
 	  echo "dbt compile vars: $$compile_vars"; \
-	  $(DBT) compile --vars "$$compile_vars"
+	  $(DBT) compile $(DBT_PROJECT_ARGS) --vars "$$compile_vars"
 
 pipeline: ingest dbt-build ## End-to-end incremental pipeline through semantic layer
 	@echo

@@ -1,5 +1,5 @@
 {{ config(
-    pre_hook=partition_replace_pre_hook(),
+    pre_hook="{{ partition_replace_pre_hook() }}",
     materialized='incremental',
     incremental_strategy='delete+insert',
     unique_key=[
@@ -33,6 +33,9 @@ with ranked as (
     {% endif %}
 )
 
-select * exclude (_version_rank)
+select * exclude (
+    _version_rank,
+    source_snapshot_id
+)
 from ranked
 where _version_rank = 1

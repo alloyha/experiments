@@ -3,7 +3,8 @@
     resource_name_like=none,
     strict_mode=true,
     null_padding=false,
-    parallel=true
+    parallel=true,
+    incremental_scope=false
 ) %}
   {% if var('compile_only', false) %}
     {% set fixture = var('dbt_fixture_root', 'tse_dbt/fixtures') ~ '/' ~ domain ~ '.csv' %}
@@ -29,8 +30,30 @@
       where false
     )
   {% else %}
-    {% set paths = current_raw_files(domain, resource_name_like) %}
-    {% set index_path = var('tse_raw_root') ~ '/_metadata/current_objects.jsonl' %}
+    {% set paths = current_raw_files(
+        domain,
+        resource_name_like,
+        incremental_scope
+    ) %}
+
+    {% if incremental_scope %}
+      {% set years = var(
+          'incremental_years',
+          election_year_list()
+      ) %}
+      {% set types = var(
+          'incremental_election_types',
+          election_type_list()
+      ) %}
+    {% else %}
+      {% set years = election_year_list() %}
+      {% set types = election_type_list() %}
+    {% endif %}
+
+    {% set index_path =
+        var('tse_raw_root')
+        ~ '/_metadata/current_objects.jsonl'
+    %}
     (
       with _index as (
         select distinct
@@ -40,8 +63,12 @@
           election_scope as _election_scope
         from read_json_auto('{{ index_path }}')
         where domain = '{{ domain }}'
-          and year in ({{ election_year_list() | join(', ') }})
-          and election_type in ({{ quoted_sql_list(election_type_list()) }})
+          and year in (
+            {{ years | join(', ') }}
+          )
+          and election_type in (
+            {{ quoted_sql_list(types) }}
+          )
           {% if resource_name_like is not none %}
           and resource_name ilike '{{ resource_name_like | replace("'", "''") }}'
           {% endif %}

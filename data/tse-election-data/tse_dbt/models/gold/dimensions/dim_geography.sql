@@ -1,5 +1,5 @@
 {{ config(
-    pre_hook=partition_replace_pre_hook(),
+    pre_hook="{{ partition_replace_pre_hook() }}",
     meta={'load_semantics': 'partition_replace', 'history_semantics': 'election_snapshot', 'partition_key': ['election_year', 'election_type']},
     materialized='incremental',
     incremental_strategy='delete+insert',

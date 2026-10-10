@@ -98,6 +98,7 @@
     delete from {{ this }} as target
 
     using (
+
       {{
         source_snapshot_relation(
           domain,
@@ -105,19 +106,41 @@
           incremental_scope=true
         )
       }}
+
     ) as current_snapshot
 
-    where target.{{ year_column }}
-            = current_snapshot.election_year
+    where
+      target.{{ year_column }}
+        = current_snapshot.election_year
 
       and target.{{ type_column }}
+        = current_snapshot.election_type
+
+      and exists (
+
+        select 1
+
+        from {{ this }} as stored
+
+        where
+          stored.{{ year_column }}
+            = current_snapshot.election_year
+
+          and stored.{{ type_column }}
             = current_snapshot.election_type
 
-      and coalesce(
-            target.{{ snapshot_column }},
-            ''
+          and (
+            stored.{{ snapshot_column }} is null
+
+            or stored.{{ snapshot_column }}
+               <> current_snapshot.source_snapshot_id
           )
-          <> current_snapshot.source_snapshot_id
+
+      )
+
+  {% else %}
+
+    select 1
 
   {% endif %}
 {% endmacro %}
@@ -186,41 +209,6 @@
         )
       }}
 
-    ),
-
-    existing_snapshot as (
-
-      select
-        election_year,
-        election_type,
-
-        count(*) as row_count,
-
-        count({{ snapshot_column }})
-          as non_null_snapshot_count,
-
-        count(distinct {{ snapshot_column }})
-          as distinct_snapshot_count,
-
-        min({{ snapshot_column }})
-          as min_source_snapshot_id,
-
-        max({{ snapshot_column }})
-          as max_source_snapshot_id
-
-      from {{ this }}
-
-      where {{
-        incremental_partition_predicate(
-          'election_year',
-          'election_type'
-        )
-      }}
-
-      group by
-        election_year,
-        election_type
-
     )
 
     select
@@ -228,38 +216,50 @@
 
       sum(
         case
-          when existing_snapshot.row_count is null
+
+          when not exists (
+
+            select 1
+
+            from {{ this }} as stored
+
+            where stored.election_year
+                  = current_snapshot.election_year
+
+              and stored.election_type
+                  = current_snapshot.election_type
+
+          )
           then 1
 
-          when existing_snapshot.non_null_snapshot_count
-               <> existing_snapshot.row_count
-          then 1
+          when exists (
 
-          when existing_snapshot.distinct_snapshot_count <> 1
-          then 1
+            select 1
 
-          when existing_snapshot.min_source_snapshot_id is null
-          then 1
+            from {{ this }} as stored
 
-          when existing_snapshot.min_source_snapshot_id
-               <> current_snapshot.source_snapshot_id
-          then 1
+            where stored.election_year
+                  = current_snapshot.election_year
 
-          when existing_snapshot.max_source_snapshot_id
-               <> current_snapshot.source_snapshot_id
+              and stored.election_type
+                  = current_snapshot.election_type
+
+              and (
+                stored.{{ snapshot_column }} is null
+
+                or stored.{{ snapshot_column }}
+                   <> current_snapshot.source_snapshot_id
+              )
+
+          )
           then 1
 
           else 0
+
         end
       ) as changed_count
 
     from current_snapshot
-
-    left join existing_snapshot
-      using (
-        election_year,
-        election_type
-      )
 
   {% endset %}
 
@@ -291,5 +291,100 @@
   {% endif %}
 
   {{ return((changed_raw | int) > 0) }}
+
+{% endmacro %}
+
+
+{% macro source_snapshot_contract_query(
+    relation,
+    domain,
+    resource_name_like=none
+) %}
+
+with current_snapshot as (
+
+  {{
+    source_snapshot_relation(
+      domain,
+      resource_name_like,
+      incremental_scope=false
+    )
+  }}
+
+),
+
+stored_snapshot as (
+
+  select
+    election_year,
+    election_type,
+
+    count(*) as row_count,
+
+    count(source_snapshot_id)
+      as non_null_snapshot_count,
+
+    count(distinct source_snapshot_id)
+      as distinct_snapshot_count,
+
+    min(source_snapshot_id)
+      as min_source_snapshot_id,
+
+    max(source_snapshot_id)
+      as max_source_snapshot_id
+
+  from {{ relation }}
+
+  where {{
+    selected_election_predicate(
+      'election_year',
+      'election_type'
+    )
+  }}
+
+  group by
+    election_year,
+    election_type
+
+)
+
+select
+  current_snapshot.election_year,
+  current_snapshot.election_type,
+
+  current_snapshot.source_snapshot_id
+    as expected_source_snapshot_id,
+
+  stored_snapshot.min_source_snapshot_id
+    as actual_min_source_snapshot_id,
+
+  stored_snapshot.max_source_snapshot_id
+    as actual_max_source_snapshot_id,
+
+  stored_snapshot.row_count,
+  stored_snapshot.non_null_snapshot_count,
+  stored_snapshot.distinct_snapshot_count
+
+from current_snapshot
+
+left join stored_snapshot
+  using (
+    election_year,
+    election_type
+  )
+
+where
+  stored_snapshot.row_count is null
+
+  or stored_snapshot.non_null_snapshot_count
+     <> stored_snapshot.row_count
+
+  or stored_snapshot.distinct_snapshot_count <> 1
+
+  or stored_snapshot.min_source_snapshot_id
+     <> current_snapshot.source_snapshot_id
+
+  or stored_snapshot.max_source_snapshot_id
+     <> current_snapshot.source_snapshot_id
 
 {% endmacro %}
