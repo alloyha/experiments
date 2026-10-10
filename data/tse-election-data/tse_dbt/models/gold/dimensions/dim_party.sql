@@ -1,5 +1,5 @@
 {{ config(
-    pre_hook=partition_replace_pre_hook(),
+    pre_hook="{{ partition_replace_pre_hook() }}",
     materialized='incremental',
     incremental_strategy='delete+insert',
     unique_key=['election_year', 'election_type', 'election_code', 'party_number'],

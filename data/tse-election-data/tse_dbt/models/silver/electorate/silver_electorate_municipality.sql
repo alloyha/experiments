@@ -1,10 +1,7 @@
 {{ config(
     pre_hook=[
-      ensure_source_snapshot_column_pre_hook(),
-      source_aware_partition_replace_pre_hook(
-        'electorate',
-        'Eleitorado - %'
-      )
+      "{{ ensure_source_snapshot_column_pre_hook() }}",
+      "{{ source_aware_partition_replace_pre_hook('electorate', 'Eleitorado - %') }}"
     ],
     materialized='incremental',
     incremental_strategy='delete+insert',

@@ -92,11 +92,11 @@ class SourceAwareElectorateContractTests(unittest.TestCase):
 
     def test_null_snapshot_forces_refresh(self):
         self.assertIn(
-            "non_null_snapshot_count",
+            "stored.{{ snapshot_column }} is null",
             self.macro,
         )
         self.assertIn(
-            "<> existing_snapshot.row_count",
+            "<> current_snapshot.source_snapshot_id",
             self.macro,
         )
 
