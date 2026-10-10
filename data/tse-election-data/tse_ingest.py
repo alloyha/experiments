@@ -875,18 +875,45 @@ def make_session() -> requests.Session:
 
 
 
-def local_state_complete(root: Path, previous: dict | None) -> bool:
+def active_version_complete(root: Path, previous: dict | None) -> bool:
+    """Whether durable active-version truth is complete without requiring cache."""
     if not previous:
         return False
     source = previous.get("source_object")
-    if not source or not (root / source).exists():
+    if not source or not (root / source).is_file():
         return False
+    return bool(previous.get("selection_complete"))
+
+
+def materialization_complete(root: Path, previous: dict | None) -> bool:
+    """Whether the active version currently has every required physical object."""
+    if not active_version_complete(root, previous):
+        return False
+
     extracted = previous.get("extracted_objects") or []
-    if not extracted:
-        # A Brasil-granularity archive may legitimately have no national member.
-        # Once inspected, that is still a complete local decision for this resource.
-        return bool(previous.get("selection_complete"))
-    return all((root / obj).exists() for obj in extracted)
+    selected = previous.get("selected_members")
+
+    # New state records retain a one-to-one mapping between selected
+    # archive members and physical outputs. Legacy records without
+    # selected_members retain their previous physical-file semantics.
+    if selected is not None and len(extracted) != len(selected):
+        return False
+
+    # A single physical object cannot satisfy two distinct outputs.
+    if len(set(extracted)) != len(extracted):
+        return False
+
+    # An empty, completed selection legitimately needs no cache.
+    return all((root / obj).is_file() for obj in extracted)
+
+
+def local_state_complete(root: Path, previous: dict | None) -> bool:
+    """Compatibility gate: ingestion still requires physical materialization.
+
+    PR32 separates logical and physical completeness without changing the
+    recovery path introduced in PR31. PR34 will wire lazy consumers.
+    """
+    return materialization_complete(root, previous)
 
 def inspect_selected_archive_members(
     source: Path, granularity: str, uf: str | None
@@ -1118,8 +1145,13 @@ def prepare_resource_worker(*, pending: PendingPreparation, extractor: str) -> t
     )
     state_row = {
         **asdict(record), "granularity": pending.granularity, "uf": (pending.uf or "").upper(),
-        "checked_at": pending.checked_at, "selection_complete": True, "extractor": extraction_backend,
+        "checked_at": pending.checked_at,
+        "selection_complete": True,
+        "extractor": extraction_backend,
         "selected_members": selected_member_names,
+        "materialization_state": (
+            "present" if extracted else "not_required"
+        ),
     }
     publish_prep_seconds = time.perf_counter() - phase_start
 
