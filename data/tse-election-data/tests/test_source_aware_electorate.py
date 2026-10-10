@@ -107,6 +107,10 @@ class SourceAwareElectorateContractTests(unittest.TestCase):
             "distinct_snapshot_count",
             self.dbt_test,
         )
+        self.assertIn(
+            "non_null_snapshot_count",
+            self.dbt_test,
+        )
 
 
 if __name__ == "__main__":

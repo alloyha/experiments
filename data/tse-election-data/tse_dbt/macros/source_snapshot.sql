@@ -196,6 +196,9 @@
 
         count(*) as row_count,
 
+        count({{ snapshot_column }})
+          as non_null_snapshot_count,
+
         count(distinct {{ snapshot_column }})
           as distinct_snapshot_count,
 

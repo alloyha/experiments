@@ -18,6 +18,9 @@ stored_snapshot as (
 
     count(*) as row_count,
 
+    count(source_snapshot_id)
+      as non_null_snapshot_count,
+
     count(distinct source_snapshot_id)
       as distinct_snapshot_count,
 
@@ -49,8 +52,15 @@ select
   current_snapshot.source_snapshot_id
     as expected_source_snapshot_id,
 
-  stored_snapshot.source_snapshot_id
-    as actual_source_snapshot_id
+  stored_snapshot.min_source_snapshot_id
+    as actual_min_source_snapshot_id,
+
+  stored_snapshot.max_source_snapshot_id
+    as actual_max_source_snapshot_id,
+
+  stored_snapshot.row_count,
+  stored_snapshot.non_null_snapshot_count,
+  stored_snapshot.distinct_snapshot_count
 
 from current_snapshot
 
@@ -61,7 +71,15 @@ left join stored_snapshot
   )
 
 where
-  stored_snapshot.source_snapshot_id is null
+  stored_snapshot.row_count is null
 
-  or stored_snapshot.source_snapshot_id
+  or stored_snapshot.non_null_snapshot_count
+     <> stored_snapshot.row_count
+
+  or stored_snapshot.distinct_snapshot_count <> 1
+
+  or stored_snapshot.min_source_snapshot_id
+     <> current_snapshot.source_snapshot_id
+
+  or stored_snapshot.max_source_snapshot_id
      <> current_snapshot.source_snapshot_id
