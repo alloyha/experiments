@@ -194,9 +194,11 @@ setup: ## Create local environment and install ingestion/dbt dependencies
 	else \
 	  env -u VIRTUAL_ENV $(UV) pip install \
 	    --python '$(PROJECT_PYTHON)' \
-	    -r requirements-tse-ingest.txt \
-	    -r $(DBT_DIR)/requirements.txt; \
+	    -r requirements-tse-ingest.txt; \
 	fi
+	@env -u VIRTUAL_ENV $(UV) pip install \
+	  --python '$(PROJECT_PYTHON)' \
+	  -r $(DBT_DIR)/requirements.txt
 
 # dbt_utils is intentionally fetched separately from Python dependencies.
 dbt-deps: setup ## Install dbt package dependencies
