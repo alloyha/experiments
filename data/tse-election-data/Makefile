@@ -183,7 +183,9 @@ doctor: ## Check local prerequisites
 	@echo 'duckdb:              ' '$(DUCKDB_PATH_ABS)'
 	@echo 'candidate fact root: ' '$(CANDIDATE_FACT_ROOT_ABS)'
 
-setup: doctor ## Create local environment and install ingestion/dbt dependencies
+setup: ## Create local environment and install ingestion/dbt dependencies
+	@command -v $(UV) >/dev/null || { echo 'Missing uv'; exit 1; }
+	@command -v $(PYTHON) >/dev/null || { echo 'Missing $(PYTHON)'; exit 1; }
 	@mkdir -p '$(dir $(DUCKDB_PATH_ABS))'
 	@mkdir -p '$(CANDIDATE_FACT_ROOT_ABS)'
 	@test -d .venv || env -u VIRTUAL_ENV $(UV) venv .venv

@@ -90,6 +90,16 @@ class SourceAwareElectorateContractTests(unittest.TestCase):
             self.macro,
         )
 
+    def test_null_snapshot_forces_refresh(self):
+        self.assertIn(
+            "non_null_snapshot_count",
+            self.macro,
+        )
+        self.assertIn(
+            "<> existing_snapshot.row_count",
+            self.macro,
+        )
+
     def test_current_snapshot_is_asserted(self):
         self.assertIn(
             "expected_source_snapshot_id",

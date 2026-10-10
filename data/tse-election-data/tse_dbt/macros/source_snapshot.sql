@@ -231,6 +231,10 @@
           when existing_snapshot.row_count is null
           then 1
 
+          when existing_snapshot.non_null_snapshot_count
+               <> existing_snapshot.row_count
+          then 1
+
           when existing_snapshot.distinct_snapshot_count <> 1
           then 1
 
