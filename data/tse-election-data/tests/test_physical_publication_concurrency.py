@@ -152,11 +152,13 @@ class PhysicalPublicationConcurrencyTests(unittest.TestCase):
         self.assertEqual(self.read_vote(), 10)
 
     def test_makefile_fences_snapshot_built_before_publication(self):
+        # PR37 moved capture -> CTAS -> CAS into one coordinator under a
+        # warehouse-scoped lock; the old shell-only ordering is insufficient.
         makefile = (Path(__file__).resolve().parents[1] / "Makefile").read_text()
         recipe = makefile.split("candidate-fact-partition: dbt-deps", 1)[1].split("\nunit:", 1)[0]
-        self.assertIn("--expected-generation", recipe)
-        self.assertIn("--show-generation", recipe)
-        self.assertLess(recipe.index("--show-generation"), recipe.index("$(DBT) run"))
+        self.assertIn("scripts/build_candidate_fact_partition.py", recipe)
+        self.assertIn("--dbt-executable", recipe)
+        self.assertNotIn("$(DBT) run", recipe)
 
     def test_legacy_regular_file_is_retained_during_migration(self):
         self.partition.mkdir(parents=True, exist_ok=True)

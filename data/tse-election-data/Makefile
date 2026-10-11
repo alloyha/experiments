@@ -207,21 +207,15 @@ candidate-fact-partition: dbt-deps ## Build one physical candidate partition
 	@test "$(words $(INCREMENTAL_ELECTION_TYPES))" -eq 1 || \
 	  { echo "requires exactly one incremental election type"; exit 1; }
 
-	@set -e; \
-	  expected_generation="$$($(PY) scripts/write_candidate_fact_partition.py \
-	    --root '$(CANDIDATE_FACT_ROOT_ABS)' \
-	    --year '$(INCREMENTAL_YEARS)' \
-	    --election-type '$(INCREMENTAL_ELECTION_TYPES)' \
-	    --show-generation)"; \
-	  $(DBT) run $(DBT_PROJECT_ARGS) \
-	    --select +int_candidate_fact_partition \
-	    --vars '{"tse_raw_root":"$(RAW_ROOT_ABS)","candidate_fact_root":"$(CANDIDATE_FACT_ROOT_ABS)","election_years":[$(INCREMENTAL_YEARS)],"election_types":["$(INCREMENTAL_ELECTION_TYPES)"],"incremental_years":[$(INCREMENTAL_YEARS)],"incremental_election_types":["$(INCREMENTAL_ELECTION_TYPES)"],"use_prepared_candidate_votes":true,"build_candidate_fact_partition":true}'; \
-	  $(PY) scripts/write_candidate_fact_partition.py \
-	    --db '$(DUCKDB_PATH_ABS)' \
-	    --root '$(CANDIDATE_FACT_ROOT_ABS)' \
-	    --year '$(INCREMENTAL_YEARS)' \
-	    --election-type '$(INCREMENTAL_ELECTION_TYPES)' \
-	    --expected-generation "$$expected_generation"
+	$(PY) scripts/build_candidate_fact_partition.py \
+	  --db '$(DUCKDB_PATH_ABS)' \
+	  --root '$(CANDIDATE_FACT_ROOT_ABS)' \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --project-dir '$(abspath $(DBT_DIR))' \
+	  --profiles-dir '$(abspath $(DBT_DIR))' \
+	  --dbt-executable '$(abspath $(dir $(PROJECT_PYTHON))dbt)' \
+	  --year '$(INCREMENTAL_YEARS)' \
+	  --election-type '$(INCREMENTAL_ELECTION_TYPES)'
 
 unit: setup ## Run Python contracts
 	$(PY) -m unittest discover -s tests -p 'test_*.py'
