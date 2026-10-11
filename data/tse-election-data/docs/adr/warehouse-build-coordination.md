@@ -1,6 +1,6 @@
 # ADR — Per-warehouse CTAS + physical publication coordination (PR37)
 
-**Status:** Proposed — local TDD and real-data gates pending.
+**Status:** Proposed — local TDD and real-data gates passed; PR review pending.
 
 ## Decision
 
