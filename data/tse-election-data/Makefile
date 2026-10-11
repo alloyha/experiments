@@ -28,6 +28,9 @@ UF ?=
 INGEST_WORKERS ?= 8
 CHECKPOINT_EVERY ?= 10
 PRUNE_DOMAINS ?=
+MATERIALIZE_DOMAINS ?=
+MATERIALIZE_EXTRACTOR ?= auto
+MATERIALIZE_CHECKPOINT_EVERY ?= 1
 
 PROJECT_ROOT_ABS := $(abspath .)
 RAW_ROOT_ABS := $(abspath $(DATA_ROOT))
@@ -68,6 +71,9 @@ BACKFILL_YEAR_ARGS := \
 INCREMENTAL_YEAR_ARGS := \
 	$(foreach year,$(INCREMENTAL_YEARS),--year $(year))
 PRUNE_DOMAIN_ARGS := $(foreach domain,$(PRUNE_DOMAINS),--domain $(domain))
+MATERIALIZE_YEAR_ARGS := $(foreach year,$(YEARS),--year $(year))
+MATERIALIZE_TYPE_ARGS := $(foreach type,$(ELECTION_TYPES),--election-type $(type))
+MATERIALIZE_DOMAIN_ARGS := $(foreach domain,$(MATERIALIZE_DOMAINS),--domain $(domain))
 
 DBT_VARS_CMD = \
 	RAW_ROOT='$(RAW_ROOT_ABS)' \
@@ -87,7 +93,7 @@ DBT_VARS_CMD = \
 
 .PHONY: \
 	help doctor setup dbt-deps scope-contracts \
-	print-dbt-vars list ingest backfill \
+	print-dbt-vars list ingest backfill materialize-raw \
 	candidate-fact-partition unit raw-contracts \
 	cycle-regressions medallion-contracts \
 	dbt-bronze dbt-silver dbt-gold dbt-semantic-layer \
@@ -185,6 +191,15 @@ backfill: setup ## Backfill immutable resource versions
 	  --mode backfill \
 	  $(BACKFILL_YEAR_ARGS) \
 	  $(INGEST_COMMON_ARGS)
+
+materialize-raw: setup ## Rehydrate selected raw cache offline
+	$(PY) scripts/ensure_materialized.py \
+	  --root '$(RAW_ROOT_ABS)' \
+	  $(MATERIALIZE_YEAR_ARGS) \
+	  $(MATERIALIZE_TYPE_ARGS) \
+	  $(MATERIALIZE_DOMAIN_ARGS) \
+	  --extractor '$(MATERIALIZE_EXTRACTOR)' \
+	  --checkpoint-every '$(MATERIALIZE_CHECKPOINT_EVERY)'
 
 candidate-fact-partition: dbt-deps ## Build one physical candidate partition
 	@test "$(words $(INCREMENTAL_YEARS))" -eq 1 || \

@@ -825,6 +825,9 @@ def save_state(root: Path, state: dict[str, dict]) -> None:
     with tmp.open("w", encoding="utf-8") as fh:
         for key in sorted(state):
             row = state[key]
+            # Never publish only a subset of a multi-member active version.
+            if not materialization_complete(root, row):
+                continue
             source_obj = row.get("source_object") or ""
             domain = normalize_resource_domain(
                 row.get("domain") or "other",
