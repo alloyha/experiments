@@ -36,6 +36,8 @@ PROJECT_ROOT_ABS := $(abspath .)
 RAW_ROOT_ABS := $(abspath $(DATA_ROOT))
 DUCKDB_PATH_ABS := $(abspath $(DUCKDB_PATH))
 CANDIDATE_FACT_ROOT_ABS := $(abspath $(CANDIDATE_FACT_ROOT))
+DBT_ARTIFACTS_ROOT ?= $(DUCKDB_PATH).dbt-runs
+DBT_ARTIFACTS_ROOT_ABS := $(abspath $(DBT_ARTIFACTS_ROOT))
 
 ENV_STAMP := .venv/.tse-ready
 DBT_DEPS_STAMP := $(DBT_DIR)/dbt_packages/.tse-deps-ready
@@ -214,6 +216,7 @@ candidate-fact-partition: dbt-deps ## Build one physical candidate partition
 	  --project-dir '$(abspath $(DBT_DIR))' \
 	  --profiles-dir '$(abspath $(DBT_DIR))' \
 	  --dbt-executable '$(abspath $(dir $(PROJECT_PYTHON))dbt)' \
+	  --artifacts-root '$(DBT_ARTIFACTS_ROOT_ABS)' \
 	  --year '$(INCREMENTAL_YEARS)' \
 	  --election-type '$(INCREMENTAL_ELECTION_TYPES)'
 
