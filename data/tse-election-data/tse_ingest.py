@@ -214,6 +214,10 @@ class ResourceFailed(RuntimeError):
         super().__init__(f"resource failed from {from_state}: {original}")
 
 
+class ResourcePublicationFailed(ResourceFailed):
+    """Publication failed with an indeterminate active-state commit boundary."""
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -1368,7 +1372,7 @@ def publish_prepared_resource(
         save_state(root, candidate_state)
     except Exception as exc:
         origin = fail_lifecycle(item.lifecycle) if item.lifecycle else "materialized"
-        raise ResourceFailed(origin, exc) from exc
+        raise ResourcePublicationFailed(origin, exc) from exc
     # `save_state` may fail after writing one metadata file; the next startup
     # rebuilds current_objects from the authoritative state snapshot.
     if item.lifecycle is not None:
@@ -1746,6 +1750,12 @@ def main() -> int:
                                        year=item.year, election_type=item.election_type,
                                        package=item.package, resource=item.resource, worker="tse-prepare")
                         log(f"[error:prepare] {item.label}: {exc}", stream=sys.stderr)
+                        # save_state may have committed the authoritative snapshot
+                        # before the projection failed. A subsequent checkpoint of
+                        # the stale in-memory state would silently roll it back.
+                        # Exit before any more state writes; restart reconciles it.
+                        if isinstance(exc, ResourcePublicationFailed):
+                            raise
                     finally:
                         clear_worker_status(item.key)
 
