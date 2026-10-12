@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -63,6 +64,7 @@ def build_and_publish(
     election_type: str,
     warehouse_lock_timeout: float = DEFAULT_WAREHOUSE_LOCK_TIMEOUT,
     publication_lock_timeout: float = publisher.DEFAULT_LOCK_TIMEOUT,
+    artifacts_root: Path | None = None,
 ) -> Path:
     """Serialize coordinated jobs on one DuckDB file, not globally.
 
@@ -77,8 +79,23 @@ def build_and_publish(
     project_dir = Path(project_dir).resolve()
     profiles_dir = Path(profiles_dir).resolve()
     dbt_executable = Path(dbt_executable).resolve()
+    artifacts_root = (
+        Path(artifacts_root).resolve() if artifacts_root is not None
+        else db_path.with_name(f".{db_path.name}.dbt-runs")
+    )
     if not dbt_executable.is_file() or not os.access(dbt_executable, os.X_OK):
         raise FileNotFoundError(f"dbt executable missing or not executable: {dbt_executable}")
+
+    # Unique directories prevent concurrent jobs against independent warehouses
+    # from sharing dbt manifests, compiled SQL, logs or DuckDB spill files.
+    artifacts_root.mkdir(parents=True, exist_ok=True)
+    run_dir = artifacts_root / uuid.uuid4().hex
+    run_dir.mkdir(mode=0o700)
+    target_dir = run_dir / "target"
+    log_dir = run_dir / "logs"
+    spill_dir = run_dir / "duckdb_tmp"
+    for directory in (target_dir, log_dir, spill_dir):
+        directory.mkdir()
 
     partition = fact_root / f"election_type={election_type}" / f"year={year}"
     variables = {
@@ -96,11 +113,14 @@ def build_and_publish(
         "--project-dir", str(project_dir),
         "--profiles-dir", str(profiles_dir),
         "--select", "+int_candidate_fact_partition",
+        "--target-path", str(target_dir),
+        "--log-path", str(log_dir),
         "--vars", json.dumps(variables, separators=(",", ":")),
     ]
     env = os.environ.copy()
     env.pop("VIRTUAL_ENV", None)
     env["TSE_DUCKDB_PATH"] = str(db_path)
+    env["TSE_DUCKDB_TEMP_DIRECTORY"] = str(spill_dir)
 
     with warehouse_write_lock(db_path, timeout=warehouse_lock_timeout) as lock:
         # Observe the active generation only after acquiring the warehouse lock.
@@ -127,6 +147,7 @@ def main() -> None:
     parser.add_argument("--project-dir", type=Path, required=True)
     parser.add_argument("--profiles-dir", type=Path, required=True)
     parser.add_argument("--dbt-executable", type=Path, required=True)
+    parser.add_argument("--artifacts-root", type=Path)
     parser.add_argument("--year", type=int, required=True)
     parser.add_argument("--election-type", choices=["general", "municipal"], required=True)
     parser.add_argument("--warehouse-lock-timeout", type=float, default=DEFAULT_WAREHOUSE_LOCK_TIMEOUT)
@@ -139,6 +160,7 @@ def main() -> None:
         election_type=args.election_type,
         warehouse_lock_timeout=args.warehouse_lock_timeout,
         publication_lock_timeout=args.publication_lock_timeout,
+        artifacts_root=args.artifacts_root,
     )
 
 
