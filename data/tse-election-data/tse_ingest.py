@@ -1212,8 +1212,17 @@ def _download_resource_worker_impl(
         source_dir.mkdir(parents=True, exist_ok=True)
         original_name = Path(urlparse(source_url).path).name or f"{rid}{suffix}"
         source_target = source_dir / original_name
-        if source_target.exists():
-            tmp_source.unlink(missing_ok=True)
+        if source_target.is_file():
+            # A SIGKILL may have left an unjournaled physical source.
+            # Its path includes a claimed digest, but existence alone is not
+            # proof of content integrity. Trust only verified bytes.
+            existing_sha256, existing_size, _ = hash_file(source_target)
+            if existing_sha256 == sha256 and existing_size == size:
+                tmp_source.unlink(missing_ok=True)
+            else:
+                # The freshly downloaded source has the expected hash/size.
+                # Atomically replace a torn or corrupt prior physical object.
+                tmp_source.replace(source_target)
         else:
             tmp_source.replace(source_target)
         materialize_seconds = time.perf_counter() - phase_start
