@@ -33,6 +33,8 @@ class SaveStateExceptionalYearTests(unittest.TestCase):
                     "domain": "candidate",
                     "partition": "BRASIL",
                     "source_sha256": "abc",
+                    "selection_complete": True,
+                    "selected_members": ["exception.csv"],
                     "source_object": str(obj.relative_to(root)),
                     "source_url": "https://example.invalid/data.csv",
                     "extracted_objects": [str(obj.relative_to(root))],

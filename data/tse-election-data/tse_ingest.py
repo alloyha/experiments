@@ -30,12 +30,17 @@ import time
 import threading
 import unicodedata
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlparse
+
+from resource_lifecycle import (
+    ResourceLifecycle, drive, fail_lifecycle, initial_plan_event,
+    post_download_event, state_name,
+)
 
 import requests
 
@@ -162,6 +167,7 @@ class ResourceProfile:
     download_mib_per_second: float | None
     extractor: str
     selected_members: int
+    lifecycle: str = ""
 
 
 @dataclass
@@ -197,7 +203,15 @@ class PendingPreparation:
     network_errors: int
     selected_member_names: list[str]
     selected_uncompressed_bytes: int
+    lifecycle: ResourceLifecycle | None = None
 
+
+class ResourceFailed(RuntimeError):
+    """Resource operation failed; record the state before the failure transition."""
+    def __init__(self, from_state: str, original: Exception):
+        self.from_state = from_state
+        self.original = original
+        super().__init__(f"resource failed from {from_state}: {original}")
 
 
 def now_iso() -> str:
@@ -738,6 +752,12 @@ def extract_selected_members(
     backend = extractor
     if extractor == "auto":
         backend = "native" if shutil.which("unzip") else "python"
+    # The native unzip utility treats []?* as glob syntax, not literal names.
+    # Reject forced-native and use Python when auto-selected.
+    if backend == "native" and any(any(ch in i.filename for ch in "[]?*") for i in selected):
+        if extractor == "native":
+            raise RuntimeError("native unzip cannot safely extract glob-like member names")
+        backend = "python"
 
     used: set[str] = set()
     outputs: list[Path] = []
@@ -777,11 +797,58 @@ def profile_path(root: Path) -> Path:
     return metadata_dir(root) / "ingest_profile.jsonl"
 
 
+def pending_path(root: Path) -> Path:
+    """Unpublished source journal, separate from authoritative active state."""
+    return metadata_dir(root) / "pending_resources.json"
+
+
+def load_pending(root: Path) -> dict[str, dict]:
+    path = pending_path(root)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def save_pending(root: Path, rows: dict[str, dict]) -> None:
+    atomic_json(pending_path(root), rows)
+
+
+
+
 def append_profile(root: Path, profile: ResourceProfile) -> None:
     path = profile_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(asdict(profile), ensure_ascii=False) + "\n")
+
+
+def record_failure(
+    root: Path, *, no_profile: bool, exc: Exception, year: int,
+    election_type: str, package: dict, resource: dict, worker: str,
+) -> None:
+    """Append a failure audit row without publishing any active resource state."""
+    if no_profile:
+        return
+    row = {
+        "started_at": now_iso(), "finished_at": now_iso(),
+        "year": year, "election_type": election_type,
+        "dataset_id": package.get("name") or "",
+        "resource_id": resource.get("id") or slugify(resource.get("url") or "resource"),
+        "resource_name": resource.get("name") or "",
+        "worker": worker, "result": "failed",
+        "lifecycle": exc.from_state if isinstance(exc, ResourceFailed) else "unknown",
+        "error": str(exc),
+        "source_size_bytes": 0, "extracted_objects": 0,
+        "total_seconds": 0.0, "metadata_seconds": 0.0,
+        "download_seconds": 0.0, "hash_seconds": 0.0,
+        "materialize_seconds": 0.0, "extract_seconds": 0.0,
+        "publish_prep_seconds": 0.0, "retry_seconds": 0.0,
+        "attempts": 0, "resumed_bytes": 0, "network_errors": 0,
+        "download_mib_per_second": None, "extractor": "none",
+        "selected_members": 0,
+    }
+    path = profile_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def state_key(year: int, election_type: str, resource_id: str, granularity: str, uf: str | None) -> str:
@@ -842,7 +909,7 @@ def save_state(root: Path, state: dict[str, dict]) -> None:
                 fh.write(json.dumps({
                     "year": row["year"],
                     "election_type": row.get("election_type") or election_type_for_year(int(row["year"])),
-                    "election_scope": row.get("election_scope") or election_scope_for_type(election_type_for_year(int(row["year"]))),
+                    "election_scope": row.get("election_scope") or election_scope_for_type(row.get("election_type") or election_type_for_year(int(row["year"]))),
                     "dataset_id": row["dataset_id"],
                     "dataset_title": row.get("dataset_title") or "",
                     "resource_id": row["resource_id"],
@@ -858,6 +925,57 @@ def save_state(root: Path, state: dict[str, dict]) -> None:
                     "updated_at": row["checked_at"],
                 }, ensure_ascii=False) + "\n")
     tmp.replace(path)
+
+
+def _manifest_identity(row: dict) -> tuple:
+    """Stable physical version identity, excluding retry-dependent timestamps."""
+    return (
+        row.get("year"), row.get("election_type"), row.get("dataset_id"),
+        row.get("resource_id"), row.get("source_sha256"),
+        tuple(row.get("extracted_objects") or []),
+    )
+
+
+def ensure_manifest_record(root: Path, record: ManifestRecord) -> bool:
+    """Atomically append a version once; retries cannot duplicate a committed record.
+
+    This is a single-process local-filesystem protocol, not a distributed CAS.
+    A corrupt/torn preexisting manifest is rejected rather than silently skipped.
+    """
+    path = manifest_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    old = path.read_bytes() if path.exists() else b""
+    if old and not old.endswith(b"\n"):
+        raise ValueError(f"unterminated manifest JSONL: {path}")
+    row = asdict(record)
+    identity = _manifest_identity(row)
+    for line in old.splitlines():
+        existing = json.loads(line)
+        if _manifest_identity(existing) == identity:
+            if existing.get("source_object") != row["source_object"]:
+                raise ValueError("manifest version identity maps to different source objects")
+            return False
+
+    # Replacing a fully written temp file is recoverable after process death.
+    # Keep previous bytes intact until os.replace succeeds.
+    fd, temp_name = tempfile.mkstemp(prefix=".manifest-", suffix=".tmp", dir=path.parent)
+    tmp = Path(temp_name)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(old)
+            fh.write(json.dumps(row, ensure_ascii=False).encode("utf-8") + b"\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+        if hasattr(os, "O_DIRECTORY"):
+            dir_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return True
 
 
 def append_manifest(root: Path, record: ManifestRecord) -> None:
@@ -933,9 +1051,10 @@ def inspect_selected_archive_members(
     return [i.filename for i in selected], sum(int(i.file_size) for i in selected)
 
 
-def download_resource_worker(
+def _download_resource_worker_impl(
     *, root: Path, year: int, election_type: str, mode: str, package: dict,
     resource: dict, granularity: str, uf: str | None, previous: dict | None, force: bool,
+    pending_row: dict | None, lifecycle: ResourceLifecycle,
 ) -> dict:
     """Phase 1: metadata check, resilient download, hash and atomic raw materialization.
 
@@ -956,12 +1075,26 @@ def download_resource_worker(
     checked_at = now_iso()
     metadata_seconds = time.perf_counter() - phase_start
 
-    if (
-        not force
-        and previous
-        and previous.get("resource_fingerprint") == fingerprint
-        and local_state_complete(root, previous)
-    ):
+    active_matches = bool(previous and previous.get("resource_fingerprint") == fingerprint)
+    journal_matches = bool(pending_row and pending_row.get("resource_fingerprint") == fingerprint)
+    candidate = previous if active_matches else (pending_row if journal_matches else None)
+    # Prefer the durable pending source if the active version is not complete.
+    # An outdated active row must not mask recoverable downloaded bytes.
+    if journal_matches and not (active_matches and local_state_complete(root, previous)):
+        journal_source = pending_row.get("source_object") or ""
+        if journal_source and (root / journal_source).is_file():
+            candidate = pending_row
+    source_rel = candidate.get("source_object") if candidate else None
+    source = root / source_rel if source_rel else None
+    event = initial_plan_event(
+        force=force,
+        fingerprint_matches=bool(active_matches or journal_matches),
+        local_complete=bool(active_matches and local_state_complete(root, previous)),
+        local_source_present=bool(source is not None and source.is_file()),
+    )
+    drive(lifecycle, event)
+
+    if event == "plan_metadata_skip":
         updated = {**previous, "checked_at": checked_at}
         total_seconds = time.perf_counter() - wall_start
         profile = ResourceProfile(
@@ -976,60 +1109,59 @@ def download_resource_worker(
             download_mib_per_second=None, extractor="none",
             selected_members=len(previous.get("selected_members") or previous.get("extracted_objects") or []),
         )
-        return {"kind": "metadata-skip", "key": key, "state_row": updated, "profile": profile}
+        profile = replace(profile, lifecycle=state_name(lifecycle))
+        return {"kind": "metadata-skip", "key": key, "state_row": updated, "profile": profile, "lifecycle": state_name(lifecycle)}
 
     # Cache pruning may remove extracted objects while retaining immutable source.
     # Rehydrate locally instead of downloading unchanged bytes.
-    if (
-        not force
-        and previous
-        and previous.get("resource_fingerprint") == fingerprint
-        and not local_state_complete(root, previous)
-    ):
-        source_rel = previous.get("source_object") or ""
+    if event == "plan_rehydrate":
+        source_rel = candidate.get("source_object") or ""
         source_target = root / source_rel if source_rel else None
-        if source_target and source_target.is_file():
-            source_sha256 = previous.get("source_sha256") or ""
-            source_size = int(
-                previous.get("source_size_bytes") or source_target.stat().st_size
-            )
-            rehydrate_hash_seconds = 0.0
-            if not source_sha256:
-                (
-                    source_sha256,
-                    source_size,
-                    rehydrate_hash_seconds,
-                ) = hash_file(source_target)
+        if not source_target or not source_target.is_file():
+            raise FileNotFoundError(f"local source vanished before rehydration: {source_rel}")
+        source_sha256 = candidate.get("source_sha256") or ""
+        source_size = int(
+            candidate.get("source_size_bytes") or source_target.stat().st_size
+        )
+        rehydrate_hash_seconds = 0.0
+        if not source_sha256:
+            (
+                source_sha256,
+                source_size,
+                rehydrate_hash_seconds,
+            ) = hash_file(source_target)
 
-            domain = infer_domain(package, resource)
-            version_dir = source_target.parent.parent
-            set_worker_status(key, label=label, phase="inspect-local-source")
-            if zipfile.is_zipfile(source_target):
-                selected_names, selected_bytes = inspect_selected_archive_members(
-                    source_target, granularity, uf
-                )
-            elif source_target.suffix.lower() in {".csv", ".txt"}:
-                selected_names = [source_target.name]
-                selected_bytes = int(source_target.stat().st_size)
-            else:
-                selected_names, selected_bytes = [], 0
-
-            pending = PendingPreparation(
-                root=root, key=key, label=label, started_at=started_at,
-                wall_start=wall_start, download_worker=worker_name, year=year,
-                election_type=election_type, mode=mode, package=package,
-                resource=resource, granularity=granularity, uf=uf,
-                checked_at=checked_at, fingerprint=fingerprint, domain=domain,
-                source_url=normalize_source_url(resource["url"]),
-                source_sha256=source_sha256, source_size_bytes=source_size,
-                source_target=source_target, version_dir=version_dir,
-                metadata_seconds=metadata_seconds, download_seconds=0.0,
-                hash_seconds=rehydrate_hash_seconds, materialize_seconds=0.0,
-                retry_seconds=0.0, attempts=0, resumed_bytes=0,
-                network_errors=0, selected_member_names=selected_names,
-                selected_uncompressed_bytes=selected_bytes,
+        domain = infer_domain(package, resource)
+        version_dir = source_target.parent.parent
+        set_worker_status(key, label=label, phase="inspect-local-source")
+        if zipfile.is_zipfile(source_target):
+            selected_names, selected_bytes = inspect_selected_archive_members(
+                source_target, granularity, uf
             )
-            return {"kind": "pending", "key": key, "pending": pending}
+        elif source_target.suffix.lower() in {".csv", ".txt"}:
+            selected_names = [source_target.name]
+            selected_bytes = int(source_target.stat().st_size)
+        else:
+            selected_names, selected_bytes = [], 0
+
+        pending = PendingPreparation(
+            root=root, key=key, label=label, started_at=started_at,
+            wall_start=wall_start, download_worker=worker_name, year=year,
+            election_type=election_type, mode=mode, package=package,
+            resource=resource, granularity=granularity, uf=uf,
+            checked_at=checked_at, fingerprint=fingerprint, domain=domain,
+            source_url=normalize_source_url(resource["url"]),
+            source_sha256=source_sha256, source_size_bytes=source_size,
+            source_target=source_target, version_dir=version_dir,
+            metadata_seconds=metadata_seconds, download_seconds=0.0,
+            hash_seconds=rehydrate_hash_seconds, materialize_seconds=0.0,
+            retry_seconds=0.0, attempts=0, resumed_bytes=0,
+            network_errors=0, selected_member_names=selected_names,
+            selected_uncompressed_bytes=selected_bytes,
+        )
+        pending.lifecycle = lifecycle
+        drive(lifecycle, "rehydrated")
+        return {"kind": "pending", "key": key, "pending": pending}
 
     with make_session() as session:
         source_url = normalize_source_url(resource["url"])
@@ -1063,7 +1195,9 @@ def download_resource_worker(
                 download_mib_per_second=(mib / download_seconds) if download_seconds > 0 else None,
                 extractor="none", selected_members=len(previous.get("selected_members") or previous.get("extracted_objects") or []),
             )
-            return {"kind": "content-skip", "key": key, "state_row": updated, "profile": profile}
+            drive(lifecycle, post_download_event(force=force, same_sha256_as_previous=True))
+            profile = replace(profile, lifecycle=state_name(lifecycle))
+            return {"kind": "content-skip", "key": key, "state_row": updated, "profile": profile, "lifecycle": state_name(lifecycle)}
 
         domain = infer_domain(package, resource)
         version_dir = resource_output_dir(root, year, election_type, package, resource, domain) / f"sha256={sha256}"
@@ -1101,7 +1235,30 @@ def download_resource_worker(
             resumed_bytes=resumed_bytes, network_errors=network_errors,
             selected_member_names=selected_names, selected_uncompressed_bytes=selected_bytes,
         )
+        drive(lifecycle, post_download_event(force=force, same_sha256_as_previous=False))
+        pending.lifecycle = lifecycle
         return {"kind": "pending", "key": key, "pending": pending}
+
+
+def download_resource_worker(
+    *, root: Path, year: int, election_type: str, mode: str, package: dict,
+    resource: dict, granularity: str, uf: str | None, previous: dict | None, force: bool,
+    pending_row: dict | None = None,
+) -> dict:
+    """Drive the lifecycle machine through Phase 1; preserve failure origin."""
+    lifecycle = ResourceLifecycle()
+    try:
+        return _download_resource_worker_impl(
+            root=root, year=year, election_type=election_type, mode=mode,
+            package=package, resource=resource, granularity=granularity,
+            uf=uf, previous=previous, force=force, pending_row=pending_row,
+            lifecycle=lifecycle,
+        )
+    except Exception as exc:
+        if isinstance(exc, ResourceFailed):
+            raise
+        from_state = fail_lifecycle(lifecycle)
+        raise ResourceFailed(from_state, exc) from exc
 
 
 def prepare_resource_worker(*, pending: PendingPreparation, extractor: str) -> tuple[dict, ManifestRecord, ResourceProfile]:
@@ -1175,6 +1332,99 @@ def prepare_resource_worker(*, pending: PendingPreparation, extractor: str) -> t
         extractor=extraction_backend, selected_members=len(selected_member_names),
     )
     return state_row, record, profile
+
+def remember_pending_preparation(
+    root: Path, pending_journal: dict[str, dict], item: PendingPreparation,
+) -> dict[str, dict]:
+    """Persist journal before allowing an item into the preparation queue."""
+    updated = {**pending_journal, item.key: {
+        "resource_fingerprint": item.fingerprint,
+        "source_object": str(item.source_target.relative_to(item.root)),
+        "source_sha256": item.source_sha256,
+        "source_size_bytes": item.source_size_bytes,
+        "source_url": item.source_url,
+        "domain": item.domain,
+    }}
+    save_pending(root, updated)
+    return updated
+
+
+def publish_prepared_resource(
+    *, root: Path, state: dict[str, dict], pending_journal: dict[str, dict],
+    item: PendingPreparation, state_row: dict, record: ManifestRecord,
+    profile: ResourceProfile,
+) -> tuple[dict[str, dict], ResourceProfile]:
+    """Publish without committing in-memory state before on-disk truth.
+
+    Retry is safe if the manifest was committed but the active-state save failed.
+    Journal cleanup is a recoverable post-commit operation, not a second commit.
+    """
+    if item.lifecycle is not None and state_name(item.lifecycle) != "materialized":
+        raise ValueError("resource is not in the materialized state")
+
+    candidate_state = {**state, item.key: state_row}
+    try:
+        ensure_manifest_record(root, record)
+        save_state(root, candidate_state)
+    except Exception as exc:
+        origin = fail_lifecycle(item.lifecycle) if item.lifecycle else "materialized"
+        raise ResourceFailed(origin, exc) from exc
+    # `save_state` may fail after writing one metadata file; the next startup
+    # rebuilds current_objects from the authoritative state snapshot.
+    if item.lifecycle is not None:
+        drive(item.lifecycle, "publish")
+        profile = replace(profile, lifecycle=state_name(item.lifecycle))
+
+    remaining = {k: v for k, v in pending_journal.items() if k != item.key}
+    try:
+        save_pending(root, remaining)
+    except OSError as exc:
+        log(f"[warn:journal-cleanup] {item.key}: {exc}", stream=sys.stderr)
+    else:
+        pending_journal.pop(item.key, None)
+    return candidate_state, profile
+
+
+def reconcile_ingest_recovery(
+    root: Path, state: dict[str, dict], pending_journal: dict[str, dict],
+) -> dict[str, dict]:
+    """Repair active index and remove journal entries already published.
+
+    An interrupted save_state can leave state_path updated but current_objects
+    stale; rerunning it from state repairs that representation.
+    """
+    save_state(root, state)
+    remaining = dict(pending_journal)
+    for key, pending in pending_journal.items():
+        active = state.get(key)
+        if not active or not materialization_complete(root, active):
+            continue
+        if (
+            active.get("resource_fingerprint") == pending.get("resource_fingerprint")
+            and active.get("source_sha256") == pending.get("source_sha256")
+            and active.get("source_object") == pending.get("source_object")
+        ):
+            remaining.pop(key, None)
+    if remaining != pending_journal:
+        save_pending(root, remaining)
+    return remaining
+
+
+def prepare_resource_worker_guarded(
+    *, pending: PendingPreparation, extractor: str,
+) -> tuple[dict, ManifestRecord, ResourceProfile]:
+    """Prepare physical outputs while retaining the machine for later commit."""
+    try:
+        row, record, profile = prepare_resource_worker(pending=pending, extractor=extractor)
+        if pending.lifecycle is not None:
+            profile = replace(profile, lifecycle=state_name(pending.lifecycle))
+        return row, record, profile
+    except Exception as exc:
+        if isinstance(exc, ResourceFailed):
+            raise
+        origin = fail_lifecycle(pending.lifecycle) if pending.lifecycle else "materialized"
+        raise ResourceFailed(origin, exc) from exc
+
 
 def resolve_years(args: argparse.Namespace) -> list[int]:
     if args.from_year is not None or args.to_year is not None:
@@ -1272,6 +1522,8 @@ def main() -> int:
     args.root.mkdir(parents=True, exist_ok=True)
     state_load_start = time.perf_counter()
     state = load_state(args.root)
+    pending_journal = load_pending(args.root)
+    pending_journal = reconcile_ingest_recovery(args.root, state, pending_journal)
     state_load_seconds = time.perf_counter() - state_load_start
 
     counts = {"ingested": 0, "metadata-skip": 0, "content-skip": 0, "errors": 0}
@@ -1307,6 +1559,9 @@ def main() -> int:
                 uf=args.uf,
                 previous=previous,
                 force=args.force,
+                pending_row=pending_journal.get(state_key(year, election_type,
+                                          resource.get("id") or slugify(resource.get("url") or "resource"),
+                                          args.granularity, args.uf)),
             ): (year, election_type, package, resource)
             for year, election_type, package, resource, previous in jobs
         }
@@ -1348,6 +1603,9 @@ def main() -> int:
                     kind = outcome["kind"]
                     if kind == "pending":
                         item: PendingPreparation = outcome["pending"]
+                        pending_journal = remember_pending_preparation(
+                            args.root, pending_journal, item,
+                        )
                         pending_prepare.append(item)
                         log(
                             f"[downloaded] {label} :: {item.source_size_bytes / (1024 * 1024):.1f} MiB :: "
@@ -1376,6 +1634,9 @@ def main() -> int:
                     counts["errors"] += 1
                     completed += 1
                     completed_changed = True
+                    record_failure(args.root, no_profile=args.no_profile, exc=exc,
+                                   year=year, election_type=election_type,
+                                   package=package, resource=resource, worker="tse-download")
                     log(f"[error:download] {label}: {exc}", stream=sys.stderr)
                 finally:
                     clear_worker_status(status_key)
@@ -1424,7 +1685,7 @@ def main() -> int:
         ) as pool:
             future_map = {
                 pool.submit(
-                    prepare_resource_worker,
+                    prepare_resource_worker_guarded,
                     pending=item,
                     extractor=args.extractor,
                 ): item
@@ -1461,8 +1722,10 @@ def main() -> int:
                     item = future_map[future]
                     try:
                         state_row, record, profile = future.result()
-                        state[item.key] = state_row
-                        append_manifest(args.root, record)
+                        state, profile = publish_prepared_resource(
+                            root=args.root, state=state, pending_journal=pending_journal,
+                            item=item, state_row=state_row, record=record, profile=profile,
+                        )
                         counts["ingested"] += 1
                         completed += 1
                         log(
@@ -1479,6 +1742,9 @@ def main() -> int:
                     except Exception as exc:
                         counts["errors"] += 1
                         completed += 1
+                        record_failure(args.root, no_profile=args.no_profile, exc=exc,
+                                       year=item.year, election_type=item.election_type,
+                                       package=item.package, resource=item.resource, worker="tse-prepare")
                         log(f"[error:prepare] {item.label}: {exc}", stream=sys.stderr)
                     finally:
                         clear_worker_status(item.key)
