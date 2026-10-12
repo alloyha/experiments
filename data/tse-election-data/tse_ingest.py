@@ -1127,13 +1127,19 @@ def _download_resource_worker_impl(
         source_size = int(
             candidate.get("source_size_bytes") or source_target.stat().st_size
         )
+        # Journaled or active sources must match their recorded content.
+        # Rehydration never trusts a path or its digest-named directory alone.
         rehydrate_hash_seconds = 0.0
-        if not source_sha256:
-            (
-                source_sha256,
-                source_size,
-                rehydrate_hash_seconds,
-            ) = hash_file(source_target)
+        if source_sha256:
+            actual_sha256, actual_size, rehydrate_hash_seconds = hash_file(source_target)
+            if actual_sha256 != source_sha256 or actual_size != source_size:
+                raise ValueError(
+                    "local source integrity mismatch during rehydration: "
+                    f"{source_rel}; expected sha256={source_sha256} bytes={source_size}, "
+                    f"actual sha256={actual_sha256} bytes={actual_size}"
+                )
+        else:
+            source_sha256, source_size, rehydrate_hash_seconds = hash_file(source_target)
 
         domain = infer_domain(package, resource)
         version_dir = source_target.parent.parent
@@ -1182,7 +1188,12 @@ def _download_resource_worker_impl(
         )
         download_seconds = max(0.0, time.perf_counter() - phase_start - retry_seconds - hash_seconds)
 
-        if not force and previous and previous.get("source_sha256") == sha256:
+        if (
+            not force
+            and previous
+            and previous.get("source_sha256") == sha256
+            and local_state_complete(root, previous)
+        ):
             updated = {**previous, "resource_fingerprint": fingerprint, "checked_at": checked_at}
             tmp_source.unlink(missing_ok=True)
             total_seconds = time.perf_counter() - wall_start

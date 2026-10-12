@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -96,7 +97,8 @@ class CrashRecoveryTests(unittest.TestCase):
                 "format": "CSV",
             }
             fingerprint = tse_ingest.resource_fingerprint(resource)
-            sha = "a" * 64
+            payload = b"a;b\n1;2\n"
+            sha = hashlib.sha256(payload).hexdigest()
             domain = tse_ingest.infer_domain(package, resource)
             version_dir = (
                 tse_ingest.resource_output_dir(root, 2026, "general", package, resource, domain)
@@ -104,7 +106,7 @@ class CrashRecoveryTests(unittest.TestCase):
             )
             source = version_dir / "source" / "consulta.csv"
             source.parent.mkdir(parents=True)
-            source.write_text("a;b\n1;2\n", encoding="utf-8")
+            source.write_bytes(payload)
 
             pending_row = {
                 "resource_fingerprint": fingerprint,
