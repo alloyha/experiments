@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "certification": "PR44 Gold/Semantic 2026",
+  "result": "PASS",
+  "source_report_sha256": "98b380af43ec586bf6ed4d274d5ca55d444079408ff60fac3d7897bd29bee4fb",
+  "year": 2026,
+  "election_type": "general",
+  "sources": {
+    "candidate": {
+      "resource_id": "7748de82-a23b-47c4-9ec1-35535d945e5b",
+      "source_sha256": "fd3589a80235942664bec6b135e9916e241b6010484bb837dfcdf077f83f6eab",
+      "source_bytes": 3239620,
+      "source_object": "raw/election_type=general/year=2026/domain=candidate/dataset=candidatos_2026/resource=7748de82_a23b_47c4_9ec1_35535d945e5b/sha256=fd3589a80235942664bec6b135e9916e241b6010484bb837dfcdf077f83f6eab/source/consulta_cand_2026.zip"
+    },
+    "candidate_assets": {
+      "resource_id": "33fbda56-eb41-46f5-a8a0-8b499c285a1d",
+      "source_sha256": "f912568aa1275c9ce8a0d029780569aeef93745c76c318081ff7206a951b9277",
+      "source_bytes": 3718398,
+      "source_object": "raw/election_type=general/year=2026/domain=candidate_assets/dataset=candidatos_2026/resource=33fbda56_eb41_46f5_a8a0_8b499c285a1d/sha256=f912568aa1275c9ce8a0d029780569aeef93745c76c318081ff7206a951b9277/source/bem_candidato_2026.zip"
+    }
+  },
+  "asset_enriched_candidate_rows": 13917,
+  "gold": {
+    "schema": [
+      [
+        "election_year",
+        "INTEGER"
+      ],
+      [
+        "election_type",
+        "VARCHAR"
+      ],
+      [
+        "election_scope",
+        "VARCHAR"
+      ],
+      [
+        "election_id",
+        "VARCHAR"
+      ],
+      [
+        "election_code",
+        "VARCHAR"
+      ],
+      [
+        "election_description",
+        "VARCHAR"
+      ],
+      [
+        "round_number",
+        "INTEGER"
+      ],
+      [
+        "electoral_unit",
+        "VARCHAR"
+      ],
+      [
+        "office_scope",
+        "VARCHAR"
+      ],
+      [
+        "candidate_id",
+        "VARCHAR"
+      ],
+      [
+        "uf",
+        "VARCHAR"
+      ],
+      [
+        "office_code",
+        "VARCHAR"
+      ],
+      [
+        "office",
+        "VARCHAR"
+      ],
+      [
+        "candidate_number",
+        "VARCHAR"
+      ],
+      [
+        "candidate_name",
+        "VARCHAR"
+      ],
+      [
+        "ballot_name",
+        "VARCHAR"
+      ],
+      [
+        "party_number",
+        "VARCHAR"
+      ],
+      [
+        "party",
+        "VARCHAR"
+      ],
+      [
+        "party_name",
+        "VARCHAR"
+      ],
+      [
+        "candidacy_status",
+        "VARCHAR"
+      ],
+      [
+        "gender",
+        "VARCHAR"
+      ],
+      [
+        "education",
+        "VARCHAR"
+      ],
+      [
+        "occupation",
+        "VARCHAR"
+      ],
+      [
+        "race_color",
+        "VARCHAR"
+      ],
+      [
+        "declared_assets_value",
+        "DECIMAL(38,2)"
+      ],
+      [
+        "declared_assets_count",
+        "BIGINT"
+      ]
+    ],
+    "row_count": 20989,
+    "distinct_signatures": 20989,
+    "multiset_sha256": "b57788f4978819c8d2c53bb376b9d1d40fcacf186d6d7a20d6ecc26e64a4f340"
+  },
+  "semantic": {
+    "schema": [
+      [
+        "election_year",
+        "INTEGER"
+      ],
+      [
+        "election_type",
+        "VARCHAR"
+      ],
+      [
+        "election_scope",
+        "VARCHAR"
+      ],
+      [
+        "office_scope",
+        "VARCHAR"
+      ],
+      [
+        "office",
+        "VARCHAR"
+      ],
+      [
+        "party",
+        "VARCHAR"
+      ],
+      [
+        "candidates",
+        "BIGINT"
+      ],
+      [
+        "avg_declared_assets_value",
+        "DOUBLE"
+      ],
+      [
+        "median_declared_assets_value",
+        "DECIMAL(38,2)"
+      ]
+    ],
+    "row_count": 251,
+    "distinct_signatures": 251,
+    "multiset_sha256": "37b8b7b25733f01c24ee99d8170498336fc6c988529f2813bcefe2c0e752b64b"
+  },
+  "gates": {
+    "control_and_recovered_signatures_equal": true,
+    "selected_partition_replaced": true,
+    "unselected_partition_preserved": true,
+    "persisted_duckdb_gold_and_semantic_equal": true,
+    "offline_python_guard": true,
+    "canonical_read_only": true,
+    "scratch_destroyed": true,
+    "strict_storage_audit_passed": true
+  },
+  "dbt_model_runs": {
+    "baseline": [
+      "\u001b[0m18:05:28  ",
+      "\u001b[0m18:05:28  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=5"
+    ],
+    "control": [
+      "\u001b[0m18:06:03  ",
+      "\u001b[0m18:06:03  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=5"
+    ],
+    "recovered": [
+      "\u001b[0m18:06:17  ",
+      "\u001b[0m18:06:17  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=5"
+    ]
+  },
+  "elapsed_seconds": 100.626,
+  "prune": [
+    "Removed 1 active-index reference(s).",
+    "Marked 1 active version(s) as evicted.",
+    "Freed approximately 18.23 MiB."
+  ],
+  "rehydrate": [
+    "Materialization: selected=1, already-present=0, reindexed=0, rehydrated=1, not-required=0, errors=0"
+  ]
+}
