@@ -40,6 +40,7 @@ class LocalStorageReportTests(unittest.TestCase):
             "source_size_bytes": len(b"source-bytes"),
             "extracted_objects": [self.extracted_rel],
             "materialization_state": "present",
+            "selection_complete": True,
         }}
         self.pending = {}
         self.index = [{"source_object": self.source_rel, "object": self.extracted_rel}]
@@ -214,6 +215,51 @@ class LocalStorageReportTests(unittest.TestCase):
         self.assertIn(self.extracted_rel, result.stdout)
         after = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
         self.assertEqual(before, after)
+
+    def test_verify_hashes_cannot_certify_source_without_digest(self):
+        self.state["r1"]["source_sha256"] = ""
+        self.dump()
+        result = self.audit(verify_hashes=True)
+        self.assertTrue(any("missing/invalid source_sha256" in issue
+                            for issue in result["issues"]))
+
+    def test_strict_detects_complete_active_object_missing_from_index(self):
+        # A valid active materialization must be present in the physical index.
+        self.state["r1"]["selection_complete"] = True
+        self.index = []
+        self.dump()
+        data = self.audit()
+        self.assertTrue(any("missing from current index" in issue for issue in data["issues"]))
+
+    def test_strict_detects_indexed_object_not_owned_by_active_state(self):
+        self.state["r1"]["selection_complete"] = True
+        stray = self.version / "extracted" / "stray.csv"
+        stray.write_text("x")
+        self.index.append({"source_object": self.source_rel,
+                           "object": stray.relative_to(self.root).as_posix()})
+        self.dump()
+        data = self.audit()
+        self.assertTrue(any("not backed by an active state" in issue for issue in data["issues"]))
+
+    def test_strict_detects_duplicate_current_index_rows(self):
+        self.state["r1"]["selection_complete"] = True
+        self.index.append(dict(self.index[0]))
+        self.dump()
+        data = self.audit()
+        self.assertTrue(any("duplicate current index" in issue for issue in data["issues"]))
+
+    def test_does_not_index_partially_materialized_multi_member_version(self):
+        self.state["r1"]["selection_complete"] = True
+        self.state["r1"]["selected_members"] = ["votos.csv", "other.csv"]
+        self.state["r1"]["extracted_objects"] = [
+            self.extracted_rel,
+            self.extracted_rel.replace("votos.csv", "other.csv"),
+        ]
+        self.index = []  # save_state would omit the whole incomplete version.
+        self.dump()
+        data = self.audit()
+        self.assertTrue(any("required materialization missing" in issue for issue in data["issues"]))
+        self.assertFalse(any("missing from current index" in issue for issue in data["issues"]))
 
     def test_machine_json_and_strict_exit_status(self):
         args = [sys.executable, str(PROJECT / "scripts" / "report_local_storage.py"),

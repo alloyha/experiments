@@ -12,7 +12,7 @@ import json
 import os
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path, PurePosixPath
 
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
@@ -158,6 +158,7 @@ def produce_report(raw_root: Path, duckdb: Path, facts: Path, *, verify_hashes: 
     unrecognized_sources = 0
     anomaly_rows: list[tuple[str, str, dict]] = []
     expected_hashes: dict[Path, str] = {}
+    expected_index_pairs: set[tuple[str, str]] = set()
     for namespace, rows, found in (("active", state, active_sources), ("pending", pending, pending_sources)):
         for key, row in rows.items():
             if not isinstance(row, dict):
@@ -178,7 +179,8 @@ def produce_report(raw_root: Path, duckdb: Path, facts: Path, *, verify_hashes: 
                     if isinstance(expected_sha, str) and SHA256.fullmatch(expected_sha):
                         expected_hashes[path] = expected_sha.lower()
                     else:
-                        warnings.append(f"{namespace} {key}: missing/invalid source_sha256")
+                        message = f"{namespace} {key}: missing/invalid source_sha256"
+                        (issues if verify_hashes else warnings).append(message)
                 else:
                     if not physical_file(path):
                         missing_sources += 1
@@ -188,7 +190,20 @@ def produce_report(raw_root: Path, duckdb: Path, facts: Path, *, verify_hashes: 
                         issues.append(f"{namespace} {key}: source exists outside source inventory: {row.get('source_object')}")
                     anomaly_rows.append((namespace, str(key), row))
             if namespace == "active":
-                for value in row.get("extracted_objects") or []:
+                outputs = row.get("extracted_objects") or []
+                # save_state advertises only fully materialized active versions;
+                # partially present multi-member versions never publish a subset.
+                selected = row.get("selected_members")
+                if (path is not None and physical_file(path) and path in source
+                        and row.get("selection_complete")
+                        and (selected is None or len(selected) == len(outputs))
+                        and len(set(outputs)) == len(outputs)):
+                    resolved = [safe_relative(root, value, [], "expected index")
+                                for value in outputs]
+                    if all(physical_file(obj) for obj in resolved):
+                        expected_index_pairs.update((row["source_object"], value)
+                                                    for value in outputs)
+                for value in outputs:
                     obj = safe_relative(root, value, issues, f"active {key} object")
                     if obj is None:
                         continue
@@ -204,6 +219,7 @@ def produce_report(raw_root: Path, duckdb: Path, facts: Path, *, verify_hashes: 
 
     index = metadata / "current_objects.jsonl"
     index_rows = 0
+    index_pairs: Counter[tuple[str, str]] = Counter()
     index_objects_by_source: dict[str, set[str]] = defaultdict(set)
     if not index.is_file():
         issues.append("missing metadata: current_objects.jsonl")
@@ -220,12 +236,23 @@ def produce_report(raw_root: Path, duckdb: Path, facts: Path, *, verify_hashes: 
                     index_rows += 1
                     if isinstance(row.get("source_object"), str) and isinstance(row.get("object"), str):
                         index_objects_by_source[row["source_object"]].add(row["object"])
+                        index_pairs[(row["source_object"], row["object"])] += 1
                     for name in ("source_object", "object"):
                         path = safe_relative(root, row.get(name), issues, f"index {line_no} {name}")
                         if path is not None and not physical_file(path):
                             issues.append(f"index line {line_no}: dangling {name}")
         except (OSError, ValueError) as exc:
             issues.append(f"unreadable current index: {exc}")
+
+    # Cross-check both directions against the same complete-version rules used
+    # to build current_objects.jsonl. File existence alone is not completeness.
+    for source_rel, object_rel in sorted(expected_index_pairs - index_pairs.keys()):
+        issues.append(f"active object missing from current index: {object_rel} (source {source_rel})")
+    for source_rel, object_rel in sorted(index_pairs.keys() - expected_index_pairs):
+        issues.append(f"current index object not backed by an active state: {object_rel} (source {source_rel})")
+    for (source_rel, object_rel), count in sorted(index_pairs.items()):
+        if count > 1:
+            issues.append(f"duplicate current index row ({count}x): {object_rel} (source {source_rel})")
 
     # Diagnostics are metadata and directory listings only; never open payload bytes.
     diagnostics: list[dict] = []
