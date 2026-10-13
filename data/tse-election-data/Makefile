@@ -361,6 +361,20 @@ storage-report: ## Audit local raw/cache/warehouse storage (read-only)
 	  $(if $(filter 1 true yes,$(DIAGNOSE)),--diagnose,) \
 	  $(if $(TOP),--top $(TOP),)
 # ---------------------------------------------------------------------------
+# Disposable cache roundtrip — never evict the canonical raw tree
+# ---------------------------------------------------------------------------
+.PHONY: cache-roundtrip
+cache-roundtrip: ## Certify one active resource using disposable offline prune/rehydrate
+	@test -n '$(ROUNDTRIP_RESOURCE_ID)' || { echo 'ROUNDTRIP_RESOURCE_ID is required'; exit 2; }
+	@test -n '$(ROUNDTRIP_YEAR)' || { echo 'ROUNDTRIP_YEAR is required'; exit 2; }
+	@test -n '$(ROUNDTRIP_DOMAIN)' || { echo 'ROUNDTRIP_DOMAIN is required'; exit 2; }
+	@$(PROJECT_PYTHON) scripts/certify_cache_roundtrip.py \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --resource-id '$(ROUNDTRIP_RESOURCE_ID)' \
+	  --year '$(ROUNDTRIP_YEAR)' \
+	  --domain '$(ROUNDTRIP_DOMAIN)' \
+	  $(if $(ROUNDTRIP_JSON),--output-json '$(ROUNDTRIP_JSON)',)
+# ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
 prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
