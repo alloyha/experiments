@@ -86,7 +86,8 @@ def copy_into(root: Path, destination: Path, relative: str) -> None:
 
 
 def validate_resource(root: Path, resource_id: str, year: int, domain: str,
-                      max_source: int, max_extracted: int) -> dict:
+                      max_source: int, max_extracted: int, *,
+                      allow_legacy_materialization: bool = False) -> dict:
     metadata = root / '_metadata'
     state = read_json(metadata / 'resource_state.json')
     index = read_index(metadata / 'current_objects.jsonl')
@@ -108,7 +109,17 @@ def validate_resource(root: Path, resource_id: str, year: int, domain: str,
         )
     if not published:
         raise CertificationError('active immutable source is absent from append-only manifest')
-    if not row.get('selection_complete') or row.get('materialization_state') != 'present':
+    # A legacy state row can lack this *key* while its physical objects are
+    # complete. Opt-in is restricted to the downstream certifier; the default
+    # PR42 gate remains strict. An explicit null/evicted/not_required is never
+    # interpreted as legacy. The source/manifest/SHA/index checks below are
+    # mandatory regardless of this hint.
+    legacy_missing_state = 'materialization_state' not in row
+    physical_state_accepted = (
+        row.get('materialization_state') == 'present'
+        or (allow_legacy_materialization and legacy_missing_state)
+    )
+    if not row.get('selection_complete') or not physical_state_accepted:
         raise CertificationError('selected active resource is not completely materialized')
     source_rel = row.get('source_object')
     source = require_path(root, source_rel, kind='source')
@@ -154,7 +165,8 @@ def validate_resource(root: Path, resource_id: str, year: int, domain: str,
         raise CertificationError('another source claims a selected physical object')
     return {'key': key, 'row': row, 'index': matching, 'source_rel': source_rel,
             'source': source, 'outputs': outputs, 'files': files,
-            'source_bytes': source.stat().st_size, 'extracted_bytes': actual_bytes}
+            'source_bytes': source.stat().st_size, 'extracted_bytes': actual_bytes,
+            'legacy_materialization_state_missing': legacy_missing_state}
 
 
 def csv_fingerprint(path: Path) -> dict:
