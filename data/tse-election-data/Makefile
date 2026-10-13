@@ -134,7 +134,7 @@ DBT_VARS_CMD = \
 .PHONY: help help-all doctor setup dbt-deps scope-contracts print-dbt-vars \
 	list ingest backfill materialize-raw candidate-fact-partition unit \
 	raw-contracts cycle-regressions medallion-contracts dbt-bronze dbt-silver \
-	dbt-gold semantic prune-cache pr-gate production-gate dbt-build \
+	dbt-gold semantic storage-report prune-cache pr-gate production-gate dbt-build \
 	dbt-full-refresh test-only compile performance-report performance-baseline \
 	pipeline pipeline-backfill clean clean-warehouse clean-all
 
@@ -347,6 +347,19 @@ pipeline: ingest dbt-build ## Incremental ingest through semantic layer
 	@echo 'Pipeline complete: $(DUCKDB_PATH_ABS)'
 pipeline-backfill: backfill dbt-full-refresh ## Historical backfill + full refresh
 	@echo 'Backfill complete: $(DUCKDB_PATH_ABS)'
+# ---------------------------------------------------------------------------
+# Read-only storage audit (no setup or data writes)
+# ---------------------------------------------------------------------------
+storage-report: ## Audit local raw/cache/warehouse storage (read-only)
+	@$(PYTHON) scripts/report_local_storage.py \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --duckdb '$(DUCKDB_PATH_ABS)' \
+	  --candidate-fact-root '$(CANDIDATE_FACT_ROOT_ABS)' \
+	  $(if $(filter 1 true yes,$(VERIFY_HASHES)),--verify-hashes,) \
+	  $(if $(filter 1 true yes,$(STRICT)),--strict,) \
+	  $(if $(filter json,$(FORMAT)),--json,) \
+	  $(if $(filter 1 true yes,$(DIAGNOSE)),--diagnose,) \
+	  $(if $(TOP),--top $(TOP),)
 # ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
