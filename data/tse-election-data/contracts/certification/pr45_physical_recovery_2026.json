@@ -1,0 +1,519 @@
+{
+  "schema_version": 1,
+  "certification": "PR45 physical recovery 2026",
+  "result": "PASS",
+  "scope": "synthetic real Parquet publisher + real dbt fact_candidate_votes/candidate_ranking",
+  "fixture": "synthetic, no TSE canonical source accessed",
+  "year": 2026,
+  "election_type": "general",
+  "report_sha256": "ee36f0b8970e8e01a1d39f938b23e9f4c16e0758ca8dd7d3771707aa221451f3",
+  "kill": {
+    "signal": "SIGKILL",
+    "returncode": -9,
+    "boundary": "after immutable fsync, before symlink swap"
+  },
+  "physical": {
+    "before": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "uf",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "BIGINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "b2070ab59b7b1450e70b2485c60d7b42b8f7da4948814d9a6106e6e0bc7d2735",
+      "sha256": "711c0e01590c841986660f8733620e9d985c746162d4a3559f82a52688335fca",
+      "generation": "generation-16833e5c54d44f438b9a56ea280a7904.parquet"
+    },
+    "control": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "uf",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "BIGINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "8f1a9562310471d5522f9d92343b41b463cc320493c12ca3bade562774a02ba1",
+      "sha256": "6e2e6f159bcb7646b00b2fa1c868a1c53948dabca21600f301f012d3423e0f9e",
+      "generation": "generation-561b23b4f68f4729ac87a55015ebb85e.parquet"
+    },
+    "recovered": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "uf",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "BIGINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "8f1a9562310471d5522f9d92343b41b463cc320493c12ca3bade562774a02ba1",
+      "sha256": "6e2e6f159bcb7646b00b2fa1c868a1c53948dabca21600f301f012d3423e0f9e",
+      "generation": "generation-a16c236a02d641ecb7fef9f66069795e.parquet"
+    }
+  },
+  "persisted_ranking": {
+    "before": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "electoral_unit",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "office",
+          "VARCHAR"
+        ],
+        [
+          "office_scope",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "candidate_number",
+          "VARCHAR"
+        ],
+        [
+          "candidate_name",
+          "VARCHAR"
+        ],
+        [
+          "ballot_name",
+          "VARCHAR"
+        ],
+        [
+          "party_number",
+          "VARCHAR"
+        ],
+        [
+          "party",
+          "VARCHAR"
+        ],
+        [
+          "party_name",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "contest_candidate_nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_rank",
+          "BIGINT"
+        ],
+        [
+          "previous_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "next_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_nominal_vote_share",
+          "DOUBLE"
+        ],
+        [
+          "is_top_ranked",
+          "BOOLEAN"
+        ],
+        [
+          "votes_behind_previous",
+          "HUGEINT"
+        ],
+        [
+          "lead_over_next_votes",
+          "HUGEINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "bcd3ea9069fbcada6d42a3a3f7dadfe5fd142019288d93e4467aeac4db850c57"
+    },
+    "control": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "electoral_unit",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "office",
+          "VARCHAR"
+        ],
+        [
+          "office_scope",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "candidate_number",
+          "VARCHAR"
+        ],
+        [
+          "candidate_name",
+          "VARCHAR"
+        ],
+        [
+          "ballot_name",
+          "VARCHAR"
+        ],
+        [
+          "party_number",
+          "VARCHAR"
+        ],
+        [
+          "party",
+          "VARCHAR"
+        ],
+        [
+          "party_name",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "contest_candidate_nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_rank",
+          "BIGINT"
+        ],
+        [
+          "previous_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "next_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_nominal_vote_share",
+          "DOUBLE"
+        ],
+        [
+          "is_top_ranked",
+          "BOOLEAN"
+        ],
+        [
+          "votes_behind_previous",
+          "HUGEINT"
+        ],
+        [
+          "lead_over_next_votes",
+          "HUGEINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "b330a623b86c76b5f6090710afd5323dc02a9136ccc188ca2c81f7df038c71ea"
+    },
+    "recovered": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_id",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "round_number",
+          "INTEGER"
+        ],
+        [
+          "electoral_unit",
+          "VARCHAR"
+        ],
+        [
+          "office_code",
+          "VARCHAR"
+        ],
+        [
+          "office",
+          "VARCHAR"
+        ],
+        [
+          "office_scope",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "candidate_number",
+          "VARCHAR"
+        ],
+        [
+          "candidate_name",
+          "VARCHAR"
+        ],
+        [
+          "ballot_name",
+          "VARCHAR"
+        ],
+        [
+          "party_number",
+          "VARCHAR"
+        ],
+        [
+          "party",
+          "VARCHAR"
+        ],
+        [
+          "party_name",
+          "VARCHAR"
+        ],
+        [
+          "nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "contest_candidate_nominal_valid_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_rank",
+          "BIGINT"
+        ],
+        [
+          "previous_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "next_candidate_votes",
+          "HUGEINT"
+        ],
+        [
+          "candidate_nominal_vote_share",
+          "DOUBLE"
+        ],
+        [
+          "is_top_ranked",
+          "BOOLEAN"
+        ],
+        [
+          "votes_behind_previous",
+          "HUGEINT"
+        ],
+        [
+          "lead_over_next_votes",
+          "HUGEINT"
+        ]
+      ],
+      "row_count": 2,
+      "multiset_sha256": "b330a623b86c76b5f6090710afd5323dc02a9136ccc188ca2c81f7df038c71ea"
+    }
+  },
+  "gates": {
+    "control_recovery_parquet_equivalent": true,
+    "control_recovery_semantic_equivalent": true,
+    "published_update_detected": true,
+    "old_generation_retained": true,
+    "stale_generation_fenced": true,
+    "unrelated_partition_preserved": true,
+    "no_canonical_lake_access": true,
+    "scratch_destroyed": true,
+    "python_network_guarded": true
+  },
+  "dbt_model_runs": {
+    "initial": [
+      "\u001b[0m19:21:47  ",
+      "\u001b[0m19:21:47  Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=2"
+    ],
+    "control": [
+      "\u001b[0m19:22:08  ",
+      "\u001b[0m19:22:08  Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=2"
+    ],
+    "recovered": [
+      "\u001b[0m19:22:23  ",
+      "\u001b[0m19:22:23  Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=2"
+    ]
+  },
+  "elapsed_seconds": 49.687
+}
