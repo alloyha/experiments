@@ -414,7 +414,8 @@ physical-publication-recovery: ## Certify SIGKILL-safe Parquet publish + persist
 # ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
-prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
+prune-cache: setup ## Read-only inventory; destructive cache removal requires safe_cache_evict.py
+	@test "$(filter 1 true yes,$(APPLY))" = "" || { echo "BLOCKED: use scripts/safe_cache_evict.py with verified plan/canary"; exit 2; }
 	$(PY) scripts/prune_extracted_raw.py \
 	  --root '$(RAW_ROOT_ABS)/raw' \
 	  $(PRUNE_DOMAIN_ARGS) \
