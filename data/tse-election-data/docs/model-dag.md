@@ -33,6 +33,6 @@ Bronze/Silver leaf models must either feed another model or explicitly declare
 make dbt-bronze
 make dbt-silver
 make dbt-gold
-make dbt-semantic-layer
+make semantic
 make medallion-contracts
 ```
