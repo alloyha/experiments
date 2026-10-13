@@ -403,6 +403,15 @@ gold-semantic-cache-roundtrip: ## Compare persisted Gold/Semantic under control 
 	  $(if $(GS_ROUNDTRIP_MIN_FREE_GIB),--min-free-gib '$(GS_ROUNDTRIP_MIN_FREE_GIB)',) \
 	  $(if $(GS_ROUNDTRIP_JSON),--output-json '$(GS_ROUNDTRIP_JSON)',)
 # ---------------------------------------------------------------------------
+# PR45 synthetic physical Parquet publication and consumer recovery (scratch only)
+# ---------------------------------------------------------------------------
+.PHONY: physical-publication-recovery
+physical-publication-recovery: ## Certify SIGKILL-safe Parquet publish + persisted candidate_ranking
+	@$(PROJECT_PYTHON) scripts/certify_candidate_fact_recovery.py \
+	  $(if $(PHYSICAL_RECOVERY_MAX_ROWS),--max-rows '$(PHYSICAL_RECOVERY_MAX_ROWS)',) \
+	  $(if $(PHYSICAL_RECOVERY_MIN_FREE_GIB),--min-free-gib '$(PHYSICAL_RECOVERY_MIN_FREE_GIB)',) \
+	  $(if $(PHYSICAL_RECOVERY_JSON),--output-json '$(PHYSICAL_RECOVERY_JSON)',)
+# ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
 prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
