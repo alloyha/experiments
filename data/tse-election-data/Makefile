@@ -388,6 +388,21 @@ dbt-cache-roundtrip: ## Certify bronze/silver dbt outputs around offline cache r
 	  $(if $(DBT_ROUNDTRIP_MAX_ROWS),--max-rows '$(DBT_ROUNDTRIP_MAX_ROWS)',) \
 	  $(if $(DBT_ROUNDTRIP_JSON),--output-json '$(DBT_ROUNDTRIP_JSON)',)
 # ---------------------------------------------------------------------------
+# Gold incremental + persisted Semantic recovery (PR44; isolated scratch only)
+# ---------------------------------------------------------------------------
+.PHONY: gold-semantic-cache-roundtrip
+gold-semantic-cache-roundtrip: ## Compare persisted Gold/Semantic under control and offline recovery
+	@$(PROJECT_PYTHON) scripts/certify_gold_semantic_roundtrip.py \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --year '$(or $(GS_ROUNDTRIP_YEAR),2026)' \
+	  $(if $(GS_ROUNDTRIP_CANDIDATE_RESOURCE_ID),--candidate-resource-id '$(GS_ROUNDTRIP_CANDIDATE_RESOURCE_ID)',) \
+	  $(if $(GS_ROUNDTRIP_ASSETS_RESOURCE_ID),--assets-resource-id '$(GS_ROUNDTRIP_ASSETS_RESOURCE_ID)',) \
+	  $(if $(GS_ROUNDTRIP_MAX_SOURCE_MIB),--max-source-mib '$(GS_ROUNDTRIP_MAX_SOURCE_MIB)',) \
+	  $(if $(GS_ROUNDTRIP_MAX_EXTRACTED_MIB),--max-extracted-mib '$(GS_ROUNDTRIP_MAX_EXTRACTED_MIB)',) \
+	  $(if $(GS_ROUNDTRIP_MAX_ROWS),--max-rows '$(GS_ROUNDTRIP_MAX_ROWS)',) \
+	  $(if $(GS_ROUNDTRIP_MIN_FREE_GIB),--min-free-gib '$(GS_ROUNDTRIP_MIN_FREE_GIB)',) \
+	  $(if $(GS_ROUNDTRIP_JSON),--output-json '$(GS_ROUNDTRIP_JSON)',)
+# ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
 prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
