@@ -11,7 +11,7 @@ Requires **Linux/WSL, Python ≥ 3.13, and [`uv`](https://docs.astral.sh/uv/)**.
 ```bash
 cd data/tse-election-data
 make setup
-make list INCREMENTAL_YEARS="2026"  # inspect selection; no source downloads
+make list YEARS=2026  # inspect selection; no source downloads
 make unit
 make medallion-contracts
 ```
@@ -24,13 +24,13 @@ Use `make help` to see the other targets. **Ingestion and production gates downl
 Run the 2026 incremental pipeline explicitly:
 
 ```bash
-make pipeline \
-  YEARS="2026" ELECTION_TYPES="general" \
-  INCREMENTAL_YEARS="2026" INCREMENTAL_ELECTION_TYPES="general"
+make pipeline YEARS=2026
 ```
 
 - `make ingest` downloads and prepares changed raw resources; `make backfill` acquires historical versions.
 - `make dbt-build` builds/tests the analytical graph; `make pipeline` combines incremental ingestion with that build.
+- `YEARS` defines the analytical cycles; `UPDATE_YEARS` selects the subset to refresh and defaults to `YEARS`. The `general` / `municipal` types come automatically from the election calendar.
+- Example: `make pipeline YEARS="2018 2020 2022 2024 2026" UPDATE_YEARS=2026` refreshes 2026 while keeping all five cycles in analytical scope.
 - Defaults: `PROFILE=analytics`, `GRANULARITY=brasil`, `DATA_ROOT=./data/tse`, `DUCKDB_PATH=./data/warehouse/tse_analytics.duckdb`. Override with Make variables as needed.
 - `make materialize-raw` rehydrates selected local raw cache without downloading it again.
 
@@ -79,9 +79,7 @@ make cycle-regressions    # requires an existing built warehouse
 Full end-to-end certification (ingests data and builds the warehouse):
 
 ```bash
-make production-gate \
-  YEARS="2026" ELECTION_TYPES="general" \
-  INCREMENTAL_YEARS="2026" INCREMENTAL_ELECTION_TYPES="general"
+make production-gate YEARS=2026
 ```
 
 Historical cycles have frozen regression baselines; 2026 is provisional and requires intentional updates after a TSE republication. Known source coverage gaps are explicit, never silently reconciled away.
