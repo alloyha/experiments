@@ -76,6 +76,45 @@ class CacheRoundtripContractTests(unittest.TestCase):
         self.assertEqual(result['outputs'], [self.obj_rel])
         self.assertEqual(result['source_bytes'], self.source.stat().st_size)
 
+    def test_legacy_missing_materialization_field_requires_optin(self):
+        self.row.pop('materialization_state')
+        self.write_meta()
+        original = self.meta.joinpath('resource_state.json').read_bytes()
+        with self.assertRaisesRegex(c.CertificationError, 'not completely materialized'):
+            self.selected()
+        chosen = c.validate_resource(
+            self.root, self.resource_id, self.year, self.domain,
+            1_000_000, 1_000_000, allow_legacy_materialization=True,
+        )
+        self.assertTrue(chosen['legacy_materialization_state_missing'])
+        self.assertEqual(original, self.meta.joinpath('resource_state.json').read_bytes())
+
+    def test_explicit_null_or_evicted_not_accepted_as_legacy(self):
+        for value in (None, 'evicted', 'not_required'):
+            with self.subTest(value=value):
+                self.row['materialization_state'] = value
+                self.write_meta()
+                with self.assertRaisesRegex(c.CertificationError, 'not completely materialized'):
+                    c.validate_resource(self.root, self.resource_id, self.year,
+                        self.domain, 1_000_000, 1_000_000,
+                        allow_legacy_materialization=True)
+
+    def test_legacy_missing_index_or_payload_is_never_accepted(self):
+        self.row.pop('materialization_state')
+        self.index.clear()
+        self.write_meta()
+        with self.assertRaisesRegex(c.CertificationError, 'current index'):
+            c.validate_resource(self.root, self.resource_id, self.year,
+                self.domain, 1_000_000, 1_000_000,
+                allow_legacy_materialization=True)
+        self.index.append({'source_object': self.src_rel, 'object': self.obj_rel})
+        self.write_meta()
+        self.extracted.unlink()
+        with self.assertRaisesRegex(c.CertificationError, 'extracted object'):
+            c.validate_resource(self.root, self.resource_id, self.year,
+                self.domain, 1_000_000, 1_000_000,
+                allow_legacy_materialization=True)
+
     def test_deny_copy_to_path_outside_sandbox(self):
         with self.assertRaisesRegex(c.CertificationError, 'unsafe'):
             c.require_path(self.root, '../../secret', kind='test')

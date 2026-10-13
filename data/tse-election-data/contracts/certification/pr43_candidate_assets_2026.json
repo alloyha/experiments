@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "result": "PASS",
+  "scope": "candidate_assets -> bronze_candidate_assets -> silver_candidate_assets",
+  "year": 2026,
+  "domain": "candidate_assets",
+  "resource_id": "33fbda56-eb41-46f5-a8a0-8b499c285a1d",
+  "source_sha256": "f912568aa1275c9ce8a0d029780569aeef93745c76c318081ff7206a951b9277",
+  "source_bytes": 3718398,
+  "extracted_bytes": 19113123,
+  "legacy_materialization_state_missing": true,
+  "dbt_relations": {
+    "bronze_candidate_assets": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_scope",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "election_description",
+          "VARCHAR"
+        ],
+        [
+          "uf",
+          "VARCHAR"
+        ],
+        [
+          "electoral_unit",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "asset_type",
+          "VARCHAR"
+        ],
+        [
+          "asset_description",
+          "VARCHAR"
+        ],
+        [
+          "asset_value",
+          "DECIMAL(18,2)"
+        ],
+        [
+          "source_file",
+          "VARCHAR"
+        ]
+      ],
+      "row_count": 77297,
+      "distinct_row_signatures": 76101,
+      "multiset_sha256": "fbb3d13f93df6341f0f615cf0ad8c38959c60119bbcde14f585d9b2cb48370d1"
+    },
+    "silver_candidate_assets": {
+      "schema": [
+        [
+          "election_year",
+          "INTEGER"
+        ],
+        [
+          "election_type",
+          "VARCHAR"
+        ],
+        [
+          "election_code",
+          "VARCHAR"
+        ],
+        [
+          "candidate_id",
+          "VARCHAR"
+        ],
+        [
+          "declared_assets_value",
+          "DECIMAL(38,2)"
+        ],
+        [
+          "declared_assets_count",
+          "BIGINT"
+        ]
+      ],
+      "row_count": 13917,
+      "distinct_row_signatures": 13917,
+      "multiset_sha256": "02f9e157ac1de12f251f69a228abc46c4f78a0eb5eb80967d7ef99154b87975c"
+    }
+  },
+  "gates": {
+    "dbt_relation_equivalent": true,
+    "raw_payload_equivalent": true,
+    "index_rebuilt": true,
+    "manifest_unchanged": true,
+    "canonical_data_read_only": true,
+    "scratch_deleted": true,
+    "python_network_guarded": true,
+    "strict_storage_audit_passed": true
+  },
+  "elapsed_seconds": 214.625,
+  "prune_summary": [
+    "Removed 1 active-index reference(s).",
+    "Marked 1 active version(s) as evicted.",
+    "Freed approximately 18.23 MiB."
+  ],
+  "rehydration_summary": [
+    "Materialization: selected=1, already-present=0, reindexed=0, rehydrated=1, not-required=0, errors=0"
+  ]
+}

@@ -375,6 +375,19 @@ cache-roundtrip: ## Certify one active resource using disposable offline prune/r
 	  --domain '$(ROUNDTRIP_DOMAIN)' \
 	  $(if $(ROUNDTRIP_JSON),--output-json '$(ROUNDTRIP_JSON)',)
 # ---------------------------------------------------------------------------
+# Disposable REAL dbt downstream roundtrip (PR43, no canonical writes)
+# ---------------------------------------------------------------------------
+.PHONY: dbt-cache-roundtrip
+dbt-cache-roundtrip: ## Certify bronze/silver dbt outputs around offline cache recovery
+	@$(PROJECT_PYTHON) scripts/certify_dbt_cache_roundtrip.py \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --year '$(or $(DBT_ROUNDTRIP_YEAR),2026)' \
+	  $(if $(DBT_ROUNDTRIP_RESOURCE_ID),--resource-id '$(DBT_ROUNDTRIP_RESOURCE_ID)',) \
+	  $(if $(DBT_ROUNDTRIP_MAX_SOURCE_MIB),--max-source-mib '$(DBT_ROUNDTRIP_MAX_SOURCE_MIB)',) \
+	  $(if $(DBT_ROUNDTRIP_MAX_EXTRACTED_MIB),--max-extracted-mib '$(DBT_ROUNDTRIP_MAX_EXTRACTED_MIB)',) \
+	  $(if $(DBT_ROUNDTRIP_MAX_ROWS),--max-rows '$(DBT_ROUNDTRIP_MAX_ROWS)',) \
+	  $(if $(DBT_ROUNDTRIP_JSON),--output-json '$(DBT_ROUNDTRIP_JSON)',)
+# ---------------------------------------------------------------------------
 # Storage maintenance (may alter local state)
 # ---------------------------------------------------------------------------
 prune-cache: setup ## Dry-run raw cache pruning; APPLY=1 deletes
