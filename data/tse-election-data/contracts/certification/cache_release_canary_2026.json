@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "result": "PASS",
+  "scope": "2026/candidate_assets",
+  "reclaimable_bytes": 19113123,
+  "resource_count": 1,
+  "plan_sha256": "1bcbca3145d707f454b149414ee1cbd0126ccaea1357175e59e04be7ee5f1809",
+  "tool_sha256": "9c75960415940a7cd88e6c4900d0aa43a6d7a5b5c163c89303b5ab1b9e6226b0",
+  "certified_scopes": [
+    {
+      "domain": "candidate_assets",
+      "year": 2026
+    }
+  ],
+  "sources": [
+    {
+      "resource_id": "33fbda56-eb41-46f5-a8a0-8b499c285a1d",
+      "source_sha256": "f912568aa1275c9ce8a0d029780569aeef93745c76c318081ff7206a951b9277",
+      "year": 2026,
+      "domain": "candidate_assets"
+    }
+  ],
+  "gates": {
+    "recovery_offline": true,
+    "scratch_deleted": true,
+    "canonical_read_only": true
+  }
+}
