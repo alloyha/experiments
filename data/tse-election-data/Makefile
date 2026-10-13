@@ -19,10 +19,43 @@ DUCKDB_PATH ?= ./data/warehouse/tse_analytics.duckdb
 CANDIDATE_FACT_ROOT ?= ./data/warehouse/fact_candidate_votes
 CYCLE_CONTRACTS ?= ./contracts/election_cycles.json
 
+# Years used by dbt and years refreshed in the current run.
 YEARS ?= 2018
-ELECTION_TYPES ?= general
-INCREMENTAL_YEARS ?= 2018
-INCREMENTAL_ELECTION_TYPES ?= general
+UPDATE_YEARS ?= $(YEARS)
+
+# Removed public inputs must fail rather than be silently ignored.
+ifneq ($(filter command line,$(origin ELECTION_TYPES)),)
+$(error ELECTION_TYPES is derived automatically from YEARS)
+endif
+ifneq ($(filter command line,$(origin INCREMENTAL_YEARS)),)
+$(error Use UPDATE_YEARS instead of INCREMENTAL_YEARS)
+endif
+ifneq ($(filter command line,$(origin INCREMENTAL_ELECTION_TYPES)),)
+$(error INCREMENTAL_ELECTION_TYPES is derived automatically from UPDATE_YEARS)
+endif
+
+# Read the canonical calendar shared with dbt. The scope contract also
+# cross-checks these types against tse_ingest.ELECTION_CALENDAR.
+ELECTION_CALENDAR_CSV := $(DBT_DIR)/seeds/election_calendar.csv
+GENERAL_YEARS := $(shell awk -F, 'NR>1 && $$2=="general" {print $$1}' '$(ELECTION_CALENDAR_CSV)')
+MUNICIPAL_YEARS := $(shell awk -F, 'NR>1 && $$2=="municipal" {print $$1}' '$(ELECTION_CALENDAR_CSV)')
+SCOPE_TYPES := $(strip $(if $(filter $(YEARS),$(GENERAL_YEARS)),general) $(if $(filter $(YEARS),$(MUNICIPAL_YEARS)),municipal))
+UPDATE_TYPES := $(strip $(if $(filter $(UPDATE_YEARS),$(GENERAL_YEARS)),general) $(if $(filter $(UPDATE_YEARS),$(MUNICIPAL_YEARS)),municipal))
+
+# Validate even standalone commands (e.g. print-dbt-vars, backfill), not just
+# pipelines with the Python scope-contract prerequisite.
+ifeq ($(strip $(YEARS)),)
+$(error YEARS must not be empty)
+endif
+ifeq ($(strip $(UPDATE_YEARS)),)
+$(error UPDATE_YEARS must not be empty)
+endif
+ifneq ($(strip $(filter-out $(GENERAL_YEARS) $(MUNICIPAL_YEARS),$(YEARS))),)
+$(error Unknown YEARS: $(filter-out $(GENERAL_YEARS) $(MUNICIPAL_YEARS),$(YEARS)))
+endif
+ifneq ($(strip $(filter-out $(YEARS),$(UPDATE_YEARS))),)
+$(error UPDATE_YEARS must be a subset of YEARS: $(filter-out $(YEARS),$(UPDATE_YEARS)))
+endif
 
 PROFILE ?= analytics
 GRANULARITY ?= brasil
@@ -73,20 +106,20 @@ INGEST_COMMON_ARGS += \
 BACKFILL_YEAR_ARGS := \
 	$(foreach year,$(YEARS),--year $(year))
 
-INCREMENTAL_YEAR_ARGS := \
-	$(foreach year,$(INCREMENTAL_YEARS),--year $(year))
+UPDATE_YEAR_ARGS := \
+	$(foreach year,$(UPDATE_YEARS),--year $(year))
 PRUNE_DOMAIN_ARGS := $(foreach domain,$(PRUNE_DOMAINS),--domain $(domain))
 MATERIALIZE_YEAR_ARGS := $(foreach year,$(YEARS),--year $(year))
-MATERIALIZE_TYPE_ARGS := $(foreach type,$(ELECTION_TYPES),--election-type $(type))
+MATERIALIZE_TYPE_ARGS := $(foreach type,$(SCOPE_TYPES),--election-type $(type))
 MATERIALIZE_DOMAIN_ARGS := $(foreach domain,$(MATERIALIZE_DOMAINS),--domain $(domain))
 
 DBT_VARS_CMD = \
 	RAW_ROOT='$(RAW_ROOT_ABS)' \
 	CANDIDATE_FACT_ROOT='$(CANDIDATE_FACT_ROOT_ABS)' \
 	YEARS='$(YEARS)' \
-	ELECTION_TYPES='$(ELECTION_TYPES)' \
-	INCREMENTAL_YEARS='$(INCREMENTAL_YEARS)' \
-	INCREMENTAL_ELECTION_TYPES='$(INCREMENTAL_ELECTION_TYPES)' \
+	ELECTION_TYPES='$(SCOPE_TYPES)' \
+	INCREMENTAL_YEARS='$(UPDATE_YEARS)' \
+	INCREMENTAL_ELECTION_TYPES='$(UPDATE_TYPES)' \
 	$(PYTHON) -c 'import json, os; print(json.dumps({ \
 	        "tse_raw_root": os.environ["RAW_ROOT"], \
 	        "candidate_fact_root": os.environ["CANDIDATE_FACT_ROOT"], \
@@ -111,7 +144,7 @@ help:
 	@printf '    %-23s %s\n' 'setup' 'Prepare Python and dbt environment'
 	@printf '    %-23s %s\n' 'doctor' 'Check prerequisites'
 	@printf '\n  Data\n'
-	@printf '    %-23s %s\n' 'list' 'Preview resources (no downloads)'
+	@printf '    %-23s %s\n' 'list' 'Preview UPDATE_YEARS resources (no downloads)'
 	@printf '    %-23s %s\n' 'ingest' 'Download only changed resources'
 	@printf '    %-23s %s\n' 'backfill' 'Acquire historical resource versions'
 	@printf '    %-23s %s\n' 'pipeline' 'Ingest and build analytics'
@@ -122,8 +155,8 @@ help:
 	@printf '    %-23s %s\n' 'pr-gate' 'PR contract and dbt gate'
 	@printf '    %-23s %s\n' 'production-gate' 'Full certification; downloads data'
 	@printf '\n  More: make help-all (advanced targets and maintenance)\n'
-	@printf '  Defaults: YEARS=%s ELECTION_TYPES=%s INCREMENTAL_YEARS=%s INCREMENTAL_ELECTION_TYPES=%s\n' \
-	  '$(YEARS)' '$(ELECTION_TYPES)' '$(INCREMENTAL_YEARS)' '$(INCREMENTAL_ELECTION_TYPES)'
+	@printf '  Scope: YEARS=%s UPDATE_YEARS=%s\n' '$(YEARS)' '$(UPDATE_YEARS)'
+	@printf '  YEARS=analysis; UPDATE_YEARS=refreshed years (defaults to YEARS).\n'
 
 help-all:
 	@awk 'BEGIN {FS = ":.*## "; printf "TSE analytics — all commands\n\n"} \
@@ -181,13 +214,13 @@ dbt-deps: $(DBT_DEPS_STAMP) ## Ensure dbt packages are installed
 list: setup ## List incremental ingestion selection
 	$(INGEST) \
 	  --mode incremental \
-	  $(INCREMENTAL_YEAR_ARGS) \
+	  $(UPDATE_YEAR_ARGS) \
 	  $(INGEST_COMMON_ARGS) \
 	  --list-only
 ingest: scope-contracts ## Incrementally ingest changed resources
 	$(INGEST) \
 	  --mode incremental \
-	  $(INCREMENTAL_YEAR_ARGS) \
+	  $(UPDATE_YEAR_ARGS) \
 	  $(INGEST_COMMON_ARGS)
 backfill: setup ## Backfill immutable resource versions
 	$(INGEST) \
@@ -208,10 +241,10 @@ materialize-raw: setup ## Rehydrate selected raw cache offline
 print-dbt-vars: ## Print dbt vars JSON
 	@$(DBT_VARS_CMD)
 candidate-fact-partition: dbt-deps ## Build one physical candidate partition
-	@test "$(words $(INCREMENTAL_YEARS))" -eq 1 || \
-	  { echo "requires exactly one incremental year"; exit 1; }
-	@test "$(words $(INCREMENTAL_ELECTION_TYPES))" -eq 1 || \
-	  { echo "requires exactly one incremental election type"; exit 1; }
+	@test "$(words $(UPDATE_YEARS))" -eq 1 || \
+	  { echo "requires exactly one UPDATE_YEARS value"; exit 1; }
+	@test "$(words $(UPDATE_TYPES))" -eq 1 || \
+	  { echo "requires exactly one derived update election type"; exit 1; }
 
 	$(PY) scripts/build_candidate_fact_partition.py \
 	  --db '$(DUCKDB_PATH_ABS)' \
@@ -221,8 +254,8 @@ candidate-fact-partition: dbt-deps ## Build one physical candidate partition
 	  --profiles-dir '$(abspath $(DBT_DIR))' \
 	  --dbt-executable '$(abspath $(dir $(PROJECT_PYTHON))dbt)' \
 	  --artifacts-root '$(DBT_ARTIFACTS_ROOT_ABS)' \
-	  --year '$(INCREMENTAL_YEARS)' \
-	  --election-type '$(INCREMENTAL_ELECTION_TYPES)'
+	  --year '$(UPDATE_YEARS)' \
+	  --election-type '$(UPDATE_TYPES)'
 dbt-bronze: scope-contracts dbt-deps ## Build/test Bronze
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  $(DBT) build $(DBT_PROJECT_ARGS) \
@@ -268,9 +301,9 @@ compile: dbt-deps ## Compile graph using fixtures
 scope-contracts: setup ## Validate analytical/incremental scope
 	$(PY) -m scripts.check_scope_contracts \
 	  --years "$(YEARS)" \
-	  --election-types "$(ELECTION_TYPES)" \
-	  --incremental-years "$(INCREMENTAL_YEARS)" \
-	  --incremental-election-types "$(INCREMENTAL_ELECTION_TYPES)"
+	  --election-types "$(SCOPE_TYPES)" \
+	  --incremental-years "$(UPDATE_YEARS)" \
+	  --incremental-election-types "$(UPDATE_TYPES)"
 unit: setup ## Run Python contracts
 	$(PY) -m unittest discover -s tests -p 'test_*.py'
 raw-contracts: setup ## Validate raw/index contracts
