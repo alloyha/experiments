@@ -59,6 +59,22 @@ class SafeEvictionTests(unittest.TestCase):
         self.assertEqual(p['resources'][0]['outputs'][0]['sha256'],hashlib.sha256(self.payload).hexdigest())
         self.assertEqual(before,{p.relative_to(self.root).as_posix():p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
 
+    def test_second_operation_fails_fast_on_lock_contention(self):
+        with gate.exclusive(self.root):
+            with self.assertRaisesRegex(gate.Error, 'holding the lock'):
+                with gate.exclusive(self.root):
+                    self.fail('should not acquire the lock twice')
+
+    def test_plan_prints_progress_to_stderr(self):
+        import contextlib
+        import io
+        output = io.StringIO()
+        with contextlib.redirect_stderr(output):
+            result = self.plan()
+        self.assertEqual(result['resource_count'], 1)
+        self.assertIn('[verify 1/1]', output.getvalue())
+        self.assertIn('[verified 1]', output.getvalue())
+
     def test_corrupted_source_rejected(self):
         self.source.write_bytes(b'untrusted')
         with self.assertRaises(Exception):self.plan()
@@ -170,6 +186,93 @@ class SafeEvictionTests(unittest.TestCase):
     def test_manifest_is_required_for_authorization(self):
         (self.meta/gate.MANIFEST).unlink()
         with self.assertRaises(Exception):self.plan()
+
+
+    def verified_run(self, *, plan=None, expected=None, ack=True, extra=()):
+        plan = plan if plan is not None else self.plan()
+        with tempfile.TemporaryDirectory() as td:
+            plan_file = Path(td) / 'plan.json'
+            plan_file.write_bytes(gate.canonical(plan))
+            cmd = ['--root', str(self.root), '--apply-verified',
+                   '--plan-file', str(plan_file)]
+            if ack:
+                cmd.append('--ack-quiescent')
+            if expected is not None:
+                cmd.extend(['--expect-plan-sha256', expected])
+            cmd.extend(extra)
+            return gate.main(cmd)
+
+    def test_verified_only_eviction_without_canary_or_scratch(self):
+        p = self.plan()
+        digest = gate.hash_bytes(gate.canonical(p))
+        # The temp directory used for the plan is created outside the guarded call.
+        with tempfile.TemporaryDirectory() as td:
+            plan_path = Path(td) / 'plan.json'
+            plan_path.write_bytes(gate.canonical(p))
+            with mock.patch.object(gate, 'canary', side_effect=AssertionError('canary')):
+                with mock.patch.object(gate.tempfile, 'TemporaryDirectory',
+                                       side_effect=AssertionError('scratch')):
+                    rc = gate.main(['--root', str(self.root), '--apply-verified',
+                                    '--plan-file', str(plan_path), '--ack-quiescent',
+                                    '--expect-plan-sha256', digest])
+        self.assertEqual(rc, 0)
+        self.assertFalse(self.output.exists())
+        self.assertTrue(self.source.exists())
+        self.assertFalse((self.meta / gate.JOURNAL).exists())
+        self.assertEqual(json.loads((self.meta / gate.STATE).read_text())['cycle|2026|r1']['materialization_state'], 'evicted')
+        self.assertEqual((self.meta / gate.INDEX).read_text(), '')
+
+    def test_verified_only_requires_reviewed_plan_sha(self):
+        p = self.plan()
+        self.assertEqual(self.verified_run(plan=p), 2)
+        self.assertEqual(self.verified_run(plan=p, expected='0' * 64), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_requires_quiescence(self):
+        p = self.plan()
+        sha = gate.hash_bytes(gate.canonical(p))
+        self.assertEqual(self.verified_run(plan=p, expected=sha, ack=False), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_rejects_stale_metadata(self):
+        p = self.plan()
+        sha = gate.hash_bytes(gate.canonical(p))
+        self.row['extra'] = 'concurrent writer'
+        (self.meta / gate.STATE).write_text(json.dumps(self.state))
+        self.assertEqual(self.verified_run(plan=p, expected=sha), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_rejects_changed_source_or_csv(self):
+        p = self.plan()
+        sha = gate.hash_bytes(gate.canonical(p))
+        self.output.write_bytes(b'changed extracted content')
+        self.assertEqual(self.verified_run(plan=p, expected=sha), 2)
+        self.assertTrue(self.output.exists())
+        self.output.write_bytes(self.payload)
+        self.source.write_bytes(b'broken source')
+        self.assertEqual(self.verified_run(plan=p, expected=sha), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_rejects_pending_journal(self):
+        p = self.plan()
+        sha = gate.hash_bytes(gate.canonical(p))
+        (self.meta / gate.JOURNAL).write_text('pending')
+        self.assertEqual(self.verified_run(plan=p, expected=sha), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_rejects_tampered_plan_totals(self):
+        p = self.plan()
+        p['resource_count'] = 2
+        sha = gate.hash_bytes(gate.canonical(p))
+        self.assertEqual(self.verified_run(plan=p, expected=sha), 2)
+        self.assertTrue(self.output.exists())
+
+    def test_verified_only_rejects_canary_report_argument(self):
+        p = self.plan()
+        sha = gate.hash_bytes(gate.canonical(p))
+        self.assertEqual(self.verified_run(plan=p, expected=sha,
+                                           extra=['--canary-report', '/dev/null']), 2)
+        self.assertTrue(self.output.exists())
 
 
 if __name__ == '__main__':unittest.main()

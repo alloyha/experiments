@@ -2,7 +2,7 @@
 """Bounded, verified, restartable TSE extracted-cache eviction.
 
 No writes to the canonical raw lake without --apply, exact reviewed plan,
-validated scratch canary, and --ack-quiescent. The ack means *all* dbt, ingest,
+verified plan authorization (or scratch canary), and --ack-quiescent. The ack means *all* dbt, ingest,
 rehydration, and external readers/writers have been stopped; POSIX flock here
 coordinates this tool's invocations only, NOT those independent consumers.
 """
@@ -149,9 +149,13 @@ def build_plan(root: Path, domains: set[str], years: set[int], max_resources: in
             candidates.append((total, str(key), year, str(row['domain']), str(row['resource_id'])))
     selected = []
     used = 0
+    inspected = 0
     for estimate, key, year, domain, rid in sorted(candidates):
         if len(selected) >= max_resources or used + estimate > max_bytes:
             continue
+        inspected += 1
+        print(f'[verify {inspected}/{len(candidates)}] {domain}/{year} '
+              f'resource={rid} csv_bytes={estimate}', file=sys.stderr, flush=True)
         # Existing verifier independently validates ZIP SHA, manifest, selected
         # objects and EXACT physical index, including legacy states.
         item = base.validate_resource(root, rid, year, domain,
@@ -166,6 +170,8 @@ def build_plan(root: Path, domains: set[str], years: set[int], max_resources: in
                          'source_sha256': item['row']['source_sha256'],
                          'outputs': files})
         used += estimate
+        print(f'[verified {len(selected)}] {domain}/{year} '
+              f'cumulative_bytes={used}', file=sys.stderr, flush=True)
     if not selected:
         raise Error('no fully verified recoverable resources meet the limits')
     return {'schema_version': 1, 'root': str(root), 'metadata_sha256': metadata_hashes(root),
@@ -178,7 +184,16 @@ def validate_plan(root: Path, plan: dict) -> None:
         raise Error('plan root/schema mismatch')
     if metadata_hashes(root) != plan.get('metadata_sha256'):
         raise Error('stale plan: authoritative metadata changed')
-    for resource in plan.get('resources', []):
+    resources = plan.get('resources')
+    if (not isinstance(resources, list) or not resources
+            or plan.get('resource_count') != len(resources)):
+        raise Error('plan resource count mismatch or empty plan')
+    expected_bytes = sum(sum(f['bytes'] for f in r['outputs']) for r in resources)
+    if expected_bytes != plan.get('reclaimable_bytes'):
+        raise Error('plan reclaimable byte count mismatch')
+    if len({r['key'] for r in resources}) != len(resources):
+        raise Error('duplicate resource key in plan')
+    for resource in resources:
         item = base.validate_resource(root, resource['resource_id'], resource['year'],
             resource['domain'], 1 << 50, 1 << 50, allow_legacy_materialization=True)
         if item['key'] != resource['key'] or item['row']['source_sha256'] != resource['source_sha256']:
@@ -213,7 +228,11 @@ def exclusive(root: Path):
     if path.is_symlink():
         raise Error('lock file cannot be symlink')
     with path.open('a+b') as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise Error('Another cache eviction operation is holding the lock; '
+                        'do not start a second invocation') from exc
         try:
             yield
         finally:
@@ -369,7 +388,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--root', type=Path, required=True)
     group = ap.add_mutually_exclusive_group(required=True)
-    for mode in ('plan', 'canary', 'apply', 'recover'):
+    for mode in ('plan', 'canary', 'apply', 'apply-verified', 'recover'):
         group.add_argument('--'+mode, action='store_true')
     ap.add_argument('--domain', action='append')
     ap.add_argument('--year', action='append', type=int)
@@ -378,6 +397,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument('--max-source-bytes', type=int, default=4 * 1024**3)
     ap.add_argument('--plan-file', type=Path)
     ap.add_argument('--canary-report', type=Path)
+    ap.add_argument('--expect-plan-sha256', type=str,
+                    help='Required for --apply-verified: exact SHA-256 printed by --plan')
     ap.add_argument('--output-json', type=Path)
     ap.add_argument('--ack-quiescent', action='store_true',
                     help='I stopped ALL independent raw readers, writers, dbt and ingest jobs')
@@ -413,23 +434,36 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(report))
             return 0
         if not args.ack_quiescent:
-            raise Error('--apply/--recover require --ack-quiescent (all consumers stopped)')
+            raise Error('--apply/--apply-verified/--recover require --ack-quiescent (all consumers stopped)')
         with exclusive(root):
             if args.recover:
                 removed = recover_pending(root)
                 print(json.dumps({'result':'RECOVERED','removed_files':removed}))
                 return 0
-            if not args.plan_file or not args.canary_report:
-                raise Error('--apply requires --plan-file and --canary-report')
+            if not args.plan_file:
+                raise Error('--apply/--apply-verified requires --plan-file')
             plan = json.loads(read_bytes(outside_root(args.plan_file,root)))
-            report = json.loads(read_bytes(outside_root(args.canary_report,root)))
-            covered = {(r['year'], r['domain']) for r in report.get('certified_scopes', [])}
-            needed = {(r['year'], r['domain']) for r in plan['resources']}
-            if (report.get('result') != 'PASS' or report.get('root') != str(root)
-                    or not report.get('scratch_deleted') or not report.get('canonical_read_only')
-                    or report.get('tool_sha256') != base.sha256(Path(__file__).resolve())
-                    or not needed or not needed.issubset(covered)):
-                raise Error('missing/mismatched successful scoped canary evidence')
+            if args.apply_verified:
+                if args.canary_report:
+                    raise Error('--apply-verified does not accept --canary-report')
+                expected = args.expect_plan_sha256
+                if (not isinstance(expected, str) or len(expected) != 64
+                        or any(c not in '0123456789abcdef' for c in expected)
+                        or hash_bytes(canonical(plan)) != expected):
+                    raise Error('--apply-verified requires matching --expect-plan-sha256 from reviewed plan')
+            else:
+                if args.expect_plan_sha256 is not None:
+                    raise Error('--expect-plan-sha256 is only valid with --apply-verified')
+                if not args.canary_report:
+                    raise Error('--apply requires --canary-report')
+                report = json.loads(read_bytes(outside_root(args.canary_report,root)))
+                covered = {(r['year'], r['domain']) for r in report.get('certified_scopes', [])}
+                needed = {(r['year'], r['domain']) for r in plan['resources']}
+                if (report.get('result') != 'PASS' or report.get('root') != str(root)
+                        or not report.get('scratch_deleted') or not report.get('canonical_read_only')
+                        or report.get('tool_sha256') != base.sha256(Path(__file__).resolve())
+                        or not needed or not needed.issubset(covered)):
+                    raise Error('missing/mismatched successful scoped canary evidence')
             validate_plan(root,plan)
             journal = build_journal(root,plan)
             target = meta / JOURNAL
@@ -438,7 +472,8 @@ def main(argv: list[str] | None = None) -> int:
             atomic_bytes(target,canonical(journal))
             deleted = recover_pending(root)
             print(json.dumps({'result':'EVICTED', 'resources':plan['resource_count'],
-                              'removed_files':deleted,'expected_bytes':plan['reclaimable_bytes']}))
+                              'removed_files':deleted,'expected_bytes':plan['reclaimable_bytes'],
+                              'authorization':'verified-only' if args.apply_verified else 'canary'}))
             return 0
     except (Error,OSError,ValueError,KeyError,zipfile.BadZipFile,subprocess.TimeoutExpired) as exc:
         print(f'cache eviction DENIED: {exc}',file=sys.stderr)
