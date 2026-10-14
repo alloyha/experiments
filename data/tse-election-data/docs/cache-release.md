@@ -104,4 +104,14 @@ padrão permanecem para quem não usar `--apply-verified`.
 
 ## Critérios objetivos de encerramento
 
-`PASS` exige: fonte e manifesto íntegros, ZIP→CSV byte a byte, canary offline reconstruído com índice correto, nenhuma modificação de fonte na janela, publicação durável de `evicted`/índice sem referências e journal limpo. Não há previsão de ganho fixo de 39 GiB: o plano mede e limita **bytes efetivamente elimináveis**. Quando consumidores exigirem novos CSVs, a reidratação ocupará espaço novamente.
+`PASS` exige: fonte e manifesto íntegros, ZIP→CSV byte a byte, nenhuma modificação de fonte na janela, publicação durável de `evicted`/índice sem referências e journal limpo. Não há previsão de ganho fixo de 39 GiB: o plano mede e limita **bytes efetivamente elimináveis**. Quando consumidores exigirem novos CSVs, a reidratação ocupará espaço novamente.
+
+
+### Critérios por modalidade
+
+- `--apply`: exige canary offline aprovado para o escopo do plano.
+- `--apply-verified`: exige SHA-256 exato do plano revisado, verificação
+  integral de fontes e arquivos, e janela de manutenção confirmada.
+  Não certifica, por si só, a reidratação funcional dos consumidores.
+- Ambas: exigem metadados consistentes, transição durável e journal
+  finalizado. A auditoria estrita deve passar após a operação.
