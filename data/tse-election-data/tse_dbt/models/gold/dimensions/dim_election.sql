@@ -46,6 +46,7 @@ select
         ':',
         election_code
     ) as election_id,
+    concat(cast(election_year as varchar), ':', election_type) as cycle_id,
 
     election_year,
     election_type,

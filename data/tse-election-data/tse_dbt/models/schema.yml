@@ -86,7 +86,7 @@ models:
     tests:
     - not_null
 - name: dim_election
-  description: One row per canonical election cycle.
+  description: One row per TSE election event (year/type/election_code); see dim_election_cycle for cycles.
   tests:
   - dbt_utils.unique_combination_of_columns:
       arguments:
@@ -95,6 +95,9 @@ models:
         - election_type
         - election_code
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: election_id
     tests:
     - not_null
@@ -117,6 +120,9 @@ models:
         - election_code
         - candidate_id
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: election_year
     tests:
     - not_null
@@ -143,6 +149,9 @@ models:
         - uf
         - municipality_code
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: election_year
     tests:
     - not_null
@@ -167,6 +176,10 @@ models:
         - election_type
         - uf
         - municipality_code
+  columns:
+  - name: cycle_id
+    tests:
+    - not_null
 - name: silver_candidate_votes_munzona
   description: Latest TSE version of nominal candidate voting at municipality/zone grain.
   tests: []
@@ -203,6 +216,9 @@ models:
       config:
         tags: ['expensive']
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: election_year
     tests:
     - not_null
@@ -288,6 +304,9 @@ models:
         - election_code
         - party_number
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: party_id
     tests:
     - not_null
@@ -318,6 +337,9 @@ models:
         - party_number
         - is_transit_vote
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: election_year
     tests:
     - not_null
@@ -402,6 +424,10 @@ models:
         - zone
         - office_code
         - is_transit_vote
+  columns:
+  - name: cycle_id
+    tests:
+    - not_null
 - name: fact_turnout
   description: Participation fact retaining office in the grain to prevent cross-office double counting.
   tests:
@@ -418,6 +444,9 @@ models:
         - office_code
         - is_transit_vote
   columns:
+  - name: cycle_id
+    tests:
+    - not_null
   - name: eligible_voters
     tests:
     - not_null
@@ -503,3 +532,17 @@ models:
   - name: top_nominal_valid_votes
     tests:
     - not_null
+
+- name: dim_election_cycle
+  description: Unique election-cycle grain (year/type), distinct from election events.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+  columns:
+  - name: cycle_id
+    tests:
+    - not_null
+    - unique

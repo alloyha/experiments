@@ -110,9 +110,10 @@ python tse_ingest.py \
 
 ## Analytical contract
 
-`dim_election` provides the canonical cycle dimension. Candidate and electorate
-marts include `election_year`, `election_type`, and `election_scope`; candidate
-models additionally include `office_scope`.
+`dim_election_cycle` has one row per (`election_year`, `election_type`) cycle;
+`dim_election` is event-grained and additionally identifies `election_code`.
+Candidate and electorate marts include cycle attributes, but electorate has
+no event ID; candidate models additionally include `office_scope`.
 
 The dbt build contains consistency tests that fail if, for example, a municipal
 cycle contains a federal/state candidate or a general cycle contains a mayor or

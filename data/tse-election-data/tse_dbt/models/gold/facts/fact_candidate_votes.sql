@@ -5,7 +5,8 @@
     }
 ) }}
 
-select *
+select *,
+    cast(election_year as varchar) || ':' || election_type as cycle_id
 from read_parquet(
     '{{ var(
         "candidate_fact_root",
