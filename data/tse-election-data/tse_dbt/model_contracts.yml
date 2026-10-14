@@ -13,6 +13,20 @@ partition_defaults:
   vars:
     years: incremental_years
     types: incremental_election_types
+identity_conformance:
+  cycle_id:
+    expression: "election_year:election_type"
+    grain: election_cycle
+    semantics: shared by electorate, geography, elections, candidates, parties and voting facts
+  election_id:
+    expression: "election_year:election_type:election_code"
+    grain: election_event
+    semantics: may include several offices, rounds and electoral units
+    applies_to: [dim_election, dim_candidate, dim_party, fact_tally_munzona, fact_turnout, fact_candidate_votes, fact_party_votes]
+  contest_grain:
+    components: [election_id, round_number, office_code, electoral_unit]
+    note: electoral_unit is office-specific and must not be replaced by uf indiscriminately
+  electorate_join_policy: never join election-grain facts directly to cycle-grain electorate and sum repeated denominators
 models:
   dim_election:
     status: implemented
@@ -22,6 +36,12 @@ models:
     - election_code
     key: election_id = year:type:election_code
     reason: 2018 general data contains distinct elections such as 297 and 339.
+  dim_election_cycle:
+    status: implemented_conformed_cycle_dimension
+    grain: [election_year, election_type]
+    key: 'cycle_id = year:type'
+    source: dim_election
+    caveat: dim_election is event-grained and must not be joined on cycle_id alone
   dim_candidate:
     status: implemented
     materialization: incremental

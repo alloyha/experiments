@@ -11,6 +11,7 @@ select
     election_year,
     election_type,
     election_scope,
+    cast(election_year as varchar) || ':' || election_type as cycle_id,
     uf,
     municipality_code,
     municipality,

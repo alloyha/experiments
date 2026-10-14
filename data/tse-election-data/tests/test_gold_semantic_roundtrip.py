@@ -130,7 +130,7 @@ class GoldSemanticContracts(unittest.TestCase):
             self.skipTest('DuckDB is installed by make setup in WSL')
         with duckdb.connect(':memory:') as db:
             db.execute('CREATE TABLE dim_candidate AS SELECT 2026 AS election_year, '
-                       "'general' AS election_type, '2026:general' AS election_id, "
+                       "'general' AS election_type, '2026:general' AS cycle_id, '2026:general:1' AS election_id, '1' AS election_code, "
                        "'abc' AS candidate_id, 'Ana' AS candidate_name")
             db.execute('CREATE VIEW candidate_summary AS SELECT election_year, election_type, '
                        'count(*) AS candidates FROM dim_candidate GROUP BY 1,2')

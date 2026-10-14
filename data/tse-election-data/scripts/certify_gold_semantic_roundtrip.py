@@ -228,7 +228,8 @@ def seed_partition_probes(conn: object, year: int) -> str:
         probe_type = YEAR_TYPES[probe_year]
         probe = {**source, 'candidate_id': marker,
                  'election_year': probe_year, 'election_type': probe_type,
-                 'election_id': f'{probe_year}:{probe_type}'}
+                 'cycle_id': f'{probe_year}:{probe_type}',
+                 'election_id': f'{probe_year}:{probe_type}:{source["election_code"]}'}
         if 'candidate_name' in probe:
             probe['candidate_name'] = marker
         exists = conn.execute(f'SELECT count(*) FROM main.{quote_ident(GOLD)} '

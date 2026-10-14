@@ -19,6 +19,7 @@ select
     election_year,
     election_type,
     election_scope,
+    cast(election_year as varchar) || ':' || election_type as cycle_id,
     cast(election_year as varchar) || ':' || election_type || ':' || election_code as election_id,
 
     election_code,
