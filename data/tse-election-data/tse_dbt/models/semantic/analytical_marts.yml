@@ -1,0 +1,53 @@
+version: 2
+models:
+  - name: obt_electorate_municipality
+    description: >
+      Municipality electorate snapshot by election cycle, enriched with conformed
+      geography and change relative to the preceding observed cycle. Change does
+      not identify individual migration or transfer of registrations.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cycle_id, uf, municipality_code]
+    columns:
+      - name: cycle_id
+        tests: [not_null]
+      - name: uf
+        tests: [not_null]
+      - name: municipality_code
+        tests: [not_null]
+      - name: electorate
+        tests: [not_null]
+      - name: geography_matched
+        tests: [not_null]
+  - name: cube_participation_municipality
+    description: >
+      Zone-to-municipality rollup for one election event, round, office and
+      transit-vote slice. Measures are NOT additive across offices or rounds.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote]
+    columns:
+      - name: cycle_id
+        tests: [not_null]
+      - name: election_id
+        tests: [not_null]
+      - name: round_number
+        tests: [not_null]
+      - name: uf
+        tests: [not_null]
+      - name: municipality_code
+        tests: [not_null]
+      - name: office_code
+        tests: [not_null]
+      - name: is_transit_vote
+        tests: [not_null]
+      - name: eligible_voters
+        tests: [not_null]
+      - name: turnout
+        tests: [not_null]
+      - name: abstentions
+        tests: [not_null]
+      - name: geography_matched
+        tests: [not_null]
