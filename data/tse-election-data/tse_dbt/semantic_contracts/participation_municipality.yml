@@ -1,0 +1,18 @@
+version: 1
+mart: cube_participation_municipality
+status: reference_implementation
+base_fact: fact_turnout
+grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote]
+conformed_dimensions: [dim_geography]
+measures:
+  eligible_voters: additive_over_zones_within_fixed_event_round_office_transit
+  turnout: additive_over_zones_within_fixed_event_round_office_transit
+  abstentions: additive_over_zones_within_fixed_event_round_office_transit
+  uncounted_voters: additive_over_zones_within_fixed_event_round_office_transit
+  turnout_rate: sum_turnout_divided_by_sum_eligible_at_selected_grain
+  abstention_rate: sum_abstentions_divided_by_sum_eligible_at_selected_grain
+constraints:
+  - Do not sum turnout or eligible voters across office_code; office-specific counts repeat.
+  - Do not sum across event IDs, rounds or transit flags without a policy explicitly selecting a compatible slice.
+  - Rates are computed after aggregation; never average precalculated rates.
+  - No election-code inference from cycle_id.

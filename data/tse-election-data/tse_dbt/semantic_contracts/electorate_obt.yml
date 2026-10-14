@@ -1,0 +1,15 @@
+version: 1
+mart: obt_electorate_municipality
+status: reference_implementation
+base_fact: fact_electorate_municipality
+grain: [cycle_id, uf, municipality_code]
+conformed_dimensions: [dim_geography]
+measures:
+  electorate: additive_only_across_disjoint_territories_within_one_cycle
+  electorate_delta: comparison_between_observed_snapshots
+  electorate_growth_rate: nonadditive_derived_ratio
+constraints:
+  - Never join event/candidate/office-level rows before aggregating electorate.
+  - Previous cycle is the previous available snapshot for the same municipality code.
+  - Net electorate changes do not by themselves imply voter migration.
+  - Null or missing geography enrichment never drops a fact row.
