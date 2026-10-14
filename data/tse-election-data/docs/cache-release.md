@@ -53,6 +53,65 @@ Para um novo lote, gere outro plano com `--max-resources` e `--max-bytes` maiore
 python3 scripts/safe_cache_evict.py --root "$RAW" --recover --ack-quiescent
 ```
 
+
+## Evicção verificada sem scratch (operação em massa)
+
+O modo `--apply-verified` dispensa **somente** o canary de reconstrução em
+scratch. Para cada plano, o algoritmo continua verificando integralmente:
+fonte ZIP imutável e SHA-256, manifesto, `resource_state.json`,
+`current_objects.jsonl`, membros selecionados e equivalência byte a byte
+ZIP → CSV. Antes da exclusão, a validação é repetida e as alterações
+seguem o mesmo journal durável, inclusive o mecanismo de `--recover`.
+
+Diferença de garantia: a presença do ZIP e a equivalência byte a byte
+**não são uma prova de que todo consumidor aceita reidratação sob demanda**,
+nem substituem testes de integração quando o extrator mudar. Este modo
+requer uma janela de manutenção em que todos os consumidores externos
+estão parados e uma decisão operacional explícita sobre quais domínios
+podem permanecer sem CSV extraído. Sem consumidores coordenados, o
+`flock` local não impede corridas contra ferramentas externas.
+
+```bash
+cd ~/github/experiments-cache-release/data/tse-election-data
+RAW="$HOME/github/experiments/data/tse-election-data/data/tse"
+EVIDENCE="$HOME/tse-eviction-evidence"
+mkdir -p "$EVIDENCE"
+
+# Scopes explicitly approved by the operator; adjust as necessary.
+python3 scripts/safe_cache_evict.py --root "$RAW" --plan \
+  --domain vote_result --domain electorate \
+  --max-resources 100 --max-bytes 37580963840 \
+  --output-json "$EVIDENCE/verified-plan.json"
+
+# Copy the plan_sha256 printed above ONLY after reviewing the plan.
+# Confirm ALL readers, writers, ingest and rehydration are stopped.
+python3 scripts/safe_cache_evict.py --root "$RAW" --apply-verified \
+  --plan-file "$EVIDENCE/verified-plan.json" \
+  --expect-plan-sha256 '<paste the exact printed hash>' \
+  --ack-quiescent
+```
+
+O `--expect-plan-sha256` é uma autorização revisada para um
+único snapshot. Alterações de fonte, metadados ou plano causam recusa.
+Um journal pendente exige `--recover --ack-quiescent`
+antes de planejar outro lote. Após cada aplicação, execute a auditoria
+estrita, somente leitura e com caminhos canônicos, verifique a ausência de
+journal e compacte o VHDX Ubuntu somente quando necessário para liberar
+espaço NTFS (WSL desligado e backups adequados).
+
+O `--apply` legado ainda exige `--canary-report`; os requisitos
+padrão permanecem para quem não usar `--apply-verified`.
+
 ## Critérios objetivos de encerramento
 
-`PASS` exige: fonte e manifesto íntegros, ZIP→CSV byte a byte, canary offline reconstruído com índice correto, nenhuma modificação de fonte na janela, publicação durável de `evicted`/índice sem referências e journal limpo. Não há previsão de ganho fixo de 39 GiB: o plano mede e limita **bytes efetivamente elimináveis**. Quando consumidores exigirem novos CSVs, a reidratação ocupará espaço novamente.
+`PASS` exige: fonte e manifesto íntegros, ZIP→CSV byte a byte, nenhuma modificação de fonte na janela, publicação durável de `evicted`/índice sem referências e journal limpo. Não há previsão de ganho fixo de 39 GiB: o plano mede e limita **bytes efetivamente elimináveis**. Quando consumidores exigirem novos CSVs, a reidratação ocupará espaço novamente.
+
+
+### Critérios por modalidade
+
+- `--apply`: exige canary offline aprovado para o escopo do plano.
+- `--apply-verified`: exige SHA-256 exato do plano revisado, verificação
+  integral de fontes e arquivos, e janela de manutenção confirmada.
+  Não certifica, por si só, a reidratação funcional dos consumidores.
+- Ambas: exigem metadados consistentes, transição durável e journal
+  finalizado. A auditoria estrita deve passar após a operação.
