@@ -13,12 +13,16 @@ from __future__ import annotations
 import argparse
 import fcntl
 import os
+import sys
 import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
 import duckdb
+
+# Direct CLI execution adds scripts/ to sys.path rather than the project root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 SOURCE_TABLE = "main.int_candidate_fact_partition"
 DEFAULT_LOCK_TIMEOUT = 30.0
@@ -122,7 +126,7 @@ def validate_staged_parquet(
         )
 
 
-def publish_partition(
+def _publish_partition_locked(
     db_path: Path,
     root: Path,
     year: int,
@@ -220,6 +224,59 @@ def publish_partition(
     return final_path
 
 
+def publish_partition(
+    db_path: Path,
+    root: Path,
+    year: int,
+    election_type: str,
+    *,
+    expected_generation: str | None = None,
+    lock_timeout: float = DEFAULT_LOCK_TIMEOUT,
+    warehouse_lock_timeout: float = 300.0,
+    borrowed_warehouse_lock_fd: int | None = None,
+) -> Path:
+    """Public publication gate: warehouse -> partition, never the reverse.
+
+    ``borrowed_warehouse_lock_fd`` is an internal coordinator capability. The
+    FD must refer to this warehouse's existing lock inode, held by the caller.
+    It must NEVER be used by standalone callers to bypass coordination.
+    """
+    db_path = Path(db_path).resolve()
+    if year < 1 or election_type not in {"general", "municipal"}:
+        raise ValueError("A positive year and general/municipal election type are required")
+    if not db_path.is_file():
+        raise FileNotFoundError(f"DuckDB warehouse not found: {db_path}")
+    if warehouse_lock_timeout < 0:
+        raise ValueError("warehouse lock timeout must be nonnegative")
+
+    def publish() -> Path:
+        return _publish_partition_locked(
+            db_path, root, year, election_type,
+            expected_generation=expected_generation, lock_timeout=lock_timeout,
+        )
+
+    if borrowed_warehouse_lock_fd is not None:
+        lock_path = db_path.with_name(db_path.name + ".build.lock")
+        try:
+            actual_inode = os.fstat(borrowed_warehouse_lock_fd)
+        except (OSError, TypeError, ValueError) as exc:
+            raise RuntimeError("Invalid borrowed warehouse lock descriptor") from exc
+        try:
+            expected_inode = lock_path.stat()
+        except FileNotFoundError as exc:
+            # A borrowed FD for some other inode must not manufacture a lock.
+            raise RuntimeError("Borrowed warehouse lock does not match DuckDB path") from exc
+        if not os.path.samestat(actual_inode, expected_inode):
+            raise RuntimeError("Borrowed warehouse lock does not match DuckDB path")
+        return publish()
+
+    # Import at invocation time to avoid circular imports: the build coordinator
+    # itself imports this publisher and calls it with its already-held FD.
+    from scripts.build_candidate_fact_partition import warehouse_write_lock
+    with warehouse_write_lock(db_path, timeout=warehouse_lock_timeout):
+        return publish()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", default="data/warehouse/tse_analytics.duckdb")
@@ -233,6 +290,7 @@ def main() -> None:
         help="Generation observed before source preparation (none/legacy/file basename)",
     )
     parser.add_argument("--lock-timeout", type=float, default=DEFAULT_LOCK_TIMEOUT)
+    parser.add_argument("--warehouse-lock-timeout", type=float, default=300.0)
     parser.add_argument(
         "--show-generation", action="store_true",
         help="Print current publication token without reading or publishing the DuckDB source",
@@ -246,6 +304,7 @@ def main() -> None:
         Path(args.db).resolve(), root, args.year, args.election_type,
         expected_generation=args.expected_generation,
         lock_timeout=args.lock_timeout,
+        warehouse_lock_timeout=args.warehouse_lock_timeout,
     )
 
 
