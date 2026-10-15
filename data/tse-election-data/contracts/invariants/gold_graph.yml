@@ -78,9 +78,11 @@ invariants:
   - id: GG-010
     family: source_freshness
     severity: critical
-    status: planned
-    statement: Gold graph output is rejected if input fact generation or relevant dimensions changed since its certified proof.
-    gap: PR53 certifies the candidate cube only; graph provenance and freshness require their own scope.
+    status: implemented
+    statement: A cycle-scoped graph audit rejects any changed fact publication, Gold source, graph projection or contract fingerprint since certification.
+    runtime_check: scripts/graph_freshness.py::audit_certificate
+    positive_test: tests/test_graph_freshness.py::GraphFreshnessTests.test_cross_process_certify_audit_and_dimension_invalidation
+    falsifier_test: tests/test_graph_freshness.py::GraphFreshnessTests.test_cross_process_fact_republication_invalidates
   - id: GG-011
     family: temporal_snapshots
     severity: high
