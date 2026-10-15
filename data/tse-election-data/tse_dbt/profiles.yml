@@ -14,7 +14,10 @@ tse_analytics:
         memory_limit: "{{ env_var('TSE_DUCKDB_MEMORY_LIMIT', '2GB') }}"
         # DuckDB recommendation for large CSV/table loads.
         preserve_insertion_order: false
-        temp_directory: "{{ env_var('TSE_DUCKDB_TEMP_DIRECTORY', 'data/warehouse/.duckdb_tmp') }}"
+        # File-backed DuckDB automatically spills to <database_file>.tmp.
+        # Do not configure temp_directory: dbt-duckdb reapplies settings on
+        # cursor opens, which DuckDB rejects after the first disk spill.
+        # Warehouse-scoped locking prevents concurrent writes to one file.
         max_temp_directory_size: "{{ env_var('TSE_DUCKDB_MAX_TEMP_DIRECTORY_SIZE', '50GB') }}"
         # Also constrain parallelism inside a single DuckDB query.
         threads: 1

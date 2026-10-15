@@ -1,0 +1,18 @@
+version: 1
+cube: cube_party_performance_municipality
+status: implemented_proposed
+base_fact: fact_party_votes
+grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, party_number]
+measures:
+  nominal_valid_votes: {aggregation: sum, additive_within_slice: true}
+  legend_valid_votes: {aggregation: sum, additive_within_slice: true}
+  total_legend_valid_votes: {aggregation: sum, additive_within_slice: true}
+  party_valid_votes: {aggregation: sum, additive_within_slice: true}
+  party_share_of_observed_valid_votes:
+    formula: 'party_valid_votes / sum(party_valid_votes in same event/round/municipality/office/transit slice)'
+    aggregation: recompute
+constraints:
+  - total_legend_valid_votes already includes converted-to-legend votes; do not add the converted component separately.
+  - No joins to candidate fact for direct summation; reconciliation is a distinct product.
+  - No interpretation of party ranks as seats won or elected status.
+  - Verify nominal, legend, total legend and combined party votes separately.

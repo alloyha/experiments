@@ -93,8 +93,9 @@ def build_and_publish(
     run_dir.mkdir(mode=0o700)
     target_dir = run_dir / "target"
     log_dir = run_dir / "logs"
-    spill_dir = run_dir / "duckdb_tmp"
-    for directory in (target_dir, log_dir, spill_dir):
+    # DuckDB uses <db_path>.tmp by default. Its warehouse lock serializes
+    # writers to one database; dbt artifacts remain isolated per run.
+    for directory in (target_dir, log_dir):
         directory.mkdir()
 
     partition = fact_root / f"election_type={election_type}" / f"year={year}"
@@ -120,7 +121,9 @@ def build_and_publish(
     env = os.environ.copy()
     env.pop("VIRTUAL_ENV", None)
     env["TSE_DUCKDB_PATH"] = str(db_path)
-    env["TSE_DUCKDB_TEMP_DIRECTORY"] = str(spill_dir)
+    # Do not expose a misleading override now that the dbt profile relies
+    # on DuckDB's per-database default; avoids cursor SET failures on spill.
+    env.pop("TSE_DUCKDB_TEMP_DIRECTORY", None)
 
     with warehouse_write_lock(db_path, timeout=warehouse_lock_timeout) as lock:
         # Observe the active generation only after acquiring the warehouse lock.
