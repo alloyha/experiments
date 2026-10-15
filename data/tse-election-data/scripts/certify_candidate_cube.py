@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Audit candidate-cube history or certify one partition-replace dbt load.
+"""Audit candidate-cube coverage/freshness or certify one partition-replace load.
 
 No raw ingestion and no implicit full-refresh. The caller explicitly selects the
-DuckDB file and immutable candidate-fact Parquet root. Results are evidence for
-the chosen database, not proof of freshness against dimensional-source changes.
+DuckDB file and published candidate-fact Parquet root. Bare coverage results
+are not proof of freshness. Full freshness requires per-cycle attestations.
 """
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts.candidate_cube_freshness import (
+    FreshnessError, audit_freshness, input_signature, output_signature,
+    issue_certificate, revoke_certificate,
+)
 
 MODEL = "cube_candidate_performance_municipality"
 TESTS = (
@@ -175,9 +181,22 @@ def audit(db_path: Path, root: Path) -> dict:
 def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     if args.year <= 0:
         raise CertificationError("Year must be positive")
+    # A mutating certification must never bypass revocation/reattestation.
+    # Otherwise a certificate issued by an earlier run could remain active.
+    if getattr(args, "attestations_dir", None) is None:
+        raise CertificationError("--attestations-dir is required for certify")
+
     cycle = f"{args.year}:{args.election_type}"
     require_cycle(root, cycle)
     before = snapshot_other_cycles(db_path, cycle)
+    # Capture the publication and both durable dimensions before any write.
+    # A failed/interrupted refresh must not leave an active certificate behind.
+    before_inputs = (
+        input_signature(db_path, root, cycle)
+        if getattr(args, "attestations_dir", None) is not None else None
+    )
+    if before_inputs is not None:
+        revoke_certificate(args.attestations_dir, cycle)
     vars_string = (
         "{incremental_years: [" + str(args.year) + "], "
         "incremental_election_types: [" + args.election_type + "]}"
@@ -198,6 +217,7 @@ def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     if set(cycles) - {cycle} != other_before:
         raise CertificationError("Unselected cycle set changed unexpectedly")
     print(f"PASS: other cycles preserved; {cycle}: {cycles[cycle]}", flush=True)
+    before_output = output_signature(db_path, cycle) if before_inputs is not None else None
     test_seconds = dbt_call(
         args.dbt, "test", db_path, args.memory_limit, vars_string,
         args.test_timeout,
@@ -207,13 +227,22 @@ def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     current = materialized_cycles(db_path)
     if current.get(cycle) != cycles[cycle]:
         raise CertificationError("Selected cycle totals changed during tests")
+    if before_inputs is not None:
+        if input_signature(db_path, root, cycle) != before_inputs:
+            raise CertificationError("Source Parquet or dimensions changed during certification")
+        if output_signature(db_path, cycle) != before_output:
+            raise CertificationError("Selected cube changed during certification tests")
+        issue_certificate(args.attestations_dir, db_path, root, cycle,
+                          before_inputs, before_output)
     report = {
         "certified_at_utc": datetime.now(timezone.utc).isoformat(),
         "db": str(db_path), "source_root": str(root),
         "cycle": cycle, "rows": current[cycle][0], "nominal_votes": current[cycle][1],
         "run_seconds": run_seconds, "test_seconds": test_seconds,
         "tests": list(TESTS), "unselected_cycles_preserved": True,
-        "scope": "dbt cycle-scoped conservation and share/rank; not source freshness",
+        "scope": ("dbt cycle-scoped contracts with freshness attestation" if before_inputs
+                  is not None else "dbt cycle-scoped contracts; not source freshness"),
+        "freshness_attested": before_inputs is not None,
     }
     print(f"PASS: {cycle} certified; run={run_seconds}s test={test_seconds}s")
     return report
@@ -227,8 +256,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="Published Parquet root containing election_type=*/year=*/data.parquet")
     parser.add_argument("--report", type=Path,
                         help="Write structured evidence to a NEW JSON path")
+    parser.add_argument("--attestations-dir", type=Path,
+                        help="Directory for per-cycle freshness certificates; required for audit-freshness")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("audit", help="Read-only: check every physical cycle has a nonempty table partition")
+    sub.add_parser("audit-freshness", help="Fail-closed check of physical sources, dimensions and cuboids")
     one = sub.add_parser("certify", help="Mutates selected cube cycle and runs exactly two dbt tests")
     one.add_argument("--year", type=int, required=True)
     one.add_argument("--election-type", choices=("general", "municipal"), required=True)
@@ -244,6 +276,14 @@ def main(argv: list[str] | None = None) -> int:
             raise CertificationError(f"DuckDB path does not exist: {db_path}")
         if args.action == "audit":
             result = audit(db_path, root)
+        elif args.action == "audit-freshness":
+            if args.attestations_dir is None:
+                raise CertificationError("--attestations-dir is required for audit-freshness")
+            coverage = audit(db_path, root)
+            freshness = audit_freshness(db_path, root, args.attestations_dir,
+                                        set(coverage["cycles"]))
+            print("PASS: all published candidate cycles have current attestation")
+            result = {**coverage, **freshness}
         else:
             if args.run_timeout <= 0 or args.test_timeout <= 0:
                 raise CertificationError("Timeouts must be positive")
@@ -252,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
             report_json(args.report, result)
             print(f"Evidence: {args.report}")
         return 0
-    except (CertificationError, OSError, subprocess.SubprocessError) as exc:
+    except (CertificationError, FreshnessError, OSError, subprocess.SubprocessError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
 
