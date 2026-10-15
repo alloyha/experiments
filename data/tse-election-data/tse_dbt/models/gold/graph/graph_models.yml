@@ -1,0 +1,16 @@
+version: 2
+models:
+  - name: graph_vertices
+    description: >
+      Live typed Gold projection of cycles, events, municipalities, contests,
+      candidates and parties. Unmatched fact entities retain vertices with
+      metadata_matched=false; unique identity is certified separately.
+    config:
+      tags: [graph, expensive]
+  - name: graph_edges
+    description: >
+      Directed typed associations and contest-scoped nominal/party vote edges.
+      Vote counts are non-additive across unrelated contests and edge types.
+      No inference of elected status or individual voting behavior.
+    config:
+      tags: [graph, expensive]
