@@ -21,6 +21,8 @@ class GraphFreshnessTests(unittest.TestCase):
         self.warehouse.write_bytes(b"fixture")
         self.source = self.root / "facts"
         self.source.mkdir()
+        # A real issuer requires an existing partition before any revocation.
+        (self.source / "election_type=municipal/year=2024").mkdir(parents=True)
         self.certs = self.root / "certificates"
         self.cycle = "2024:municipal"
         self.proof = {"publication": {"sha256": "old"},
