@@ -41,6 +41,29 @@ def resolve_test(reference: str, root: Path) -> bool:
     )
 
 
+def resolve_runtime_check(reference: str, root: Path) -> bool:
+    """Resolve executable Python check by exact module/function AST identity.
+
+    GG-010 is a read-only operational gate, not a dbt SQL assertion. Checking
+    only file existence would permit registering a nonexistent or inert gate.
+    """
+    if not isinstance(reference, str) or reference.count("::") != 1:
+        return False
+    filename, function = reference.split("::")
+    rel = Path(filename)
+    if (rel.is_absolute() or ".." in rel.parts or
+        not rel.parts or rel.parts[0] != "scripts" or
+        rel.suffix != ".py" or not function.isidentifier()):
+        return False
+    file = root / rel
+    try:
+        module = ast.parse(file.read_text(encoding="utf8"))
+    except (OSError, SyntaxError):
+        return False
+    return any(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and node.name == function for node in module.body)
+
+
 def check_registry(path: Path = DEFAULT, *, strict: bool = False, root: Path = ROOT) -> dict:
     document = yaml.safe_load(path.read_text(encoding="utf8"))
     if not isinstance(document, dict) or document.get("version") != 1:
@@ -78,10 +101,16 @@ def check_registry(path: Path = DEFAULT, *, strict: bool = False, root: Path = R
             if not resolve_test(str(record.get(field, "")), root):
                 failures.append(f"{key}: invalid {field}: {record.get(field)}")
         assertion = record.get("sql_assertion")
-        if not assertion or not (root / assertion).is_file():
-            failures.append(f"{key}: missing SQL assertion {assertion!r}")
-        else:
-            referenced_sql.add(assertion)
+        runtime = record.get("runtime_check")
+        if bool(assertion) == bool(runtime):
+            failures.append(f"{key}: must declare exactly one of sql_assertion or runtime_check")
+        elif assertion:
+            if not isinstance(assertion, str) or not (root / assertion).is_file():
+                failures.append(f"{key}: missing SQL assertion {assertion!r}")
+            else:
+                referenced_sql.add(assertion)
+        elif not resolve_runtime_check(runtime, root):
+            failures.append(f"{key}: invalid runtime_check {runtime!r}")
     graph_sql = {
         path.relative_to(root).as_posix()
         for path in (root / "tse_dbt/tests").glob("assert_graph_*.sql")

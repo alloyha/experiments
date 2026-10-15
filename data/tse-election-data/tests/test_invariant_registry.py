@@ -11,8 +11,8 @@ from scripts.check_invariant_registry import DEFAULT, ROOT, check_registry
 class InvariantRegistryTests(unittest.TestCase):
     def test_every_implemented_invariant_has_a_positive_and_negative_oracle(self):
         result = check_registry()
-        self.assertGreaterEqual(result["implemented"], 7)
-        self.assertGreater(result["planned"], 0)
+        self.assertEqual(result["implemented"], 10)
+        self.assertEqual(result["planned"], 2)
         self.assertFalse(result["critical_coverage_complete"])
 
     def test_strict_gate_remains_red_until_critical_gaps_are_closed(self):
@@ -37,6 +37,18 @@ class InvariantRegistryTests(unittest.TestCase):
 
     def test_missing_sql_assertion_is_rejected(self):
         self.modified(lambda d: d["invariants"][0].update(sql_assertion="tse_dbt/tests/nonexistent.sql"))
+
+    def test_missing_runtime_check_is_rejected(self):
+        self.modified(lambda d: next(r for r in d["invariants"] if r["id"] == "GG-010")
+                      .update(runtime_check="scripts/graph_freshness.py::not_an_auditor"))
+
+    def test_implemented_invariant_requires_exactly_one_oracle_type(self):
+        self.modified(lambda d: next(r for r in d["invariants"] if r["id"] == "GG-010")
+                      .update(sql_assertion="tse_dbt/tests/assert_graph_node_identity.sql"))
+
+    def test_unsafe_runtime_reference_is_rejected(self):
+        self.modified(lambda d: next(r for r in d["invariants"] if r["id"] == "GG-010")
+                      .update(runtime_check="../scripts/graph_freshness.py::audit_certificate"))
 
 
 if __name__ == "__main__":
