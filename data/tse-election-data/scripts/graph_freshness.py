@@ -16,7 +16,9 @@ import hashlib
 import json
 import os
 import sys
+import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,6 +115,39 @@ def snapshot(db: Path, source_root: Path, cycle: str, *,
         con.close()
 
 
+@contextmanager
+def graph_certification_locks(db: Path, source_root: Path, cycle: str,
+                              *, timeout: float = 300.0):
+    """Exclusive pair matching existing CTAS/publisher and guarded-reader locks.
+
+    The entire revoke -> fingerprints -> SQL checks -> issue boundary is fenced.
+    This is cooperative POSIX coordination, NOT isolation from ad-hoc SQL.
+    """
+    if timeout < 0:
+        raise ValueError("lock timeout must be nonnegative")
+    match = CYCLE_PATTERN.fullmatch(cycle)
+    if match is None:
+        raise GraphFreshnessError(f"Invalid cycle: {cycle!r}")
+    warehouse = Path(db).resolve(strict=True)
+    if not warehouse.is_file():
+        raise GraphFreshnessError("Warehouse must be an existing DuckDB file")
+    year, election_type = match.groups()
+    part = (Path(source_root).resolve(strict=True) /
+            f"election_type={election_type}" / f"year={year}")
+    if not part.is_dir():
+        raise GraphFreshnessError(f"Published partition does not exist: {part}")
+
+    # Reuse the actual public-writer implementations and their lock inodes.
+    # Order is warehouse -> partition, exactly as in the CTAS coordinator.
+    from scripts import build_candidate_fact_partition as builder
+    from scripts import write_candidate_fact_partition as publisher
+    deadline = time.monotonic() + timeout
+    with builder.warehouse_write_lock(warehouse, timeout=timeout):
+        remaining = max(0.0, deadline - time.monotonic())
+        with publisher.partition_write_lock(part, timeout=remaining):
+            yield
+
+
 def revoke_certificate(directory: Path, cycle: str) -> None:
     path = certificate_path(directory, cycle)
     if not path.exists() and not path.is_symlink():
@@ -168,30 +203,10 @@ def audit_certificate(directory: Path, db: Path, source_root: Path,
     return record
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", type=Path, required=True)
-    parser.add_argument("--source-root", type=Path, required=True)
-    parser.add_argument("--attestations-dir", type=Path, required=True)
-    parser.add_argument("--cycle", required=True)
-    parser.add_argument("--memory-limit", default="4GB")
-    parser.add_argument("--temp-directory", type=Path)
-    actions = parser.add_subparsers(dest="action", required=True)
-    actions.add_parser("audit", help="Recompute proof from live Gold graph, fail closed")
-    actions.add_parser("certify", help="Run ALL 8 graph assertions and issue create-only proof")
-    args = parser.parse_args(argv)
-    try:
-        if args.action == "audit":
-            # Avoid an expensive graph scan if no proof exists at all.
-            active = certificate_path(args.attestations_dir, args.cycle)
-            if not active.is_file() or active.is_symlink():
-                raise GraphFreshnessError(f"Missing/invalid graph attestation: {active}")
-            now = snapshot(args.db, args.source_root, args.cycle,
-                           memory_limit=args.memory_limit, temp_directory=args.temp_directory)
-            audit_certificate(args.attestations_dir, args.db, args.source_root,
-                              args.cycle, now)
-            print(f"PASS: {args.cycle} graph freshness matches certificate; NOT concurrency-certified")
-            return 0
+def certify_with_locks(args: argparse.Namespace) -> int:
+    # No active proof may be revoked before obtaining exclusive coordination.
+    with graph_certification_locks(args.db, args.source_root, args.cycle,
+                                   timeout=args.lock_timeout):
         # Revoke BEFORE even reading a snapshot: an interrupted or failed
         # attempt must never leave an older certificate active.
         revoke_certificate(args.attestations_dir, args.cycle)
@@ -215,6 +230,35 @@ def main(argv: list[str] | None = None) -> int:
                                  args.cycle, after)
         print(f"PASS: graph proof created at {cert}; NOT concurrency/production-certified")
         return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--db", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--attestations-dir", type=Path, required=True)
+    parser.add_argument("--cycle", required=True)
+    parser.add_argument("--memory-limit", default="4GB")
+    parser.add_argument("--lock-timeout", type=float, default=300.0,
+                        help="POSIX lock wait for coordinated graph certification")
+    parser.add_argument("--temp-directory", type=Path)
+    actions = parser.add_subparsers(dest="action", required=True)
+    actions.add_parser("audit", help="Recompute proof from live Gold graph, fail closed")
+    actions.add_parser("certify", help="Run ALL 8 graph assertions and issue create-only proof")
+    args = parser.parse_args(argv)
+    try:
+        if args.action == "audit":
+            # Avoid an expensive graph scan if no proof exists at all.
+            active = certificate_path(args.attestations_dir, args.cycle)
+            if not active.is_file() or active.is_symlink():
+                raise GraphFreshnessError(f"Missing/invalid graph attestation: {active}")
+            now = snapshot(args.db, args.source_root, args.cycle,
+                           memory_limit=args.memory_limit, temp_directory=args.temp_directory)
+            audit_certificate(args.attestations_dir, args.db, args.source_root,
+                              args.cycle, now)
+            print(f"PASS: {args.cycle} graph freshness matches certificate; NOT concurrency-certified")
+            return 0
+        return certify_with_locks(args)
     except (GraphFreshnessError, OSError, ValueError, AssertionError) as err:
         print(f"FAIL: {err}")
         return 1
