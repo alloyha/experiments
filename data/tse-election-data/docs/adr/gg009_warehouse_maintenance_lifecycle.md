@@ -16,8 +16,14 @@ any destructive action, so SIGKILL after the rotation invalidates prior proof.
 
 The maintenance entry point uses only Python's standard library because
 `clean-all` is allowed to delete `.venv`. Destructive paths outside the
-explicit project root or via symlinks are rejected; `CONFIRM=1` is mandatory
-for `clean-all`. The lock and lifecycle sidecars are intentionally retained.
+explicit project root or via symlinks (including symlinked parent directories)
+are rejected. `clean-all` restricts database, raw, fact and dbt artifact paths
+to descendants of the project's generated `data/` directory, requires the
+exact `tse_dbt/` and `.venv/` locations for tool cleanup, and rejects other
+in-project paths such as `scripts/` and `.git/`. `CONFIRM=1` is mandatory.
+`clean-warehouse` receives the project root from the Makefile and refuses
+`DUCKDB_PATH` overrides pointing to source files or non-DuckDB paths.
+The lock and lifecycle sidecars are intentionally retained.
 
 **Migration:** all existing graph/candidate-cube certificates need fresh
 certification after this change, even if their underlying contents are

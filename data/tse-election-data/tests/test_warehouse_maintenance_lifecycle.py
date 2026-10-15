@@ -100,12 +100,13 @@ with maintenance_lock(Path(sys.argv[1]),timeout=0):
     def test_clean_all_rejects_missing_confirmation_and_outside_paths(self):
         project = self.root / "project"
         project.mkdir()
-        db = project / "warehouse.duckdb"
+        db = project / "data/warehouse.duckdb"
+        db.parent.mkdir()
         db.write_bytes(b"fixture")
-        raw = project / "raw"
-        facts = project / "facts"
-        artifact = project / "runs"
-        dbt = project / "dbt"
+        raw = project / "data/raw"
+        facts = project / "data/facts"
+        artifact = project / "data/runs"
+        dbt = project / "tse_dbt"
         venv = project / ".venv"
         for path in (raw, facts, artifact, dbt, venv):
             path.mkdir()
@@ -125,6 +126,81 @@ with maintenance_lock(Path(sys.argv[1]),timeout=0):
         self.assertFalse(venv.exists())
         self.assertTrue(Path(str(db) + ".build.lock").exists())
         self.assertEqual(len(maintenance.lifecycle_epoch(db)), 32)
+
+    def test_clean_all_rejects_in_project_source_and_git_overrides(self):
+        project = self.root / "project"
+        (project / "data").mkdir(parents=True)
+        db = project / "data/warehouse.duckdb"
+        db.write_bytes(b"warehouse fixture")
+        raw, facts, artifacts = [project / "data" / name for name in
+                                 ("raw", "facts", "runs")]
+        dbt, venv = project / "tse_dbt", project / ".venv"
+        scripts, git = project / "scripts", project / ".git"
+        for path in (raw, facts, artifacts, dbt, venv, scripts, git):
+            path.mkdir()
+        sentinel = scripts / "important.py"
+        sentinel.write_text("must not delete", encoding="utf8")
+        base = ["all", "--confirm", "--db", str(db),
+                "--project-root", str(project), "--raw-root", str(raw),
+                "--fact-root", str(facts), "--artifacts-root", str(artifacts),
+                "--dbt-dir", str(dbt), "--venv", str(venv)]
+        before = maintenance.lifecycle_epoch(db)
+        for flag, unsafe in (("--raw-root", scripts),
+                             ("--fact-root", git),
+                             ("--artifacts-root", scripts),
+                             ("--dbt-dir", scripts),
+                             ("--venv", scripts),
+                             ("--db", scripts / "other.duckdb"),
+                             ("--db", project / "data" / "not_a_db.txt")):
+            with self.subTest(flag=flag, unsafe=str(unsafe)):
+                self.assertEqual(maintenance.main(base + [flag, str(unsafe)]), 1)
+                self.assertEqual(sentinel.read_text(encoding="utf8"),
+                                 "must not delete")
+                self.assertTrue(db.is_file())
+                self.assertEqual(maintenance.lifecycle_epoch(db), before)
+
+    def test_clean_all_rejects_intermediate_symlink_to_source_code(self):
+        project = self.root / "project"
+        (project / "data").mkdir(parents=True)
+        code = project / "scripts"
+        code.mkdir()
+        sentinel = code / "important.py"
+        sentinel.write_text("must not delete", encoding="utf8")
+        (project / "data" / "alias").symlink_to(code, target_is_directory=True)
+        db = project / "data/warehouse.duckdb"
+        db.write_bytes(b"warehouse fixture")
+        base = ["all", "--confirm", "--db", str(db),
+                "--project-root", str(project),
+                "--raw-root", str(project / "data/alias" / "subdir"),
+                "--fact-root", str(project / "data/facts"),
+                "--artifacts-root", str(project / "data/runs"),
+                "--dbt-dir", str(project / "tse_dbt"),
+                "--venv", str(project / ".venv")]
+        self.assertEqual(maintenance.main(base), 1)
+        self.assertTrue(sentinel.is_file())
+        self.assertTrue(db.is_file())
+        self.assertFalse(maintenance.epoch_path(db).exists())
+
+    def test_makefile_scoped_warehouse_cleanup_rejects_source_override(self):
+        project = self.root / "project"
+        (project / "scripts").mkdir(parents=True)
+        (project / "data").mkdir()
+        source = project / "scripts" / "important.py"
+        source.write_text("do not delete", encoding="utf8")
+        for path in (source, project / "data" / "not_duckdb.txt"):
+            if not path.exists():
+                path.write_bytes(b"fixture")
+            args = ["warehouse", "--db", str(path),
+                    "--project-root", str(project)]
+            self.assertEqual(maintenance.main(args), 1)
+            self.assertTrue(path.is_file())
+            self.assertFalse(maintenance.epoch_path(path).exists())
+        warehouse = project / "data" / "scratch.duckdb"
+        warehouse.write_bytes(b"fixture")
+        self.assertEqual(maintenance.main(["warehouse", "--db", str(warehouse),
+                                          "--project-root", str(project)]), 0)
+        self.assertFalse(warehouse.exists())
+        self.assertEqual(len(maintenance.lifecycle_epoch(warehouse)), 32)
 
     def test_clean_all_rejects_parent_of_lifecycle_sidecars(self):
         project = self.root / "project"

@@ -106,11 +106,42 @@ def _remove(path: Path) -> None:
 
 def _inside(project: Path, path: Path) -> Path:
     path = Path(path).expanduser().absolute()
-    if path.is_symlink() or not path.resolve(strict=False).is_relative_to(project):
+    # A symlink in an INTERMEDIATE path component is also unsafe, even if it
+    # resolves to another in-project directory containing source code.
+    resolved = path.resolve(strict=False)
+    if resolved != path or not resolved.is_relative_to(project):
         raise ValueError(f"Refusing cleanup path outside project or via symlink: {path}")
     if path == project:
         raise ValueError("Refusing to delete project root")
     return path
+
+
+def _permitted_warehouse_path(project: Path, db: Path) -> None:
+    """A Makefile-cleanable warehouse must be a DuckDB under generated data/."""
+    data_root = project / "data"
+    if not db.is_relative_to(data_root) or db == data_root or db.suffix != ".duckdb":
+        raise ValueError(f"Unsafe warehouse cleanup path: {db}")
+
+
+def _permitted_clean_all_paths(project: Path, *, db: Path, dbt_dir: Path,
+                                raw: Path, facts: Path, artifacts: Path,
+                                venv: Path) -> None:
+    """Only derived data/ and fixed local tool directories can be removed.
+
+    A path merely being inside the project is NOT sufficient: scripts/, .git/
+    and source packages are inside the project too.  This validation happens
+    before lock acquisition, epoch rotation, or any destructive operation.
+    """
+    data_root = project / "data"
+    for label, path in (("warehouse", db), ("raw", raw),
+                        ("facts", facts), ("dbt artifacts", artifacts)):
+        if not path.is_relative_to(data_root) or path == data_root:
+            raise ValueError(f"Unsafe clean-all {label} path outside generated data/: {path}")
+    _permitted_warehouse_path(project, db)
+    if dbt_dir != project / "tse_dbt":
+        raise ValueError(f"Unsafe clean-all dbt directory: {dbt_dir}")
+    if venv != project / ".venv":
+        raise ValueError(f"Unsafe clean-all virtual environment: {venv}")
 
 
 def clean_warehouse(db: Path, *, timeout: float = 30.0,
@@ -165,12 +196,26 @@ def main(argv: list[str] | None = None) -> int:
             project = args.project_root.expanduser().resolve(strict=True)
             db = _inside(project, args.db)
             dbt_dir = _inside(project, args.dbt_dir)
-            extras = tuple(_inside(project, pth) for pth in
-                           (args.raw_root, args.fact_root, args.artifacts_root,
-                            dbt_dir / "target", dbt_dir / "dbt_packages",
-                            dbt_dir / "logs", args.venv))
+            raw, facts, artifacts, venv = (_inside(project, pth) for pth in
+                                           (args.raw_root, args.fact_root,
+                                            args.artifacts_root, args.venv))
+            _permitted_clean_all_paths(project, db=db, dbt_dir=dbt_dir,
+                                       raw=raw, facts=facts, artifacts=artifacts,
+                                       venv=venv)
+            extras = (raw, facts, artifacts,
+                      _inside(project, dbt_dir / "target"),
+                      _inside(project, dbt_dir / "dbt_packages"),
+                      _inside(project, dbt_dir / "logs"), venv)
         else:
-            db = _db_path(args.db)
+            # The Makefile passes its project root so DUCKDB_PATH overrides
+            # cannot delete source code. Direct callers without this optional
+            # scope still select an explicit DuckDB file themselves.
+            if args.project_root is not None:
+                project = args.project_root.expanduser().resolve(strict=True)
+                db = _inside(project, args.db)
+                _permitted_warehouse_path(project, db)
+            else:
+                db = _db_path(args.db)
         clean_warehouse(db, timeout=args.lock_timeout, extra_paths=extras)
         print(f"PASS: {args.mode} cleanup fenced; warehouse certificate epoch rotated")
         return 0

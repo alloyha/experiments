@@ -432,7 +432,8 @@ clean: ## Remove generated dbt artifacts
 	  $(DBT_DIR)/logs
 clean-warehouse: ## Delete DuckDB under the warehouse lock and rotate proof epoch
 	$(PYTHON) scripts/warehouse_lifecycle.py warehouse \
-	  --db '$(DUCKDB_PATH_ABS)'
+	  --db '$(DUCKDB_PATH_ABS)' \
+	  --project-root '$(PROJECT_ROOT_ABS)'
 clean-all: ## DESTRUCTIVE: coordinated local cleanup (CONFIRM=1)
 	@test "$(CONFIRM)" = "1" || { \
 	  echo 'Refusing clean-all without CONFIRM=1'; \
