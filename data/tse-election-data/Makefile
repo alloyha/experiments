@@ -82,9 +82,14 @@ RUN := env -u VIRTUAL_ENV $(UV) run --python '$(PROJECT_PYTHON)'
 PY := $(RUN) python
 INGEST := $(PY) tse_ingest.py
 
+# Central Makefile gateway for warehouse writers (GG-009); all dbt recipes
+# must invoke this macro rather than an uncoordinated CLI.
 DBT := \
-	TSE_DUCKDB_PATH='$(DUCKDB_PATH_ABS)' \
-	$(RUN) dbt
+	$(PY) scripts/run_coordinated_dbt.py \
+	--db '$(DUCKDB_PATH_ABS)' \
+	--dbt-executable '$(abspath $(dir $(PROJECT_PYTHON))dbt)' \
+	--artifacts-root '$(DBT_ARTIFACTS_ROOT_ABS)' \
+	--
 
 DBT_PROJECT_ARGS := \
 	--project-dir $(DBT_DIR) \
@@ -332,16 +337,16 @@ production-gate: scope-contracts ## Full production certification
 # Performance and coordinated workflows
 # ---------------------------------------------------------------------------
 performance-report: setup ## Report latest dbt execution costs
-	@test -f '$(DBT_DIR)/target/run_results.json' || \
-	  { echo 'Missing dbt run_results.json'; exit 1; }
+	@test -f '$(DBT_ARTIFACTS_ROOT_ABS)/latest_run_results.json' || \
+	  { echo 'Missing coordinated dbt run_results.json'; exit 1; }
 	$(PY) scripts/report_build_performance.py \
-	  --run-results $(DBT_DIR)/target/run_results.json \
+	  --run-results '$(DBT_ARTIFACTS_ROOT_ABS)/latest_run_results.json' \
 	  --output data/warehouse/performance/latest.json
 performance-baseline: setup ## Persist latest performance baseline
-	@test -f '$(DBT_DIR)/target/run_results.json' || \
-	  { echo 'Missing dbt run_results.json'; exit 1; }
+	@test -f '$(DBT_ARTIFACTS_ROOT_ABS)/latest_run_results.json' || \
+	  { echo 'Missing coordinated dbt run_results.json'; exit 1; }
 	$(PY) scripts/report_build_performance.py \
-	  --run-results $(DBT_DIR)/target/run_results.json \
+	  --run-results '$(DBT_ARTIFACTS_ROOT_ABS)/latest_run_results.json' \
 	  --write-baseline contracts/performance/2026-general.json
 pipeline: ingest dbt-build ## Incremental ingest through semantic layer
 	@echo 'Pipeline complete: $(DUCKDB_PATH_ABS)'
