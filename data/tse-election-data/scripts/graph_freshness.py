@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts.warehouse_lifecycle import lifecycle_epoch
 from scripts.certify_gold_graph_cycle import (
     ASSERTIONS, SCOPED_SOURCES, CYCLE_PATTERN, quote_sql,
     ROOT, MODELS, TESTS, selected_publication, setup_scoped_views,
@@ -44,6 +45,9 @@ def identity(db: Path, source_root: Path, cycle: str) -> dict:
         "warehouse": str(db.resolve(strict=True)),
         "source_root": str(source_root.resolve(strict=True)),
         "cycle": cycle,
+        # A cleaning epoch remains outside the DuckDB file and lock inode.
+        # Even identical re-created bytes at the same path cannot resurrect a proof.
+        "lifecycle_epoch": lifecycle_epoch(db),
     }
 
 
