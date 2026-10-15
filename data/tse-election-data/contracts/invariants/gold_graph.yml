@@ -1,0 +1,97 @@
+version: 1
+scope: gold_graph
+policy:
+  enforced: implemented_invariants_must_have_positive_and_falsifying_tests
+  full_promotion: all_critical_invariants_implemented_and_real_cycle_certified
+  expensive_sql_tests: explicit_cycle_scoped_only
+invariants:
+  - id: GG-001
+    family: identity
+    severity: critical
+    status: implemented
+    statement: Typed graph vertex identities are unique within a cycle.
+    sql_assertion: tse_dbt/tests/assert_graph_node_identity.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_duplicate_dimension_members_fail_identity
+  - id: GG-002
+    family: identity
+    severity: critical
+    status: implemented
+    statement: Each directed typed edge has exactly one stable identity.
+    sql_assertion: tse_dbt/tests/assert_graph_edge_identity.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_duplicate_dimension_members_fail_identity
+  - id: GG-003
+    family: referential_integrity
+    severity: critical
+    status: implemented
+    statement: Every edge has existing endpoints in its same electoral cycle.
+    sql_assertion: tse_dbt/tests/assert_graph_edge_endpoints.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_missing_election_is_detected
+  - id: GG-004
+    family: additive_measures
+    severity: critical
+    status: implemented
+    statement: Candidate vote edges conserve every measure at full contest and candidate grain (EXCEPT ALL).
+    sql_assertion: tse_dbt/tests/assert_graph_candidate_vote_conservation.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_candidate_measure_mutation_detected
+  - id: GG-005
+    family: additive_measures
+    severity: critical
+    status: implemented
+    statement: Party vote edges conserve nominal, legend and party-valid measures at full contest and party grain.
+    sql_assertion: tse_dbt/tests/assert_graph_party_vote_conservation.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_party_measure_mutation_detected
+  - id: GG-006
+    family: missing_metadata
+    severity: critical
+    status: implemented
+    statement: Missing candidate/geography labels do not eliminate observed fact votes or identities.
+    sql_assertion: tse_dbt/tests/assert_graph_candidate_vote_conservation.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_missing_dimension_keeps_fact_edges
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_missing_fact_edge_detected
+  - id: GG-007
+    family: measure_semantics
+    severity: critical
+    status: implemented
+    statement: Structural links have no voting measures; distinct vote-edge types cannot double count legend votes.
+    sql_assertion: tse_dbt/tests/assert_graph_edge_measures.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_nonvote_carries_measures_detected
+  - id: GG-008
+    family: context_isolation
+    severity: high
+    status: implemented
+    statement: Every edge has the correct endpoint types, election identity, and contest annotations (round, office, transit).
+    sql_assertion: tse_dbt/tests/assert_graph_edge_context.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_cross_election_endpoint_same_cycle_is_rejected
+  - id: GG-009
+    family: concurrency
+    severity: critical
+    status: planned
+    statement: Publication and graph consumption use a common lock/snapshot boundary with freshness validation.
+    gap: Graph projections are lazy views; synchronized consumer gate is not implemented.
+  - id: GG-010
+    family: source_freshness
+    severity: critical
+    status: planned
+    statement: Gold graph output is rejected if input fact generation or relevant dimensions changed since its certified proof.
+    gap: PR53 certifies the candidate cube only; graph provenance and freshness require their own scope.
+  - id: GG-011
+    family: temporal_snapshots
+    severity: high
+    status: implemented
+    statement: Candidate-party edges exactly match the full electoral-event dimensional snapshot; no timeless affiliation is inferred.
+    sql_assertion: tse_dbt/tests/assert_graph_affiliation_conservation.sql
+    positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
+    falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_party_affiliation_mutation_is_rejected
+  - id: GG-012
+    family: fail_recovery
+    severity: critical
+    status: planned
+    statement: Interrupted materialization or concurrent partition replacement cannot issue a valid graph publication certificate.
+    gap: Graph is not persistently published or certified, and failure-injection tests are not yet written.
