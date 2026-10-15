@@ -129,7 +129,10 @@ def snapshot_other_cycles(db_path: Path, exclude: str) -> list[tuple]:
 
 
 def dbt_call(dbt: str, operation: str, db_path: Path, memory: str,
-             vars_string: str, timeout_seconds: int) -> float:
+             vars_string: str, timeout_seconds: int, *, lock_fd: int) -> float:
+    """Execute dbt while its process tree inherits the warehouse writer lock."""
+    if lock_fd < 0:
+        raise CertificationError("An acquired warehouse lock descriptor is required")
     env = os.environ.copy()
     env["TSE_DUCKDB_PATH"] = str(db_path)
     env["TSE_DUCKDB_MEMORY_LIMIT"] = memory
@@ -145,7 +148,8 @@ def dbt_call(dbt: str, operation: str, db_path: Path, memory: str,
     ]
     print("Executing:", " ".join(command), flush=True)
     start = time.monotonic()
-    status = subprocess.run(command, env=env, check=False).returncode
+    status = subprocess.run(command, env=env, check=False,
+                            pass_fds=(lock_fd,), start_new_session=True).returncode
     duration = round(time.monotonic() - start, 2)
     if status != 0:
         raise CertificationError(
@@ -185,7 +189,19 @@ def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     # Otherwise a certificate issued by an earlier run could remain active.
     if getattr(args, "attestations_dir", None) is None:
         raise CertificationError("--attestations-dir is required for certify")
+    timeout = getattr(args, "lock_timeout", 300.0)
+    if timeout < 0:
+        raise CertificationError("--lock-timeout must be nonnegative")
 
+    # Capture, revocation, dbt run/test and final proof share ONE exclusive
+    # lock; never nest the coordinated dbt gateway here (it would deadlock).
+    from scripts.build_candidate_fact_partition import warehouse_write_lock
+    with warehouse_write_lock(db_path, timeout=timeout) as handle:
+        return _certify_locked(args, db_path, root, lock_fd=handle.fileno())
+
+
+def _certify_locked(args: argparse.Namespace, db_path: Path, root: Path,
+                    *, lock_fd: int) -> dict:
     cycle = f"{args.year}:{args.election_type}"
     require_cycle(root, cycle)
     before = snapshot_other_cycles(db_path, cycle)
@@ -204,7 +220,7 @@ def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     print(f"Certifying {cycle} in {db_path}", flush=True)
     run_seconds = dbt_call(
         args.dbt, "run", db_path, args.memory_limit, vars_string,
-        args.run_timeout,
+        args.run_timeout, lock_fd=lock_fd,
     )
     after = snapshot_other_cycles(db_path, cycle)
     if before != after:
@@ -220,7 +236,7 @@ def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     before_output = output_signature(db_path, cycle) if before_inputs is not None else None
     test_seconds = dbt_call(
         args.dbt, "test", db_path, args.memory_limit, vars_string,
-        args.test_timeout,
+        args.test_timeout, lock_fd=lock_fd,
     )
     if snapshot_other_cycles(db_path, cycle) != before:
         raise CertificationError("Unselected cycles changed during tests")
@@ -268,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     one.add_argument("--memory-limit", default="4GB")
     one.add_argument("--run-timeout", type=int, default=600)
     one.add_argument("--test-timeout", type=int, default=600)
+    one.add_argument("--lock-timeout", type=float, default=300.0)
     args = parser.parse_args(argv)
     db_path = args.db.expanduser().resolve(strict=False)
     root = args.source_root.expanduser().resolve(strict=False)
