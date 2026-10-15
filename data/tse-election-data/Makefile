@@ -430,29 +430,19 @@ clean: ## Remove generated dbt artifacts
 	  $(DBT_DIR)/target \
 	  $(DBT_DIR)/dbt_packages \
 	  $(DBT_DIR)/logs
-clean-warehouse: ## Remove generated DuckDB warehouse
-	rm -f '$(DUCKDB_PATH_ABS)'
-	rm -rf '$(DUCKDB_PATH_ABS).tmp'
-clean-all: ## DESTRUCTIVE: remove all generated local state (CONFIRM=1)
+clean-warehouse: ## Delete DuckDB under the warehouse lock and rotate proof epoch
+	$(PYTHON) scripts/warehouse_lifecycle.py warehouse \
+	  --db '$(DUCKDB_PATH_ABS)'
+clean-all: ## DESTRUCTIVE: coordinated local cleanup (CONFIRM=1)
 	@test "$(CONFIRM)" = "1" || { \
 	  echo 'Refusing clean-all without CONFIRM=1'; \
 	  exit 2; \
 	}
-	@root='$(PROJECT_ROOT_ABS)'; \
-	for path in \
-	  '$(RAW_ROOT_ABS)' \
-	  '$(DUCKDB_PATH_ABS)' \
-	  '$(CANDIDATE_FACT_ROOT_ABS)'; do \
-	  case "$$path" in \
-	    "$$root"/*) ;; \
-	    *) echo "Refusing path outside project: $$path"; exit 2 ;; \
-	  esac; \
-	done
-	rm -rf \
-	  '$(RAW_ROOT_ABS)' \
-	  '$(DUCKDB_PATH_ABS)' \
-	  '$(CANDIDATE_FACT_ROOT_ABS)' \
-	  $(DBT_DIR)/target \
-	  $(DBT_DIR)/dbt_packages \
-	  $(DBT_DIR)/logs \
-	  .venv
+	$(PYTHON) scripts/warehouse_lifecycle.py all --confirm \
+	  --db '$(DUCKDB_PATH_ABS)' \
+	  --project-root '$(PROJECT_ROOT_ABS)' \
+	  --raw-root '$(RAW_ROOT_ABS)' \
+	  --fact-root '$(CANDIDATE_FACT_ROOT_ABS)' \
+	  --artifacts-root '$(DBT_ARTIFACTS_ROOT_ABS)' \
+	  --dbt-dir '$(abspath $(DBT_DIR))' \
+	  --venv '$(abspath .venv)'

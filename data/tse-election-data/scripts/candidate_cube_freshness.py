@@ -16,6 +16,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts.warehouse_lifecycle import lifecycle_epoch
+
 MODEL = "cube_candidate_performance_municipality"
 DIMENSIONS = ("dim_candidate", "dim_geography")
 FORMAT_VERSION = 1
@@ -166,6 +168,7 @@ def issue_certificate(directory: Path, db_path: Path, root: Path, cycle: str,
     record = {
         "version": FORMAT_VERSION, "cycle": cycle,
         "db": str(Path(db_path).resolve()), "source_root": str(Path(root).resolve()),
+        "lifecycle_epoch": lifecycle_epoch(db_path),
         "certified_at_utc": datetime.now(timezone.utc).isoformat(),
         "input": inputs, "output": output,
         "contracts": ["assert_cube_candidate_vote_conservation",
@@ -202,6 +205,8 @@ def audit_freshness(db_path: Path, root: Path, directory: Path,
                 certificate.get("source_root") != str(Path(root).resolve()) or
                 certificate.get("cycle") != cycle):
                 raise FreshnessError("attestation belongs to a different database/root/cycle")
+            if certificate.get("lifecycle_epoch") != lifecycle_epoch(db_path):
+                raise FreshnessError("warehouse lifecycle changed; recertification required")
             if certificate.get("input") != input_signature(db_path, root, cycle):
                 raise FreshnessError("source Parquet or dimensions changed")
             if certificate.get("output") != output_signature(db_path, cycle):
