@@ -139,6 +139,7 @@ def build_and_publish(
             db_path, fact_root, year, election_type,
             expected_generation=expected_generation,
             lock_timeout=publication_lock_timeout,
+            borrowed_warehouse_lock_fd=lock.fileno(),
         )
 
 
