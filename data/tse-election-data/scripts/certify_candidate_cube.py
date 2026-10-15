@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -86,6 +87,49 @@ def validate_coverage(physical: set[str], materialized: set[str]) -> None:
         raise CertificationError(
             f"History incomplete: missing={missing}; unexpected={unexpected}"
         )
+
+
+@contextmanager
+def guarded_cube_audit_locks(db_path: Path, root: Path, *, timeout: float = 30.0):
+    """Hold shared warehouse and all published partition locks for an audit.
+
+    The warehouse lock is acquired BEFORE discovering the physical cycles,
+    preventing a cooperative publisher from introducing/removing cycles between
+    discovery and certification. Partition locks are then acquired in sorted
+    cycle order. The whole operation shares one monotonic timeout deadline.
+    No missing publication directory is created. POSIX flock is cooperative.
+    """
+    # Reuse the existing GG-009 shared-fcntl mechanism, not a second lock API.
+    from scripts.graph_guarded_read import _shared_flock
+
+    if timeout < 0:
+        raise CertificationError("--lock-timeout must be nonnegative")
+    db_path = Path(db_path).resolve(strict=False)
+    root = Path(root).resolve(strict=False)
+    if not db_path.parent.is_dir():
+        raise CertificationError(f"Warehouse directory does not exist: {db_path.parent}")
+    deadline = time.monotonic() + timeout
+    with ExitStack() as held:
+        def acquire(path: Path) -> None:
+            try:
+                held.enter_context(_shared_flock(path, deadline))
+            except TimeoutError as exc:
+                raise TimeoutError(f"Timed out acquiring candidate audit lock: {path}") from exc
+
+        acquire(db_path.with_name(db_path.name + ".build.lock"))
+        # Destructive cleanup is now fenced. Recheck existence UNDER the lock.
+        if not db_path.is_file():
+            raise CertificationError(f"DuckDB path does not exist: {db_path}")
+        physical = available_cycles(root)
+        for cycle in sorted(physical):
+            year, kind = cycle.split(":")
+            partition = root / f"election_type={kind}" / f"year={year}"
+            if not partition.is_dir():
+                raise CertificationError(f"Published partition does not exist: {partition}")
+            acquire(partition / ".publish.lock")
+        if physical != available_cycles(root):
+            raise CertificationError("Physical cycles changed during audit lock acquisition")
+        yield physical
 
 
 def db_connection(path: Path):
@@ -182,6 +226,20 @@ def audit(db_path: Path, root: Path) -> dict:
     }
 
 
+def guarded_freshness_audit(db_path: Path, root: Path, attestations_dir: Path,
+                            *, timeout: float = 30.0) -> dict:
+    """Authorize all published cube cycles from one cooperatively fenced view."""
+    with guarded_cube_audit_locks(db_path, root, timeout=timeout) as physical:
+        coverage = audit(db_path, root)
+        if set(coverage["cycles"]) != physical:
+            raise CertificationError("Published cycle coverage changed during audit")
+        freshness = audit_freshness(db_path, root, attestations_dir, physical)
+        if physical != available_cycles(root):
+            raise CertificationError("Physical cycles changed during freshness audit")
+        print("PASS: all published candidate cycles have current attestation")
+        return {**coverage, **freshness}
+
+
 def certify(args: argparse.Namespace, db_path: Path, root: Path) -> dict:
     if args.year <= 0:
         raise CertificationError("Year must be positive")
@@ -276,7 +334,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="Directory for per-cycle freshness certificates; required for audit-freshness")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("audit", help="Read-only: check every physical cycle has a nonempty table partition")
-    sub.add_parser("audit-freshness", help="Fail-closed check of physical sources, dimensions and cuboids")
+    freshness_audit = sub.add_parser(
+        "audit-freshness", help="Cooperatively guarded freshness of all published cube cycles"
+    )
+    freshness_audit.add_argument("--lock-timeout", type=float, default=30.0)
     one = sub.add_parser("certify", help="Mutates selected cube cycle and runs exactly two dbt tests")
     one.add_argument("--year", type=int, required=True)
     one.add_argument("--election-type", choices=("general", "municipal"), required=True)
@@ -296,11 +357,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.action == "audit-freshness":
             if args.attestations_dir is None:
                 raise CertificationError("--attestations-dir is required for audit-freshness")
-            coverage = audit(db_path, root)
-            freshness = audit_freshness(db_path, root, args.attestations_dir,
-                                        set(coverage["cycles"]))
-            print("PASS: all published candidate cycles have current attestation")
-            result = {**coverage, **freshness}
+            result = guarded_freshness_audit(
+                db_path, root, args.attestations_dir, timeout=args.lock_timeout
+            )
         else:
             if args.run_timeout <= 0 or args.test_timeout <= 0:
                 raise CertificationError("Timeouts must be positive")

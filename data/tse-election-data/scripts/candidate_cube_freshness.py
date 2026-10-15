@@ -195,8 +195,8 @@ def audit_freshness(db_path: Path, root: Path, directory: Path,
     for cycle in sorted(cycles):
         path = certificate_path(directory, cycle)
         try:
-            if not path.is_file():
-                raise FreshnessError("missing attestation")
+            if not path.is_file() or path.is_symlink():
+                raise FreshnessError("missing attestation or invalid certificate path")
             with path.open(encoding="utf8") as stream:
                 certificate = json.load(stream)
             if certificate.get("version") != FORMAT_VERSION:
