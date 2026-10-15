@@ -1,0 +1,71 @@
+version: 2
+models:
+  - name: cube_candidate_performance_municipality
+    description: >
+      Partition-replace derived snapshot table refreshed per election cycle after
+      its candidate Parquet or dimension parents change. Partial loads are not
+      complete history. Candidate nominal votes aggregated over zones at a single event/round/
+      office/municipality/transit slice. Ranking is by NOMINAL VOTES only,
+      never a legal elected-result determination; observed share is not a
+      turnout denominator and is not additive across contests.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, candidate_id]
+    columns:
+      - name: cycle_id
+        tests: [not_null]
+      - name: election_id
+        tests: [not_null]
+      - name: round_number
+        tests: [not_null]
+      - name: uf
+        tests: [not_null]
+      - name: municipality_code
+        tests: [not_null]
+      - name: office_code
+        tests: [not_null]
+      - name: is_transit_vote
+        tests: [not_null]
+      - name: candidate_id
+        tests: [not_null]
+      - name: nominal_valid_votes
+        tests: [not_null]
+      - name: candidate_matched
+        tests: [not_null]
+      - name: geography_matched
+        tests: [not_null]
+  - name: cube_party_performance_municipality
+    description: >
+      Party valid votes at event/round/office/municipality/transit grain;
+      separates nominal votes, base legend votes, total legend votes and
+      combined party valid votes, preserving the exact fact measures.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, party_number]
+    columns:
+      - name: cycle_id
+        tests: [not_null]
+      - name: election_id
+        tests: [not_null]
+      - name: round_number
+        tests: [not_null]
+      - name: uf
+        tests: [not_null]
+      - name: municipality_code
+        tests: [not_null]
+      - name: office_code
+        tests: [not_null]
+      - name: is_transit_vote
+        tests: [not_null]
+      - name: party_number
+        tests: [not_null]
+      - name: nominal_valid_votes
+        tests: [not_null]
+      - name: party_valid_votes
+        tests: [not_null]
+      - name: party_matched
+        tests: [not_null]
+      - name: geography_matched
+        tests: [not_null]

@@ -31,7 +31,9 @@ def arg(key):
 if '--target-path' not in args or '--log-path' not in args:
     raise SystemExit('missing isolated dbt artifact flags')
 target, logs = arg('--target-path'), arg('--log-path')
-spills = pathlib.Path(os.environ['TSE_DUCKDB_TEMP_DIRECTORY'])
+if 'TSE_DUCKDB_TEMP_DIRECTORY' in os.environ:
+    raise SystemExit('obsolete spill override passed to dbt')
+spills = pathlib.Path(os.environ['TSE_DUCKDB_PATH'] + '.tmp')
 for p in [target, logs, spills]:
     if not p.is_absolute():
         raise SystemExit('non-absolute per-run path')
@@ -94,7 +96,7 @@ class DbtRunIsolationTests(unittest.TestCase):
         root = db.with_name(f'.{db.name}.dbt-runs')
         return sorted(root.glob('*/target/manifest.json'))
 
-    def test_each_execution_has_unique_target_log_and_spill_directories(self):
+    def test_each_execution_has_unique_artifacts_and_database_scoped_spill(self):
         job.build_and_publish(**self.config())
         job.build_and_publish(**self.config())
         files = self.manifests(self.db)
@@ -104,8 +106,8 @@ class DbtRunIsolationTests(unittest.TestCase):
         for payload in payloads:
             self.assertTrue((Path(payload['logs']) / 'dbt.log').is_file())
             self.assertTrue((Path(payload['spills']) / 'spill.marker').is_file())
+            self.assertEqual(payload['spills'], str(self.db) + '.tmp')
             self.assertEqual(Path(payload['target']).parent, Path(payload['logs']).parent)
-            self.assertEqual(Path(payload['logs']).parent, Path(payload['spills']).parent)
             self.assertEqual(payload['year'], 2026)
         self.assertFalse((self.project / 'target').exists())
         self.assertFalse((self.project / 'logs').exists())
@@ -170,6 +172,9 @@ class DbtRunIsolationTests(unittest.TestCase):
         [first] = self.manifests(self.db)
         [second] = self.manifests(db2)
         self.assertNotEqual(first.parent, second.parent)
+        self.assertNotEqual(
+            json.loads(first.read_text())['spills'],
+            json.loads(second.read_text())['spills'])
 
     def test_makefile_exposes_isolated_artifact_root(self):
         makefile = (Path(__file__).resolve().parents[1] / 'Makefile').read_text()

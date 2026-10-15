@@ -1,3 +1,4 @@
 tse_dbt/target/
 tse_dbt/dbt_packages/
 tse_dbt/logs/
+tse_dbt/.user.yml

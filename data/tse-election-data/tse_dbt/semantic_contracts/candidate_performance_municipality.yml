@@ -1,0 +1,16 @@
+version: 1
+cube: cube_candidate_performance_municipality
+status: implemented_proposed
+base_fact: fact_candidate_votes
+grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, candidate_id]
+measures:
+  nominal_valid_votes: {aggregation: sum, additive_within_slice: true}
+  candidate_share_of_observed_nominal_votes:
+    formula: 'candidate nominal_valid_votes / sum(candidate nominal_valid_votes in same event/round/municipality/office/transit slice)'
+    aggregation: recompute
+  municipal_candidate_rank: {aggregation: nonadditive, semantics: observed_nominal_rank_not_elected_status}
+constraints:
+  - No inner join that discards missing candidate metadata.
+  - Never multiply vote facts by a many-to-many candidate/geography join.
+  - No election outcome inferred from nominal ranking.
+  - No mixing different contests or mixing electorate denominator with nominal votes.
