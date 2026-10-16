@@ -96,6 +96,18 @@ class RealKillPromotionTests(unittest.TestCase):
         self.assertNotEqual(epoch_after_kill, "unrotated")
         self.assertTrue(Path(str(self.original) + ".build.lock").exists())
 
+        # The journal may lag the rename; status must disclose actual bytes.
+        diagnostic = promotion.status(self.original, timeout=5)
+        self.assertEqual(diagnostic['phase'], 'EPOCH_ROTATED')
+        self.assertTrue(diagnostic['recovery_required'])
+        self.assertEqual(
+            diagnostic['observed_content'],
+            'ORIGINAL' if boundary == 'before_swap' else 'CANDIDATE',
+        )
+        self.assertEqual(
+            diagnostic['journal_phase_matches_content'],
+            boundary == 'before_swap',
+        )
         active_hash = hashlib.sha256(self.original.read_bytes()).hexdigest()
         expected_active = self.old_hash if boundary == "before_swap" else self.new_hash
         self.assertEqual(active_hash, expected_active)

@@ -28,7 +28,7 @@ From the monorepo root:
 
 ```bash
 cd ~/github/experiments/data/tse-election-data
-.venv/bin/python -m unittest discover -s tests -p test_promote_conformed_gold.py -v
+.venv/bin/python -m unittest discover -s tests -p 'test_promote_conformed_gold*.py' -v
 
 .venv/bin/python scripts/promote_conformed_gold.py preflight \
   --original "$PWD/data/warehouse/tse_analytics.duckdb" \
@@ -95,6 +95,15 @@ Explicit rollback requires:
 The rollback is refused if main differs from both recorded original and v2
 hashes, the backup digest differs, or WAL is active. This is deliberate: no
 blind overwrite of later writes. Use forensic recovery instead of force.
+
+`status` obtains the main cooperative warehouse lock and reports both the
+journal phase and observed active SHA-256 (`observed_content`), lifecycle
+identity, and WAL presence. A process killed after rename but before writing
+the new journal phase can leave the journal at `EPOCH_ROTATED` while the v2
+bytes are already active. The diagnostic flags this discrepancy and sets
+`recovery_required=true`; it does not silently declare the warehouse active.
+An otherwise consistent `ACTIVE_UNCERTIFIED` state still does **not** establish
+production certification, reader isolation, or signed attestation.
 
 POSIX `flock` is **cooperative**. Ad hoc writers and readers can bypass the
 locks. File-level atomic rename does not make a sequence of DuckDB writes,

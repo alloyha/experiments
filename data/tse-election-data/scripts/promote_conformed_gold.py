@@ -269,6 +269,64 @@ def rollback(original: Path, *, timeout: float) -> dict:
         return _rollback_locked(original, record)
 
 
+def status(original: Path, *, timeout: float = 30.0) -> dict:
+    """Observe active bytes and lifecycle under the main cooperative lock.
+
+    The durable journal is a record of the last completed write, not proof of
+    the current database bytes: process death after rename can leave it stale.
+    This diagnostic never certifies the warehouse or authorizes readers.
+    """
+    with maintenance_lock(original, timeout=timeout):
+        record = read_journal(original)
+        if original.is_symlink():
+            raise PromotionError('symlink warehouse in status')
+        current_sha = sha256(original) if original.is_file() else None
+        if current_sha == record['original_sha256']:
+            observed_content = 'ORIGINAL'
+        elif current_sha == record['candidate_sha256']:
+            observed_content = 'CANDIDATE'
+        else:
+            observed_content = 'UNKNOWN'
+
+        # A SIGKILL can leave the phase behind the actual atomic rename.
+        expected_for_phase = {
+            'PREPARED': 'ORIGINAL',
+            'EPOCH_ROTATED': 'ORIGINAL',
+            'SWAPPED_UNCERTIFIED': 'CANDIDATE',
+            'ACTIVE_UNCERTIFIED': 'CANDIDATE',
+            'ROLLED_BACK': 'ORIGINAL',
+        }
+        recorded_phase = record['phase']
+        phase_consistent = (
+            recorded_phase in expected_for_phase
+            and observed_content == expected_for_phase[recorded_phase]
+        )
+        observed_epoch = lifecycle_epoch(original)
+        epoch_consistent = (
+            recorded_phase == 'PREPARED'
+            or record.get('lifecycle_epoch') == observed_epoch
+        )
+        wal = Path(str(original) + '.wal')
+        wal_present = wal.exists() or wal.is_symlink()
+        recovery_required = (
+            recorded_phase not in {'ACTIVE_UNCERTIFIED', 'ROLLED_BACK'}
+            or not phase_consistent
+            or not epoch_consistent
+            or wal_present
+        )
+        return {
+            **record,
+            'observed_sha256': current_sha,
+            'observed_content': observed_content,
+            'observed_lifecycle_epoch': observed_epoch,
+            'observed_wal_present': wal_present,
+            'journal_phase_matches_content': phase_consistent,
+            'journal_epoch_matches_current': epoch_consistent,
+            'recovery_required': recovery_required,
+            'status_scope': 'cooperative_observation_only_not_certification',
+        }
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('action', choices=('preflight', 'promote', 'status', 'rollback'))
@@ -287,7 +345,7 @@ def main(argv=None) -> int:
     original = args.original.expanduser().absolute()
     try:
         if args.action == 'status':
-            result = read_journal(original)
+            result = status(original, timeout=args.lock_timeout)
         elif args.action == 'rollback':
             if not (args.ack_quiescent and args.confirm_rollback):
                 raise PromotionError('rollback requires --ack-quiescent and --confirm-rollback')

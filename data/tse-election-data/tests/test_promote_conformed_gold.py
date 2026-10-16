@@ -120,6 +120,54 @@ class GoldPromotionRecoveryTests(unittest.TestCase):
         self.assertEqual(self.original.read_bytes(), b'unknown-post-swap-state')
         self.assertEqual(mod.read_journal(self.original)['phase'], 'ACTIVE_UNCERTIFIED')
 
+    def test_status_observes_active_and_rolled_back_bytes(self):
+        self.activate()
+        journal_before = mod.journal_path(self.original).read_bytes()
+        observed = mod.status(self.original, timeout=2)
+        self.assertEqual(observed['phase'], 'ACTIVE_UNCERTIFIED')
+        self.assertEqual(observed['observed_content'], 'CANDIDATE')
+        self.assertEqual(observed['observed_sha256'], self.ch)
+        self.assertTrue(observed['journal_phase_matches_content'])
+        self.assertTrue(observed['journal_epoch_matches_current'])
+        self.assertFalse(observed['recovery_required'])
+        self.assertEqual(journal_before, mod.journal_path(self.original).read_bytes())
+        mod.rollback(self.original, timeout=2)
+        rolled_back = mod.status(self.original, timeout=2)
+        self.assertEqual(rolled_back['observed_content'], 'ORIGINAL')
+        self.assertEqual(rolled_back['phase'], 'ROLLED_BACK')
+        self.assertFalse(rolled_back['recovery_required'])
+
+    def test_status_detects_stale_journal_after_rename(self):
+        real_write = mod.write_journal
+
+        def crash_after_swap(original, record, **kwargs):
+            if record['phase'] == 'SWAPPED_UNCERTIFIED':
+                raise KeyboardInterrupt('simulated crash after file replacement')
+            return real_write(original, record, **kwargs)
+
+        with mock.patch.object(mod, 'write_journal', side_effect=crash_after_swap):
+            with self.assertRaises(KeyboardInterrupt):
+                self.activate()
+        observed = mod.status(self.original, timeout=2)
+        self.assertEqual(observed['phase'], 'EPOCH_ROTATED')
+        self.assertEqual(observed['observed_content'], 'CANDIDATE')
+        self.assertFalse(observed['journal_phase_matches_content'])
+        self.assertTrue(observed['recovery_required'])
+        self.assertEqual(self.original.read_bytes(), self.new)
+        mod.rollback(self.original, timeout=2)
+        self.assertFalse(mod.status(self.original, timeout=2)['recovery_required'])
+
+    def test_status_flags_unexpected_bytes_and_wal(self):
+        self.activate()
+        self.original.write_bytes(b'external-mutation')
+        observed = mod.status(self.original, timeout=2)
+        self.assertEqual(observed['observed_content'], 'UNKNOWN')
+        self.assertTrue(observed['recovery_required'])
+        Path(str(self.original) + '.wal').write_text('uncoordinated writer')
+        observed = mod.status(self.original, timeout=2)
+        self.assertTrue(observed['observed_wal_present'])
+        self.assertTrue(observed['recovery_required'])
+
     def test_wal_and_hash_drift_fail_closed(self):
         Path(str(self.original) + '.wal').write_text('writer active')
         with self.assertRaisesRegex(mod.PromotionError, 'WAL'):
