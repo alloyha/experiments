@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.warehouse_lifecycle import lifecycle_epoch
+from scripts.write_candidate_fact_partition import fsync_directory
 from scripts.certify_gold_graph_cycle import (
     ASSERTIONS, SCOPED_SOURCES, CYCLE_PATTERN, quote_sql,
     ROOT, MODELS, TESTS, selected_publication, setup_scoped_views,
@@ -159,6 +160,10 @@ def revoke_certificate(directory: Path, cycle: str) -> None:
     archive = path.parent / "revoked"
     archive.mkdir(parents=True, exist_ok=True)
     os.replace(path, archive / f"{path.stem}-{uuid.uuid4().hex}.json")
+    # Persist removal of active authority before persisting the archive.
+    # A worker dying after rename must not leave recoverable old proof.
+    fsync_directory(path.parent)
+    fsync_directory(archive)
 
 
 def issue_certificate(directory: Path, db: Path, source_root: Path,
@@ -181,6 +186,9 @@ def issue_certificate(directory: Path, db: Path, source_root: Path,
             os.fsync(handle.fileno())
         # An atomic hard-link publication is create-only on POSIX systems.
         os.link(tmp, path, follow_symlinks=False)
+        # Hard-link creation is the publication linearization point.
+        # Durably sync the directory before reporting issuance success.
+        fsync_directory(path.parent)
     finally:
         tmp.unlink(missing_ok=True)
     return path
