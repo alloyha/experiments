@@ -11,13 +11,15 @@ from scripts.check_invariant_registry import DEFAULT, ROOT, check_registry
 class InvariantRegistryTests(unittest.TestCase):
     def test_every_implemented_invariant_has_a_positive_and_negative_oracle(self):
         result = check_registry()
-        self.assertEqual(result["implemented"], 11)
-        self.assertEqual(result["planned"], 1)
-        self.assertFalse(result["critical_coverage_complete"])
+        self.assertEqual(result["implemented"], 12)
+        self.assertEqual(result["planned"], 0)
+        self.assertTrue(result["critical_coverage_complete"])
 
-    def test_strict_gate_remains_red_until_critical_gaps_are_closed(self):
-        with self.assertRaisesRegex(ValueError, "GG-012: critical invariant still planned"):
-            check_registry(strict=True)
+    def test_strict_gate_passes_when_every_critical_contract_has_evidence(self):
+        result = check_registry(strict=True)
+        self.assertEqual(result["implemented"], 12)
+        self.assertEqual(result["planned"], 0)
+        self.assertTrue(result["critical_coverage_complete"])
 
     def modified(self, apply):
         with tempfile.TemporaryDirectory() as tmp:

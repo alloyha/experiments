@@ -7,7 +7,8 @@ assertions must be run by the certifying command; proof issuance alone is not
 certification. No persistent warehouse mutation occurs.
 
 IMPORTANT: DuckDB's hash() is *not cryptographic*. This is a change detector,
-not a signed/authenticity proof. GG-009 and GG-012 remain unresolved.
+not a signed/authenticity proof. GG-009/GG-012 cover cooperating
+POSIX-local producers and guarded consumers only. Unguarded audit is diagnostic.
 """
 from __future__ import annotations
 

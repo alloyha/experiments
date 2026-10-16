@@ -96,6 +96,8 @@ invariants:
   - id: GG-012
     family: fail_recovery
     severity: critical
-    status: planned
-    statement: Interrupted materialization or concurrent partition replacement cannot issue a valid graph publication certificate.
-    gap: Graph is not persistently published or certified, and failure-injection tests are not yet written.
+    status: implemented
+    statement: Within cooperating POSIX-local publication boundaries, interrupted graph certification or concurrent physical publication cannot authorize stale or incomplete graph evidence.
+    runtime_check: scripts/graph_freshness.py::certify_with_locks
+    positive_test: tests/test_gg012_graph_crash_falsifiers.py::RealGraphCrashRecoveryTests.test_death_after_revocation_denies_old_authority_then_restart
+    falsifier_test: tests/test_gg012_uncertain_durability.py::UncertainGraphCertificateDurabilityTests.test_failed_post_link_fsync_must_rollback_active_authority

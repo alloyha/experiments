@@ -4,8 +4,9 @@
 POSIX-local filesystems supporting advisory `flock`, atomic rename and `fsync`.
 This **does not** certify arbitrary DuckDB clients, external processes which
 ignore advisory locks, NFS/S3 semantics, or a production-ready graph service.
-GG-012 crash-uncertain publication and restart equivalence remain independent
-critical requirements.
+GG-012 failure/restart conformance is bounded separately in
+`docs/adr/gg012_failure_recovery_conformance.md`; neither contract
+constitutes production graph certification.
 
 ## Existing authoritative protocol
 
@@ -58,7 +59,8 @@ regression is still present: it does **not** replace running the tests.
 Previous isolated worktree evidence: `452 tests ... OK`, invariant registry PASS,
 Medallion DAG PASS, and PR #61 CI successful. **This conformance registry
 amendment requires a new full local run and green CI before integration.**
-The `--strict` registry gate remains red because GG-012 is still planned.
+The registry `--strict` gate is green after bounded GG-012 closure;
+real-cycle production certification remains a separate gate.
 
 ## Exclusions and non-promises
 
