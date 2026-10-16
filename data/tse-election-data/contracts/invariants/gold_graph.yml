@@ -72,9 +72,11 @@ invariants:
   - id: GG-009
     family: concurrency
     severity: critical
-    status: planned
+    status: implemented
     statement: Publication and graph consumption use a common lock/snapshot boundary with freshness validation.
-    gap: Graph projections are lazy views; synchronized consumer gate is not implemented.
+    runtime_check: scripts/graph_guarded_read.py::read_graph
+    positive_test: tests/test_graph_guarded_read.py::GraphReadGuardTests.test_real_cross_process_certified_read
+    falsifier_test: tests/test_graph_dbt_writer_handoff.py::RealDbtGraphHandoffTests.test_guarded_reader_handoff_real_dbt_commit_stales_certificate
   - id: GG-010
     family: source_freshness
     severity: critical
