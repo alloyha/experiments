@@ -3,8 +3,8 @@
 Runs with the existing project test suite and uses only disposable local files.
 No real TSE data, DuckDB scans, or modification of canonical certificates.
 
-This test is intentionally RED against main@671ad42. It records an unresolved
-failure boundary; do not mark GG-012 implemented until a real GREEN follows.
+The test was RED against main@671ad42 and became GREEN after PR #64.
+It bounds transient post-link fsync failure, not permanent device failure.
 """
 from __future__ import annotations
 

@@ -59,7 +59,7 @@ class GG009ConformanceRegistryTests(unittest.TestCase):
         self.assertTrue(resolve_runtime_check(record["runtime_check"], ROOT))
         self.assertTrue(resolve_test(record["positive_test"], ROOT))
         self.assertIn(record["falsifier_test"], EVIDENCE.values())
-        self.assertEqual(check_registry()["planned"], 1)
+        self.assertEqual(check_registry()["planned"], 0)
 
 
 if __name__ == "__main__":
