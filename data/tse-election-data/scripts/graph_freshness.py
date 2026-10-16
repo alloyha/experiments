@@ -187,8 +187,15 @@ def issue_certificate(directory: Path, db: Path, source_root: Path,
         # An atomic hard-link publication is create-only on POSIX systems.
         os.link(tmp, path, follow_symlinks=False)
         # Hard-link creation is the publication linearization point.
-        # Durably sync the directory before reporting issuance success.
-        fsync_directory(path.parent)
+        # Durably sync before reporting issuance success. A failed fsync
+        # leaves the publication outcome uncertain: retract visible authority
+        # while still under the issuer's exclusive cooperative locks.
+        try:
+            fsync_directory(path.parent)
+        except OSError:
+            path.unlink(missing_ok=True)
+            fsync_directory(path.parent)
+            raise
     finally:
         tmp.unlink(missing_ok=True)
     return path
