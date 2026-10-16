@@ -19,6 +19,11 @@ DUCKDB_PATH ?= ./data/warehouse/tse_analytics.duckdb
 CANDIDATE_FACT_ROOT ?= ./data/warehouse/fact_candidate_votes
 CYCLE_CONTRACTS ?= ./contracts/election_cycles.json
 
+# Cycle-specific graph certification is explicit and opt-in.
+GRAPH_CYCLE ?=
+GRAPH_MEMORY_LIMIT ?= 4GB
+GRAPH_ATTESTATIONS_DIR ?= ./data/warehouse/graph_attestations
+
 # Years used by dbt and years refreshed in the current run.
 YEARS ?= 2018
 UPDATE_YEARS ?= $(YEARS)
@@ -74,6 +79,7 @@ DUCKDB_PATH_ABS := $(abspath $(DUCKDB_PATH))
 CANDIDATE_FACT_ROOT_ABS := $(abspath $(CANDIDATE_FACT_ROOT))
 DBT_ARTIFACTS_ROOT ?= $(DUCKDB_PATH).dbt-runs
 DBT_ARTIFACTS_ROOT_ABS := $(abspath $(DBT_ARTIFACTS_ROOT))
+GRAPH_ATTESTATIONS_DIR_ABS := $(abspath $(GRAPH_ATTESTATIONS_DIR))
 
 ENV_STAMP := .venv/.tse-ready
 DBT_DEPS_STAMP := $(DBT_DIR)/dbt_packages/.tse-deps-ready
@@ -141,7 +147,8 @@ DBT_VARS_CMD = \
 	raw-contracts cycle-regressions medallion-contracts dbt-bronze dbt-silver \
 	dbt-gold semantic storage-report prune-cache pr-gate production-gate dbt-build \
 	dbt-full-refresh test-only compile performance-report performance-baseline \
-	pipeline pipeline-backfill clean clean-warehouse clean-all
+	pipeline pipeline-backfill clean clean-warehouse clean-all \
+	invariant-registry-strict graph-cycle-certify
 
 help:
 	@printf 'TSE analytics\n'
@@ -157,8 +164,10 @@ help:
 	@printf '    %-23s %s\n' 'dbt-build' 'Build/test analytics on available raw data'
 	@printf '    %-23s %s\n' 'unit' 'Run Python tests'
 	@printf '    %-23s %s\n' 'medallion-contracts' 'Validate DAG and lineage'
+	@printf '    %-23s %s\n' 'invariant-registry-strict' 'Check 12/12 critical graph contracts'
+	@printf '    %-23s %s\n' 'graph-cycle-certify' 'Certify one prepared real graph cycle (opt-in)'
 	@printf '    %-23s %s\n' 'pr-gate' 'PR contract and dbt gate'
-	@printf '    %-23s %s\n' 'production-gate' 'Full certification; downloads data'
+	@printf '    %-23s %s\n' 'production-gate' 'Warehouse checks; downloads data (graph separate)'
 	@printf '\n  More: make help-all (advanced targets and maintenance)\n'
 	@printf '  Scope: YEARS=%s UPDATE_YEARS=%s\n' '$(YEARS)' '$(UPDATE_YEARS)'
 	@printf '  YEARS=analysis; UPDATE_YEARS=refreshed years (defaults to YEARS).\n'
@@ -320,12 +329,30 @@ cycle-regressions: setup ## Validate election-cycle baselines
 	  --contracts '$(abspath $(CYCLE_CONTRACTS))'
 medallion-contracts: setup ## Validate medallion DAG
 	$(PY) scripts/check_medallion_dag.py
+invariant-registry-strict: setup ## Verify all 12 critical graph invariants are implemented
+	$(PY) scripts/check_invariant_registry.py --strict
+
+# Requires an already-built DuckDB and a published physical Parquet partition.
+# Intentionally separate from production-gate: certification runs expensive SQL
+# only for GRAPH_CYCLE and must never silently prepare or overwrite the source.
+graph-cycle-certify: invariant-registry-strict ## Issue a cycle-scoped Gold graph certificate
+	@test -n '$(GRAPH_CYCLE)' || { \
+	  echo 'GRAPH_CYCLE is required (YYYY:general or YYYY:municipal)'; \
+	  exit 2; \
+	}
+	$(PY) scripts/graph_freshness.py \
+	  --db '$(DUCKDB_PATH_ABS)' \
+	  --source-root '$(CANDIDATE_FACT_ROOT_ABS)' \
+	  --attestations-dir '$(GRAPH_ATTESTATIONS_DIR_ABS)' \
+	  --cycle '$(GRAPH_CYCLE)' \
+	  --memory-limit '$(GRAPH_MEMORY_LIMIT)' \
+	  certify
 pr-gate: scope-contracts unit medallion-contracts dbt-deps ## Fast PR gate
 	@vars="$$($(DBT_VARS_CMD))"; \
 	  $(DBT) build $(DBT_PROJECT_ARGS) \
 	  --exclude 'tag:expensive' \
 	  --vars "$$vars"
-production-gate: scope-contracts ## Full production certification
+production-gate: scope-contracts invariant-registry-strict ## Warehouse checks (graph cycle separate)
 	$(MAKE) --no-print-directory \
 	  unit \
 	  ingest \
