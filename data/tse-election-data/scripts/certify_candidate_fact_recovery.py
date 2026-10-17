@@ -34,6 +34,7 @@ SELECTED_ROWS = (('candidate-A', 11), ('candidate-B', 23))
 UPDATED_ROWS = (('candidate-A', 50), ('candidate-B', 17))
 SOURCE_COLUMNS = ('election_year', 'election_type', 'election_scope', 'election_id',
                   'election_code', 'round_number', 'uf', 'office_code',
+                  'municipality_code', 'is_transit_vote', 'zone',
                   'candidate_id', 'nominal_valid_votes')
 
 
@@ -68,12 +69,15 @@ def publish_table(conn: object, *, year: int, cycle: str, records: tuple) -> Non
                CAST(NULL AS INTEGER) AS round_number,
                CAST(NULL AS VARCHAR) AS uf,
                CAST(NULL AS VARCHAR) AS office_code,
+               CAST(NULL AS VARCHAR) AS municipality_code,
+               CAST(NULL AS BOOLEAN) AS is_transit_vote,
+               CAST(NULL AS INTEGER) AS zone,
                CAST(NULL AS VARCHAR) AS candidate_id,
                CAST(NULL AS BIGINT) AS nominal_valid_votes WHERE false''')
     rows = [(year, cycle, 'national' if cycle == CYCLE else 'municipal',
-             f'{year}:{cycle}', '100', 1, 'GO', '6', rid, votes)
+             f'{year}:{cycle}', '100', 1, 'GO', '6', '5208707', False, 10, rid, votes)
             for rid, votes in records]
-    conn.executemany('INSERT INTO main.int_candidate_fact_partition VALUES (?,?,?,?,?,?,?,?,?,?)', rows)
+    conn.executemany('INSERT INTO main.int_candidate_fact_partition VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', rows)
 
 
 def seed_candidate_dimension(conn: object) -> None:
