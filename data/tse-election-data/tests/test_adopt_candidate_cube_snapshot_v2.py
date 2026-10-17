@@ -10,12 +10,11 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import sys
-import types
 import unittest
 from unittest.mock import patch
 
 from scripts import adopt_candidate_cube_snapshot_v2 as adoption
+from scripts import candidate_cube_freshness as freshness
 from scripts import consolidate_candidate_cube_transfer as evidence
 from scripts import preflight_candidate_cube_promotion_v2 as gate
 from scripts import promote_candidate_cube_v2 as promoter
@@ -40,7 +39,6 @@ class AdoptionTests(unittest.TestCase):
                           validator=lambda _path, _anchor: None)
 
     def fake_freshness(self, fail_cycle=None):
-        fake = types.ModuleType('scripts.candidate_cube_freshness')
         def signature(db, root, cycle):
             if cycle == fail_cycle:
                 raise RuntimeError('injected failed fingerprint')
@@ -53,11 +51,27 @@ class AdoptionTests(unittest.TestCase):
         def issue(folder, db, root, cycle, inputs, outputs):
             certpath(folder, cycle).write_text(json.dumps({'cycle': cycle, 'db': str(db),
                                     'input': inputs, 'output': outputs}), encoding='utf8')
-        fake.input_signature = signature
-        fake.output_signature = output
-        fake.certificate_path = certpath
-        fake.issue_certificate = issue
-        return patch.dict(sys.modules, {'scripts.candidate_cube_freshness': fake})
+        # Patch the actual, already-imported module rather than sys.modules.
+        # A full unittest discovery run may have cached it on the scripts
+        # package, so swapping sys.modules alone does not intercept imports.
+        return patch.multiple(
+            freshness,
+            input_signature=signature,
+            output_signature=output,
+            certificate_path=certpath,
+            issue_certificate=issue,
+        )
+
+    def test_freshness_mock_handles_preimported_module_and_restores(self):
+        # Full unittest discovery imports candidate_cube_freshness before our tests.
+        from scripts import candidate_cube_freshness as cached
+        self.assertIs(cached, freshness)
+        original = cached.input_signature
+        with self.fake_freshness():
+            self.assertIsNot(cached.input_signature, original)
+            actual = cached.input_signature(self.main, self.f.root, '2018:general')
+            self.assertEqual(actual['source'], self.f.cycles['2018:general']['source_signature'])
+        self.assertIs(cached.input_signature, original)
 
     def test_prepared_readiness_passes_but_adoption_denied(self):
         report = adoption.readiness(self.main, timeout=2)
