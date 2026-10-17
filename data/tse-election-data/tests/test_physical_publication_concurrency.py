@@ -33,10 +33,16 @@ class PhysicalPublicationConcurrencyTests(unittest.TestCase):
     def set_votes(self, value):
         with duckdb.connect(str(self.db)) as con:
             con.execute("""
-                create or replace table main.int_candidate_fact_partition
-                (election_year integer, election_type varchar, nominal_votes integer)
+                create or replace table main.int_candidate_fact_partition (
+                    election_year integer, election_type varchar,
+                    election_id integer, round_number integer, uf varchar,
+                    municipality_code varchar, office_code varchar,
+                    is_transit_vote boolean, candidate_id varchar,
+                    zone integer, nominal_votes integer
+                )
             """)
-            con.execute("insert into main.int_candidate_fact_partition values (2026, 'general', ?)", [value])
+            con.execute("""insert into main.int_candidate_fact_partition values
+                (2026, 'general', 1, 1, 'GO', '5208707', '13', false, 'C1', 10, ?)""", [value])
 
     def publish(self, **kwargs):
         return publisher.publish_partition(self.db, self.out, 2026, "general", **kwargs)

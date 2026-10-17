@@ -31,6 +31,10 @@ class WarehouseFencedPublisherTests(unittest.TestCase):
         with duckdb.connect(str(self.db)) as con:
             con.execute("""CREATE TABLE int_candidate_fact_partition AS
                 SELECT 2024 AS election_year, 'municipal' AS election_type,
+                       1 AS election_id, 1 AS round_number,
+                       'GO' AS uf, '5208707' AS municipality_code,
+                       '13' AS office_code, false AS is_transit_vote,
+                       'C1' AS candidate_id, 10 AS zone,
                        31 AS nominal_votes""")
 
     def publish(self, **kwargs):
@@ -97,6 +101,10 @@ class WarehouseFencedPublisherTests(unittest.TestCase):
         with duckdb.connect(str(other)) as con:
             con.execute("""CREATE TABLE int_candidate_fact_partition AS
                 SELECT 2024 AS election_year, 'municipal' AS election_type,
+                       1 AS election_id, 1 AS round_number,
+                       'GO' AS uf, '5208707' AS municipality_code,
+                       '13' AS office_code, false AS is_transit_vote,
+                       'C1' AS candidate_id, 10 AS zone,
                        19 AS nominal_votes""")
         with graph_read_locks(self.db, self.fact_root, "2024:municipal", timeout=0):
             path = publisher.publish_partition(other, other_root, 2024,

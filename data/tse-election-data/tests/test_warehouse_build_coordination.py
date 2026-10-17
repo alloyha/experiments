@@ -39,8 +39,8 @@ if os.getenv('HOLD_UNTIL'):
 if os.getenv('FAIL_BUILD'):
     raise SystemExit(42)
 with duckdb.connect(os.environ['TSE_DUCKDB_PATH']) as con:
-    con.execute('create or replace table main.int_candidate_fact_partition(election_year integer, election_type varchar, nominal_votes integer)')
-    con.execute('insert into main.int_candidate_fact_partition values (?, ?, ?)',
+    con.execute('create or replace table main.int_candidate_fact_partition(election_year integer, election_type varchar, election_id integer, round_number integer, uf varchar, municipality_code varchar, office_code varchar, is_transit_vote boolean, candidate_id varchar, zone integer, nominal_votes integer)')
+    con.execute("insert into main.int_candidate_fact_partition values (?, ?, 1, 1, 'GO', '5208707', '13', false, 'C1', 10, ?)",
                 [variables['incremental_years'][0], variables['incremental_election_types'][0], int(os.getenv('VOTES', '17'))])
 '''
 

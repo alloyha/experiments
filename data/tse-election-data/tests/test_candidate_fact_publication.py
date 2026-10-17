@@ -25,13 +25,19 @@ class CandidateFactPublicationTests(unittest.TestCase):
         with duckdb.connect(str(self.database)) as con:
             con.execute(f"""
                 create or replace table main.{name} (
-                    election_year integer,
-                    election_type varchar,
-                    nominal_votes integer
+                    election_year integer, election_type varchar,
+                    election_id integer, round_number integer, uf varchar,
+                    municipality_code varchar, office_code varchar,
+                    is_transit_vote boolean, candidate_id varchar,
+                    zone integer, nominal_votes integer
                 )
             """)
             if values:
-                con.executemany(f"insert into main.{name} values (?, ?, ?)", values)
+                con.executemany(
+                    f"insert into main.{name} values "
+                    "(?, ?, 1, 1, 'GO', '5208707', '13', false, 'C1', 10, ?)",
+                    values,
+                )
 
     def existing_target(self):
         self.target.parent.mkdir(parents=True, exist_ok=True)

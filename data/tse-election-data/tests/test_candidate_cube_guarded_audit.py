@@ -192,7 +192,13 @@ class RealCubeAuditTests(unittest.TestCase):
             con.execute("CREATE TABLE dim_candidate AS SELECT '2024:municipal'::VARCHAR cycle_id, 1::INTEGER candidate_id")
             con.execute("CREATE TABLE dim_geography AS SELECT '2024:municipal'::VARCHAR cycle_id, 5208707::INTEGER municipality_code")
             con.execute("CREATE TABLE cube_candidate_performance_municipality AS SELECT '2024:municipal'::VARCHAR cycle_id, 17::INTEGER nominal_valid_votes")
-            con.execute("CREATE TABLE int_candidate_fact_partition AS SELECT 2024::INTEGER election_year, 'municipal'::VARCHAR election_type, 17::INTEGER nominal_valid_votes")
+            con.execute("""CREATE TABLE int_candidate_fact_partition AS
+                SELECT 2024::INTEGER election_year, 'municipal'::VARCHAR election_type,
+                       1::INTEGER election_id, 1::INTEGER round_number,
+                       'GO'::VARCHAR uf, '5208707'::VARCHAR municipality_code,
+                       '13'::VARCHAR office_code, false AS is_transit_vote,
+                       'C1'::VARCHAR candidate_id, 10::INTEGER AS "zone",
+                       17::INTEGER nominal_valid_votes""")
         inputs = freshness.input_signature(self.db, self.sources, self.cycle)
         output = freshness.output_signature(self.db, self.cycle)
         freshness.issue_certificate(self.certs, self.db, self.sources, self.cycle,

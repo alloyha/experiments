@@ -12,11 +12,14 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
+import json
 import os
 import sys
 import time
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -91,7 +94,8 @@ def clear_abandoned_staging(partition: Path) -> None:
     Old immutable *.parquet files are intentionally retained: a reader could
     already have resolved an older generation before the pointer was switched.
     """
-    for pattern in (".generation-*.tmp", ".data-parquet-*.link"):
+    for pattern in (".generation-*.tmp", ".data-parquet-*.link",
+                    ".zone-proof-*.tmp"):
         for path in partition.glob(pattern):
             if path.is_file() or path.is_symlink():
                 path.unlink()
@@ -124,6 +128,100 @@ def validate_staged_parquet(
         raise RuntimeError(
             f"Staged parquet schema mismatch: source={source_fields}, parquet={staged_fields}"
         )
+
+
+# Scoped physical partitions have exactly one cycle, so cycle_id is constant.
+# The remaining seven candidate-rollup keys plus zone are required verbatim.
+CANDIDATE_ZONE_KEYS = (
+    "election_id", "round_number", "uf", "municipality_code",
+    "office_code", "is_transit_vote", "candidate_id", "zone",
+)
+ZONE_UNIQUENESS_SQL = """WITH occurrences AS (
+    SELECT election_id, round_number, uf, municipality_code,
+           office_code, is_transit_vote, candidate_id, zone,
+           COUNT(*)::HUGEINT AS n
+    FROM read_parquet(?, hive_partitioning=false)
+    GROUP BY ALL
+)
+SELECT COALESCE(SUM(CASE WHEN zone IS NULL THEN n ELSE 0 END), 0)::HUGEINT,
+       COALESCE(SUM(CASE WHEN zone IS NOT NULL THEN n - 1 ELSE 0 END), 0)::HUGEINT,
+       COALESCE(SUM(n), 0)::HUGEINT,
+       COUNT(*)::HUGEINT
+FROM occurrences"""
+
+
+def prove_staged_zone_uniqueness(
+    con: duckdb.DuckDBPyConnection, staged: Path, expected_rows: int,
+) -> dict:
+    """Exact candidate group/zone gate on staged physical bytes, before swap.
+
+    Fail closed for absent fields, null zones, duplicate group/zone keys, or
+    inconsistent row inventory. Never use COUNT(*) as a fallback for bad data.
+    """
+    columns = {field[0] for field in con.execute(
+        "SELECT * FROM read_parquet(?, hive_partitioning=false) LIMIT 0",
+        [str(staged)],
+    ).description}
+    missing = sorted(set(CANDIDATE_ZONE_KEYS) - columns)
+    if missing:
+        raise RuntimeError(f"Candidate zone publication schema missing: {missing}")
+    null_rows, duplicate_rows, total_rows, group_zone_keys = map(int, con.execute(
+        ZONE_UNIQUENESS_SQL, [str(staged)],
+    ).fetchone())
+    if total_rows != expected_rows or total_rows <= 0 or group_zone_keys <= 0:
+        raise RuntimeError("Candidate zone publication inventory mismatch")
+    if null_rows or duplicate_rows:
+        raise RuntimeError(
+            "Candidate zone uniqueness rejected publication: "
+            f"null_zone_rows={null_rows}, duplicate_nonnull_zone_rows={duplicate_rows}"
+        )
+    return {
+        "source_rows": total_rows,
+        "distinct_group_zone_keys": group_zone_keys,
+        "null_zone_rows": null_rows,
+        "duplicate_nonnull_zone_rows": duplicate_rows,
+    }
+
+
+def persist_immutable_zone_proof(
+    partition: Path, immutable: Path, *, year: int, election_type: str,
+    inventory: dict,
+) -> Path:
+    """Create-only, fsynced evidence bound to one immutable Parquet generation.
+
+    This is a source-publishing prerequisite, NOT graph/cube certification.
+    The sidecar is created *before* the active symlink is atomically switched.
+    An interrupted publisher can leave an orphan generation and sidecar, never
+    a half-validated active publication.
+    """
+    digest = hashlib.sha256()
+    with immutable.open("rb") as source:
+        for block in iter(lambda: source.read(8 * 1024 * 1024), b""):
+            digest.update(block)
+    record = {
+        "schema_version": 1,
+        "scope": "candidate_physical_zone_uniqueness_not_graph_freshness",
+        "result": "PASS",
+        "cycle": f"{year}:{election_type}",
+        "generation": immutable.name,
+        "parquet_sha256": digest.hexdigest(),
+        "guard_sql_sha256": hashlib.sha256(ZONE_UNIQUENESS_SQL.encode()).hexdigest(),
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(),
+        **inventory,
+    }
+    target = immutable.with_suffix(".zone-uniqueness.json")
+    temporary = partition / f".zone-proof-{uuid.uuid4().hex}.tmp"
+    try:
+        with temporary.open("x", encoding="utf-8") as stream:
+            json.dump(record, stream, sort_keys=True, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, target)  # create-only: never overwrite a proof
+        fsync_directory(partition)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return target
 
 
 def _publish_partition_locked(
@@ -198,10 +296,17 @@ def _publish_partition_locked(
                     to '{escaped}' (format parquet, compression zstd)
                 """)
                 validate_staged_parquet(con, staged, row_count)
+                # Mandatory proof on the actual exported bytes; any failure
+                # leaves the previous public pointer untouched.
+                zone_proof = prove_staged_zone_uniqueness(con, staged, row_count)
 
             fsync_file(staged)
             os.replace(staged, immutable)
             fsync_directory(partition)
+            persist_immutable_zone_proof(
+                partition, immutable, year=year,
+                election_type=election_type, inventory=zone_proof,
+            )
 
             # Preserve the PR35 regular file as an immutable, hard-linked
             # generation while migrating its name to the new pointer layout.
