@@ -148,7 +148,7 @@ DBT_VARS_CMD = \
 	dbt-gold semantic storage-report prune-cache pr-gate production-gate dbt-build \
 	dbt-full-refresh test-only compile performance-report performance-baseline \
 	pipeline pipeline-backfill clean clean-warehouse clean-all \
-	invariant-registry-strict graph-cycle-certify
+	invariant-registry-strict graph-cycle-certify data-contracts-lint data-contracts-dbt-plan
 
 help:
 	@printf 'TSE analytics\n'
@@ -164,6 +164,8 @@ help:
 	@printf '    %-23s %s\n' 'dbt-build' 'Build/test analytics on available raw data'
 	@printf '    %-23s %s\n' 'unit' 'Run Python tests'
 	@printf '    %-23s %s\n' 'medallion-contracts' 'Validate DAG and lineage'
+	@printf '    %-23s %s\n' 'data-contracts-lint' 'Validate ODCS data contracts'
+	@printf '    %-23s %s\n' 'data-contracts-dbt-plan' 'Preview ODCS/dbt sync without writing'
 	@printf '    %-23s %s\n' 'invariant-registry-strict' 'Check 12/12 critical graph contracts'
 	@printf '    %-23s %s\n' 'graph-cycle-certify' 'Certify one prepared real graph cycle (opt-in)'
 	@printf '    %-23s %s\n' 'pr-gate' 'PR contract and dbt gate'
@@ -312,6 +314,31 @@ compile: dbt-deps ## Compile graph using fixtures
 # ---------------------------------------------------------------------------
 # Quality contracts and certification
 # ---------------------------------------------------------------------------
+# Standalone and read-only preview: never run dbt tests outside the coordinated
+# warehouse writer gateway. Tool dependencies remain outside the project venv.
+DATACONTRACT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.3 datacontract
+ODCS_CYCLE_CONTRACT := contracts/odcs/dim_election_cycle.odcs.yaml
+
+data-contracts-lint: ## Validate the ODCS pilot contract without reading warehouse data
+	$(DATACONTRACT) lint '$(ODCS_CYCLE_CONTRACT)'
+
+data-contracts-dbt-plan: data-contracts-lint ## Preview non-destructive dbt model synchronization
+	$(DATACONTRACT) dbt sync '$(ODCS_CYCLE_CONTRACT)' --project-dir '$(DBT_DIR)' --dry-run --no-prune
+
+# Re-run real synchronization ONLY on a disposable project copy, then diff all
+# models byte-for-byte. Dry-run alone does not detect committed schema drift.
+.PHONY: data-contracts-dbt-check
+data-contracts-dbt-check: data-contracts-dbt-plan ## Assert ODCS/dbt schema has no drift
+	@set -eu; \
+	  scratch=$$(mktemp -d /tmp/tse-odcs-dbt-check.XXXXXX); \
+	  trap 'rm -rf "$$scratch"' EXIT; \
+	  mkdir -p "$$scratch/tse_dbt"; \
+	  cp '$(DBT_DIR)/dbt_project.yml' "$$scratch/tse_dbt/"; \
+	  cp -a '$(DBT_DIR)/models' "$$scratch/tse_dbt/"; \
+	  $(DATACONTRACT) dbt sync '$(abspath $(ODCS_CYCLE_CONTRACT))' --project-dir "$$scratch/tse_dbt" --no-prune; \
+	  $(PY) scripts/check_odcs_dbt_sync.py \
+	    --committed '$(DBT_DIR)/models' --generated "$$scratch/tse_dbt/models"
+
 scope-contracts: setup ## Validate analytical/incremental scope
 	$(PY) -m scripts.check_scope_contracts \
 	  --years "$(YEARS)" \

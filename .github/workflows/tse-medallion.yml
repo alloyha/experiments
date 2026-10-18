@@ -17,4 +17,7 @@ jobs:
       - run: make setup
       - run: make unit
       - run: make medallion-contracts
+      - run: make data-contracts-lint
+      - run: make data-contracts-dbt-plan
+      - run: make data-contracts-dbt-check
       - run: make compile
