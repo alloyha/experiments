@@ -56,7 +56,7 @@ Gold sha256 pinned. Start with small municipal data to smoke the profiler:
 ```bash
 ROOT="$PWD/data/warehouse"
 GOLD_SHA=564ba3f7778c3483704bb435ab26eb3ac1209e4f5b5b9d62c39ac03d4bd64c8a
-.venv/bin/python scripts/benchmark_graph_candidate_conservation.py \
+.venv/bin/python research/benchmark_graph_candidate_conservation.py \
   --db "$ROOT/tse_analytics.duckdb" \
   --source-root "$ROOT/fact_candidate_votes" \
   --expected-main-sha256 "$GOLD_SHA" \
@@ -68,7 +68,7 @@ After confirming the profiler and both variants return zero differences,
 repeat with a **new output** (avoid heavy overlap) for general elections:
 
 ```bash
-.venv/bin/python scripts/benchmark_graph_candidate_conservation.py \
+.venv/bin/python research/benchmark_graph_candidate_conservation.py \
   --db "$ROOT/tse_analytics.duckdb" \
   --source-root "$ROOT/fact_candidate_votes" \
   --expected-main-sha256 "$GOLD_SHA" \
@@ -159,7 +159,7 @@ minutes, isolate `signed` without re-executing the expensive comparison:
 ```bash
 ROOT="$PWD/data/warehouse"
 OUT="$(mktemp -d /tmp/tse-graph-signed.XXXXXX)"
-.venv/bin/python scripts/benchmark_graph_candidate_conservation.py \
+.venv/bin/python research/benchmark_graph_candidate_conservation.py \
   --db "$ROOT/tse_analytics.duckdb" \
   --source-root "$ROOT/fact_candidate_votes" \
   --expected-main-sha256 564ba3f7778c3483704bb435ab26eb3ac1209e4f5b5b9d62c39ac03d4bd64c8a \
@@ -220,7 +220,7 @@ cd ~/github/experiments/data/tse-election-data
 ROOT="$PWD/data/warehouse"
 GOLD_SHA=564ba3f7778c3483704bb435ab26eb3ac1209e4f5b5b9d62c39ac03d4bd64c8a
 OUT="$(mktemp -d /tmp/tse-graph-countstar.XXXXXX)"
-.venv/bin/python scripts/benchmark_graph_candidate_conservation.py \
+.venv/bin/python research/benchmark_graph_candidate_conservation.py \
   --db "$ROOT/tse_analytics.duckdb" \
   --source-root "$ROOT/fact_candidate_votes" \
   --expected-main-sha256 "$GOLD_SHA" \

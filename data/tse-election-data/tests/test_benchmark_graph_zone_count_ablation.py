@@ -7,8 +7,8 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from scripts import benchmark_graph_zone_count_ablation as ablation
-from scripts import benchmark_graph_candidate_conservation as bench
+from research import benchmark_graph_zone_count_ablation as ablation
+from research import benchmark_graph_candidate_conservation as bench
 
 try:
     import duckdb

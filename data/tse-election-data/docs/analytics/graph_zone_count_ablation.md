@@ -20,7 +20,7 @@ SHA=564ba3f7778c3483704bb435ab26eb3ac1209e4f5b5b9d62c39ac03d4bd64c8a
 OUT="$(mktemp -d /tmp/tse-zone-ablation-parent.XXXXXX)"
 
 # Small first falsifier: only AC within the physical 2018 Parquet publication.
-.venv/bin/python scripts/benchmark_graph_zone_count_ablation.py \
+.venv/bin/python research/benchmark_graph_zone_count_ablation.py \
   --db "$ROOT/tse_analytics.duckdb" \
   --source-root "$ROOT/fact_candidate_votes" \
   --expected-main-sha256 "$SHA" \
