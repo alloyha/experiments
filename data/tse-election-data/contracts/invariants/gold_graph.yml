@@ -33,7 +33,7 @@ invariants:
     family: additive_measures
     severity: critical
     status: implemented
-    statement: Candidate vote edges conserve every measure at full contest and candidate grain (EXCEPT ALL).
+    statement: Candidate vote edges conserve every measure at full contest and candidate grain (exact signed multiset reconciliation).
     sql_assertion: tse_dbt/tests/assert_graph_candidate_vote_conservation.sql
     positive_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_graph_projection_conserves_relationships
     falsifier_test: tests/test_gold_graph_invariants.py::GoldGraphTests.test_candidate_measure_mutation_detected
