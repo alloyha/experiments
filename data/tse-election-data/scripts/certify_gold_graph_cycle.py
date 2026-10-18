@@ -131,6 +131,15 @@ def run(args) -> dict:
         if not args.execute:
             print("PLAN-ONLY: SQL assertions were not executed", flush=True)
             return report
+        # This is the active source's full exact gate, not a historical summary
+        # or publisher sidecar. Graph COUNT(*) requires non-null unique zones.
+        # Graph certification executes under the warehouse/partition locks.
+        from scripts import audit_graph_candidate_zone_history as history
+        rows = history.check_physical_scope(con, parquet, year, kind)
+        report["zone_uniqueness"] = history.check_exact_uniqueness(
+            con, parquet, expected_rows=rows,
+        )
+        print(f"PASS: active candidate zone uniqueness ({rows} rows)", flush=True)
         for name in selected:
             sql = render(TESTS / f"assert_graph_{name}.sql", year=year, election_type=kind)
             started = time.monotonic()

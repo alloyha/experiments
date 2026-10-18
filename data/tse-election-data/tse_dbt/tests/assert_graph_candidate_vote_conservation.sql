@@ -4,7 +4,7 @@ with expected_rollup as (
     select cycle_id, election_id, round_number, uf, municipality_code,
         office_code, is_transit_vote, candidate_id,
         sum(nominal_valid_votes) as votes, count(*) as rows,
-        count(distinct zone) as zones
+        count(*) as zones
     from {{ ref('fact_candidate_votes') }}
     where {{ incremental_partition_predicate('election_year', 'election_type') }}
       and {{ incremental_partition_predicate('year', 'election_type') }}
@@ -28,8 +28,27 @@ with expected_rollup as (
     where edge_type = 'VOTED_FOR_CANDIDATE'
       and {{ incremental_partition_predicate("cast(split_part(cycle_id, ':', 1) as integer)", "split_part(cycle_id, ':', 2)") }}
 )
-(select 'missing_or_changed' as issue, * from expected
- except all select 'missing_or_changed', * from actual)
-union all
-(select 'unexpected_or_changed' as issue, * from actual
- except all select 'unexpected_or_changed', * from expected)
+-- Signed multiset reconciliation. Each row contributes +1/-1; grouping
+-- includes all ten typed attributes, preserving NULL and duplicate semantics.
+, combined as (
+    select source_id, target_id, cycle_id, election_id, round_number,
+        office_code, is_transit_vote, nominal_valid_votes, zone_rows, zone_count,
+        1::HUGEINT as multiplicity_delta from expected
+    union all
+    select source_id, target_id, cycle_id, election_id, round_number,
+        office_code, is_transit_vote, nominal_valid_votes, zone_rows, zone_count,
+        (-1)::HUGEINT as multiplicity_delta from actual
+), violations as (
+    select source_id, target_id, cycle_id, election_id, round_number,
+        office_code, is_transit_vote, nominal_valid_votes, zone_rows, zone_count,
+        sum(multiplicity_delta) as signed_multiplicity
+    from combined
+    group by all
+    having sum(multiplicity_delta) <> 0
+)
+select case when signed_multiplicity > 0 then 'missing_or_changed'
+            else 'unexpected_or_changed' end as issue,
+       source_id, target_id, cycle_id, election_id, round_number,
+       office_code, is_transit_vote, nominal_valid_votes, zone_rows, zone_count,
+       abs(signed_multiplicity) as differing_rows
+from violations

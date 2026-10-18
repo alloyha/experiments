@@ -8,7 +8,7 @@ with candidate_vote_rollup as (
     select cycle_id, election_id, round_number, uf, municipality_code,
         office_code, is_transit_vote, candidate_id,
         sum(nominal_valid_votes) as nominal_valid_votes,
-        count(*) as zone_rows, count(distinct zone) as zone_count
+        count(*) as zone_rows, count(*) as zone_count
     from {{ ref('fact_candidate_votes') }}
     group by all
 ),
