@@ -1,0 +1,31 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:dim_election_cycle
+name: dim_election_cycle
+version: 1.0.0
+status: active
+description:
+  purpose: >
+    One record per election cycle (year and election type). This is a cycle
+    dimension, not the event-grained dim_election. Never use it to multiply
+    election-grain measures across electoral events.
+schema:
+  - name: dim_election_cycle
+    description: One row for each observed general or municipal election cycle.
+    properties:
+      - name: cycle_id
+        description: Stable year:type identity, e.g. 2024:municipal.
+        logicalType: string
+        physicalType: varchar
+        required: true
+        primaryKey: true
+      - name: election_year
+        description: Gregorian election year.
+        logicalType: integer
+        physicalType: integer
+        required: true
+      - name: election_type
+        description: Election class, general or municipal.
+        logicalType: string
+        physicalType: varchar
+        required: true
