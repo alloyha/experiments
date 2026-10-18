@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 
-from scripts import benchmark_graph_candidate_conservation as bench
+from research import benchmark_graph_candidate_conservation as bench
 
 try:
     import duckdb

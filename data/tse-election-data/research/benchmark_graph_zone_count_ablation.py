@@ -16,7 +16,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scripts import benchmark_graph_candidate_conservation as bench
+from research import benchmark_graph_candidate_conservation as bench
 from scripts import consolidate_candidate_cube_transfer as evidence
 from scripts import certify_gold_graph_cycle as diagnostic
 from scripts.warehouse_lifecycle import lifecycle_epoch

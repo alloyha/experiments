@@ -21,6 +21,6 @@ and after a guarded read rejects stale/modified certificates.
 
 The preflight scans the physical Parquet; its cost is an explicit certification
 overhead, not an inference about faster end-to-end execution. The older
-`benchmark_graph_candidate_conservation.py` expects the **pre-promotion** SQL
+`research/benchmark_graph_candidate_conservation.py` expects the **pre-promotion** SQL
 tail and intentionally refuses changed canonical contracts. Preserve its
 historical evidence; do not report new speedups without paired measurements.
