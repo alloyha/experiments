@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -76,6 +77,11 @@ def discover_seeds():
         seeds[path.stem] = path
     return seeds
 
+
+parser = argparse.ArgumentParser(description="Validate and inspect the TSE dbt DAG")
+parser.add_argument("--format", choices=("summary", "detail", "mermaid"),
+                    default="summary", help="Validated output representation")
+args = parser.parse_args()
 
 models = discover_models()
 seeds = discover_seeds()
@@ -172,9 +178,88 @@ if failures:
     raise SystemExit(1)
 
 counts = Counter(model["layer"] for model in models.values())
-print("Medallion DAG contract: PASS")
-print("models:", ", ".join(f"{layer}={counts[layer]}" for layer in sorted(LAYERS)))
-print("resolved model edges:", len(edges))
-print("physical lineages:", len(publishers))
-print("declared orphans:", len(declared_orphans))
-print("seeds:", len(seeds))
+
+
+def emit_summary():
+    # Preserve the existing CI output exactly.
+    print("Medallion DAG contract: PASS")
+    print("models:", ", ".join(f"{layer}={counts[layer]}" for layer in sorted(LAYERS)))
+    print("resolved model edges:", len(edges))
+    print("physical lineages:", len(publishers))
+    print("declared orphans:", len(declared_orphans))
+    print("seeds:", len(seeds))
+
+
+def emit_details():
+    # All data comes from the same validated inventory as the CI gate.
+    emit_summary()
+    print("\n=== MODELS ===")
+    for layer in sorted(LAYERS):
+        print(f"[{layer.upper()}]")
+        for name, model in sorted(models.items()):
+            if model["layer"] == layer:
+                print(f"  {name}: {relative(model['path'])}")
+
+    print("\n=== RESOLVED EDGES ===")
+    for source, target in sorted(edges):
+        print(f"  {models[source]['layer']}:{source} -> {models[target]['layer']}:{target}")
+    for name, model in sorted(models.items()):
+        for dependency in model["refs"]:
+            if dependency in seeds:
+                print(f"  seed:{dependency} -> {model['layer']}:{name}")
+
+    print("\n=== PHYSICAL LINEAGE ===")
+    for artifact in sorted(set(publishers) | set(consumers)):
+        print(f"  {artifact}: publisher={publishers.get(artifact, '<missing>')}")
+        for name in sorted(consumers.get(artifact, [])):
+            print(f"    -> {name}")
+
+    print("\n=== DECLARED ORPHANS ===")
+    for name in sorted(declared_orphans):
+        model = models[name]
+        print(f"  {model['layer']}:{name}: {model['architecture_reason']}")
+
+    print("\n=== ROOT MODELS ===")
+    all_references = {name for model in models.values() for name in model["refs"]}
+    for name, model in sorted(models.items()):
+        if not model["refs"] and not model["physical_source"]:
+            print(f"  {model['layer']}:{name}")
+
+    print("\n=== LEAF MODELS ===")
+    for name, model in sorted(models.items()):
+        if name not in all_references and not model["physical_publish"]:
+            print(f"  {model['layer']}:{name}")
+
+
+def emit_mermaid():
+    # A valid Mermaid graph without a separate unvalidated parser.
+    print("flowchart LR")
+    for layer in sorted(LAYERS):
+        print(f"  subgraph {layer.upper()}[{layer.capitalize()}]")
+        for name, model in sorted(models.items()):
+            if model["layer"] == layer:
+                print(f'    model_{name}["{name}"]')
+        print("  end")
+    for name in sorted(seeds):
+        print(f'  seed_{name}["seed: {name}"]')
+    for source, target in sorted(edges):
+        print(f"  model_{source} --> model_{target}")
+    for name, model in sorted(models.items()):
+        for dep in model["refs"]:
+            if dep in seeds:
+                print(f"  seed_{dep} --> model_{name}")
+    for artifact in sorted(set(publishers) | set(consumers)):
+        node = "physical_" + re.sub(r"[^A-Za-z0-9_]", "_", artifact)
+        print(f'  {node}[("{artifact}")]')
+        if artifact in publishers:
+            print(f"  model_{publishers[artifact]} -. publish .-> {node}")
+        for name in sorted(consumers.get(artifact, [])):
+            print(f"  {node} -. read .-> model_{name}")
+
+
+if args.format == "summary":
+    emit_summary()
+elif args.format == "detail":
+    emit_details()
+else:
+    emit_mermaid()
