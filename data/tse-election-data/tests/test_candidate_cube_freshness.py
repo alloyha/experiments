@@ -129,6 +129,72 @@ class FreshnessTests(unittest.TestCase):
         with self.assertRaisesRegex(fresh.FreshnessError, "2018:general"):
             self.verify_all({"2018:general", self.cycle})
 
+    def test_issue_syncs_parent_directory_before_success(self):
+        from unittest.mock import call
+        with patch.object(fresh, "fsync_directory") as sync:
+            self.publish()
+        sync.assert_has_calls([call(self.certs)])
+        self.assertEqual(sync.call_count, 1)
+        self.assertEqual(self.verify()["fresh_cycles"], [self.cycle])
+
+    def test_racing_issuer_cannot_clobber_existing_name(self):
+        import os
+        active = fresh.certificate_path(self.certs, self.cycle)
+        real_link = os.link
+
+        def competitor_publishes_first(src, dst, **kwargs):
+            Path(dst).write_bytes(b"competing issuer's evidence")
+            return real_link(src, dst, **kwargs)
+
+        with patch.object(fresh.os, "link", side_effect=competitor_publishes_first):
+            with self.assertRaisesRegex(fresh.FreshnessError, "overwrite"):
+                self.publish()
+        self.assertEqual(active.read_bytes(), b"competing issuer's evidence")
+        self.assertEqual(list(self.certs.glob(".*.tmp")), [])
+
+    def test_uncertain_issue_directory_sync_retracts_active_authority(self):
+        active = fresh.certificate_path(self.certs, self.cycle)
+        with patch.object(fresh, "fsync_directory",
+                          side_effect=[OSError("injected directory fsync failure"), None]) as sync:
+            with self.assertRaisesRegex(OSError, "injected directory fsync"):
+                self.publish()
+        self.assertEqual(sync.call_count, 2)
+        self.assertFalse(active.exists())
+        self.assertEqual(list(self.certs.glob(".*.tmp")), [])
+        with self.assertRaisesRegex(fresh.FreshnessError, "missing attestation"):
+            self.verify()
+
+    def test_revoke_syncs_active_and_archive_directories(self):
+        from unittest.mock import call
+        self.publish()
+        with patch.object(fresh, "fsync_directory") as sync:
+            fresh.revoke_certificate(self.certs, self.cycle)
+        self.assertEqual(sync.call_args_list,
+                         [call(self.certs), call(self.certs / "revoked")])
+        self.assertFalse(fresh.certificate_path(self.certs, self.cycle).exists())
+        self.assertEqual(len(list((self.certs / "revoked").glob("*.json"))), 1)
+
+    def test_revoke_sync_failure_aborts_without_active_authority(self):
+        self.publish()
+        with patch.object(fresh, "fsync_directory",
+                          side_effect=OSError("injected revoke fsync failure")):
+            with self.assertRaisesRegex(OSError, "injected revoke fsync"):
+                fresh.revoke_certificate(self.certs, self.cycle)
+        self.assertFalse(fresh.certificate_path(self.certs, self.cycle).exists())
+        with self.assertRaisesRegex(fresh.FreshnessError, "missing attestation"):
+            self.verify()
+
+    def test_symlink_active_certificate_is_not_overwritten(self):
+        self.certs.mkdir(parents=True)
+        victim = self.root / "external.json"
+        victim.write_bytes(b"must stay intact")
+        active = fresh.certificate_path(self.certs, self.cycle)
+        active.symlink_to(victim)
+        with self.assertRaisesRegex(fresh.FreshnessError, "overwrite"):
+            self.publish()
+        self.assertEqual(victim.read_bytes(), b"must stay intact")
+        self.assertTrue(active.is_symlink())
+
     def verify_all(self, cycles):
         with patch.object(fresh, "input_signature", return_value=self.inputs), \
              patch.object(fresh, "output_signature", return_value=self.output):

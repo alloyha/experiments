@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from scripts.warehouse_lifecycle import lifecycle_epoch
+from scripts.write_candidate_fact_partition import fsync_directory
 
 MODEL = "cube_candidate_performance_municipality"
 DIMENSIONS = ("dim_candidate", "dim_geography")
@@ -148,7 +149,11 @@ def output_signature(db_path: Path, cycle: str) -> dict:
 
 
 def revoke_certificate(directory: Path, cycle: str) -> None:
-    """Move old authority out of the active directory before a mutable run."""
+    """Durably revoke active authority while the caller holds the writer lock.
+
+    A successful return means both directory entries were synced. A failure
+    never reports successful revocation; do not begin mutable dbt work.
+    """
     active = certificate_path(directory, cycle)
     if not active.exists() and not active.is_symlink():
         return
@@ -156,6 +161,9 @@ def revoke_certificate(directory: Path, cycle: str) -> None:
     archive.mkdir(parents=True, exist_ok=True)
     destination = archive / f"{active.stem}-{uuid.uuid4().hex}.json"
     os.replace(active, destination)
+    # Active authority must be durably absent before mutating the warehouse.
+    fsync_directory(active.parent)
+    fsync_directory(archive)
 
 
 def issue_certificate(directory: Path, db_path: Path, root: Path, cycle: str,
@@ -181,7 +189,22 @@ def issue_certificate(directory: Path, db_path: Path, root: Path, cycle: str,
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, active)
+        # os.replace() would silently clobber a racing issuer. The hard link
+        # is the create-only publication linearization point on POSIX.
+        try:
+            os.link(temporary, active, follow_symlinks=False)
+        except FileExistsError as exc:
+            raise FreshnessError(
+                f"Refusing to overwrite active freshness certificate: {active}"
+            ) from exc
+        try:
+            fsync_directory(active.parent)
+        except OSError:
+            # An uncertain directory sync is NOT a successful certificate.
+            # Retract the visible name before releasing the caller's lock.
+            active.unlink(missing_ok=True)
+            fsync_directory(active.parent)
+            raise
     finally:
         temporary.unlink(missing_ok=True)
     return record
