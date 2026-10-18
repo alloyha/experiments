@@ -8,8 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from diagnose_history_source import RESOURCE_ID, audit
+from research.diagnose_history_source import RESOURCE_ID, audit
 
 
 class HistorySourceDiagnosisTests(unittest.TestCase):
