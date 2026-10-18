@@ -9,12 +9,36 @@ class MedallionDAGContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.root = Path(__file__).resolve().parents[1]
         cls.checker = cls.root / "scripts/check_medallion_dag.py"
-        cls.printer = cls.root / "scripts/print_medallion_dag.py"
 
-    def test_tools_exist_and_compile(self):
-        for script in (self.checker, self.printer):
-            self.assertTrue(script.is_file())
-            subprocess.run([sys.executable, "-m", "py_compile", str(script)], check=True)
+    def test_checker_exists_and_compiles(self):
+        self.assertTrue(self.checker.is_file())
+        subprocess.run([sys.executable, "-m", "py_compile", str(self.checker)], check=True)
+
+    def test_detail_and_mermaid_derive_from_validated_dag(self):
+        detail = subprocess.run(
+            [sys.executable, str(self.checker), "--format", "detail"], cwd=self.root,
+            check=True, capture_output=True, text=True,
+        ).stdout
+        for text in ("Medallion DAG contract: PASS", "=== MODELS ===",
+                     "=== PHYSICAL LINEAGE ===", "dim_election_cycle"):
+            self.assertIn(text, detail)
+
+        mermaid = subprocess.run(
+            [sys.executable, str(self.checker), "--format", "mermaid"], cwd=self.root,
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertTrue(mermaid.startswith("flowchart LR\n"))
+        self.assertIn("subgraph GOLD", mermaid)
+        self.assertIn("model_dim_election_cycle", mermaid)
+        self.assertIn("physical_candidate_fact_partition", mermaid)
+
+    def test_invalid_report_format_fails(self):
+        result = subprocess.run(
+            [sys.executable, str(self.checker), "--format", "unknown"], cwd=self.root,
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid choice", result.stderr)
 
     def test_current_dag_contract_passes(self):
         result = subprocess.run(
