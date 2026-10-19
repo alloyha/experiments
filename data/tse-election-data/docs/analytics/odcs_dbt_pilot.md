@@ -45,6 +45,20 @@ interface. The check does not execute dbt or read electoral data. It verifies
 the frozen release baseline and semantic version progression, then runs the
 explicit consumer-perspective CLI compatibility classifier.
 
+## Multi-contract registry
+
+`contracts/odcs/registry.yaml` is a closed-world inventory of published ODCS
+interfaces and their isolated dbt metadata. `make data-contracts-registry-check`
+rejects undocumented contracts, unregistered baselines, path traversal,
+symlinked model metadata, duplicate ownership, baseline checksum mismatches,
+contract identity drift and unversioned changes. The checksum trust anchors
+remain pinned in Python code, not solely in the editable registry file.
+
+This first step registers only `dim_election_cycle`; the existing CLI lint,
+breaking and disposable dbt synchronization still target that pilot. Before
+registering `dim_election`, extend those CLI gates to iterate the registry;
+merely adding an entry must never be mistaken for end-to-end CI coverage.
+
 ## Promotion policy
 
 1. This PR isolates the `dim_election_cycle` model in its own YAML and

@@ -14,6 +14,7 @@ from pathlib import Path
 import yaml
 
 BASELINE_SHA256 = "9b0aaf1ab8b7097c4ca9834a2513ea4d97bd300c23acf1158594b2cb572fd50b"
+BASELINE_SHA256_BY_CONTRACT = {"dim_election_cycle": BASELINE_SHA256}
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 IDENTITY = ("apiVersion", "kind", "id", "name")
 
@@ -25,10 +26,10 @@ def _version(value: object) -> tuple[int, int, int]:
     return tuple(int(part) for part in match.groups())
 
 
-def check_contract_version(baseline: Path, candidate: Path) -> None:
+def check_contract_version(baseline: Path, candidate: Path, *, contract_name: str = "dim_election_cycle") -> None:
     frozen = baseline.read_bytes()
     actual_sha = hashlib.sha256(frozen).hexdigest()
-    if actual_sha != BASELINE_SHA256:
+    if actual_sha != BASELINE_SHA256_BY_CONTRACT[contract_name]:
         raise ValueError("Frozen ODCS baseline checksum changed: explicit migration review required")
     old = yaml.safe_load(frozen)
     new = yaml.safe_load(candidate.read_bytes())
@@ -49,9 +50,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument("--contract-name", default="dim_election_cycle", choices=sorted(BASELINE_SHA256_BY_CONTRACT))
     args = parser.parse_args()
     try:
-        check_contract_version(args.baseline, args.candidate)
+        check_contract_version(args.baseline, args.candidate, contract_name=args.contract_name)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"FAIL: ODCS version gate: {exc}", file=sys.stderr)
         return 1

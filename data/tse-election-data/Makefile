@@ -323,7 +323,12 @@ ODCS_CYCLE_CONTRACT := contracts/odcs/dim_election_cycle.odcs.yaml
 DATACONTRACT_COMPAT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.7 datacontract
 ODCS_CYCLE_BASELINE := contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml
 
-data-contracts-lint: ## Validate the ODCS pilot contract without reading warehouse data
+# Closed-world ODCS registry: every published interface owns its own dbt YAML.
+.PHONY: data-contracts-registry-check
+data-contracts-registry-check: ## Validate pinned ODCS inventory and isolated dbt ownership
+	$(PY) -m scripts.check_odcs_contract_registry --registry 'contracts/odcs/registry.yaml'
+
+data-contracts-lint: data-contracts-registry-check ## Validate the ODCS pilot contract without reading warehouse data
 	$(DATACONTRACT) lint '$(ODCS_CYCLE_CONTRACT)'
 
 # The published 1.0.0 baseline is immutable and SHA-pinned in the validator.
