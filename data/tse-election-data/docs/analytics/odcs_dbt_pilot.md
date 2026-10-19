@@ -18,9 +18,8 @@ from a dbt manifest and treated as authoritative.
 ## Commands (run from `data/tse-election-data`)
 
 ```bash
-make data-contracts-lint
-make data-contracts-dbt-plan
-make data-contracts-dbt-check
+make data-contracts-check     # all registered contracts
+make data-contracts-dbt-plan  # optional preview only
 ```
 
 Both targets run `datacontract-cli==1.2.3` in an isolated `uv tool run`
@@ -54,10 +53,11 @@ symlinked model metadata, duplicate ownership, baseline checksum mismatches,
 contract identity drift and unversioned changes. The checksum trust anchors
 remain pinned in Python code, not solely in the editable registry file.
 
-This first step registers only `dim_election_cycle`; the existing CLI lint,
-breaking and disposable dbt synchronization still target that pilot. Before
-registering `dim_election`, extend those CLI gates to iterate the registry;
-merely adding an entry must never be mistaken for end-to-end CI coverage.
+The registry currently contains `dim_election_cycle`; `make data-contracts-check`
+iterates **all** registered contracts with CLI lint, consumer compatibility and
+sandboxed dbt drift verification. Targeted commands remain available.
+Publishing another contract requires its own baseline, reviewed checksum and
+isolated dbt YAML; registry admission is not a physical GG certificate.
 
 ## Promotion policy
 

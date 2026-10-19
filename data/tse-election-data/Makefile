@@ -321,49 +321,29 @@ compile: dbt-deps ## Compile graph using fixtures
 check: setup ## Run the CI quality checks with a concise summary (VERBOSE=1 for logs)
 	@$(PY) scripts/run_quality_gate.py $(if $(filter 1 yes true,$(VERBOSE)),--verbose,)
 
-# Standalone and read-only preview: never run dbt tests outside the coordinated
-# warehouse writer gateway. Tool dependencies remain outside the project venv.
-DATACONTRACT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.3 datacontract
-ODCS_CYCLE_CONTRACT := contracts/odcs/dim_election_cycle.odcs.yaml
-# Keep the dbt synchronizer pinned; CLI 1.2.7 fixes the consumer/producer
-# perspective distinction in the read-only compatibility command.
-DATACONTRACT_COMPAT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.7 datacontract
-ODCS_CYCLE_BASELINE := contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml
+# Contract checks are registry-driven and read-only. Compatibility and dbt
+# generation remain pinned to their separately validated CLI versions.
+.PHONY: data-contracts-registry-check data-contracts-check \
+        data-contracts-lint data-contracts-breaking-check \
+        data-contracts-dbt-plan data-contracts-dbt-check
 
-# Closed-world ODCS registry: every published interface owns its own dbt YAML.
-.PHONY: data-contracts-registry-check
-data-contracts-registry-check: ## Validate pinned ODCS inventory and isolated dbt ownership
-	$(PY) -m scripts.check_odcs_contract_registry --registry 'contracts/odcs/registry.yaml'
+data-contracts-registry-check: ## Verify the published ODCS inventory
+	@$(PY) -m scripts.check_odcs_contract_registry
 
-data-contracts-lint: data-contracts-registry-check ## Validate the ODCS pilot contract without reading warehouse data
-	$(DATACONTRACT) lint '$(ODCS_CYCLE_CONTRACT)'
+data-contracts-check: ## Check every registered contract once (lint, compatibility, dbt drift)
+	@$(PY) -m scripts.run_odcs_checks --mode all
 
-# The published 1.0.0 baseline is immutable and SHA-pinned in the validator.
-.PHONY: data-contracts-breaking-check
-data-contracts-breaking-check: data-contracts-lint ## Reject consumer-breaking ODCS changes since published baseline
-	$(PY) scripts/check_odcs_contract_version.py \
-	  --baseline '$(ODCS_CYCLE_BASELINE)' --candidate '$(ODCS_CYCLE_CONTRACT)'
-	$(DATACONTRACT_COMPAT) lint '$(ODCS_CYCLE_BASELINE)'
-	$(DATACONTRACT_COMPAT) breaking --perspective consumer \
-	  '$(ODCS_CYCLE_BASELINE)' '$(ODCS_CYCLE_CONTRACT)'
+data-contracts-lint: ## Validate registered ODCS schemas
+	@$(PY) -m scripts.run_odcs_checks --mode lint
 
-data-contracts-dbt-plan: data-contracts-lint ## Preview non-destructive dbt model synchronization
-	$(DATACONTRACT) dbt sync '$(ODCS_CYCLE_CONTRACT)' --project-dir '$(DBT_DIR)' --dry-run --no-prune
+data-contracts-breaking-check: ## Validate consumer compatibility and versions
+	@$(PY) -m scripts.run_odcs_checks --mode compat
 
-# Re-run real synchronization ONLY on a disposable project copy, then diff all
-# models byte-for-byte. Dry-run alone does not detect committed schema drift.
-.PHONY: data-contracts-dbt-check
-data-contracts-dbt-check: data-contracts-dbt-plan ## Assert ODCS/dbt schema has no drift
-	@set -eu; \
-	  scratch=$$(mktemp -d /tmp/tse-odcs-dbt-check.XXXXXX); \
-	  trap 'rm -rf "$$scratch"' EXIT; \
-	  mkdir -p "$$scratch/tse_dbt"; \
-	  cp '$(DBT_DIR)/dbt_project.yml' "$$scratch/tse_dbt/"; \
-	  cp -a '$(DBT_DIR)/models' "$$scratch/tse_dbt/"; \
-	  $(DATACONTRACT) dbt sync '$(abspath $(ODCS_CYCLE_CONTRACT))' --project-dir "$$scratch/tse_dbt" --no-prune; \
-	  $(PY) scripts/check_odcs_dbt_sync.py \
-	    --committed '$(DBT_DIR)/models' --generated "$$scratch/tse_dbt/models"
+data-contracts-dbt-plan: ## Preview dbt generation without writing
+	@$(PY) -m scripts.run_odcs_checks --mode plan
 
+data-contracts-dbt-check: ## Compare sandbox dbt generation against committed schemas
+	@$(PY) -m scripts.run_odcs_checks --mode dbt-check
 scope-contracts: setup ## Validate analytical/incremental scope
 	$(PY) -m scripts.check_scope_contracts \
 	  --years "$(YEARS)" \
