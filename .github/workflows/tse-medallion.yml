@@ -15,10 +15,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: make setup
-      - run: make unit
-      - run: make medallion-contracts
-      - run: make data-contracts-lint
-      - run: make data-contracts-breaking-check
-      - run: make data-contracts-dbt-plan
-      - run: make data-contracts-dbt-check
-      - run: make compile
+      - name: Quality gate · concise summary
+        run: make check

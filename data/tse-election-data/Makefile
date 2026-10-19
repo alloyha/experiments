@@ -162,6 +162,7 @@ help:
 	@printf '    %-23s %s\n' 'pipeline' 'Ingest and build analytics'
 	@printf '\n  Analytics & quality\n'
 	@printf '    %-23s %s\n' 'dbt-build' 'Build/test analytics on available raw data'
+	@printf '    %-23s %s\n' 'check' 'Run all CI checks with a compact summary'
 	@printf '    %-23s %s\n' 'unit' 'Run Python tests'
 	@printf '    %-23s %s\n' 'medallion-contracts' 'Validate DAG and lineage'
 	@printf '    %-23s %s\n' 'data-contracts-lint' 'Validate ODCS data contracts'
@@ -314,6 +315,12 @@ compile: dbt-deps ## Compile graph using fixtures
 # ---------------------------------------------------------------------------
 # Quality contracts and certification
 # ---------------------------------------------------------------------------
+# One entrypoint for CI and local checks. Legacy focused targets remain
+# available; successful command logs are hidden unless VERBOSE=1.
+.PHONY: check
+check: setup ## Run the CI quality checks with a concise summary (VERBOSE=1 for logs)
+	@$(PY) scripts/run_quality_gate.py $(if $(filter 1 yes true,$(VERBOSE)),--verbose,)
+
 # Standalone and read-only preview: never run dbt tests outside the coordinated
 # warehouse writer gateway. Tool dependencies remain outside the project venv.
 DATACONTRACT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.3 datacontract
