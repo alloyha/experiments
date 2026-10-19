@@ -38,14 +38,29 @@ of this PR: invoking dbt through that separate process bypasses the project's
 unscoped assertions. Never enable automatic prune or write generated SQL
 tests over the freshly certified canonical graph.
 
+## Version-compatibility gate
+
+Run `make data-contracts-breaking-check` before changing the published ODCS
+interface. The check does not execute dbt or read electoral data. It verifies
+the frozen release baseline and semantic version progression, then runs the
+explicit consumer-perspective CLI compatibility classifier.
+
 ## Promotion policy
 
 1. This PR isolates the `dim_election_cycle` model in its own YAML and
    promotes the ODCS-managed column types and checks. Existing dbt year/type
    uniqueness remains independent. Compile and test via coordinated dbt.
-2. Add a compatibility gate comparing versioned contracts with
-   `datacontract breaking <old> <new>` in a follow-up PR, after defining
-   the baseline/source version contract and exit code semantics.
+2. CI compares the contract against the immutable published baseline at
+   `contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml` using
+   `make data-contracts-breaking-check` (read-only). The baseline SHA-256 is
+   pinned in `scripts/check_odcs_contract_version.py`. A semantic contract
+   change must increase the semantic version, and a change to the contract ID,
+   name, kind or ODCS API version is rejected.
+   `datacontract-cli==1.2.7` performs the **consumer-perspective** breaking
+   check; errors (exit 1) block CI, while warnings (exit 0) need review.
+   This CLI pin is *only* for compatibility: dbt sync stays pinned at 1.2.3.
+   To replace the published baseline, require a dedicated reviewed policy PR
+   that explicitly updates the baseline and recorded checksum.
 3. Broaden to other consumer contracts one bounded model at a time. Schema contracts alone **cannot** prove fact grain uniqueness,
    cross-table vote conservation, physical Parquet identity or freshness.
 
