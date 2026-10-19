@@ -67,10 +67,11 @@ class OdcsDbtIntegrationTests(unittest.TestCase):
 
     def test_cli_is_preview_only_in_ci(self):
         makefile = (ROOT / 'Makefile').read_text(encoding='utf-8')
-        self.assertIn('$(DATACONTRACT) dbt sync', makefile)
-        self.assertIn('--dry-run', makefile)
-        self.assertIn('--no-prune', makefile)
-        self.assertNotIn('--run-tests', makefile)
+        self.assertIn("scripts.run_odcs_checks --mode plan", makefile)
+        runner = (ROOT / "scripts/run_odcs_checks.py").read_text()
+        self.assertIn('--dry-run', runner)
+        self.assertIn('--no-prune', runner)
+        self.assertNotIn('--run-tests', runner)
 
 
 if __name__ == '__main__':

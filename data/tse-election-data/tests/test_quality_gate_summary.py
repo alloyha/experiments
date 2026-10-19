@@ -41,17 +41,17 @@ class QualityGatePresentationTests(unittest.TestCase):
     def result(code=0, log="PASS: some check\n"):
         return subprocess.CompletedProcess(args=[], returncode=code, stdout=log)
 
-    def test_all_five_existing_targets_remain_gated(self):
+    def test_all_four_ci_stages_remain_gated(self):
         self.assertEqual(self.run_gate([self.result()] * len(STAGES)), 0)
         self.assertEqual([call[0][-1] for call in self.calls], [s.make_target for s in STAGES])
-        self.assertEqual(len(self.calls), 5)
-        self.assertIn("PASS · 5/5", self.output.getvalue())
-        self.assertIn("Aprovado: 5/5", self.summary.read_text())
+        self.assertEqual(len(self.calls), 4)
+        self.assertIn("PASS · 4/4", self.output.getvalue())
+        self.assertIn("Aprovado: 4/4", self.summary.read_text())
         self.assertNotIn("PASS: some check", self.output.getvalue())
 
     def test_expected_fail_strings_in_successful_negative_tests_are_not_failures(self):
         responses = [self.result(log="FAIL: deliberately rejected\nRan 706 tests in 80.0s\nOK\n")]
-        responses.extend(self.result() for _ in range(4))
+        responses.extend(self.result() for _ in range(3))
         self.assertEqual(self.run_gate(responses), 0)
         self.assertIn("706 testes", self.output.getvalue())
         self.assertNotIn("deliberately rejected", self.output.getvalue())
@@ -63,12 +63,20 @@ class QualityGatePresentationTests(unittest.TestCase):
         self.assertIn("ERROR: invalid graph", self.output.getvalue())
         self.assertIn("VERBOSE=1", self.output.getvalue())
         report = self.summary.read_text()
-        self.assertIn("Reprovado: 1/5", report)
+        self.assertIn("Reprovado: 1/4", report)
         self.assertIn("Não executado", report)
 
+    def test_warning_on_successful_odcs_check_is_visible(self):
+        responses = [self.result(), self.result(),
+                     self.result(log="WARNING: consumer change requires review\n"),
+                     self.result()]
+        self.assertEqual(self.run_gate(responses), 0)
+        self.assertIn("1 aviso(s)", self.output.getvalue())
+        self.assertNotIn("consumer change requires review", self.output.getvalue())
+
     def test_verbose_mode_displays_full_log(self):
-        self.assertEqual(self.run_gate([self.result(log="full diagnostics\n")] * 5, verbose=True), 0)
-        self.assertEqual(self.output.getvalue().count("full diagnostics"), 5)
+        self.assertEqual(self.run_gate([self.result(log="full diagnostics\n")] * 4, verbose=True), 0)
+        self.assertEqual(self.output.getvalue().count("full diagnostics"), 4)
 
     def test_launch_failure_is_reported_not_masked(self):
         def missing(command, **kwargs):
@@ -90,7 +98,7 @@ class QualityGatePresentationTests(unittest.TestCase):
         self.assertNotIn("- run: make unit", workflow)
         self.assertEqual(
             [s.make_target for s in STAGES],
-            ["unit", "medallion-contracts", "data-contracts-breaking-check", "data-contracts-dbt-check", "compile"],
+            ["unit", "medallion-contracts", "data-contracts-check", "compile"],
         )
 
 

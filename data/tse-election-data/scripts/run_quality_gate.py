@@ -28,8 +28,7 @@ class Stage:
 STAGES = (
     Stage("Testes Python", "unit"),
     Stage("DAG e linhagem", "medallion-contracts"),
-    Stage("Contratos ODCS", "data-contracts-breaking-check"),
-    Stage("Sincronização dbt", "data-contracts-dbt-check"),
+    Stage("Contratos e sincronização ODCS", "data-contracts-check"),
     Stage("Compilação dbt", "compile"),
 )
 
@@ -87,6 +86,13 @@ def run_checks(
         count = re.search(r"\bRan (\d+) tests? in\b", content) if stage.make_target == "unit" else None
         suffix = f" · {count.group(1)} testes" if count and passed else ""
         print(f"    {'✓' if passed else '✗'} {status}{suffix} · {duration:.1f}s", file=output, flush=True)
+        # Consumer-compatibility warnings can exit zero; show their presence
+        # without dumping successful CLI transcripts into the CI channel.
+        if passed and stage.make_target == "data-contracts-check":
+            warnings = [line.strip() for line in content.splitlines()
+                        if re.search(r"\b(?:WARN|WARNING)\b", line, re.I)]
+            if warnings:
+                print(f"    ⚠ {len(warnings)} aviso(s) de compatibilidade; VERBOSE=1 para detalhes", file=output)
         if verbose and content:
             print(content.rstrip(), file=output)
         if not passed:
