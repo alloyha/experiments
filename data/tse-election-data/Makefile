@@ -318,9 +318,22 @@ compile: dbt-deps ## Compile graph using fixtures
 # warehouse writer gateway. Tool dependencies remain outside the project venv.
 DATACONTRACT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.3 datacontract
 ODCS_CYCLE_CONTRACT := contracts/odcs/dim_election_cycle.odcs.yaml
+# Keep the dbt synchronizer pinned; CLI 1.2.7 fixes the consumer/producer
+# perspective distinction in the read-only compatibility command.
+DATACONTRACT_COMPAT := $(UV) tool run --python '$(PROJECT_PYTHON)' --from datacontract-cli==1.2.7 datacontract
+ODCS_CYCLE_BASELINE := contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml
 
 data-contracts-lint: ## Validate the ODCS pilot contract without reading warehouse data
 	$(DATACONTRACT) lint '$(ODCS_CYCLE_CONTRACT)'
+
+# The published 1.0.0 baseline is immutable and SHA-pinned in the validator.
+.PHONY: data-contracts-breaking-check
+data-contracts-breaking-check: data-contracts-lint ## Reject consumer-breaking ODCS changes since published baseline
+	$(PY) scripts/check_odcs_contract_version.py \
+	  --baseline '$(ODCS_CYCLE_BASELINE)' --candidate '$(ODCS_CYCLE_CONTRACT)'
+	$(DATACONTRACT_COMPAT) lint '$(ODCS_CYCLE_BASELINE)'
+	$(DATACONTRACT_COMPAT) breaking --perspective consumer \
+	  '$(ODCS_CYCLE_BASELINE)' '$(ODCS_CYCLE_CONTRACT)'
 
 data-contracts-dbt-plan: data-contracts-lint ## Preview non-destructive dbt model synchronization
 	$(DATACONTRACT) dbt sync '$(ODCS_CYCLE_CONTRACT)' --project-dir '$(DBT_DIR)' --dry-run --no-prune
