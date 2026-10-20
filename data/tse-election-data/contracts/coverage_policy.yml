@@ -1,0 +1,54 @@
+# CCC v1: closed-world public decision policy.
+# Technical layers are explicitly internal by architecture, never public by accident.
+# Every Gold/Semantic model must receive a named, reviewed decision.
+version: 1
+internal_defaults:
+  bronze: Raw-facing normalization is an implementation layer, never a stable consumer interface.
+  silver: Staging and intermediate transformations are private to the analytical DAG.
+  physical: Physical publication is governed by GG fencing and separate certificates, not ODCS.
+  seed: Repository-owned dbt fixture and reference seeds are not externally published interfaces.
+  source: Upstream input source declarations do not promise a consumer-facing Gold contract.
+resources:
+  model:dim_election_cycle:
+    visibility: public
+    contract: dim_election_cycle
+    grain: [election_year, election_type]
+    semantic_test: dbt_utils.unique_combination_of_columns
+  model:dim_election:
+    visibility: public
+    contract: dim_election
+    grain: [election_year, election_type, election_code]
+    semantic_test: dbt_utils.unique_combination_of_columns
+
+# Source-reviewed CCC v1.2 decisions. Consumer exposure must be re-reviewed if usage changes.
+  model:candidate_result_coverage:
+    visibility: internal
+    reason: Distinct availability keys derived from fact_candidate_votes solely to scope candidate-versus-tally quality checks.
+  model:candidate_tally_coverage_gaps:
+    visibility: internal
+    reason: Diagnostic of tally slices without candidate-result coverage; it reports missing evidence rather than an official vote measure.
+  model:candidate_tally_reconciliation:
+    visibility: internal
+    reason: Internal comparison of candidate nominal votes with tally only on covered slices; not a supported analytical serving table.
+  model:party_tally_coverage_gaps:
+    visibility: internal
+    reason: Diagnostic of party-source coverage and converted-vote overlap; discrepancies must remain explicit in quality assessment.
+  model:party_tally_reconciliation:
+    visibility: internal
+    reason: Internal party-versus-tally measure reconciliation; validation requires its own data assertions and coverage-gap context.
+  model:graph_edges:
+    visibility: internal
+    reason: Expensive live graph edge projection, not an immutable publication; graph correctness and certification remain GG-controlled.
+  model:graph_vertices:
+    visibility: internal
+    reason: Expensive live graph vertex projection, not a persistent certified snapshot; graph correctness remains GG-controlled.
+  model:dim_candidate:
+    visibility: public
+    contract: dim_candidate
+    grain: [election_year, election_type, election_code, candidate_id]
+    semantic_test: dbt_utils.unique_combination_of_columns
+  model:dim_geography:
+    visibility: public
+    contract: dim_geography
+    grain: [election_year, election_type, uf, municipality_code]
+    semantic_test: dbt_utils.unique_combination_of_columns

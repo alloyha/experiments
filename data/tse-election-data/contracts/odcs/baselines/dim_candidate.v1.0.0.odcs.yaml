@@ -1,0 +1,51 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:dim_candidate
+name: dim_candidate
+version: 1.0.0
+status: active
+description:
+  purpose: 'Election-snapshot candidature grain: year, type, election code, candidate
+    ID. The identity is NOT a persistent-person key; snapshot partition updates replace
+    prior values.'
+schema:
+- name: dim_candidate
+  description: 'Election-snapshot candidature grain: year, type, election code, candidate
+    ID. The identity is NOT a persistent-person key; snapshot partition updates replace
+    prior values.'
+  properties:
+  - name: election_year
+    description: Year of this election snapshot.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election class.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Election code within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: candidate_id
+    description: Candidate candidature identifier, scoped by event.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: cycle_id
+    description: Parent election-cycle identity, not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_id
+    description: Parent election-event identity, not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Election-scope classification.
+    logicalType: string
+    physicalType: varchar
+    required: true

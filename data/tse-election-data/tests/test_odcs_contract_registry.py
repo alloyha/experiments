@@ -51,6 +51,32 @@ class OdcsRegistryTests(unittest.TestCase):
             "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
             "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_election.yml",
         })
+        for rel in ("contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml",
+                    "contracts/odcs/dim_candidate.odcs.yaml",
+                    "tse_dbt/models/gold/dimensions/dim_candidate.yml"):
+            target = self.root / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((ROOT / rel).read_bytes())
+        self.data["contracts"].append({
+            "name": "dim_candidate",
+            "contract": "contracts/odcs/dim_candidate.odcs.yaml",
+            "baseline": "contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml",
+            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
+            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_candidate.yml",
+        })
+        for rel in ("contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml",
+                    "contracts/odcs/dim_geography.odcs.yaml",
+                    "tse_dbt/models/gold/dimensions/dim_geography.yml"):
+            target = self.root / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((ROOT / rel).read_bytes())
+        self.data["contracts"].append({
+            "name": "dim_geography",
+            "contract": "contracts/odcs/dim_geography.odcs.yaml",
+            "baseline": "contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml",
+            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
+            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_geography.yml",
+        })
         self.save()
 
     def save(self):
@@ -60,7 +86,7 @@ class OdcsRegistryTests(unittest.TestCase):
         return check_registry(self.registry, self.root)
 
     def test_valid_registry(self):
-        self.assertEqual(self.validate(), ["dim_election", "dim_election_cycle"])
+        self.assertEqual(self.validate(), ['dim_candidate', 'dim_election', 'dim_election_cycle', 'dim_geography'])
 
     def test_duplicate_registration_rejected(self):
         self.data["contracts"].append(dict(self.data["contracts"][0]))

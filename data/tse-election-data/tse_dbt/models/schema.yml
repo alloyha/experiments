@@ -85,35 +85,6 @@ models:
   - name: candidate_id
     tests:
     - not_null
-- name: dim_candidate
-  description: Candidate dimension enriched with election cycle/scope and declared asset aggregates.
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns:
-        - election_year
-        - election_type
-        - election_code
-        - candidate_id
-  columns:
-  - name: cycle_id
-    tests:
-    - not_null
-  - name: election_year
-    tests:
-    - not_null
-  - name: election_type
-    tests:
-    - not_null
-  - name: election_id
-    tests:
-    - not_null
-  - name: election_code
-    tests:
-    - not_null
-  - name: candidate_id
-    tests:
-    - not_null
 - name: fact_electorate_municipality
   description: Electorate aggregated at municipality level for each election cycle.
   tests:
@@ -141,19 +112,6 @@ models:
     tests:
     - not_null
   - name: municipality_code
-    tests:
-    - not_null
-- name: dim_geography
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns:
-        - election_year
-        - election_type
-        - uf
-        - municipality_code
-  columns:
-  - name: cycle_id
     tests:
     - not_null
 - name: silver_candidate_votes_munzona

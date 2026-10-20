@@ -69,7 +69,7 @@ class QualityGatePresentationTests(unittest.TestCase):
     def test_warning_on_successful_odcs_check_is_visible(self):
         responses = [self.result(), self.result(),
                      self.result(log="WARNING: consumer change requires review\n"),
-                     self.result()]
+                     self.result(), self.result()]
         self.assertEqual(self.run_gate(responses), 0)
         self.assertIn("1 aviso(s)", self.output.getvalue())
         self.assertNotIn("consumer change requires review", self.output.getvalue())

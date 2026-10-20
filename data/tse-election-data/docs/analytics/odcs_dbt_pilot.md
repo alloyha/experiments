@@ -2,8 +2,8 @@
 
 ## Motivation and responsibility boundary
 
-This opt-in pilot uses Data Contract CLI 1.2.3 (ODCS v3.2.0) for a single
-well-defined **public interface**, `dim_election_cycle`. The existing
+The published interfaces use Data Contract CLI 1.2.3 (ODCS v3.2.0) for
+`dim_election_cycle` and `dim_election`. The existing
 `tse_dbt/model_contracts.yml` remains the domain-grain/lifecycle policy,
 `models/schema.yml` carries other dbt quality checks, and the independent
 GG-* SQL + read-only certification controls are **not** replaced.
@@ -93,3 +93,7 @@ The original dbt year/type/code uniqueness assertion and
 synchronization. The original SQL and physical GG certificates
 are unchanged. Both baselines are SHA-pinned and the registry-driven
 runner checks both interfaces without altering the warehouse.
+
+## CCC public dimensions wave 1
+
+`dim_candidate` and `dim_geography` publish bounded structural fields; their authoritative uniqueness remains composite over the domain grain, not an invented single-column primary key. Candidate identity is an election-specific candidature, never a persistent person. Municipality identity is scoped by year/type/UF. These contracts are schema/interface checks; they do not certify physical source partitions, joins or freshness.

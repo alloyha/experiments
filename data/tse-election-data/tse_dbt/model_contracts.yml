@@ -73,7 +73,9 @@ models:
     scd2: false
     future: A persistent geography dimension may become SCD2 once multi-year administrative changes are modeled.
   stg_candidate_votes_munzona:
-    status: implemented
+    status: superseded
+    superseded_by: silver_candidate_votes_munzona
+    supersession_reason: Current Silver candidate zone projection replaces the old staging node.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: current_source_snapshot
@@ -141,7 +143,9 @@ models:
     history_semantics: event_log
     note: Append is reserved for genuinely event-like/audit data, not TSE snapshot facts.
   int_electorate_municipality:
-    status: implemented
+    status: superseded
+    superseded_by: silver_electorate_municipality
+    supersession_reason: Current Silver electorate preparation replaces the old intermediate electorate step.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: derived_snapshot
@@ -157,7 +161,9 @@ models:
     rationale: Persist once so fact_electorate_municipality and dim_geography do not independently rescan the large
       electorate CSV.
   stg_candidate_votes_raw:
-    status: implemented
+    status: superseded
+    superseded_by: bronze_candidate_votes_raw
+    supersession_reason: Current Bronze candidate input replaces the old staging raw node.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: source_versions
@@ -168,7 +174,9 @@ models:
     rationale: Persist a narrow projection of the multi-GiB CSV before deduplication, so version resolution can
       use disk-spilling sort instead of a near-row-cardinality hash table.
   stg_party_votes_raw:
-    status: implemented
+    status: superseded
+    superseded_by: bronze_party_votes_raw
+    supersession_reason: Current Bronze party-vote input replaces the old staging raw node.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: source_versions
@@ -177,7 +185,9 @@ models:
     - election_type
     resource_class: heavy_streaming
   stg_party_votes_munzona:
-    status: implemented
+    status: superseded
+    superseded_by: silver_party_votes_munzona
+    supersession_reason: Current Silver party-vote consolidation replaces the old staging node.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: current_source_snapshot
@@ -228,7 +238,9 @@ models:
     - party_number
     - is_transit_vote
   stg_tally_munzona:
-    status: implemented
+    status: superseded
+    superseded_by: silver_tally_munzona
+    supersession_reason: Current Silver tally normalization replaces the old staging tally node.
     materialization: incremental
     load_semantics: partition_replace
     history_semantics: current_source_snapshot
