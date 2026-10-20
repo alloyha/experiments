@@ -14,7 +14,10 @@ from pathlib import Path
 import yaml
 
 BASELINE_SHA256 = "9b0aaf1ab8b7097c4ca9834a2513ea4d97bd300c23acf1158594b2cb572fd50b"
-BASELINE_SHA256_BY_CONTRACT = {"dim_election_cycle": BASELINE_SHA256}
+BASELINE_SHA256_BY_CONTRACT = {
+    "dim_election_cycle": BASELINE_SHA256,
+    "dim_election": "5e8e2be20ff4fa620b3c59d52ccad5bf11ac14a23c9c4b5b64ce1f983ce7abe2",
+}
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 IDENTITY = ("apiVersion", "kind", "id", "name")
 

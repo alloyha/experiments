@@ -1,0 +1,47 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:dim_election
+name: dim_election
+version: 1.0.0
+status: active
+description:
+  purpose: >
+    One record per TSE election event (year, type and election_code). The
+    cycle_id is a foreign key to dim_election_cycle, NOT the row identity.
+    Never join event-grain measures on cycle_id alone. Evidence and labels
+    are diagnostic outputs, not part of this six-field public contract.
+schema:
+  - name: dim_election
+    description: One observed election event, including separate codes within one cycle.
+    properties:
+      - name: election_id
+        description: Stable year:type:election_code event identity.
+        logicalType: string
+        physicalType: varchar
+        required: true
+        primaryKey: true
+      - name: cycle_id
+        description: Year:type cycle identity; not unique at event grain.
+        logicalType: string
+        physicalType: varchar
+        required: true
+      - name: election_year
+        description: Gregorian election year.
+        logicalType: integer
+        physicalType: integer
+        required: true
+      - name: election_type
+        description: Election class, general or municipal.
+        logicalType: string
+        physicalType: varchar
+        required: true
+      - name: election_code
+        description: Code distinguishing electoral events in the same cycle.
+        logicalType: string
+        physicalType: varchar
+        required: true
+      - name: election_scope
+        description: Federal/state for general elections or municipal for municipal elections.
+        logicalType: string
+        physicalType: varchar
+        required: true

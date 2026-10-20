@@ -5,3 +5,8 @@ contracts:
     baseline: contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml
     baseline_sha256: 9b0aaf1ab8b7097c4ca9834a2513ea4d97bd300c23acf1158594b2cb572fd50b
     dbt_metadata: tse_dbt/models/gold/dimensions/dim_election_cycle.yml
+  - name: dim_election
+    contract: contracts/odcs/dim_election.odcs.yaml
+    baseline: contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml
+    baseline_sha256: 5e8e2be20ff4fa620b3c59d52ccad5bf11ac14a23c9c4b5b64ce1f983ce7abe2
+    dbt_metadata: tse_dbt/models/gold/dimensions/dim_election.yml
