@@ -21,62 +21,15 @@ class OdcsRegistryTests(unittest.TestCase):
         scratch = tempfile.TemporaryDirectory(prefix="tse-odcs-registry-")
         self.addCleanup(scratch.cleanup)
         self.root = Path(scratch.name)
-        for original, rel in (
-            (BASELINE, "contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml"),
-            (CURRENT, "contracts/odcs/dim_election_cycle.odcs.yaml"),
-            (METADATA, "tse_dbt/models/gold/dimensions/dim_election_cycle.yml"),
-            (ROOT / "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml",
-             "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml"),
-            (ROOT / "contracts/odcs/dim_election.odcs.yaml",
-             "contracts/odcs/dim_election.odcs.yaml"),
-            (ROOT / "tse_dbt/models/gold/dimensions/dim_election.yml",
-             "tse_dbt/models/gold/dimensions/dim_election.yml"),
-        ):
-            target = self.root / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(original.read_bytes())
+        source_registry = yaml.safe_load((ROOT / "contracts/odcs/registry.yaml").read_text())
+        self.data = source_registry
+        for entry in source_registry["contracts"]:
+            for field in ("baseline", "contract", "dbt_metadata"):
+                relative = entry[field]
+                target = self.root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((ROOT / relative).read_bytes())
         self.registry = self.root / "contracts/odcs/registry.yaml"
-        digest = hashlib.sha256(BASELINE.read_bytes()).hexdigest()
-        self.data = {"version": 1, "contracts": [{
-            "name": "dim_election_cycle",
-            "contract": "contracts/odcs/dim_election_cycle.odcs.yaml",
-            "baseline": "contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml",
-            "baseline_sha256": digest,
-            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_election_cycle.yml",
-        }]}
-        self.data["contracts"].append({
-            "name": "dim_election",
-            "contract": "contracts/odcs/dim_election.odcs.yaml",
-            "baseline": "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml",
-            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
-            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_election.yml",
-        })
-        for rel in ("contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml",
-                    "contracts/odcs/dim_candidate.odcs.yaml",
-                    "tse_dbt/models/gold/dimensions/dim_candidate.yml"):
-            target = self.root / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes((ROOT / rel).read_bytes())
-        self.data["contracts"].append({
-            "name": "dim_candidate",
-            "contract": "contracts/odcs/dim_candidate.odcs.yaml",
-            "baseline": "contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml",
-            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_candidate.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
-            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_candidate.yml",
-        })
-        for rel in ("contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml",
-                    "contracts/odcs/dim_geography.odcs.yaml",
-                    "tse_dbt/models/gold/dimensions/dim_geography.yml"):
-            target = self.root / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes((ROOT / rel).read_bytes())
-        self.data["contracts"].append({
-            "name": "dim_geography",
-            "contract": "contracts/odcs/dim_geography.odcs.yaml",
-            "baseline": "contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml",
-            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
-            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_geography.yml",
-        })
         self.save()
 
     def save(self):
@@ -86,7 +39,7 @@ class OdcsRegistryTests(unittest.TestCase):
         return check_registry(self.registry, self.root)
 
     def test_valid_registry(self):
-        self.assertEqual(self.validate(), ['dim_candidate', 'dim_election', 'dim_election_cycle', 'dim_geography'])
+        self.assertEqual(self.validate(), sorted(x["name"] for x in self.data["contracts"]))
 
     def test_duplicate_registration_rejected(self):
         self.data["contracts"].append(dict(self.data["contracts"][0]))
