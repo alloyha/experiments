@@ -1,0 +1,128 @@
+version: 2
+models:
+- columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Parent election-cycle identity, not row-unique.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: Year of the source election cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election class.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: uf
+    data_type: varchar
+    description: UF code within the election cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: municipality_code
+    data_type: varchar
+    description: Municipality code scoped by election year, type and UF.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_scope
+    data_type: varchar
+    description: Federal/state or municipal election scope.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_geography__election_scope__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_scope has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: municipality
+    data_type: varchar
+    description: Observed municipality label; can be absent.
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  name: dim_geography
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - uf
+        - municipality_code
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:dim_geography
+  description: 'Election-cycle municipality grain: year, type, UF and municipality code. Never join event-grain measures to cycle-grain geographical quantities without correct roll-up.'

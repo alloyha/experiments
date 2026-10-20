@@ -1,0 +1,51 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:dim_geography
+name: dim_geography
+version: 1.0.0
+status: active
+description:
+  purpose: 'Election-cycle municipality grain: year, type, UF and municipality code.
+    Never join event-grain measures to cycle-grain geographical quantities without
+    correct roll-up.'
+schema:
+- name: dim_geography
+  description: 'Election-cycle municipality grain: year, type, UF and municipality
+    code. Never join event-grain measures to cycle-grain geographical quantities without
+    correct roll-up.'
+  properties:
+  - name: election_year
+    description: Year of the source election cycle.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election class.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: uf
+    description: UF code within the election cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality code scoped by election year, type and UF.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: cycle_id
+    description: Parent election-cycle identity, not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Federal/state or municipal election scope.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality
+    description: Observed municipality label; can be absent.
+    logicalType: string
+    physicalType: varchar
+    required: false

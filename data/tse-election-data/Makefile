@@ -167,6 +167,8 @@ help:
 	@printf '    %-23s %s\n' 'medallion-contracts' 'Validate DAG and lineage'
 	@printf '    %-23s %s\n' 'data-contracts-lint' 'Validate ODCS data contracts'
 	@printf '    %-23s %s\n' 'data-contracts-dbt-plan' 'Preview ODCS/dbt sync without writing'
+	@printf '    %-23s %s\n' 'contract-coverage-plan' 'Review classification gaps (CCC)'
+	@printf '    %-23s %s\n' 'contract-coverage-check' 'Validate exhaustive contract coverage'
 	@printf '    %-23s %s\n' 'invariant-registry-strict' 'Check 12/12 critical graph contracts'
 	@printf '    %-23s %s\n' 'graph-cycle-certify' 'Certify one prepared real graph cycle (opt-in)'
 	@printf '    %-23s %s\n' 'pr-gate' 'PR contract and dbt gate'
@@ -344,6 +346,16 @@ data-contracts-dbt-plan: ## Preview dbt generation without writing
 
 data-contracts-dbt-check: ## Compare sandbox dbt generation against committed schemas
 	@$(PY) -m scripts.run_odcs_checks --mode dbt-check
+
+.PHONY: contract-coverage-plan contract-coverage-report contract-coverage-check
+contract-coverage-plan: setup ## Plan explicit classification of discovered TSE data interfaces
+	@$(PY) -m scripts.check_contract_coverage --mode plan
+
+contract-coverage-report: setup ## Report resource inventory and outstanding decisions
+	@$(PY) -m scripts.check_contract_coverage --mode report
+
+contract-coverage-check: setup ## Fail on uncovered or unclassified public surfaces
+	@$(PY) -m scripts.check_contract_coverage --mode check
 scope-contracts: setup ## Validate analytical/incremental scope
 	$(PY) -m scripts.check_scope_contracts \
 	  --years "$(YEARS)" \

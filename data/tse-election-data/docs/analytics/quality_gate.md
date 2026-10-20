@@ -9,9 +9,10 @@ make help               # short command overview
 make help-all           # detailed targets
 ```
 
-The four CI stages still run, in order: Python unit tests, medallion
-lineage, registered ODCS lint/version/consumer compatibility and disposable dbt
-synchronization with drift checking, and coordinated fixture-only dbt compile.
+The four enforced CI stages run in order: Python unit tests, medallion
+lineage, registered ODCS compatibility and disposable dbt drift checks,
+then coordinated fixture-only dbt compile. CCC runs separately during
+coverage classification; enable it in CI only after all decisions pass.
 The wrapper uses the same Make targets; it does not relax validation, run an
 uncoordinated warehouse writer, modify production data, or issue certificates.
 

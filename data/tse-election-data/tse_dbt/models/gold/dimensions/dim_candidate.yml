@@ -1,0 +1,119 @@
+version: 2
+models:
+- columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Parent election-cycle identity, not row-unique.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: Year of this election snapshot.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election class.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+  - name: election_id
+    data_type: varchar
+    description: Parent election-event identity, not row-unique.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+  - name: election_code
+    data_type: varchar
+    description: Election code within the cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__election_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_code has no missing values
+  - name: candidate_id
+    data_type: varchar
+    description: Candidate candidature identifier, scoped by event.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__candidate_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field candidate_id has no missing values
+  - name: election_scope
+    data_type: varchar
+    description: Election-scope classification.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_candidate__election_scope__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_scope has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  description: 'Election-snapshot candidature grain: year, type, election code, candidate ID. The identity is NOT a persistent-person key; snapshot partition updates replace prior values.'
+  name: dim_candidate
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - candidate_id
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:dim_candidate
