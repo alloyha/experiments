@@ -7,6 +7,7 @@ promote GG-009 because uncoordinated DuckDB callers can still bypass the lock.
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -29,7 +30,7 @@ HOLD_THEN_EXEC_DBT = '''#!{python}
 import os, pathlib, sys, time
 start = pathlib.Path(os.environ["GG009_START"])
 release = pathlib.Path(os.environ["GG009_RELEASE"])
-start.write_text("child-lock-held")
+start.write_text(str(os.getpid()))  # PID is also the dbt child process-group ID
 deadline = time.monotonic() + 20
 while not release.exists() and time.monotonic() < deadline:
     time.sleep(.02)
@@ -130,6 +131,27 @@ class RealDbtGraphHandoffTests(unittest.TestCase):
             time.sleep(.02)
         self.assertTrue(path.is_file(), "Writer failed before acquiring lock")
 
+    @staticmethod
+    def _stop_writer(writer: subprocess.Popen, started: Path) -> None:
+        """Reap both isolated process groups on failure/timeout.
+
+        Gateway and dbt use distinct sessions. Killing only the gateway may
+        leave dbt holding the inherited flock FD and stdout open.
+        """
+        if started.is_file():
+            try:
+                child_pid = int(started.read_text(encoding="utf-8").strip())
+                # Inherited marker belongs to the exec-preserved child session.
+                # Refuse to signal the test runner's own process group.
+                if (child_pid > 1 and child_pid != os.getpgrp()
+                        and os.getpgid(child_pid) == child_pid):
+                    os.killpg(child_pid, signal.SIGKILL)
+            except (ValueError, ProcessLookupError):
+                pass  # Child already terminated, or marker was incomplete.
+        if writer.poll() is None:
+            writer.kill()
+        writer.wait(timeout=5)
+
     def test_guarded_reader_handoff_real_dbt_commit_stales_certificate(self):
         """Reader -> exclusive writer -> stale proof denial, all on disk."""
         import duckdb
@@ -155,14 +177,19 @@ class RealDbtGraphHandoffTests(unittest.TestCase):
         env.pop("DBT_PROFILES_DIR", None)
         env.pop("DBT_PROJECT_DIR", None)
         writer = None
+        writer_completed_cleanly = False
+        writer_log = self.root / "writer.log"
         try:
             # The writer must not reach its child while this reader owns SH locks.
             with guarded.graph_read_locks(self.db, self.source, self.cycle, timeout=0):
-                writer = subprocess.Popen(
-                    command, cwd=str(self.root), env=env,
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                    start_new_session=True,
-                )
+                # File-backed output cannot hold communicate() hostage if
+                # the gateway dies before its separate dbt session exits.
+                with writer_log.open("w", encoding="utf-8") as log:
+                    writer = subprocess.Popen(
+                        command, cwd=str(self.root), env=env,
+                        stdout=log, stderr=subprocess.STDOUT,
+                        start_new_session=True,
+                    )
                 time.sleep(.3)
                 self.assertIsNone(writer.poll(), "Writer failed while reader held the lock")
                 self.assertFalse(started.exists(), "Writer bypassed shared reader lock")
@@ -172,13 +199,20 @@ class RealDbtGraphHandoffTests(unittest.TestCase):
             with self.assertRaisesRegex(TimeoutError, "graph read lock"):
                 self._guarded_read()
             release.touch()
-            output, _ = writer.communicate(timeout=90)
+            try:
+                writer.wait(timeout=90)
+            except subprocess.TimeoutExpired:
+                output = writer_log.read_text(encoding="utf-8", errors="replace")
+                self.fail(f"Real dbt writer timed out after release; output:\n{output[-8000:]}")
+            output = writer_log.read_text(encoding="utf-8", errors="replace")
             self.assertEqual(writer.returncode, 0, output)
+            writer_completed_cleanly = True
         finally:
             release.touch()
-            if writer is not None and writer.poll() is None:
-                writer.kill()
-                writer.communicate(timeout=5)
+            # A failed gateway may exit while its separately-sessioned dbt
+            # child still holds the warehouse lock. Always reap failed runs.
+            if writer is not None and not writer_completed_cleanly:
+                self._stop_writer(writer, started)
 
         with duckdb.connect(str(self.db), read_only=True) as connection:
             changed = connection.execute(
