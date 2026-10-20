@@ -53,7 +53,8 @@ symlinked model metadata, duplicate ownership, baseline checksum mismatches,
 contract identity drift and unversioned changes. The checksum trust anchors
 remain pinned in Python code, not solely in the editable registry file.
 
-The registry currently contains `dim_election_cycle`; `make data-contracts-check`
+The registry contains `dim_election_cycle` (cycle grain) and `dim_election`
+(event grain); `make data-contracts-check`
 iterates **all** registered contracts with CLI lint, consumer compatibility and
 sandboxed dbt drift verification. Targeted commands remain available.
 Publishing another contract requires its own baseline, reviewed checksum and
@@ -80,3 +81,15 @@ isolated dbt YAML; registry admission is not a physical GG certificate.
 
 Because `dim_election_cycle` contains only a cycle key/year/type, it is a
 small, verifiable pilot with no warehouse or certificate side effects.
+
+## Second consumer interface: dim_election
+
+`dim_election` publishes a six-column, event-grain ODCS surface keyed by
+`election_id = year:type:election_code`. The shared `cycle_id` is not
+unique. `evidence_sources` and `cycle_label` remain noncontractual.
+The original dbt year/type/code uniqueness assertion and
+`election_type` accepted-values test live in the isolated
+`models/gold/dimensions/dim_election.yml` and are preserved by
+synchronization. The original SQL and physical GG certificates
+are unchanged. Both baselines are SHA-pinned and the registry-driven
+runner checks both interfaces without altering the warehouse.

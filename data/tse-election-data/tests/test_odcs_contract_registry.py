@@ -25,6 +25,12 @@ class OdcsRegistryTests(unittest.TestCase):
             (BASELINE, "contracts/odcs/baselines/dim_election_cycle.v1.0.0.odcs.yaml"),
             (CURRENT, "contracts/odcs/dim_election_cycle.odcs.yaml"),
             (METADATA, "tse_dbt/models/gold/dimensions/dim_election_cycle.yml"),
+            (ROOT / "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml",
+             "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml"),
+            (ROOT / "contracts/odcs/dim_election.odcs.yaml",
+             "contracts/odcs/dim_election.odcs.yaml"),
+            (ROOT / "tse_dbt/models/gold/dimensions/dim_election.yml",
+             "tse_dbt/models/gold/dimensions/dim_election.yml"),
         ):
             target = self.root / rel
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -38,6 +44,13 @@ class OdcsRegistryTests(unittest.TestCase):
             "baseline_sha256": digest,
             "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_election_cycle.yml",
         }]}
+        self.data["contracts"].append({
+            "name": "dim_election",
+            "contract": "contracts/odcs/dim_election.odcs.yaml",
+            "baseline": "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml",
+            "baseline_sha256": hashlib.sha256((ROOT / "contracts/odcs/baselines/dim_election.v1.0.0.odcs.yaml").read_bytes()).hexdigest(),
+            "dbt_metadata": "tse_dbt/models/gold/dimensions/dim_election.yml",
+        })
         self.save()
 
     def save(self):
@@ -47,7 +60,7 @@ class OdcsRegistryTests(unittest.TestCase):
         return check_registry(self.registry, self.root)
 
     def test_valid_registry(self):
-        self.assertEqual(self.validate(), ["dim_election_cycle"])
+        self.assertEqual(self.validate(), ["dim_election", "dim_election_cycle"])
 
     def test_duplicate_registration_rejected(self):
         self.data["contracts"].append(dict(self.data["contracts"][0]))

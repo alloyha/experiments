@@ -1,0 +1,127 @@
+version: 2
+models:
+- name: dim_election
+  description: One observed election event, including separate codes within one cycle.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Year:type cycle identity; not unique at event grain.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: election_id
+    data_type: varchar
+    description: Stable year:type:election_code event identity.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+    - unique:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_id__field_unique
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no duplicate values
+  - name: election_type
+    data_type: varchar
+    description: Election class, general or municipal.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - general
+          - municipal
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+  - name: election_year
+    data_type: integer
+    description: Gregorian election year.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_code
+    data_type: varchar
+    description: Code distinguishing electoral events in the same cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_code has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_scope
+    data_type: varchar
+    description: Federal/state for general elections or municipal for municipal elections.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_election__election_scope__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_scope has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:dim_election
