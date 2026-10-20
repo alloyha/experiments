@@ -177,6 +177,7 @@ class RealDbtGraphHandoffTests(unittest.TestCase):
         env.pop("DBT_PROFILES_DIR", None)
         env.pop("DBT_PROJECT_DIR", None)
         writer = None
+        writer_completed_cleanly = False
         writer_log = self.root / "writer.log"
         try:
             # The writer must not reach its child while this reader owns SH locks.
@@ -205,9 +206,12 @@ class RealDbtGraphHandoffTests(unittest.TestCase):
                 self.fail(f"Real dbt writer timed out after release; output:\n{output[-8000:]}")
             output = writer_log.read_text(encoding="utf-8", errors="replace")
             self.assertEqual(writer.returncode, 0, output)
+            writer_completed_cleanly = True
         finally:
             release.touch()
-            if writer is not None and writer.poll() is None:
+            # A failed gateway may exit while its separately-sessioned dbt
+            # child still holds the warehouse lock. Always reap failed runs.
+            if writer is not None and not writer_completed_cleanly:
                 self._stop_writer(writer, started)
 
         with duckdb.connect(str(self.db), read_only=True) as connection:

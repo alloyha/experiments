@@ -60,6 +60,30 @@ class NestedDbtCleanupTests(unittest.TestCase):
                 if writer.poll() is None:
                     handoff.RealDbtGraphHandoffTests._stop_writer(writer, marker)
 
+    def test_child_cleanup_when_gateway_already_exited(self):
+        # The earlier finally only called _stop_writer when the gateway was
+        # still running. A crashed gateway can leave its child lock-holder.
+        with tempfile.TemporaryDirectory(prefix="gg009-dead-gateway-") as root:
+            marker = Path(root) / "child.pid"
+            child = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(60)"],
+                start_new_session=True,
+            )
+            try:
+                marker.write_text(str(child.pid))
+                gateway = subprocess.Popen(
+                    [sys.executable, "-c", "pass"], start_new_session=True,
+                )
+                gateway.wait(timeout=5)
+                self.assertIsNotNone(gateway.poll())
+                handoff.RealDbtGraphHandoffTests._stop_writer(gateway, marker)
+                child.wait(timeout=5)
+                self.assertLess(child.returncode, 0)
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=5)
+
 
 if __name__ == "__main__":
     unittest.main()
