@@ -23,6 +23,11 @@ identity_conformance:
     grain: election_event
     semantics: may include several offices, rounds and electoral units
     applies_to: [dim_election, dim_candidate, dim_party, fact_tally_munzona, fact_turnout, fact_candidate_votes, fact_party_votes]
+  party_id:
+    expression: "election_id:party_number"
+    grain: election_party_snapshot
+    semantics: Election-local party snapshot identity; does not assert persistent-party SCD2 across election events.
+    applies_to: [dim_party, party_performance, cube_party_performance_municipality]
   contest_grain:
     components: [election_id, round_number, office_code, electoral_unit]
     note: electoral_unit is office-specific and must not be replaced by uf indiscriminately
