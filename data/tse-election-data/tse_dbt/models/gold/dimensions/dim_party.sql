@@ -44,7 +44,6 @@ select
     party_number,
     party,
     party_name,
-    cast(election_year as varchar) || ':' || election_type || ':' || election_code || ':' ||
-      cast(election_code as varchar) || ':' || cast(party_number as varchar) as party_id
+    cast(election_id as varchar) || ':' || cast(party_number as varchar) as party_id
 from versions
 where _rank = 1
