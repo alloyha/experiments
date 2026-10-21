@@ -104,4 +104,44 @@ class PreflightTests(unittest.TestCase):
                         checks[check]["status"], "NOT_EVALUATED"
                     )
 
+
+    def test_partial_history_fails_closed(self):
+        import duckdb
+        from scripts.c4_facts_preflight import FACTS
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            facts = root / "tse_dbt/models/gold/facts"
+            facts.mkdir(parents=True)
+
+            (facts / "fact_candidate_votes.sql").write_text(
+                "select * from read_parquet('x', hive_partitioning = true)"
+            )
+            (facts / "fact_turnout.sql").write_text(
+                "{{ config(pre_hook='{{ partition_replace_pre_hook() }}', "
+                "incremental_strategy='delete+insert') }}"
+            )
+
+            db = root / "test.duckdb"
+
+            with duckdb.connect(str(db)) as con:
+                for name, grain in FACTS.items():
+                    fields = ", ".join(
+                        f'"{column}" VARCHAR' for column in grain
+                    )
+                    con.execute(f'CREATE TABLE "{name}" ({fields})')
+                    con.execute(
+                        f'INSERT INTO "{name}" '
+                        '(election_year, election_type) '
+                        "VALUES ('2026', 'general')"
+                    )
+
+            report = audit(root, db, scan=True)
+
+            for name in FACTS:
+                cycles = report["facts"][name]["checks"]["cycles"]
+                self.assertEqual(cycles["status"], "FAIL")
+                self.assertEqual(len(cycles["missing"]), 4)
+                self.assertEqual(cycles["unexpected"], [])
+
 if __name__ == '__main__': unittest.main()
