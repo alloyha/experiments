@@ -270,6 +270,16 @@ models:
     partition_by:
     - election_year
     - election_type
+    grain:
+    - election_year
+    - election_type
+    - election_code
+    - round_number
+    - uf
+    - municipality_code
+    - zone
+    - office_code
+    - is_transit_vote
   fact_turnout:
     status: implemented
     materialization: incremental
