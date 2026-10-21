@@ -39,14 +39,16 @@ class PublicElectorate(unittest.TestCase):
         columns={c['name']:c for c in metadata['columns']}
         self.assertIn('electorate',columns)
 
-    def test_coverage_advances_without_premature_closure(self):
+    def test_coverage_closed_world(self):
         report=audit(ROOT)
         stats=report['stats']
-        self.assertGreaterEqual(stats['public'],6)
-        self.assertLessEqual(stats['unclassified'],14)
+        self.assertEqual(stats['public'],14)
+        self.assertEqual(stats['internal'],28)
+        self.assertEqual(stats['total'],42)
+        self.assertEqual(stats['unclassified'],0)
         self.assertEqual(stats['invalid_contracts'],0)
         self.assertEqual(stats['unmapped_semantic_obligations'],0)
         self.assertNotIn(f'model:{NAME}',report['unclassified'])
-        self.assertEqual(report['status'],'FAIL')
+        self.assertEqual(report['status'],'PASS')
 
 if __name__=='__main__': unittest.main()

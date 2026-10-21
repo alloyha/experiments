@@ -1,0 +1,92 @@
+version: 2
+models:
+- name: obt_electorate_municipality
+  description: Cycle-level municipal electorate analytical interface. One row per cycle_id, UF and municipality_code. Geographic enrichment must preserve the source cardinality. Previous-cycle values refer to the preceding observed election cycle for the same UF and municipality; gaps are not interpolated and the growth rate is not annualized. Missing prior cycles produce nullable history measures. This interface does not assert SCD2 history, complete source coverage or physical GG certification.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - cycle_id
+        - uf
+        - municipality_code
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:semantic:obt_electorate_municipality
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Election cycle identifier.
+    data_tests:
+    - not_null:
+        description: Check that field cycle_id has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: obt_electorate_municipality__cycle_id__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: election_year
+    data_type: integer
+    description: Election cycle year.
+  - name: election_type
+    data_type: varchar
+    description: General or municipal cycle.
+  - name: election_scope
+    data_type: varchar
+    description: Observed election scope.
+  - name: uf
+    data_type: varchar
+    description: Federal unit.
+    data_tests:
+    - not_null:
+        description: Check that field uf has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: obt_electorate_municipality__uf__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: municipality_code
+    data_type: varchar
+    description: Municipality code.
+    data_tests:
+    - not_null:
+        description: Check that field municipality_code has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: obt_electorate_municipality__municipality_code__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: municipality
+    data_type: varchar
+    description: Enriched municipality name.
+  - name: geography_matched
+    data_type: boolean
+    description: Geography enrichment matched.
+    tests:
+    - not_null
+  - name: electorate
+    data_type: decimal(38,0)
+    description: Electorate in the observed cycle.
+    tests:
+    - not_null
+  - name: previous_cycle_id
+    data_type: varchar
+    description: Previous observed cycle for this municipality.
+  - name: previous_electorate
+    data_type: decimal(38,0)
+    description: Electorate in previous observed cycle.
+  - name: electorate_delta
+    data_type: decimal(38,0)
+    description: Difference from previous observed cycle.
+  - name: electorate_growth_rate
+    data_type: double
+    description: Relative change from previous observed cycle; not annualized.

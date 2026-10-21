@@ -84,3 +84,47 @@ resources:
     contract: fact_candidate_votes
     grain: [election_year, election_type, election_code, round_number, uf, municipality_code, zone, office_code, candidate_id, is_transit_vote]
     semantic_test: dbt_utils.unique_combination_of_columns
+
+# CCC D1: source-reviewed private semantic interfaces.
+  model:candidate_ranking:
+    visibility: internal
+    reason: Ranking of observed nominal votes, not certified elected status; kept private until ranking completeness and consumer semantics are certified.
+  model:candidate_summary:
+    visibility: internal
+    reason: Descriptive aggregation of candidatures and declared assets without a certified population coverage or cross-cycle comparability policy.
+  model:candidate_vote_summary:
+    visibility: internal
+    reason: Candidate vote aggregation with zone-count geography semantics requiring review before stable consumer publication.
+  model:election_results:
+    visibility: internal
+    reason: Top-ranked and runner-up candidate projection does not establish official election outcomes or elected status.
+  model:electoral_participation:
+    visibility: internal
+    reason: Direct projection of the published fact_turnout model; independent consumer publication would duplicate its existing contract.
+  model:party_performance:
+    visibility: internal
+    reason: Cross-source analytical reconciliation with potentially incomplete coverage and repeated event-office denominators; not a certified serving interface.
+
+  model:obt_electorate_municipality:
+    visibility: public
+    contract: obt_electorate_municipality
+    grain: [cycle_id, uf, municipality_code]
+    semantic_test: dbt_utils.unique_combination_of_columns
+
+  model:cube_participation_municipality:
+    visibility: public
+    contract: cube_participation_municipality
+    grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote]
+    semantic_test: dbt_utils.unique_combination_of_columns
+
+  model:cube_party_performance_municipality:
+    visibility: public
+    contract: cube_party_performance_municipality
+    grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, party_number]
+    semantic_test: dbt_utils.unique_combination_of_columns
+
+  model:cube_candidate_performance_municipality:
+    visibility: public
+    contract: cube_candidate_performance_municipality
+    grain: [election_id, round_number, uf, municipality_code, office_code, is_transit_vote, candidate_id]
+    semantic_test: dbt_utils.unique_combination_of_columns

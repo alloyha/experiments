@@ -50,3 +50,23 @@ contracts:
     baseline: contracts/odcs/baselines/fact_candidate_votes.v1.0.0.odcs.yaml
     baseline_sha256: bffe3d2a38cdbf92a924861d74599b989a1a52ba1efea92efcfe383c778db1dd
     dbt_metadata: tse_dbt/models/gold/facts/fact_candidate_votes.yml
+  - name: obt_electorate_municipality
+    contract: contracts/odcs/obt_electorate_municipality.odcs.yaml
+    baseline: contracts/odcs/baselines/obt_electorate_municipality.v1.0.0.odcs.yaml
+    baseline_sha256: ac2b08ca17a4f427dea487c62fe1b4d66e1bfee1fb2fa96422865295abfdced2
+    dbt_metadata: tse_dbt/models/semantic/obt_electorate_municipality.yml
+  - name: cube_participation_municipality
+    contract: contracts/odcs/cube_participation_municipality.odcs.yaml
+    baseline: contracts/odcs/baselines/cube_participation_municipality.v1.0.0.odcs.yaml
+    baseline_sha256: f620e2ec415784c47e8a7cc222d7ed62edcd5bf4977b8c635ce6d808a2bc7d0a
+    dbt_metadata: tse_dbt/models/semantic/cube_participation_municipality.yml
+  - name: cube_party_performance_municipality
+    contract: contracts/odcs/cube_party_performance_municipality.odcs.yaml
+    baseline: contracts/odcs/baselines/cube_party_performance_municipality.v1.0.0.odcs.yaml
+    baseline_sha256: b8be5417db2c1f7cd3c30f87e253b99b2c751b2eb9bebe091a2908be855a262f
+    dbt_metadata: tse_dbt/models/semantic/cube_party_performance_municipality.yml
+  - name: cube_candidate_performance_municipality
+    contract: contracts/odcs/cube_candidate_performance_municipality.odcs.yaml
+    baseline: contracts/odcs/baselines/cube_candidate_performance_municipality.v1.0.0.odcs.yaml
+    baseline_sha256: 8ba1428455db33d52ef6d8a19a1543c017ad4f613bade81dfd43624dc6ae1922
+    dbt_metadata: tse_dbt/models/semantic/cube_candidate_performance_municipality.yml

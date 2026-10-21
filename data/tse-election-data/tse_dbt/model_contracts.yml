@@ -333,6 +333,69 @@ models:
       zone: 4
       office_code: '25'
       nominal_valid_votes: 1836
+  obt_electorate_municipality:
+    status: implemented
+    materialization: view
+    history_semantics: derived_cycle_snapshot
+    grain:
+    - cycle_id
+    - uf
+    - municipality_code
+    source: fact_electorate_municipality
+    geography: Optional descriptive enrichment through dim_geography
+    growth_semantics: Change relative to the previous observed election cycle for the
+      same UF and municipality, not annualized growth.
+    scd2: false
+  cube_participation_municipality:
+    status: implemented
+    materialization: view
+    history_semantics: derived_election_snapshot
+    grain:
+    - election_id
+    - round_number
+    - uf
+    - municipality_code
+    - office_code
+    - is_transit_vote
+    source: fact_turnout
+    additivity: Turnout and electorate are not additive across overlapping events, offices
+      or rounds.
+    scd2: false
+  cube_party_performance_municipality:
+    status: implemented
+    materialization: view
+    history_semantics: derived_election_snapshot
+    grain:
+    - election_id
+    - round_number
+    - uf
+    - municipality_code
+    - office_code
+    - is_transit_vote
+    - party_number
+    source: fact_party_votes
+    additivity: Do not sum party-vote measures across overlapping event or office slices;
+      do not double-count converted legend votes.
+    ranking_semantics: Observed party vote rank, not elected status.
+    scd2: false
+  cube_candidate_performance_municipality:
+    status: implemented
+    materialization: incremental
+    load_semantics: partition_replace
+    history_semantics: derived_election_snapshot
+    grain:
+    - election_id
+    - round_number
+    - uf
+    - municipality_code
+    - office_code
+    - is_transit_vote
+    - candidate_id
+    source: fact_candidate_votes
+    ranking_semantics: Observed nominal vote ranking only; not official elected status.
+    coverage_evidence: 2026:general preflight checked; other cycles require independent
+      verification.
+    scd2: false
 resource_policy:
   local_duckdb:
     dbt_threads: 1
