@@ -20,3 +20,8 @@ contracts:
     baseline: contracts/odcs/baselines/dim_geography.v1.0.0.odcs.yaml
     baseline_sha256: 63534f1e62f347bc028e7e8147cc66a1283f86179c648e0232052f41c31a26a3
     dbt_metadata: tse_dbt/models/gold/dimensions/dim_geography.yml
+  - name: dim_party
+    contract: contracts/odcs/dim_party.odcs.yaml
+    baseline: contracts/odcs/baselines/dim_party.v1.0.0.odcs.yaml
+    baseline_sha256: 621bc1bb655aa12fd35e7a1f2598d0fe7bd379cdc28ccea2b84f88e7bda41d30
+    dbt_metadata: tse_dbt/models/gold/dimensions/dim_party.yml

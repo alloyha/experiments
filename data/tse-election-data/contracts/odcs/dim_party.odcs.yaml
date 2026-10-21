@@ -1,0 +1,67 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:dim_party
+name: dim_party
+version: 1.0.0
+status: active
+description:
+  purpose: One election-scoped party snapshot per year, election type, election code
+    and party number. party_id is election_id:party_number, NOT a permanent legal
+    party identifier, an SCD2 key or evidence of cross-election continuity.
+schema:
+- name: dim_party
+  description: One election-scoped party snapshot per year, election type, election
+    code and party number. party_id is election_id:party_number, NOT a permanent legal
+    party identifier, an SCD2 key or evidence of cross-election continuity.
+  properties:
+  - name: election_year
+    description: Election year.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election class.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Observed election event code within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: party_number
+    description: Party ballot number within the event; not globally unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: party_id
+    description: Canonical event-local party identity, election_id:party_number.
+    logicalType: string
+    physicalType: varchar
+    required: true
+    primaryKey: true
+  - name: election_id
+    description: Parent event identity, election_year:election_type:election_code.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: cycle_id
+    description: Parent cycle identity, election_year:election_type.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Observed general or municipal election scope.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: party
+    description: Party abbreviation from the latest observed snapshot.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: party_name
+    description: Observed party name from the latest snapshot.
+    logicalType: string
+    physicalType: varchar
+    required: true

@@ -1,0 +1,187 @@
+version: 2
+models:
+- name: dim_party
+  description: One election-scoped party snapshot per year, election type, election code and party number. party_id is election_id:party_number, NOT a permanent legal party identifier, an SCD2 key or evidence of cross-election continuity.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - party_number
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Parent cycle identity, election_year:election_type.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: party_id
+    data_type: varchar
+    description: Canonical event-local party identity, election_id:party_number.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__party_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_id has no missing values
+    - unique:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__party_id__field_unique
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_id has no duplicate values
+  - name: party_number
+    data_type: varchar
+    description: Party ballot number within the event; not globally unique.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__party_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_number has no missing values
+  - name: party
+    data_type: varchar
+    description: Party abbreviation from the latest observed snapshot.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__party__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party has no missing values
+  - name: party_name
+    data_type: varchar
+    description: Observed party name from the latest snapshot.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__party_name__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_name has no missing values
+  - name: election_year
+    data_type: integer
+    description: Election year.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election class.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_code
+    data_type: varchar
+    description: Observed election event code within the cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__election_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_code has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_id
+    data_type: varchar
+    description: Parent event identity, election_year:election_type:election_code.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_scope
+    data_type: varchar
+    description: Observed general or municipal election scope.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: dim_party__election_scope__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_scope has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:dim_party

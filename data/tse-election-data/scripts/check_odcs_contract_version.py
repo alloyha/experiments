@@ -19,6 +19,7 @@ BASELINE_SHA256_BY_CONTRACT = {
     "dim_election": "5e8e2be20ff4fa620b3c59d52ccad5bf11ac14a23c9c4b5b64ce1f983ce7abe2",
     "dim_candidate": "df9cf2791085d2159eb85e6df608ef64b11e3299aa719d13f5f266ff961ba96d",
     "dim_geography": "63534f1e62f347bc028e7e8147cc66a1283f86179c648e0232052f41c31a26a3",
+    "dim_party": "621bc1bb655aa12fd35e7a1f2598d0fe7bd379cdc28ccea2b84f88e7bda41d30",
 }
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 IDENTITY = ("apiVersion", "kind", "id", "name")
