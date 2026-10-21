@@ -313,5 +313,79 @@ with lock.open("a+b") as stream:
         self.assertEqual(result["parquet_sha256"], self.digest)
 
 
+
+    def test_handoff_to_normal_publisher(self):
+        import json
+        import duckdb
+
+        from scripts.write_candidate_fact_partition import (
+            current_generation,
+            publish_partition,
+        )
+
+        # Migrar o Parquet legado preparado pela fixture.
+        migrated = self.promote()
+        legacy_generation = migrated["generation"]
+        legacy_path = self.partition / legacy_generation
+        legacy_bytes = legacy_path.read_bytes()
+
+        self.assertEqual(
+            current_generation(self.partition),
+            legacy_generation,
+        )
+
+        # Preparar uma fonte física descartável para o publicador normal.
+        db_path = self.root / "fixture.duckdb"
+
+        with duckdb.connect(str(db_path)) as con:
+            con.execute("""
+                CREATE TABLE main.int_candidate_fact_partition AS
+                SELECT
+                    2026::INTEGER AS election_year,
+                    'general'::VARCHAR AS election_type,
+                    *
+                FROM read_parquet(?, hive_partitioning=false)
+            """, [str(legacy_path)])
+
+        publish_partition(
+            db_path,
+            self.root,
+            2026,
+            "general",
+            expected_generation=legacy_generation,
+        )
+
+        active = current_generation(self.partition)
+
+        self.assertNotEqual(active, legacy_generation)
+        self.assertTrue(active.startswith("generation-"))
+        self.assertTrue(self.public.is_symlink())
+        self.assertEqual(self.public.read_bytes()[:4], b"PAR1")
+
+        # A geração histórica deve sobreviver à publicação posterior.
+        self.assertEqual(legacy_path.read_bytes(), legacy_bytes)
+
+        new_proof = (
+            self.partition /
+            active.replace(".parquet", ".zone-uniqueness.json")
+        )
+        self.assertTrue(new_proof.is_file())
+        proof = json.loads(new_proof.read_text())
+        self.assertEqual(proof["result"], "PASS")
+        self.assertEqual(proof["generation"], active)
+
+        # Um orquestrador atrasado não pode sobrescrever a geração nova.
+        with self.assertRaisesRegex(RuntimeError, "generation changed"):
+            publish_partition(
+                db_path,
+                self.root,
+                2026,
+                "general",
+                expected_generation=legacy_generation,
+            )
+
+        self.assertEqual(current_generation(self.partition), active)
+
+
 if __name__ == "__main__":
     unittest.main()
