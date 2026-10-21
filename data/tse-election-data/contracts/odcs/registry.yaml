@@ -35,3 +35,8 @@ contracts:
     baseline: contracts/odcs/baselines/fact_party_votes.v1.0.0.odcs.yaml
     baseline_sha256: d00025ada34b5e3c2725755e5cb8716f5377c5123e9f928c32a94e4ea49fe8f3
     dbt_metadata: tse_dbt/models/gold/facts/fact_party_votes.yml
+  - name: fact_tally_munzona
+    contract: contracts/odcs/fact_tally_munzona.odcs.yaml
+    baseline: contracts/odcs/baselines/fact_tally_munzona.v1.0.0.odcs.yaml
+    baseline_sha256: 4df42819993b76cf8f2a43d2d87e11f4cac7861586cacf06daa7f3b82b0810c7
+    dbt_metadata: tse_dbt/models/gold/facts/fact_tally_munzona.yml

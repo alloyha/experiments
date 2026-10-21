@@ -1,0 +1,212 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:fact_tally_munzona
+name: fact_tally_munzona
+version: 1.0.0
+status: active
+description:
+  purpose: 'Authoritative election-event tally snapshot at year, type, event, round, UF, municipality, zone,
+    office and transit-vote flag grain. Source-aware, partition-replaced history is NOT append-only or SCD2.
+    Do not aggregate electorate or turnout across overlapping election-event, round or office slices. Vote
+    components may overlap: do not infer conservation identities without a separately certified reconciliation.
+    This ODCS surface does not certify candidate-versus-tally coverage or physical publication outside the
+    cooperative gateway.'
+schema:
+- name: fact_tally_munzona
+  description: 'Authoritative election-event tally snapshot at year, type, event, round, UF, municipality,
+    zone, office and transit-vote flag grain. Source-aware, partition-replaced history is NOT append-only or
+    SCD2. Do not aggregate electorate or turnout across overlapping election-event, round or office slices.
+    Vote components may overlap: do not infer conservation identities without a separately certified reconciliation.
+    This ODCS surface does not certify candidate-versus-tally coverage or physical publication outside the
+    cooperative gateway.'
+  properties:
+  - name: election_year
+    description: Year of the election cycle.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election class.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Observed election scope; not part of the row key.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: cycle_id
+    description: Parent cycle year:type identity, not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_id
+    description: Election event identity year:type:code, not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Election event code, scoped within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: round_number
+    description: Round of the election event.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: Federal unit of the tally record.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality code, scoped to the election cycle and UF.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: zone
+    description: Electoral zone within the municipality.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: office_code
+    description: Office/contest identifier; cannot be omitted from the tally grain.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_scope
+    description: Reported office scope; not an additional unique key.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: is_transit_vote
+    description: Whether this record belongs to transit voting.
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: eligible_voters
+    description: Eligible electorate as reported in the tally source at this slice.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: voters_uninstalled_sections
+    description: Reported voters associated with uninstalled sections.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: turnout
+    description: Reported turnout (compare only compatible election-event slices).
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: abstentions
+    description: Reported abstentions at this tally slice.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: total_votes
+    description: Reported total votes; do not sum repeated event/office slices indiscriminately.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: competing_votes
+    description: Reported competing votes.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: valid_votes
+    description: Reported valid votes.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: nominal_valid_votes
+    description: Reported nominal valid-vote component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: total_legend_valid_votes
+    description: Reported total legend valid-vote component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: legend_valid_votes
+    description: Reported legend valid-vote subcomponent.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: nominal_converted_to_legend_valid_votes
+    description: Reported nominal-to-legend converted component; avoid double counting.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: annulled_votes
+    description: Reported annulled vote measure.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: nominal_annulled_votes
+    description: Reported nominal annulled component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: legend_annulled_votes
+    description: Reported legend annulled component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: annulled_subjudice_votes
+    description: Reported sub judice annulled measure.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: nominal_annulled_subjudice_votes
+    description: Reported nominal sub judice annulled component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: legend_annulled_subjudice_votes
+    description: Reported legend sub judice annulled component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: blank_votes
+    description: Reported blank votes.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: total_null_votes
+    description: Reported total null-vote measure.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: null_votes
+    description: Reported null-vote subcomponent.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: technical_null_votes
+    description: Reported technical null-vote measure.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: separately_counted_annulled_votes
+    description: Reported separately counted annulled-vote component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: generated_at
+    description: Timestamp generated by the source or ingestion pipeline.
+    logicalType: timestamp
+    physicalType: timestamp
+    required: false
+  - name: last_totalization_at
+    description: Last observed tally totalization timestamp, when available.
+    logicalType: timestamp
+    physicalType: timestamp
+    required: false
+  - name: source_file
+    description: Physical lineage to the input source file; environment-dependent and not a durable identifier.
+    logicalType: string
+    physicalType: varchar
+    required: false

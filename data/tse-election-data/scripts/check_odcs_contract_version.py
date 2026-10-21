@@ -21,7 +21,7 @@ BASELINE_SHA256_BY_CONTRACT = {
     "dim_geography": "63534f1e62f347bc028e7e8147cc66a1283f86179c648e0232052f41c31a26a3",
     "dim_party": "621bc1bb655aa12fd35e7a1f2598d0fe7bd379cdc28ccea2b84f88e7bda41d30",
     "fact_electorate_municipality": "557b1fccee04ce93e88b534fe0b59e5a6405ee19cfd38289c5152ea031e3dc31",
-    "fact_party_votes": "d00025ada34b5e3c2725755e5cb8716f5377c5123e9f928c32a94e4ea49fe8f3",
+    "fact_party_votes": "d00025ada34b5e3c2725755e5cb8716f5377c5123e9f928c32a94e4ea49fe8f3",    "fact_tally_munzona": "4df42819993b76cf8f2a43d2d87e11f4cac7861586cacf06daa7f3b82b0810c7",
 }
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 IDENTITY = ("apiVersion", "kind", "id", "name")

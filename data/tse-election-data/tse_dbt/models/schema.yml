@@ -241,24 +241,6 @@ models:
   - name: abstentions
     tests:
     - not_null
-- name: fact_tally_munzona
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns:
-        - election_year
-        - election_type
-        - election_code
-        - round_number
-        - uf
-        - municipality_code
-        - zone
-        - office_code
-        - is_transit_vote
-  columns:
-  - name: cycle_id
-    tests:
-    - not_null
 - name: fact_turnout
   description: Participation fact retaining office in the grain to prevent cross-office double counting.
   tests:
