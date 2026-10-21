@@ -8,11 +8,10 @@ The first scan discovered 42 resources: two existing ODCS-public models,
 15 technical-layer internals, and 25 unclassified Gold/Semantic models.
 Historical policy aliases do not create extra active SQL models.
 
-## Candidate interfaces to review for PUBLIC ODCS (16)
+## Candidate interfaces to review for PUBLIC ODCS (15)
 
 | Resource | Layer | Question before promotion |
 |---|---|---|
-| `dim_party` | Gold | Party as an election snapshot, not an invented cross-election SCD2? |
 | `fact_candidate_votes` | Gold | Exact candidate/zone/round grain; persisted parquet obligations remain independent? |
 | `fact_electorate_municipality` | Gold | Cycle-level electorate denominator; cross-event joins prohibited? |
 | `fact_party_votes` | Gold | Exact common party-vote grain and reconciliation obligations? |
@@ -78,3 +77,7 @@ do not declare closure until all 18 public decisions and obligations are resolve
 ## CCC v1.3 — first public dimensions wave
 
 `dim_candidate` and `dim_geography` are promoted to versioned ODCS public interfaces with composite-grain tests and isolated dbt ownership. The remaining 16 Gold/Semantic candidates are still unclassified. `dim_party` stays pending: its current SQL concatenates `election_code` twice into `party_id` and must be reviewed before freezing the key.
+
+## CCC B2 — public election-scoped party dimension
+
+Following canonical SQL (#86) and guarded transactional migration (#87), all 717 observed parties across 2018, 2020, 2022, 2024, and 2026 have canonical election_id:party_number identity. Both in-repository Semantic queries preserved row count, matched keys and party-vote totals in the production before/after audit. This contract does not assert persistent party/SCD2 continuity, external consumer migration, Parquet completeness, or GG freshness; a changed lifecycle epoch requires separate graph recertification. The municipal Semantic cube remains unmaterialized in the observed warehouse. The remaining 15 Gold/Semantic decisions stay advisory.

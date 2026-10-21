@@ -227,33 +227,6 @@ models:
   - name: total_legend_valid_votes
     tests:
     - not_null
-- name: dim_party
-  description: Conformed election-snapshot party dimension; candidate for SCD2 after multi-cycle validation.
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns:
-        - election_year
-        - election_type
-        - election_code
-        - party_number
-  columns:
-  - name: cycle_id
-    tests:
-    - not_null
-  - name: party_id
-    tests:
-    - not_null
-    - unique
-  - name: party_number
-    tests:
-    - not_null
-  - name: party
-    tests:
-    - not_null
-  - name: party_name
-    tests:
-    - not_null
 - name: fact_party_votes
   description: Party-reported nominal and legend votes at municipality/zone/office/party grain.
   tests:
