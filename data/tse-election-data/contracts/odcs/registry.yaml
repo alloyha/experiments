@@ -25,3 +25,8 @@ contracts:
     baseline: contracts/odcs/baselines/dim_party.v1.0.0.odcs.yaml
     baseline_sha256: 621bc1bb655aa12fd35e7a1f2598d0fe7bd379cdc28ccea2b84f88e7bda41d30
     dbt_metadata: tse_dbt/models/gold/dimensions/dim_party.yml
+  - name: fact_electorate_municipality
+    contract: contracts/odcs/fact_electorate_municipality.odcs.yaml
+    baseline: contracts/odcs/baselines/fact_electorate_municipality.v1.0.0.odcs.yaml
+    baseline_sha256: 557b1fccee04ce93e88b534fe0b59e5a6405ee19cfd38289c5152ea031e3dc31
+    dbt_metadata: tse_dbt/models/gold/facts/fact_electorate_municipality.yml

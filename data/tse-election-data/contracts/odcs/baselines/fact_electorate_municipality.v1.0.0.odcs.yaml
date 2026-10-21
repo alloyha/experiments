@@ -1,0 +1,59 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:fact_electorate_municipality
+name: fact_electorate_municipality
+version: 1.0.0
+status: active
+description:
+  purpose: One electorate snapshot per election cycle, UF and municipality; no event,
+    office, round or candidate identity. Electorate is additive only across disjoint
+    territories within one cycle, not across election events or offices. Snapshot
+    partition replacement is authoritative, not append-only or SCD2.
+schema:
+- name: fact_electorate_municipality
+  description: One electorate snapshot per election cycle, UF and municipality; no
+    event, office, round or candidate identity. Electorate is additive only across
+    disjoint territories within one cycle, not across election events or offices.
+    Snapshot partition replacement is authoritative, not append-only or SCD2.
+  properties:
+  - name: election_year
+    description: Calendar year of the election cycle.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election class.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: uf
+    description: Federal unit (UF) within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality code within cycle and UF.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: cycle_id
+    description: Parent cycle identity, election_year:election_type.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Observed municipal or federal/state scope.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality
+    description: Municipality label; may be absent.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: electorate
+    description: Number of electors in this cycle and municipality; no event/office
+      multiplication.
+    logicalType: integer
+    physicalType: decimal(38,0)
+    required: true

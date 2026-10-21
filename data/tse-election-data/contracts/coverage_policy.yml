@@ -57,3 +57,8 @@ resources:
     contract: dim_party
     grain: [election_year, election_type, election_code, party_number]
     semantic_test: dbt_utils.unique_combination_of_columns
+  model:fact_electorate_municipality:
+    visibility: public
+    contract: fact_electorate_municipality
+    grain: [election_year, election_type, uf, municipality_code]
+    semantic_test: dbt_utils.unique_combination_of_columns

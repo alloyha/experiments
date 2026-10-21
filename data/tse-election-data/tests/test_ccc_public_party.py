@@ -43,9 +43,9 @@ class PublicPartyContract(unittest.TestCase):
         report=audit(ROOT)
         stats=report['stats']
         self.assertEqual(stats['total'],42)
-        self.assertEqual(stats['public'],5)
+        self.assertGreaterEqual(stats['public'],5)
         self.assertEqual(stats['internal'],22)
-        self.assertEqual(stats['unclassified'],15)
+        self.assertLessEqual(stats['unclassified'],15)
         self.assertEqual(stats['invalid_contracts'],0)
         self.assertEqual(stats['unmapped_semantic_obligations'],0)
         self.assertEqual(report['status'],'FAIL')

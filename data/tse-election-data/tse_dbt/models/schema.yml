@@ -85,35 +85,6 @@ models:
   - name: candidate_id
     tests:
     - not_null
-- name: fact_electorate_municipality
-  description: Electorate aggregated at municipality level for each election cycle.
-  tests:
-  - dbt_utils.unique_combination_of_columns:
-      arguments:
-        combination_of_columns:
-        - election_year
-        - election_type
-        - uf
-        - municipality_code
-  columns:
-  - name: cycle_id
-    tests:
-    - not_null
-  - name: election_year
-    tests:
-    - not_null
-  - name: election_type
-    tests:
-    - not_null
-  - name: election_scope
-    tests:
-    - not_null
-  - name: uf
-    tests:
-    - not_null
-  - name: municipality_code
-    tests:
-    - not_null
 - name: silver_candidate_votes_munzona
   description: Latest TSE version of nominal candidate voting at municipality/zone grain.
   tests: []

@@ -1,0 +1,126 @@
+version: 2
+models:
+- name: fact_electorate_municipality
+  description: One electorate snapshot per election cycle, UF and municipality; no event, office, round or candidate identity. Electorate is additive only across disjoint territories within one cycle, not across election events or offices. Snapshot partition replacement is authoritative, not append-only or SCD2.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - uf
+        - municipality_code
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Parent cycle identity, election_year:election_type.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: Calendar year of the election cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election class.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+  - name: election_scope
+    data_type: varchar
+    description: Observed municipal or federal/state scope.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__election_scope__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_scope has no missing values
+  - name: uf
+    data_type: varchar
+    description: Federal unit (UF) within the cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+  - name: municipality_code
+    data_type: varchar
+    description: Municipality code within cycle and UF.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+  - name: municipality
+    data_type: varchar
+    description: Municipality label; may be absent.
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: electorate
+    data_type: decimal(38,0)
+    description: Number of electors in this cycle and municipality; no event/office multiplication.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_electorate_municipality__electorate__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field electorate has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:fact_electorate_municipality
