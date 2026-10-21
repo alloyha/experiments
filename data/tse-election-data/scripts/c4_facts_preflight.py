@@ -23,6 +23,15 @@ FACTS = {
     ),
 }
 
+EXPECTED_CYCLES = frozenset({
+    (2018, "general"),
+    (2020, "municipal"),
+    (2022, "general"),
+    (2024, "municipal"),
+    (2026, "general"),
+})
+
+
 
 def entry(status: str, *, detail: str = "", **data):
     return {"status": status, "detail": detail, **data}
@@ -90,9 +99,34 @@ def audit(root: Path, db_path: Path | None = None, *, scan: bool = False) -> dic
                         f"SELECT election_year, election_type, count(*) AS n FROM {qname} "
                         "GROUP BY 1,2 ORDER BY 1,2"
                     ).fetchall()
-                    checks["cycles"] = entry("PASS" if cycles else "FAIL", observed=[
-                        {"year": y, "type": t, "rows": n} for y, t, n in cycles
-                    ])
+                    observed = {(int(y), t): int(n) for y, t, n in cycles
+                                if y is not None and t is not None}
+                    missing_cycles = sorted(EXPECTED_CYCLES - observed.keys())
+                    unexpected_cycles = sorted(observed.keys() - EXPECTED_CYCLES)
+                    empty_cycles = sorted(
+                        cycle for cycle, count in observed.items()
+                        if count <= 0
+                    )
+                    has_null_cycle = any(
+                        y is None or t is None for y, t, _ in cycles
+                    )
+                    complete = (
+                        not missing_cycles
+                        and not unexpected_cycles
+                        and not empty_cycles
+                        and not has_null_cycle
+                    )
+                    checks["cycles"] = entry(
+                        "PASS" if complete else "FAIL",
+                        observed=[
+                            {"year": y, "type": t, "rows": n}
+                            for y, t, n in cycles
+                        ],
+                        missing=[list(c) for c in missing_cycles],
+                        unexpected=[list(c) for c in unexpected_cycles],
+                        empty=[list(c) for c in empty_cycles],
+                        null_cycle=has_null_cycle,
+                    )
                     predicate = " OR ".join(f"{_safe_identifier(c)} IS NULL" for c in grain)
                     null_count = con.execute(f"SELECT count(*) FROM {qname} WHERE {predicate}").fetchone()[0]
                     checks["null_grain"] = entry("PASS" if null_count == 0 else "FAIL", null_rows=null_count)
