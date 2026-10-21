@@ -1,0 +1,120 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:fact_candidate_votes
+name: fact_candidate_votes
+version: 1.0.0
+status: active
+description:
+  purpose: Authoritative candidate-vote snapshot at election-event, round, UF, municipality, zone, office, candidate
+    and transit-vote grain. Historical partitions are snapshots rather than append-only or SCD2 history. Candidate
+    identity is election-specific. The Hive year column is physical partition metadata, not part of the public grain.
+    The contract does not independently certify raw-source completeness, physical GG publication, election results
+    or candidate elected status.
+schema:
+- name: fact_candidate_votes
+  description: Authoritative candidate-vote snapshot at election-event, round, UF, municipality, zone, office, candidate
+    and transit-vote grain. Historical partitions are snapshots rather than append-only or SCD2 history. Candidate
+    identity is election-specific. The Hive year column is physical partition metadata, not part of the public grain.
+    The contract does not independently certify raw-source completeness, physical GG publication, election results
+    or candidate elected status.
+  properties:
+  - name: election_year
+    description: Election cycle year.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Observed election scope.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_id
+    description: Election-event identity; not row-unique.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Election-event code within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: round_number
+    description: Election round.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: Federal unit.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality identifier.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: zone
+    description: Electoral zone.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: office_code
+    description: Office or contest identifier.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_scope
+    description: Observed office scope.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: candidate_id
+    description: Election-specific candidate identifier.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: totalization_status_code
+    description: Observed totalization status code.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: is_transit_vote
+    description: Transit-vote indicator.
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: nominal_votes
+    description: Reported candidate nominal votes.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: nominal_valid_votes
+    description: Reported valid nominal candidate votes.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: generated_at
+    description: Source or ingestion generation timestamp.
+    logicalType: timestamp
+    physicalType: timestamp
+    required: false
+  - name: source_file
+    description: Physical source lineage; not a durable identifier.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: year
+    description: Hive partition year; not an additional grain component.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: cycle_id
+    description: Parent election cycle identity year:type.
+    logicalType: string
+    physicalType: varchar
+    required: true
