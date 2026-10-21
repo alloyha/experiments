@@ -1,5 +1,8 @@
 {{ config(
-    pre_hook="{{ partition_replace_pre_hook() }}",
+    pre_hook=[
+      "{{ assert_tally_upstream_partitions(ref('bronze_tally_raw')) }}",
+      "{{ partition_replace_pre_hook() }}"
+    ],
     materialized='incremental',
     incremental_strategy='delete+insert',
     unique_key=[
