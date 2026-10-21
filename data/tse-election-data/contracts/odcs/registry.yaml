@@ -30,3 +30,8 @@ contracts:
     baseline: contracts/odcs/baselines/fact_electorate_municipality.v1.0.0.odcs.yaml
     baseline_sha256: 557b1fccee04ce93e88b534fe0b59e5a6405ee19cfd38289c5152ea031e3dc31
     dbt_metadata: tse_dbt/models/gold/facts/fact_electorate_municipality.yml
+  - name: fact_party_votes
+    contract: contracts/odcs/fact_party_votes.odcs.yaml
+    baseline: contracts/odcs/baselines/fact_party_votes.v1.0.0.odcs.yaml
+    baseline_sha256: d00025ada34b5e3c2725755e5cb8716f5377c5123e9f928c32a94e4ea49fe8f3
+    dbt_metadata: tse_dbt/models/gold/facts/fact_party_votes.yml
