@@ -1,0 +1,85 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:semantic:obt_electorate_municipality
+name: obt_electorate_municipality
+version: 1.0.0
+status: active
+description:
+  purpose: Cycle-level municipal electorate analytical interface. One row per cycle_id, UF and municipality_code.
+    Geographic enrichment must preserve the source cardinality. Previous-cycle values refer to the preceding observed
+    election cycle for the same UF and municipality; gaps are not interpolated and the growth rate is not annualized.
+    Missing prior cycles produce nullable history measures. This interface does not assert SCD2 history, complete
+    source coverage or physical GG certification.
+schema:
+- name: obt_electorate_municipality
+  description: Cycle-level municipal electorate analytical interface. One row per cycle_id, UF and municipality_code.
+    Geographic enrichment must preserve the source cardinality. Previous-cycle values refer to the preceding observed
+    election cycle for the same UF and municipality; gaps are not interpolated and the growth rate is not annualized.
+    Missing prior cycles produce nullable history measures. This interface does not assert SCD2 history, complete
+    source coverage or physical GG certification.
+  properties:
+  - name: cycle_id
+    description: Election cycle identifier.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_year
+    description: Election cycle year.
+    logicalType: integer
+    physicalType: integer
+    required: false
+  - name: election_type
+    description: General or municipal cycle.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_scope
+    description: Observed election scope.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: uf
+    description: Federal unit.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality code.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality
+    description: Enriched municipality name.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: geography_matched
+    description: Geography enrichment matched.
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: electorate
+    description: Electorate in the observed cycle.
+    logicalType: integer
+    physicalType: decimal(38,0)
+    required: false
+  - name: previous_cycle_id
+    description: Previous observed cycle for this municipality.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: previous_electorate
+    description: Electorate in previous observed cycle.
+    logicalType: integer
+    physicalType: decimal(38,0)
+    required: false
+  - name: electorate_delta
+    description: Difference from previous observed cycle.
+    logicalType: integer
+    physicalType: decimal(38,0)
+    required: false
+  - name: electorate_growth_rate
+    description: Relative change from previous observed cycle; not annualized.
+    logicalType: number
+    physicalType: double
+    required: false

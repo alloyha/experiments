@@ -1,0 +1,167 @@
+version: 2
+models:
+- name: cube_participation_municipality
+  description: Municipal turnout snapshot at election-event, round, UF, municipality, office and transit-vote grain. Zone-level records are aggregated before optional geographic enrichment. Eligible voters, turnout and abstentions must not be added across offices, rounds or overlapping election events without an explicit selection policy. Rates use positive eligible-voter denominators only. This contract does not certify upstream completeness or physical GG publication.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_id
+        - round_number
+        - uf
+        - municipality_code
+        - office_code
+        - is_transit_vote
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:semantic:cube_participation_municipality
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    tests:
+    - not_null
+    description: 'Reported or derived municipal participation field: cycle_id'
+  - name: election_id
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: election_id'
+    data_tests:
+    - not_null:
+        description: Check that field election_id has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__election_id__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: election_year
+    data_type: integer
+    description: 'Reported or derived municipal participation field: election_year'
+  - name: election_type
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: election_type'
+  - name: election_scope
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: election_scope'
+  - name: election_code
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: election_code'
+  - name: round_number
+    data_type: integer
+    description: 'Reported or derived municipal participation field: round_number'
+    data_tests:
+    - not_null:
+        description: Check that field round_number has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__round_number__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: uf
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: uf'
+    data_tests:
+    - not_null:
+        description: Check that field uf has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__uf__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: municipality_code
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: municipality_code'
+    data_tests:
+    - not_null:
+        description: Check that field municipality_code has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__municipality_code__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: office_code
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: office_code'
+    data_tests:
+    - not_null:
+        description: Check that field office_code has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__office_code__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: office_scope
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: office_scope'
+  - name: is_transit_vote
+    data_type: boolean
+    description: 'Reported or derived municipal participation field: is_transit_vote'
+    data_tests:
+    - not_null:
+        description: Check that field is_transit_vote has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: cube_participation_municipality__is_transit_vote__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  - name: eligible_voters
+    data_type: hugeint
+    tests:
+    - not_null
+    description: 'Reported or derived municipal participation field: eligible_voters'
+  - name: turnout
+    data_type: hugeint
+    tests:
+    - not_null
+    description: 'Reported or derived municipal participation field: turnout'
+  - name: abstentions
+    data_type: hugeint
+    tests:
+    - not_null
+    description: 'Reported or derived municipal participation field: abstentions'
+  - name: uncounted_voters
+    data_type: hugeint
+    description: 'Reported or derived municipal participation field: uncounted_voters'
+  - name: voters_uninstalled_sections
+    data_type: hugeint
+    description: 'Reported or derived municipal participation field: voters_uninstalled_sections'
+  - name: zone_rows
+    data_type: bigint
+    description: 'Reported or derived municipal participation field: zone_rows'
+  - name: zone_count
+    data_type: bigint
+    description: 'Reported or derived municipal participation field: zone_count'
+  - name: latest_generated_at
+    data_type: timestamp
+    description: 'Reported or derived municipal participation field: latest_generated_at'
+  - name: municipality
+    data_type: varchar
+    description: 'Reported or derived municipal participation field: municipality'
+  - name: geography_matched
+    data_type: boolean
+    tests:
+    - not_null
+    description: 'Reported or derived municipal participation field: geography_matched'
+  - name: turnout_rate
+    data_type: double
+    description: 'Reported or derived municipal participation field: turnout_rate'
+  - name: abstention_rate
+    data_type: double
+    description: 'Reported or derived municipal participation field: abstention_rate'

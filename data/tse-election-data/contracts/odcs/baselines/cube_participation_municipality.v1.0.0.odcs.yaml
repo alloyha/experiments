@@ -1,0 +1,140 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:semantic:cube_participation_municipality
+name: cube_participation_municipality
+version: 1.0.0
+status: active
+description:
+  purpose: Municipal turnout snapshot at election-event, round, UF, municipality, office and transit-vote grain.
+    Zone-level records are aggregated before optional geographic enrichment. Eligible voters, turnout and abstentions
+    must not be added across offices, rounds or overlapping election events without an explicit selection policy.
+    Rates use positive eligible-voter denominators only. This contract does not certify upstream completeness or
+    physical GG publication.
+schema:
+- name: cube_participation_municipality
+  description: Municipal turnout snapshot at election-event, round, UF, municipality, office and transit-vote grain.
+    Zone-level records are aggregated before optional geographic enrichment. Eligible voters, turnout and abstentions
+    must not be added across offices, rounds or overlapping election events without an explicit selection policy.
+    Rates use positive eligible-voter denominators only. This contract does not certify upstream completeness or
+    physical GG publication.
+  properties:
+  - name: cycle_id
+    description: 'Reported or derived municipal participation field: cycle_id'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_id
+    description: 'Reported or derived municipal participation field: election_id'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_year
+    description: 'Reported or derived municipal participation field: election_year'
+    logicalType: integer
+    physicalType: integer
+    required: false
+  - name: election_type
+    description: 'Reported or derived municipal participation field: election_type'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_scope
+    description: 'Reported or derived municipal participation field: election_scope'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_code
+    description: 'Reported or derived municipal participation field: election_code'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: round_number
+    description: 'Reported or derived municipal participation field: round_number'
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: 'Reported or derived municipal participation field: uf'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: 'Reported or derived municipal participation field: municipality_code'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_code
+    description: 'Reported or derived municipal participation field: office_code'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_scope
+    description: 'Reported or derived municipal participation field: office_scope'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: is_transit_vote
+    description: 'Reported or derived municipal participation field: is_transit_vote'
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: eligible_voters
+    description: 'Reported or derived municipal participation field: eligible_voters'
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: turnout
+    description: 'Reported or derived municipal participation field: turnout'
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: abstentions
+    description: 'Reported or derived municipal participation field: abstentions'
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: uncounted_voters
+    description: 'Reported or derived municipal participation field: uncounted_voters'
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: voters_uninstalled_sections
+    description: 'Reported or derived municipal participation field: voters_uninstalled_sections'
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: zone_rows
+    description: 'Reported or derived municipal participation field: zone_rows'
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: zone_count
+    description: 'Reported or derived municipal participation field: zone_count'
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: latest_generated_at
+    description: 'Reported or derived municipal participation field: latest_generated_at'
+    logicalType: timestamp
+    physicalType: timestamp
+    required: false
+  - name: municipality
+    description: 'Reported or derived municipal participation field: municipality'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: geography_matched
+    description: 'Reported or derived municipal participation field: geography_matched'
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: turnout_rate
+    description: 'Reported or derived municipal participation field: turnout_rate'
+    logicalType: number
+    physicalType: double
+    required: false
+  - name: abstention_rate
+    description: 'Reported or derived municipal participation field: abstention_rate'
+    logicalType: number
+    physicalType: double
+    required: false

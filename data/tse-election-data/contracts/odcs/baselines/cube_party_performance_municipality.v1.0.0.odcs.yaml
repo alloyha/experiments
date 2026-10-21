@@ -1,0 +1,157 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:semantic:cube_party_performance_municipality
+name: cube_party_performance_municipality
+version: 1.0.0
+status: active
+description:
+  purpose: Municipal party-vote analytical snapshot at election-event, round, UF, municipality, office, transit-vote
+    and party grain. Zone-level votes are aggregated before dimension enrichment. Nominal and legend votes have
+    distinct meanings; total_legend_valid_votes includes converted-to-legend components and must not be added again
+    to party_valid_votes. Party share uses observed party-valid votes in the same event, round, office, municipality
+    and transit slice. Ranking reflects observed party votes, not official election outcomes. The interface does
+    not certify source completeness or GG publication.
+schema:
+- name: cube_party_performance_municipality
+  description: Municipal party-vote analytical snapshot at election-event, round, UF, municipality, office, transit-vote
+    and party grain. Zone-level votes are aggregated before dimension enrichment. Nominal and legend votes have
+    distinct meanings; total_legend_valid_votes includes converted-to-legend components and must not be added again
+    to party_valid_votes. Party share uses observed party-valid votes in the same event, round, office, municipality
+    and transit slice. Ranking reflects observed party votes, not official election outcomes. The interface does
+    not certify source completeness or GG publication.
+  properties:
+  - name: cycle_id
+    description: 'Observed party-performance attribute: cycle_id.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_id
+    description: 'Observed party-performance attribute: election_id.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_year
+    description: 'Observed party-performance attribute: election_year.'
+    logicalType: integer
+    physicalType: integer
+    required: false
+  - name: election_type
+    description: 'Observed party-performance attribute: election_type.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_scope
+    description: 'Observed party-performance attribute: election_scope.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_code
+    description: 'Observed party-performance attribute: election_code.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: round_number
+    description: 'Observed party-performance attribute: round_number.'
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: 'Observed party-performance attribute: uf.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: 'Observed party-performance attribute: municipality_code.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_code
+    description: 'Observed party-performance attribute: office_code.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: is_transit_vote
+    description: 'Observed party-performance attribute: is_transit_vote.'
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: party_number
+    description: 'Observed party-performance attribute: party_number.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: nominal_valid_votes
+    description: Reported valid nominal party votes.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: legend_valid_votes
+    description: Reported valid legend votes.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: total_legend_valid_votes
+    description: Total valid legend votes including converted-to-legend components.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: party_valid_votes
+    description: Observed party-valid votes at the exact grain.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: zone_rows
+    description: Contributing zone-level source records.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: zone_count
+    description: Distinct contributing electoral zones.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: observed_party_valid_votes
+    description: Sum of party-valid votes across observed parties in the same slice.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: municipal_party_rank
+    description: Rank by observed party-valid votes within the municipal contest.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: municipality
+    description: 'Observed party-performance attribute: municipality.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: geography_matched
+    description: Whether geographic enrichment found a dimension row.
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: party_matched
+    description: Whether party enrichment found a dimension row.
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: party
+    description: 'Observed party-performance attribute: party.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party_name
+    description: 'Observed party-performance attribute: party_name.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party_id
+    description: 'Observed party-performance attribute: party_id.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party_share_of_observed_valid_votes
+    description: Party-valid votes divided by observed party-valid votes in the same slice, for a positive denominator.
+    logicalType: number
+    physicalType: double
+    required: false

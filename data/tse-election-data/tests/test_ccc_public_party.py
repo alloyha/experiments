@@ -39,16 +39,16 @@ class PublicPartyContract(unittest.TestCase):
         self.assertIn('unique',[next(iter(x)) if isinstance(x,dict) else x
                                 for x in cols['party_id'].get('data_tests',[])])
 
-    def test_coverage_still_advisory(self):
+    def test_coverage_closed_world(self):
         report=audit(ROOT)
         stats=report['stats']
         self.assertEqual(stats['total'],42)
-        self.assertGreaterEqual(stats['public'],5)
-        self.assertEqual(stats['internal'],22)
-        self.assertLessEqual(stats['unclassified'],15)
+        self.assertEqual(stats['public'],14)
+        self.assertEqual(stats['internal'],28)
+        self.assertEqual(stats['unclassified'],0)
         self.assertEqual(stats['invalid_contracts'],0)
         self.assertEqual(stats['unmapped_semantic_obligations'],0)
-        self.assertEqual(report['status'],'FAIL')
+        self.assertEqual(report['status'],'PASS')
         self.assertNotIn('model:dim_party',report['unclassified'])
 
 if __name__=='__main__':unittest.main()

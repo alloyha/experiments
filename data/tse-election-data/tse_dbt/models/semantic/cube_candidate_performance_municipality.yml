@@ -1,0 +1,195 @@
+version: 2
+models:
+- name: cube_candidate_performance_municipality
+  description: Municipal candidate-vote analytical snapshot at election-event, round, UF, municipality, office, transit-vote and candidate grain. Zone-level valid nominal votes are aggregated before optional candidate and geography enrichment. Candidate rank reflects only observed nominal votes and does not establish officially elected status. Candidate vote share uses the sum of observed candidate nominal valid votes in the same municipal contest slice, only when the denominator is positive. History represents derived election snapshots, not SCD2. Source completeness, official results and physical GG publication are not certified by this contract.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_id
+        - round_number
+        - uf
+        - municipality_code
+        - office_code
+        - is_transit_vote
+        - candidate_id
+      config:
+        tags:
+        - expensive
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:semantic:cube_candidate_performance_municipality
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: 'Candidate-performance attribute: cycle_id.'
+    data_tests:
+    - not_null
+  - name: election_id
+    data_type: varchar
+    description: 'Candidate-performance attribute: election_id.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: 'Candidate-performance attribute: election_year.'
+  - name: election_type
+    data_type: varchar
+    description: 'Candidate-performance attribute: election_type.'
+  - name: election_scope
+    data_type: varchar
+    description: 'Candidate-performance attribute: election_scope.'
+  - name: election_code
+    data_type: varchar
+    description: 'Candidate-performance attribute: election_code.'
+  - name: round_number
+    data_type: integer
+    description: 'Candidate-performance attribute: round_number.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__round_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field round_number has no missing values
+  - name: uf
+    data_type: varchar
+    description: 'Candidate-performance attribute: uf.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+  - name: municipality_code
+    data_type: varchar
+    description: 'Candidate-performance attribute: municipality_code.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+  - name: office_code
+    data_type: varchar
+    description: 'Candidate-performance attribute: office_code.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__office_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field office_code has no missing values
+  - name: is_transit_vote
+    data_type: boolean
+    description: 'Candidate-performance attribute: is_transit_vote.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__is_transit_vote__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field is_transit_vote has no missing values
+  - name: candidate_id
+    data_type: varchar
+    description: 'Candidate-performance attribute: candidate_id.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_candidate_performance_municipality__candidate_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field candidate_id has no missing values
+  - name: nominal_valid_votes
+    data_type: hugeint
+    description: Sum of observed valid nominal votes for the candidate.
+    data_tests:
+    - not_null
+  - name: zone_rows
+    data_type: bigint
+    description: Number of contributing zone-level records.
+  - name: zone_count
+    data_type: bigint
+    description: Number of distinct contributing electoral zones.
+  - name: observed_candidate_nominal_valid_votes
+    data_type: hugeint
+    description: Observed nominal valid votes across candidates in the same municipal contest slice.
+  - name: municipal_candidate_rank
+    data_type: bigint
+    description: Candidate ranking by observed nominal valid votes, with candidate ID tie-breaker.
+  - name: municipality
+    data_type: varchar
+    description: 'Candidate-performance attribute: municipality.'
+  - name: geography_matched
+    data_type: boolean
+    description: Whether the municipal geography dimension matched.
+    data_tests:
+    - not_null
+  - name: candidate_matched
+    data_type: boolean
+    description: Whether the election-specific candidate dimension matched.
+    data_tests:
+    - not_null
+  - name: candidate_number
+    data_type: varchar
+    description: 'Candidate-performance attribute: candidate_number.'
+  - name: candidate_name
+    data_type: varchar
+    description: 'Candidate-performance attribute: candidate_name.'
+  - name: ballot_name
+    data_type: varchar
+    description: 'Candidate-performance attribute: ballot_name.'
+  - name: party_number
+    data_type: varchar
+    description: 'Candidate-performance attribute: party_number.'
+  - name: party
+    data_type: varchar
+    description: 'Candidate-performance attribute: party.'
+  - name: party_name
+    data_type: varchar
+    description: 'Candidate-performance attribute: party_name.'
+  - name: office
+    data_type: varchar
+    description: 'Candidate-performance attribute: office.'
+  - name: office_scope
+    data_type: varchar
+    description: 'Candidate-performance attribute: office_scope.'
+  - name: candidate_share_of_observed_nominal_votes
+    data_type: double
+    description: Candidate nominal valid votes divided by observed contest candidate votes.

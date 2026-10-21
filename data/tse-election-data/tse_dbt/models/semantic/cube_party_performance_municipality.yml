@@ -1,0 +1,188 @@
+version: 2
+models:
+- name: cube_party_performance_municipality
+  description: Municipal party-vote analytical snapshot at election-event, round, UF, municipality, office, transit-vote and party grain. Zone-level votes are aggregated before dimension enrichment. Nominal and legend votes have distinct meanings; total_legend_valid_votes includes converted-to-legend components and must not be added again to party_valid_votes. Party share uses observed party-valid votes in the same event, round, office, municipality and transit slice. Ranking reflects observed party votes, not official election outcomes. The interface does not certify source completeness or GG publication.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_id
+        - round_number
+        - uf
+        - municipality_code
+        - office_code
+        - is_transit_vote
+        - party_number
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:semantic:cube_party_performance_municipality
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: 'Observed party-performance attribute: cycle_id.'
+    data_tests:
+    - not_null
+  - name: election_id
+    data_type: varchar
+    description: 'Observed party-performance attribute: election_id.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: 'Observed party-performance attribute: election_year.'
+  - name: election_type
+    data_type: varchar
+    description: 'Observed party-performance attribute: election_type.'
+  - name: election_scope
+    data_type: varchar
+    description: 'Observed party-performance attribute: election_scope.'
+  - name: election_code
+    data_type: varchar
+    description: 'Observed party-performance attribute: election_code.'
+  - name: round_number
+    data_type: integer
+    description: 'Observed party-performance attribute: round_number.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__round_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field round_number has no missing values
+  - name: uf
+    data_type: varchar
+    description: 'Observed party-performance attribute: uf.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+  - name: municipality_code
+    data_type: varchar
+    description: 'Observed party-performance attribute: municipality_code.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+  - name: office_code
+    data_type: varchar
+    description: 'Observed party-performance attribute: office_code.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__office_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field office_code has no missing values
+  - name: is_transit_vote
+    data_type: boolean
+    description: 'Observed party-performance attribute: is_transit_vote.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__is_transit_vote__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field is_transit_vote has no missing values
+  - name: party_number
+    data_type: varchar
+    description: 'Observed party-performance attribute: party_number.'
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: cube_party_performance_municipality__party_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_number has no missing values
+  - name: nominal_valid_votes
+    data_type: hugeint
+    description: Reported valid nominal party votes.
+    data_tests:
+    - not_null
+  - name: legend_valid_votes
+    data_type: hugeint
+    description: Reported valid legend votes.
+  - name: total_legend_valid_votes
+    data_type: hugeint
+    description: Total valid legend votes including converted-to-legend components.
+  - name: party_valid_votes
+    data_type: hugeint
+    description: Observed party-valid votes at the exact grain.
+    data_tests:
+    - not_null
+  - name: zone_rows
+    data_type: bigint
+    description: Contributing zone-level source records.
+  - name: zone_count
+    data_type: bigint
+    description: Distinct contributing electoral zones.
+  - name: observed_party_valid_votes
+    data_type: hugeint
+    description: Sum of party-valid votes across observed parties in the same slice.
+  - name: municipal_party_rank
+    data_type: bigint
+    description: Rank by observed party-valid votes within the municipal contest.
+  - name: municipality
+    data_type: varchar
+    description: 'Observed party-performance attribute: municipality.'
+  - name: geography_matched
+    data_type: boolean
+    description: Whether geographic enrichment found a dimension row.
+    data_tests:
+    - not_null
+  - name: party_matched
+    data_type: boolean
+    description: Whether party enrichment found a dimension row.
+    data_tests:
+    - not_null
+  - name: party
+    data_type: varchar
+    description: 'Observed party-performance attribute: party.'
+  - name: party_name
+    data_type: varchar
+    description: 'Observed party-performance attribute: party_name.'
+  - name: party_id
+    data_type: varchar
+    description: 'Observed party-performance attribute: party_id.'
+  - name: party_share_of_observed_valid_votes
+    data_type: double
+    description: Party-valid votes divided by observed party-valid votes in the same slice, for a positive denominator.

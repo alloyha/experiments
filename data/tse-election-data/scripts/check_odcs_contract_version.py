@@ -15,6 +15,10 @@ import yaml
 
 BASELINE_SHA256 = "9b0aaf1ab8b7097c4ca9834a2513ea4d97bd300c23acf1158594b2cb572fd50b"
 BASELINE_SHA256_BY_CONTRACT = {
+    "cube_candidate_performance_municipality": "8ba1428455db33d52ef6d8a19a1543c017ad4f613bade81dfd43624dc6ae1922",
+    "cube_party_performance_municipality": "b8be5417db2c1f7cd3c30f87e253b99b2c751b2eb9bebe091a2908be855a262f",
+    "cube_participation_municipality": "f620e2ec415784c47e8a7cc222d7ed62edcd5bf4977b8c635ce6d808a2bc7d0a",
+    "obt_electorate_municipality": "ac2b08ca17a4f427dea487c62fe1b4d66e1bfee1fb2fa96422865295abfdced2",
     "fact_candidate_votes": "bffe3d2a38cdbf92a924861d74599b989a1a52ba1efea92efcfe383c778db1dd",
     "fact_turnout": "6aa0738db88ac5bdcc12519d23bae29788b5220575d3a5bd27a8979b0b03840a",
     "dim_election_cycle": BASELINE_SHA256,

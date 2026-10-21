@@ -1,0 +1,167 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:semantic:cube_candidate_performance_municipality
+name: cube_candidate_performance_municipality
+version: 1.0.0
+status: active
+description:
+  purpose: Municipal candidate-vote analytical snapshot at election-event, round, UF, municipality, office, transit-vote
+    and candidate grain. Zone-level valid nominal votes are aggregated before optional candidate and geography enrichment.
+    Candidate rank reflects only observed nominal votes and does not establish officially elected status. Candidate
+    vote share uses the sum of observed candidate nominal valid votes in the same municipal contest slice, only
+    when the denominator is positive. History represents derived election snapshots, not SCD2. Source completeness,
+    official results and physical GG publication are not certified by this contract.
+schema:
+- name: cube_candidate_performance_municipality
+  description: Municipal candidate-vote analytical snapshot at election-event, round, UF, municipality, office,
+    transit-vote and candidate grain. Zone-level valid nominal votes are aggregated before optional candidate and
+    geography enrichment. Candidate rank reflects only observed nominal votes and does not establish officially
+    elected status. Candidate vote share uses the sum of observed candidate nominal valid votes in the same municipal
+    contest slice, only when the denominator is positive. History represents derived election snapshots, not SCD2.
+    Source completeness, official results and physical GG publication are not certified by this contract.
+  properties:
+  - name: cycle_id
+    description: 'Candidate-performance attribute: cycle_id.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_id
+    description: 'Candidate-performance attribute: election_id.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_year
+    description: 'Candidate-performance attribute: election_year.'
+    logicalType: integer
+    physicalType: integer
+    required: false
+  - name: election_type
+    description: 'Candidate-performance attribute: election_type.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_scope
+    description: 'Candidate-performance attribute: election_scope.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_code
+    description: 'Candidate-performance attribute: election_code.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: round_number
+    description: 'Candidate-performance attribute: round_number.'
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: 'Candidate-performance attribute: uf.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: 'Candidate-performance attribute: municipality_code.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_code
+    description: 'Candidate-performance attribute: office_code.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: is_transit_vote
+    description: 'Candidate-performance attribute: is_transit_vote.'
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: candidate_id
+    description: 'Candidate-performance attribute: candidate_id.'
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: nominal_valid_votes
+    description: Sum of observed valid nominal votes for the candidate.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: zone_rows
+    description: Number of contributing zone-level records.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: zone_count
+    description: Number of distinct contributing electoral zones.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: observed_candidate_nominal_valid_votes
+    description: Observed nominal valid votes across candidates in the same municipal contest slice.
+    logicalType: integer
+    physicalType: hugeint
+    required: false
+  - name: municipal_candidate_rank
+    description: Candidate ranking by observed nominal valid votes, with candidate ID tie-breaker.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: municipality
+    description: 'Candidate-performance attribute: municipality.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: geography_matched
+    description: Whether the municipal geography dimension matched.
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: candidate_matched
+    description: Whether the election-specific candidate dimension matched.
+    logicalType: boolean
+    physicalType: boolean
+    required: false
+  - name: candidate_number
+    description: 'Candidate-performance attribute: candidate_number.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: candidate_name
+    description: 'Candidate-performance attribute: candidate_name.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: ballot_name
+    description: 'Candidate-performance attribute: ballot_name.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party_number
+    description: 'Candidate-performance attribute: party_number.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party
+    description: 'Candidate-performance attribute: party.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: party_name
+    description: 'Candidate-performance attribute: party_name.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: office
+    description: 'Candidate-performance attribute: office.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: office_scope
+    description: 'Candidate-performance attribute: office_scope.'
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: candidate_share_of_observed_nominal_votes
+    description: Candidate nominal valid votes divided by observed contest candidate votes.
+    logicalType: number
+    physicalType: double
+    required: false
