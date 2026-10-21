@@ -40,3 +40,8 @@ contracts:
     baseline: contracts/odcs/baselines/fact_tally_munzona.v1.0.0.odcs.yaml
     baseline_sha256: 4df42819993b76cf8f2a43d2d87e11f4cac7861586cacf06daa7f3b82b0810c7
     dbt_metadata: tse_dbt/models/gold/facts/fact_tally_munzona.yml
+  - name: fact_turnout
+    contract: contracts/odcs/fact_turnout.odcs.yaml
+    baseline: contracts/odcs/baselines/fact_turnout.v1.0.0.odcs.yaml
+    baseline_sha256: 6aa0738db88ac5bdcc12519d23bae29788b5220575d3a5bd27a8979b0b03840a
+    dbt_metadata: tse_dbt/models/gold/facts/fact_turnout.yml
