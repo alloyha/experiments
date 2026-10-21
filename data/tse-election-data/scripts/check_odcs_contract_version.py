@@ -15,6 +15,7 @@ import yaml
 
 BASELINE_SHA256 = "9b0aaf1ab8b7097c4ca9834a2513ea4d97bd300c23acf1158594b2cb572fd50b"
 BASELINE_SHA256_BY_CONTRACT = {
+    "fact_candidate_votes": "bffe3d2a38cdbf92a924861d74599b989a1a52ba1efea92efcfe383c778db1dd",
     "fact_turnout": "6aa0738db88ac5bdcc12519d23bae29788b5220575d3a5bd27a8979b0b03840a",
     "dim_election_cycle": BASELINE_SHA256,
     "dim_election": "5e8e2be20ff4fa620b3c59d52ccad5bf11ac14a23c9c4b5b64ce1f983ce7abe2",

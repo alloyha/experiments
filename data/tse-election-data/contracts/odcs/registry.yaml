@@ -45,3 +45,8 @@ contracts:
     baseline: contracts/odcs/baselines/fact_turnout.v1.0.0.odcs.yaml
     baseline_sha256: 6aa0738db88ac5bdcc12519d23bae29788b5220575d3a5bd27a8979b0b03840a
     dbt_metadata: tse_dbt/models/gold/facts/fact_turnout.yml
+  - name: fact_candidate_votes
+    contract: contracts/odcs/fact_candidate_votes.odcs.yaml
+    baseline: contracts/odcs/baselines/fact_candidate_votes.v1.0.0.odcs.yaml
+    baseline_sha256: bffe3d2a38cdbf92a924861d74599b989a1a52ba1efea92efcfe383c778db1dd
+    dbt_metadata: tse_dbt/models/gold/facts/fact_candidate_votes.yml
