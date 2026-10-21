@@ -62,3 +62,8 @@ resources:
     contract: fact_electorate_municipality
     grain: [election_year, election_type, uf, municipality_code]
     semantic_test: dbt_utils.unique_combination_of_columns
+  model:fact_party_votes:
+    visibility: public
+    contract: fact_party_votes
+    grain: [election_year, election_type, election_code, round_number, uf, municipality_code, zone, office_code, party_number, is_transit_vote]
+    semantic_test: dbt_utils.unique_combination_of_columns

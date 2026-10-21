@@ -1,0 +1,111 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:fact_party_votes
+name: fact_party_votes
+version: 1.0.0
+status: active
+description:
+  purpose: Authoritative election snapshot of party votes at election-event, round,
+    UF, municipality, zone, office, party and transit-vote-flag grain. party_valid_votes
+    = nominal_valid_votes + total_legend_valid_votes. The nominal_converted_to_legend_votes
+    component is NOT an additional term in party_valid_votes. No general assertion
+    is made that total legend votes always equal legend votes plus converted votes.
+    This ODCS surface does not certify party-versus-tally reconciliation, raw-source
+    completeness or GG publication.
+schema:
+- name: fact_party_votes
+  description: Authoritative election snapshot of party votes at election-event, round,
+    UF, municipality, zone, office, party and transit-vote-flag grain. party_valid_votes
+    = nominal_valid_votes + total_legend_valid_votes. The nominal_converted_to_legend_votes
+    component is NOT an additional term in party_valid_votes. No general assertion
+    is made that total legend votes always equal legend votes plus converted votes.
+    This ODCS surface does not certify party-versus-tally reconciliation, raw-source
+    completeness or GG publication.
+  properties:
+  - name: election_year
+    description: Calendar year of the election cycle.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: election_type
+    description: General or municipal election type.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Election event code within a cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: round_number
+    description: Round of this election event.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: uf
+    description: Federal unit for this vote grain.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality code of the vote record.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: zone
+    description: Electoral zone within municipality.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: office_code
+    description: Office/contest code; cannot be omitted from grain.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: party_number
+    description: Party number within the election event.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: is_transit_vote
+    description: Whether the vote belongs to transit voting.
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: cycle_id
+    description: Parent election cycle year:type.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_id
+    description: Parent election event year:type:code.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: nominal_valid_votes
+    description: Valid nominal votes attributed to party.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: legend_valid_votes
+    description: Legend-vote component, not necessarily full legend total.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: total_legend_valid_votes
+    description: Total legend valid votes used in party total.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: party_valid_votes
+    description: Nominal valid plus total legend valid votes; do not add converted
+      component.
+    logicalType: integer
+    physicalType: bigint
+    required: true
+  - name: nominal_converted_to_legend_votes
+    description: Observed converted nominal-to-legend component; do not double count
+      in party total.
+    logicalType: integer
+    physicalType: bigint
+    required: false

@@ -1,0 +1,278 @@
+version: 2
+models:
+- name: fact_party_votes
+  description: Authoritative election snapshot of party votes at election-event, round, UF, municipality, zone, office, party and transit-vote-flag grain. party_valid_votes = nominal_valid_votes + total_legend_valid_votes. The nominal_converted_to_legend_votes component is NOT an additional term in party_valid_votes. No general assertion is made that total legend votes always equal legend votes plus converted votes. This ODCS surface does not certify party-versus-tally reconciliation, raw-source completeness or GG publication.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - party_number
+        - is_transit_vote
+  columns:
+  - name: cycle_id
+    data_type: varchar
+    description: Parent election cycle year:type.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__cycle_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field cycle_id has no missing values
+  - name: election_year
+    data_type: integer
+    description: Calendar year of the election cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election type.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+  - name: election_code
+    data_type: varchar
+    description: Election event code within a cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__election_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_code has no missing values
+  - name: round_number
+    data_type: integer
+    description: Round of this election event.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__round_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field round_number has no missing values
+  - name: party_number
+    data_type: varchar
+    description: Party number within the election event.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__party_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_number has no missing values
+  - name: nominal_valid_votes
+    data_type: bigint
+    description: Valid nominal votes attributed to party.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__nominal_valid_votes__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field nominal_valid_votes has no missing values
+  - name: legend_valid_votes
+    data_type: bigint
+    description: Legend-vote component, not necessarily full legend total.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__legend_valid_votes__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field legend_valid_votes has no missing values
+  - name: total_legend_valid_votes
+    data_type: bigint
+    description: Total legend valid votes used in party total.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__total_legend_valid_votes__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field total_legend_valid_votes has no missing values
+  - name: party_valid_votes
+    data_type: bigint
+    description: Nominal valid plus total legend valid votes; do not add converted component.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__party_valid_votes__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field party_valid_votes has no missing values
+  - name: uf
+    data_type: varchar
+    description: Federal unit for this vote grain.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: municipality_code
+    data_type: varchar
+    description: Municipality code of the vote record.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: zone
+    data_type: integer
+    description: Electoral zone within municipality.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__zone__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field zone has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: office_code
+    data_type: varchar
+    description: Office/contest code; cannot be omitted from grain.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__office_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field office_code has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: is_transit_vote
+    data_type: boolean
+    description: Whether the vote belongs to transit voting.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__is_transit_vote__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field is_transit_vote has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: election_id
+    data_type: varchar
+    description: Parent election event year:type:code.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_party_votes__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  - name: nominal_converted_to_legend_votes
+    data_type: bigint
+    description: Observed converted nominal-to-legend component; do not double count in party total.
+    config:
+      meta:
+        datacontract_cli:
+          generated: true
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:fact_party_votes

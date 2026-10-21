@@ -8,12 +8,11 @@ The first scan discovered 42 resources: two existing ODCS-public models,
 15 technical-layer internals, and 25 unclassified Gold/Semantic models.
 Historical policy aliases do not create extra active SQL models.
 
-## Candidate interfaces to review for PUBLIC ODCS (14)
+## Candidate interfaces to review for PUBLIC ODCS (13)
 
 | Resource | Layer | Question before promotion |
 |---|---|---|
 | `fact_candidate_votes` | Gold | Exact candidate/zone/round grain; persisted parquet obligations remain independent? |
-| `fact_party_votes` | Gold | Exact common party-vote grain and reconciliation obligations? |
 | `fact_tally_munzona` | Gold | Office/zone/round measures and tally conservation? |
 | `fact_turnout` | Gold | No duplicate electorate denominators across office? |
 | `candidate_ranking` | Semantic | Ranking vs elected status explicitly disclaimed? |
@@ -84,3 +83,7 @@ Following canonical SQL (#86) and guarded transactional migration (#87), all 717
 ## CCC C1 — public municipality electorate fact
 
 The public electorate fact has cycle × UF × municipality grain and a pinned v1.0.0 ODCS baseline. Its electorate measure is additive only across disjoint municipalities within a given cycle. Do not sum electorate after event/round/office joins. This contract does not certify raw-source completeness or GG physical candidate Parquet publication. The remaining 14 Gold/Semantic decisions remain advisory.
+
+## CCC C2 — public party-vote fact
+
+The public party-vote fact is a snapshot at election-event × round × UF × municipality × zone × office × party × transit-flag grain. Its immutable ODCS v1.0.0 contract exposes nominal and legend components separately. Do not add converted nominal-to-legend votes a second time to `party_valid_votes`; no general identity `total_legend = legend + converted` is asserted. Independent party-versus-tally reconciliation, raw-source completeness and GG physical proof remain separate gates. The other 13 Gold/Semantic decisions remain advisory.
