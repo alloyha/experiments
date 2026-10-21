@@ -1,0 +1,127 @@
+apiVersion: v3.2.0
+kind: DataContract
+id: urn:datacontract:tse:gold:fact_turnout
+name: fact_turnout
+version: 1.0.0
+status: active
+description:
+  purpose: Derived election-event turnout snapshot sourced from fact_tally_munzona. The row grain includes
+    year, election type, election event, round, UF, municipality, zone, office and transit-vote flag. History
+    uses partition replacement and is not append-only or SCD2. Eligible electorate, turnout and abstentions
+    must not be summed across overlapping events, rounds or office slices. Rates are defined only for positive
+    denominators. This contract does not independently certify upstream source completeness or physical GG
+    publication.
+schema:
+- name: fact_turnout
+  description: Derived election-event turnout snapshot sourced from fact_tally_munzona. The row grain includes
+    year, election type, election event, round, UF, municipality, zone, office and transit-vote flag. History
+    uses partition replacement and is not append-only or SCD2. Eligible electorate, turnout and abstentions
+    must not be summed across overlapping events, rounds or office slices. Rates are defined only for positive
+    denominators. This contract does not independently certify upstream source completeness or physical GG
+    publication.
+  properties:
+  - name: election_type
+    description: General or municipal election.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_scope
+    description: Observed election scope.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_id
+    description: Election-event identity; not a unique row key.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: election_code
+    description: Election-event code within the cycle.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: uf
+    description: Federal unit of the observation.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: municipality_code
+    description: Municipality within the election cycle and UF.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_code
+    description: Office or contest. Required to preserve the fact grain.
+    logicalType: string
+    physicalType: varchar
+    required: true
+  - name: office_scope
+    description: Observed office scope.
+    logicalType: string
+    physicalType: varchar
+    required: false
+  - name: election_year
+    description: Election cycle year.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: round_number
+    description: Election-event round.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: zone
+    description: Electoral zone.
+    logicalType: integer
+    physicalType: integer
+    required: true
+  - name: is_transit_vote
+    description: Whether the record represents transit voting.
+    logicalType: boolean
+    physicalType: boolean
+    required: true
+  - name: eligible_voters
+    description: Eligible electorate in this event, round and office slice.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: voters_uninstalled_sections
+    description: Voters associated with uninstalled sections.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: uncounted_voters
+    description: Derived as eligible_voters minus turnout minus abstentions.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: turnout
+    description: Reported turnout at the exact event and office grain.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: abstentions
+    description: Reported abstentions at the exact event and office grain.
+    logicalType: integer
+    physicalType: bigint
+    required: false
+  - name: turnout_rate
+    description: Turnout divided by eligible_voters when denominator is positive.
+    logicalType: number
+    physicalType: double
+    required: false
+  - name: abstention_rate
+    description: Abstentions divided by eligible_voters when denominator is positive.
+    logicalType: number
+    physicalType: double
+    required: false
+  - name: generated_at
+    description: Source or ingestion timestamp.
+    logicalType: timestamp
+    physicalType: timestamp
+    required: false
+  - name: cycle_id
+    description: Parent election cycle identity; not a unique row key.
+    logicalType: string
+    physicalType: varchar
+    required: true

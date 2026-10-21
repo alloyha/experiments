@@ -72,3 +72,9 @@ resources:
     contract: fact_tally_munzona
     grain: [election_year, election_type, election_code, round_number, uf, municipality_code, zone, office_code, is_transit_vote]
     semantic_test: dbt_utils.unique_combination_of_columns
+
+  model:fact_turnout:
+    visibility: public
+    contract: fact_turnout
+    grain: [election_year, election_type, election_code, round_number, uf, municipality_code, zone, office_code, is_transit_vote]
+    semantic_test: dbt_utils.unique_combination_of_columns

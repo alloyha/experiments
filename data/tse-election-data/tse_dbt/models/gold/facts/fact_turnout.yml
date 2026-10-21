@@ -1,0 +1,212 @@
+version: 2
+models:
+- name: fact_turnout
+  description: Derived election-event turnout snapshot sourced from fact_tally_munzona. The row grain includes year, election type, election event, round, UF, municipality, zone, office and transit-vote flag. History uses partition replacement and is not append-only or SCD2. Eligible electorate, turnout and abstentions must not be summed across overlapping events, rounds or office slices. Rates are defined only for positive denominators. This contract does not independently certify upstream source completeness or physical GG publication.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - election_year
+        - election_type
+        - election_code
+        - round_number
+        - uf
+        - municipality_code
+        - zone
+        - office_code
+        - is_transit_vote
+  columns:
+  - name: election_type
+    data_type: varchar
+    description: General or municipal election.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__election_type__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_type has no missing values
+  - name: election_scope
+    data_type: varchar
+    description: Observed election scope.
+  - name: election_id
+    data_type: varchar
+    description: Election-event identity; not a unique row key.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__election_id__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_id has no missing values
+  - name: election_code
+    data_type: varchar
+    description: Election-event code within the cycle.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__election_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_code has no missing values
+  - name: uf
+    data_type: varchar
+    description: Federal unit of the observation.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__uf__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field uf has no missing values
+  - name: municipality_code
+    data_type: varchar
+    description: Municipality within the election cycle and UF.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__municipality_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field municipality_code has no missing values
+  - name: office_code
+    data_type: varchar
+    description: Office or contest. Required to preserve the fact grain.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__office_code__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field office_code has no missing values
+  - name: office_scope
+    data_type: varchar
+    description: Observed office scope.
+  - name: election_year
+    data_type: integer
+    description: Election cycle year.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__election_year__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field election_year has no missing values
+  - name: round_number
+    data_type: integer
+    description: Election-event round.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__round_number__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field round_number has no missing values
+  - name: zone
+    data_type: integer
+    description: Electoral zone.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__zone__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field zone has no missing values
+  - name: is_transit_vote
+    data_type: boolean
+    description: Whether the record represents transit voting.
+    data_tests:
+    - not_null:
+        config:
+          meta:
+            datacontract_cli:
+              check: fact_turnout__is_transit_vote__field_required
+              include_in_tests: true
+              contract_versions:
+              - 1.0.0
+              generated: true
+        description: Check that field is_transit_vote has no missing values
+  - name: eligible_voters
+    data_type: bigint
+    description: Eligible electorate in this event, round and office slice.
+    tests:
+    - not_null
+  - name: voters_uninstalled_sections
+    data_type: bigint
+    description: Voters associated with uninstalled sections.
+  - name: uncounted_voters
+    data_type: bigint
+    description: Derived as eligible_voters minus turnout minus abstentions.
+  - name: turnout
+    data_type: bigint
+    description: Reported turnout at the exact event and office grain.
+    tests:
+    - not_null
+  - name: abstentions
+    data_type: bigint
+    description: Reported abstentions at the exact event and office grain.
+    tests:
+    - not_null
+  - name: turnout_rate
+    data_type: double
+    description: Turnout divided by eligible_voters when denominator is positive.
+  - name: abstention_rate
+    data_type: double
+    description: Abstentions divided by eligible_voters when denominator is positive.
+  - name: generated_at
+    data_type: timestamp
+    description: Source or ingestion timestamp.
+  - name: cycle_id
+    data_type: varchar
+    description: Parent election cycle identity; not a unique row key.
+    data_tests:
+    - not_null:
+        description: Check that field cycle_id has no missing values
+        config:
+          meta:
+            datacontract_cli:
+              include_in_tests: true
+              check: fact_turnout__cycle_id__field_required
+              contract_versions:
+              - 1.0.0
+              generated: false
+  config:
+    meta:
+      datacontract_cli:
+        contract_id: urn:datacontract:tse:gold:fact_turnout
