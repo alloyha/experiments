@@ -8,12 +8,11 @@ The first scan discovered 42 resources: two existing ODCS-public models,
 15 technical-layer internals, and 25 unclassified Gold/Semantic models.
 Historical policy aliases do not create extra active SQL models.
 
-## Candidate interfaces to review for PUBLIC ODCS (15)
+## Candidate interfaces to review for PUBLIC ODCS (14)
 
 | Resource | Layer | Question before promotion |
 |---|---|---|
 | `fact_candidate_votes` | Gold | Exact candidate/zone/round grain; persisted parquet obligations remain independent? |
-| `fact_electorate_municipality` | Gold | Cycle-level electorate denominator; cross-event joins prohibited? |
 | `fact_party_votes` | Gold | Exact common party-vote grain and reconciliation obligations? |
 | `fact_tally_munzona` | Gold | Office/zone/round measures and tally conservation? |
 | `fact_turnout` | Gold | No duplicate electorate denominators across office? |
@@ -81,3 +80,7 @@ do not declare closure until all 18 public decisions and obligations are resolve
 ## CCC B2 — public election-scoped party dimension
 
 Following canonical SQL (#86) and guarded transactional migration (#87), all 717 observed parties across 2018, 2020, 2022, 2024, and 2026 have canonical election_id:party_number identity. Both in-repository Semantic queries preserved row count, matched keys and party-vote totals in the production before/after audit. This contract does not assert persistent party/SCD2 continuity, external consumer migration, Parquet completeness, or GG freshness; a changed lifecycle epoch requires separate graph recertification. The municipal Semantic cube remains unmaterialized in the observed warehouse. The remaining 15 Gold/Semantic decisions stay advisory.
+
+## CCC C1 — public municipality electorate fact
+
+The public electorate fact has cycle × UF × municipality grain and a pinned v1.0.0 ODCS baseline. Its electorate measure is additive only across disjoint municipalities within a given cycle. Do not sum electorate after event/round/office joins. This contract does not certify raw-source completeness or GG physical candidate Parquet publication. The remaining 14 Gold/Semantic decisions remain advisory.
