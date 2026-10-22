@@ -159,7 +159,7 @@ class GraphFreshnessTests(unittest.TestCase):
     def test_cross_process_fact_republication_invalidates(self):
         """A real Parquet replacement must fail audit across process boundaries."""
         import os
-        from test_gold_graph_invariants import GoldGraphTests
+        from tests.test_gold_graph_invariants import GoldGraphTests
         from scripts.certify_gold_graph_cycle import SCOPED_SOURCES, quote_sql
 
         fixture = GoldGraphTests("test_graph_projection_conserves_relationships")
@@ -222,7 +222,7 @@ class GraphFreshnessTests(unittest.TestCase):
     def test_cross_process_certify_audit_and_dimension_invalidation(self):
         """Exercise real scoped DuckDB proofs across independent processes."""
         import duckdb
-        from test_gold_graph_invariants import GoldGraphTests
+        from tests.test_gold_graph_invariants import GoldGraphTests
         from scripts.certify_gold_graph_cycle import SCOPED_SOURCES, quote_sql
 
         fixture = GoldGraphTests("test_graph_projection_conserves_relationships")
